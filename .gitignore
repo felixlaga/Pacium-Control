@@ -1,0 +1,46 @@
+# Future application dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+.next/
+.vite/
+
+# Environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Pacium runtime state and backups
+.pacium/
+state/
+backups/
+*.backup
+*.snapshot
+*.age
+
+# Logs, terminal captures, and diagnostics
+*.log
+logs/
+terminal-captures/
+support-bundles/
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Agent scratch work
+.agent/
+.claude/
+.codex/
+scratch/
+.tmp/
+tmp/
