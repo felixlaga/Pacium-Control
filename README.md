@@ -34,13 +34,14 @@ pnpm start
 
 Then open `http://127.0.0.1:4174`.
 
-The current slice can launch available Shell, Codex, and Claude Code presets; group sessions by repository; switch with the mouse or keyboard; and interrupt, resize, reconnect to, or close direct-PTY sessions. Sessions survive browser refresh but not local-server restart.
+The current slice can launch available Shell, Codex, and Claude Code presets; group sessions by repository; manage a browser-local tab working set; and interrupt, resize, reconnect to, or close direct-PTY sessions. Tabs can be pinned, reordered, and closed without stopping the underlying terminal. Sessions survive browser refresh but not local-server restart.
 
 Current keyboard shortcuts:
 
 - `Cmd/Ctrl+Shift+T`: open the new-terminal dialog.
-- `Cmd/Ctrl+1` through `Cmd/Ctrl+9`: select a visible session.
-- `Cmd/Ctrl+Shift+[` and `Cmd/Ctrl+Shift+]`: select the previous or next session.
+- `Cmd/Ctrl+1` through `Cmd/Ctrl+9`: select an open terminal tab.
+- `Cmd/Ctrl+Shift+[` and `Cmd/Ctrl+Shift+]`: select the previous or next tab.
+- `Alt+Shift+Left/Right`: reorder a focused tab within its pin group.
 - `Ctrl+Shift+.`: leave terminal keyboard capture without stopping the PTY.
 
 ## Primary experience

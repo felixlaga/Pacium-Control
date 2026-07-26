@@ -94,6 +94,7 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-022 Implement terminal tabs
 
 - Open, close, reorder, pin, preserve selection, and overflow behavior.
+- Current status: browser-owned tabs implement selection, view-only close, pinning, pointer/keyboard reorder, valid refresh restoration, and horizontal overflow. Rendered browser validation remains pending.
 
 ### PC-023 Implement split panes
 

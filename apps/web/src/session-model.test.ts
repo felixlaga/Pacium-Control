@@ -3,8 +3,17 @@ import type { SessionSummary } from "@pacium/contracts";
 
 import {
   adjacentSessionId,
+  adjacentTerminalTabId,
+  closeTerminalTab,
   groupSessions,
+  moveTerminalTab,
+  moveTerminalTabByOffset,
+  openTerminalTab,
+  parseStoredTerminalTabs,
+  reconcileTerminalTabs,
   resolveWorkspaceShortcut,
+  serializeTerminalTabs,
+  toggleTerminalTabPin,
 } from "./session-model.js";
 
 const baseSession: SessionSummary = {
@@ -124,5 +133,132 @@ describe("workspace shortcuts", () => {
         editable: true,
       }),
     ).toBeNull();
+  });
+});
+
+describe("terminal tabs", () => {
+  const first = { sessionId: baseSession.id, pinned: false };
+  const secondSession = {
+    ...baseSession,
+    id: "1e6da255-7c44-4199-b284-ee903712890a",
+    displayName: "Codex",
+  };
+  const second = { sessionId: secondSession.id, pinned: false };
+  const thirdSession = {
+    ...baseSession,
+    id: "d380337c-6047-4220-be3a-263f57314285",
+    displayName: "Claude",
+  };
+  const third = { sessionId: thirdSession.id, pinned: false };
+
+  it("opens each session once and navigates in tab order", () => {
+    expect(openTerminalTab([first], first.sessionId)).toEqual([first]);
+    const tabs = openTerminalTab([first], second.sessionId);
+    expect(tabs).toEqual([first, second]);
+    expect(adjacentTerminalTabId(tabs, first.sessionId, 1)).toBe(
+      second.sessionId,
+    );
+    expect(adjacentTerminalTabId(tabs, first.sessionId, -1)).toBe(
+      second.sessionId,
+    );
+  });
+
+  it("selects the right neighbor, then the left neighbor, when closing", () => {
+    expect(
+      closeTerminalTab(
+        [first, second, third],
+        second.sessionId,
+        second.sessionId,
+      ),
+    ).toEqual({
+      tabs: [first, third],
+      selectedId: third.sessionId,
+    });
+    expect(
+      closeTerminalTab([first, second], second.sessionId, second.sessionId),
+    ).toEqual({
+      tabs: [first],
+      selectedId: first.sessionId,
+    });
+    expect(closeTerminalTab([first], first.sessionId, first.sessionId)).toEqual(
+      {
+        tabs: [],
+        selectedId: null,
+      },
+    );
+  });
+
+  it("does not change selection when an inactive tab closes", () => {
+    expect(
+      closeTerminalTab([first, second], second.sessionId, first.sessionId),
+    ).toEqual({
+      tabs: [first],
+      selectedId: first.sessionId,
+    });
+  });
+
+  it("keeps pinned tabs first and reorders only inside a pin partition", () => {
+    const pinnedSecond = toggleTerminalTabPin(
+      [first, second, third],
+      second.sessionId,
+    );
+    expect(pinnedSecond).toEqual([{ ...second, pinned: true }, first, third]);
+
+    expect(
+      moveTerminalTab(pinnedSecond, second.sessionId, first.sessionId),
+    ).toBe(pinnedSecond);
+    expect(moveTerminalTabByOffset(pinnedSecond, first.sessionId, 1)).toEqual([
+      { ...second, pinned: true },
+      third,
+      first,
+    ]);
+  });
+
+  it("reconciles duplicates and stale IDs against server sessions", () => {
+    expect(
+      reconcileTerminalTabs(
+        [first, first, { sessionId: "missing", pinned: true }, second],
+        [baseSession, secondSession],
+        second.sessionId,
+      ),
+    ).toEqual({
+      tabs: [first, second],
+      selectedId: second.sessionId,
+    });
+  });
+
+  it("recovers selection from the first surviving tab", () => {
+    expect(
+      reconcileTerminalTabs(
+        [first, second],
+        [baseSession, secondSession],
+        "missing",
+      ),
+    ).toEqual({
+      tabs: [first, second],
+      selectedId: first.sessionId,
+    });
+  });
+
+  it("round trips bounded versioned local state and rejects malformed data", () => {
+    const tabs = [{ ...second, pinned: true }, first];
+    expect(parseStoredTerminalTabs(serializeTerminalTabs(tabs))).toEqual(tabs);
+    expect(parseStoredTerminalTabs("{")).toEqual([]);
+    expect(
+      parseStoredTerminalTabs(
+        JSON.stringify({
+          version: 2,
+          tabs,
+        }),
+      ),
+    ).toEqual([]);
+    expect(
+      parseStoredTerminalTabs(
+        JSON.stringify({
+          version: 1,
+          tabs: [{ sessionId: first.sessionId, pinned: "yes" }],
+        }),
+      ),
+    ).toEqual([]);
   });
 });
