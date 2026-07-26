@@ -1,154 +1,106 @@
 # Product definition
 
-## Product name
-
-**Pacium Control**
-
-## Tagline
-
-**Run the work. See the truth. Keep the human in control.**
-
 ## Definition
 
-Pacium Control is a private web-based operating console for CLI coding agents running in tmux. It gives technical teams a shared, structured view of work while preserving the terminal as a low-level control surface.
+Pacium Control is a localhost terminal workspace for managing CLI coding agents and ordinary shells.
 
-The product turns several existing primitives into one coherent operating model:
+It brings terminal sessions, attention states, repositories, changed files, diffs, and the Pacium Meta/Orchestrator/queue workflow into one clean, fast interface.
 
-| Existing primitive | Pacium meaning |
-|---|---|
-| tmux session | durable agent session |
-| pane output | live activity and fallback terminal |
-| prompt sent with `send-keys` | attributable, idempotent command |
-| shared queue file | assigned question or approval |
-| branch/worktree | task ownership and isolation |
-| commit/diff/check | evidence |
-| Claude/Codex status | normalized agent state |
-| human answer | immutable decision |
+## Product hierarchy
+
+### Primary product: terminal workspace
+
+- launch and manage local PTY sessions;
+- organize sessions by workspace and repository;
+- switch, split, rename, pin, interrupt, relaunch, and close;
+- understand which coding agents need attention;
+- inspect Git work beside the terminal;
+- preserve running sessions across browser refresh.
+
+### Secondary product: Pacium mode
+
+- pin Meta and Orchestrator;
+- target either session explicitly;
+- surface queue items;
+- answer questions and approvals;
+- see workers, objective context, decisions, and resulting activity.
+
+### Optional capability: tmux
+
+tmux supports explicit attachment and keep-alive for selected sessions. It is not the normal first-run requirement.
 
 ## Core objects
 
 ### Workspace
 
-A security and navigation boundary. The Pacium workspace contains the startup-specific workflow; a generic workspace can expose unrelated terminal sessions.
+A local organizational container for repositories, sessions, preferences, and optional Pacium configuration.
 
 ### Repository
 
-A configured Git repository with allowed roots, verification commands, branch conventions, and access policy.
+A Git repository associated with sessions and explicit verification presets.
 
-### Run
+### Terminal session
 
-A coordinated unit of work with an objective, participants, plan, tasks, decisions, evidence, and lifecycle.
+A direct PTY or optional tmux-backed terminal with immutable local identity, display name, cwd, process state, dimensions, restoration capability, and attention metadata.
 
-### Agent session
+### Launch preset
 
-A provider-backed or generic terminal session associated with a host, tmux target, role, run, repository, branch, and worktree.
+A typed local command definition for a shell, Claude Code, Codex, or another approved command.
 
-### Task
+### Attention state
 
-A bounded piece of work assigned to one agent with explicit acceptance criteria and dependencies.
+A source-labelled assessment such as working, waiting, needs input, finished, failed, stale, or unknown.
 
-### Question
+### Queue item
 
-A request for human judgment or direction. Questions offer context, recommendation, and options.
-
-### Approval request
-
-A request for permission to execute a concrete action. Approvals include risk, scope, command/tool details, duration, and policy implications.
+An observed Pacium question, approval, failure, review request, or unknown item with source provenance.
 
 ### Decision
 
-The immutable human response to a question or approval, with attribution and delivery lifecycle.
-
-### Evidence
-
-A fact that supports progress or completion: commits, diffs, checks, artifacts, logs, screenshots, or recorded waivers.
+The operator’s immutable response to a queue item, including delivery and conflict state.
 
 ## Product surfaces
 
-### Inbox
+### Terminal workspace
 
-The personal queue of questions, approvals, failures, and review requests that need this user.
+The primary canvas containing session navigation, one or more terminals, and a contextual inspector.
 
-### Active
+### Session inspector
 
-All work currently starting, running, waiting, verifying, blocked, or ready for review.
+Overview, changes, activity, process details, and session actions.
 
-### Repositories
+### Git inspector
 
-A repository-centric view of runs, agents, branches, worktrees, changes, and recent outcomes.
+Changed files, diff, commits, and configured verification.
 
-### Runs
+### Pacium queue
 
-The primary unit of coordinated work, combining plan, participants, activity, decisions, evidence, and terminal access.
+Questions, approvals, failures, and review requests that need attention.
 
-### Agents
+### Command palette
 
-A fleet view showing role, provider, repository, current task, state, freshness, context, quota, and control actions.
+Contextual navigation and actions available consistently by keyboard and mouse.
 
-### Review
+### Settings
 
-Evidence bundles ready for human verification, integration, or release.
+Workspaces, repositories, launch presets, themes, terminal preferences, notifications, Pacium configuration, and diagnostics.
 
-### Usage
+## User promise
 
-Provider-specific limits, context pressure, reset windows, run budgets, and consumption trends.
-
-### Activity
-
-An attributable timeline of human, agent, Git, host, policy, and system events.
-
-### Terminal
-
-The raw escape hatch, exposed through a secure browser terminal and local attach instructions.
-
-## User promise by surface
-
-| Surface | Promise |
-|---|---|
-| Inbox | “Only show me what needs my judgment.” |
-| Active | “Tell me what is happening right now.” |
-| Repository | “Show me ownership and change in this codebase.” |
-| Run | “Explain this objective from plan to evidence.” |
-| Agent | “Show what this actor is doing and how certain we are.” |
-| Review | “Let me verify outcomes, not read stories.” |
-| Usage | “Warn me before capacity becomes a surprise.” |
-| Activity | “Make every consequential action explainable.” |
-| Terminal | “Give me precise control when abstractions are insufficient.” |
-
-## Product modes
-
-### Pacium mode
-
-Opinionated around meta, orchestrator, worker, reviewer, questions, approvals, handoffs, and repository runs.
-
-### General mode
-
-A reusable host and tmux control plane for unrelated sessions. It provides session discovery, labels, terminal access, saved views, and audit without requiring the Pacium workflow.
-
-The two modes share infrastructure and security but not all product semantics.
+| Surface         | Promise                                                                |
+| --------------- | ---------------------------------------------------------------------- |
+| Sessions        | “Show every terminal and which one needs me.”                          |
+| Terminal        | “Give me a real, fast shell without losing it on refresh.”             |
+| Changes         | “Show what this agent changed without making me leave the workspace.”  |
+| Activity        | “Summarize meaningful work without pretending inference is certainty.” |
+| Pacium queue    | “Put Meta, Orchestrator, and decisions in one focused view.”           |
+| Command palette | “Let me act quickly without memorizing where every control lives.”     |
 
 ## Maturity model
 
-### Level 0 — Terminal inventory
-
-Sessions can be found and attached.
-
-### Level 1 — Structured control
-
-Prompts, leases, questions, and decisions are durable and attributable.
-
-### Level 2 — Operational workflow
-
-Runs, tasks, plans, agents, and evidence form one coherent system.
-
-### Level 3 — Provider-native awareness
-
-Claude and Codex contribute rich state, approvals, plans, and usage.
-
-### Level 4 — Distributed operations
-
-Several hosts and teams operate under shared policy and recovery procedures.
-
-### Level 5 — Compounding intelligence
-
-Historical patterns improve planning, escalation, review, and capacity without hiding the underlying evidence.
+1. One reliable local terminal.
+2. A polished multi-session workspace.
+3. Agent attention and Git visibility.
+4. Pacium mode and queue decisions.
+5. Native Claude and Codex enrichment.
+6. Optional tmux durability and packaged release.

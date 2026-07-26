@@ -44,8 +44,8 @@
 ## Task/worktree strategy
 
 | Task | Agent/provider | Branch | Worktree | Dependencies |
-|---|---|---|---|---|
-| | | | | |
+| ---- | -------------- | ------ | -------- | ------------ |
+|      |                |        |          |              |
 
 ## Human decisions likely required
 

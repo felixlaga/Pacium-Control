@@ -1,5 +1,7 @@
 # Feature specification
 
+> Historical blueprint: this document describes the superseded remote control-plane product. Use [product-definition.md](product-definition.md), [information-architecture.md](information-architecture.md), and the active roadmap for implementation.
+
 This document defines the major product capabilities at a level suitable for epic planning. Detailed acceptance criteria belong in implementation issues.
 
 ## 1. Identity and membership

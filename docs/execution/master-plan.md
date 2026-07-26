@@ -2,197 +2,202 @@
 
 ## Objective
 
-Turn this blueprint into a trustworthy daily-use product through a sequence of end-to-end vertical slices. The plan is optimized for parallel agent execution without allowing architectural fragmentation.
+Build a polished localhost terminal workspace that makes multiple coding agents easy to launch, organize, supervise, and inspect. Add Pacium mode as the focused Meta/Orchestrator/queue workflow inside that workspace.
 
-## Operating rule
+## Product sequence
 
-At all times, the main branch should represent an honest, runnable state. A milestone may be incomplete, but merged behavior must be real, tested, documented, and discoverable.
+```text
+Local app foundation
+→ one excellent real terminal
+→ multiple terminal management
+→ agent attention and Git visibility
+→ Pacium mode
+→ native provider enrichment
+→ optional tmux durability and packaging
+```
 
-## Stage 1 — Establish the engineering substrate
+Each stage must improve the application the operator can use. Infrastructure without a real consumer does not count as a completed slice.
 
-### Outcomes
-
-- clean monorepo and development environment;
-- shared contracts;
-- filesystem state coordinator;
-- fixtures and test harnesses;
-- first production-shaped service startup;
-- verification evidence in CI.
-
-### Why first
-
-Every later workflow depends on durable IDs, events, idempotency, restart behavior, and a disciplined repository. Building UI first would create false progress and force persistence semantics to be retrofitted.
-
-## Stage 2 — Prove one-host tmux control
+## Stage 0 — Establish the substrate
 
 ### Outcomes
 
-- discover sessions;
-- classify and name them;
-- stream read-only terminal;
-- control through an expiring lease;
-- deliver a structured prompt exactly once;
-- survive process restarts.
+- pinned Node.js and package-manager versions;
+- React web app and Node local-server packages;
+- shared typed WebSocket contracts;
+- deterministic fake PTY, process, repository, and queue fixtures;
+- one `dev`, `test`, `build`, and `verify` path;
+- loopback-only development startup;
+- CI and repository hygiene.
 
-### Why second
+### Gate
 
-tmux and PTY behavior are the highest technical uncertainty. The team should validate them before committing to a broad interface.
+A clean clone builds and verifies. The browser and server exchange a versioned welcome message. No terminal capability is claimed yet.
 
-## Stage 3 — Complete the human-decision loop
-
-### Outcomes
-
-- structured question;
-- assigned Inbox item;
-- one-keystroke answer;
-- immutable decision;
-- delivery;
-- acknowledgement;
-- application evidence.
-
-### Why third
-
-This is the product wedge and forces identity, authorization, state, streaming, UX, and agent transport to work together.
-
-## Stage 4 — Model coordinated work
+## Stage 1 — Prove one real terminal
 
 ### Outcomes
 
-- repositories;
-- runs;
-- plans;
-- tasks;
-- agent roles;
-- worktree ownership;
-- deterministic evidence;
-- review bundles.
+- create a PTY in a chosen working directory;
+- render through xterm;
+- send input and receive output;
+- resize;
+- send interrupt;
+- observe process exit;
+- refresh the browser and reconnect without terminating the PTY;
+- close safely.
 
-### Why fourth
+### Gate
 
-Once decisions and control are reliable, the product can shift from session management to work management.
+The vertical slice passes PTY, WebSocket, and browser tests on the initial supported platform.
 
-## Stage 5 — Add provider-native depth
+## Stage 2 — Become a terminal workspace
+
+### Outcomes
+
+- multiple sessions;
+- workspace and repository grouping;
+- tabs and splits;
+- rename, pin, duplicate, relaunch, and close;
+- session presets for shell, Claude Code, and Codex;
+- focus-safe keyboard navigation;
+- contextual menus and command palette;
+- bounded terminal restoration;
+- clear connection and process states.
+
+### Gate
+
+The operator can use Pacium instead of juggling ordinary terminal windows for a representative coding session.
+
+## Stage 3 — Make agents observable
+
+### Outcomes
+
+- agent classification;
+- process, terminal, hook, and native status sources;
+- attention states and unread markers;
+- quiet notifications;
+- repository, branch, and working-directory context;
+- changed files and diff;
+- commits and configured verification;
+- concise recent-activity summaries.
+
+### Gate
+
+The operator can identify which agent needs attention and inspect its work without reading every terminal.
+
+## Stage 4 — Add Pacium mode
+
+### Outcomes
+
+- workspace toggle;
+- pinned Meta and Orchestrator;
+- explicit target selector;
+- conservative queue watchers;
+- separate question and approval cards;
+- answer delivery, acknowledgement, conflict, and provenance;
+- worker summary;
+- objective, plan context, recent decisions, and resulting activity.
+
+### Gate
+
+The existing Pacium workflow can be operated from one screen without silently changing queue truth.
+
+## Stage 5 — Enrich with provider-native events
 
 ### Outcomes
 
 - Claude hooks/status;
-- Codex App Server;
-- provider-specific usage;
-- normalized state confidence;
-- provider-neutral handoffs;
-- adapter degradation and fallback.
+- Codex native events where supported;
+- clean tool, plan, usage, approval, and completion cards;
+- capability and version detection;
+- fallback to terminal/process state;
+- provider diagnostics and relaunch manifests.
 
-### Why fifth
+### Gate
 
-Native integration should enrich a working product, not become a prerequisite for basic visibility and control.
+Native integration improves presentation but its failure cannot break terminal operation or produce false state.
 
-## Stage 6 — Expand to multiple hosts
-
-### Outcomes
-
-- host enrollment;
-- outbound command/event channel;
-- remote broker;
-- disconnect reconciliation;
-- local-machine support;
-- restart manifests.
-
-### Why sixth
-
-Multi-host semantics are easier once single-host commands, events, idempotency, and recovery are proven.
-
-## Stage 7 — Harden for continuous operation
+## Stage 6 — Package and harden
 
 ### Outcomes
 
-- security audit;
-- backup and restore drills;
-- performance and soak tests;
-- diagnostics and support bundles;
-- polished mobile Inbox;
-- policy and notification refinement;
-- release operations.
+- optional tmux attach/keep-alive;
+- leak and soak testing;
+- startup recovery;
+- bounded diagnostic export;
+- accessibility review;
+- performance budgets;
+- macOS packaging and clean-install verification;
+- Linux support according to the platform decision.
 
-## Parallel workstreams
+## Parallel work
 
-Parallelism is valuable only when interfaces are stable.
+Parallel work is safe only after shared contracts exist.
 
-### Safe early parallelism
+Useful early parallel work:
 
-- state schemas and fault-test harness;
-- design system and static screen prototypes against fixtures;
-- tmux control-mode spike;
-- PTY terminal spike;
-- Tailscale identity configuration research;
-- provider payload fixture collection;
-- documentation and threat-model refinement.
+- UI shell and design tokens against fixtures;
+- PTY lifecycle spike;
+- headless terminal restoration spike;
+- WebSocket framing and backpressure tests;
+- Git fixture and diff viewer;
+- Claude/Codex event fixture collection;
+- queue-format inventory.
 
-### Unsafe early parallelism
+Do not parallelize separate inventions of:
 
-- several teams inventing separate domain models;
-- UI and API independently defining question lifecycle;
-- broker and web both implementing authorization;
-- provider adapters writing state directly;
-- Git automation before worktree ownership rules exist.
+- session state;
+- terminal transport;
+- attention status vocabulary;
+- Pacium queue lifecycle;
+- keyboard behavior.
 
-## Integration cadence
+## Product gates
 
-Use short branches and weekly or more frequent integration. Each workstream maintains:
+### Gate A — Terminal truth
 
-- current objective;
-- interface contract;
-- owner;
-- branch/worktree;
-- demo path;
-- known risks;
-- next integration point.
+One real terminal behaves correctly under input, resize, refresh, disconnect, interrupt, and exit.
 
-## Decision checkpoints
+### Gate B — Daily workspace
 
-### Checkpoint A — State engine
+Several sessions remain understandable and keyboard-manageable without visual clutter or focus bugs.
 
-Before Milestone 1, demonstrate crash recovery, idempotency, snapshots, and no-database compliance.
+### Gate C — Agent attention
 
-### Checkpoint B — tmux control
+Status and notifications reduce checking without overstating inferred state.
 
-Before expanding UI, demonstrate safe read/write separation, restart behavior, and prompt delivery.
+### Gate D — Pacium workflow
 
-### Checkpoint C — human-decision loop
+Meta, Orchestrator, and queue decisions work end to end with provenance and conflict handling.
 
-Before provider-native work, use the product to answer and acknowledge real workflow questions for a sustained pilot.
+### Gate E — Sustained use
 
-### Checkpoint D — worktree and review
+The app survives long-running sessions, repeated reconnects, large output, and clean installation.
 
-Before automatic parallel task routing, demonstrate that task ownership and integration prevent collisions.
+## Delivery contract
 
-### Checkpoint E — multi-host
+Every pull request provides:
 
-Before enrolling production laptops/servers, pass disconnect and reconciliation tests in a disposable environment.
-
-## Delivery artifacts
-
-Every milestone produces:
-
-- runnable release candidate;
-- demo script;
-- acceptance evidence;
-- updated architecture and operations docs;
-- known limitations;
-- migration/rollback notes;
-- next-milestone risk update.
+- linked issue and plan;
+- one coherent user outcome;
+- screenshots or recording for UI work;
+- exact test commands and results;
+- failure and security behavior;
+- limitations;
+- synchronized documentation.
 
 ## Anti-plan
 
-Do not spend the first months on:
+Do not begin with:
 
-- a universal workflow builder;
-- advanced analytics;
-- public multi-tenancy;
-- Kubernetes;
-- dozens of provider integrations;
-- perfect historical transcript parsing;
-- automatic model selection;
-- custom desktop applications;
-- speculative scale architecture.
-
-Build the narrow operating loop so well that daily use becomes obviously better than tmux alone.
+- remote access;
+- authentication and team roles;
+- multi-host coordination;
+- a generalized workflow engine;
+- a comprehensive event-sourcing platform;
+- automatic pull-request orchestration;
+- provider quota analytics;
+- decorative dashboards;
+- custom desktop wrappers;
+- mandatory tmux.

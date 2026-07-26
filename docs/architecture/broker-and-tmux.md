@@ -1,184 +1,55 @@
-# Broker and tmux
+# Local terminal runtime and optional tmux
 
-## Purpose
+## Direct PTY runtime
 
-The broker translates authorized Pacium operations into controlled interactions with tmux, PTYs, Git, and provider CLI processes. It exists because the web/API process must not hold direct access to tmux sockets or arbitrary host execution.
+The local server is the terminal runtime for ordinary sessions.
 
-## Security posture
+Responsibilities:
 
-A tmux socket is a high-privilege capability. Anyone who controls it can generally inspect and manipulate all sessions on that server.
+- spawn explicit commands in validated working directories;
+- manage PTY handles and process groups;
+- stream bytes;
+- apply resize;
+- send interrupt and termination signals;
+- observe exit;
+- bound buffers;
+- preserve terminal screen state across browser reconnect;
+- clean up without leaking processes.
 
-Therefore:
+The browser never owns a PTY process.
 
-- run Pacium-managed sessions under a dedicated Unix identity or tmux server where practical;
-- run the broker as a dedicated non-root user;
-- authenticate and authorize every caller;
-- expose a typed allowlist, not arbitrary shell execution;
-- log structured operations, not every secret-bearing byte;
-- validate roots, IDs, and paths independently of the web layer.
+## Session input
 
-## tmux control mode
+- One active browser input owner per session.
+- Input frames are ordered and bounded.
+- Reconnect does not retry uncertain input.
+- Large paste is explicit and uses terminal paste semantics where supported.
+- Application commands and terminal bytes are separate protocols.
 
-Use tmux control mode for machine-readable session discovery and asynchronous notifications.
+## Optional tmux adapter
 
-Expected uses:
+tmux is added after the direct PTY workspace is proven.
 
-- list sessions, windows, and panes;
-- observe create, rename, select, and close events;
-- receive pane output notifications where appropriate;
-- track attached clients;
-- correlate Pacium IDs stored in tmux user options;
-- issue constrained tmux commands.
+Capabilities:
 
-The adapter should tolerate tmux version differences and retain a capability report.
+- discover configured local tmux servers;
+- list sessions explicitly;
+- attach terminal I/O;
+- launch a preset under tmux;
+- reconnect after local-server restart;
+- label capability and target clearly.
 
-## Stable identity
+tmux attachment is never inferred from arbitrary process state and never required for ordinary use.
 
-tmux names are mutable display attributes, not primary keys.
+## Existing terminal applications
 
-Pacium assigns an immutable `AgentSession` ID and may mirror metadata through user options such as:
-
-```text
-@pacium.id
-@pacium.workspace
-@pacium.repo
-@pacium.run
-@pacium.role
-@pacium.provider
-@pacium.owner
-```
-
-Unknown sessions are identified by host, tmux server, and stable target information available at discovery time, then classified by a user or launch manifest.
-
-## Canonical session names
-
-Underlying tmux names should be deterministic and shell-safe:
-
-```text
-pacium__checkout-api__orchestrator__claude__r24
-pacium__web__worker-02__codex__r24
-```
-
-Display names remain human-oriented and may change without breaking identity.
-
-## PTY terminal attachment
-
-The broker attaches a PTY-compatible stream to the selected tmux pane/session and exposes it through an authenticated terminal transport.
-
-Requirements:
-
-- correct terminal dimensions and resize propagation;
-- bounded output buffers;
-- reconnect behavior;
-- read-only observation independent of write control;
-- terminal process exit detection;
-- no assumption that browser connection lifetime equals session lifetime;
-- strict separation between terminal bytes and application event data.
-
-## Input arbitration
-
-There are at least three input sources:
-
-1. the current human terminal controller;
-2. structured prompts from Pacium;
-3. provider adapter control messages.
-
-The broker serializes writes per pane. Structured prompt delivery must not interleave with human paste or another system prompt.
-
-A queue entry records:
-
-- operation ID;
-- source;
-- target;
-- payload hash;
-- enqueue time;
-- lease/policy context;
-- delivery attempt and result.
-
-## Prompt delivery
-
-Do not construct fragile shell-quoted `send-keys` commands from arbitrary user text.
-
-Preferred properties:
-
-- literal bytes or tmux buffer mechanism;
-- explicit newline behavior;
-- multiline support;
-- maximum size policy;
-- payload hashing;
-- optional provider-aware submission;
-- observation/acknowledgement when possible;
-- idempotent state outside tmux.
-
-The broker cannot always prove semantic acceptance from terminal bytes alone. Delivery and acknowledgement remain separate states.
-
-## Launch profiles
-
-A launch profile defines an approved way to create a session:
-
-- Unix execution identity;
-- host;
-- repository and worktree;
-- working directory;
-- environment allowlist;
-- provider CLI and arguments;
-- tmux server/session/window layout;
-- hook/status configuration;
-- resource limits where supported;
-- run/session metadata.
-
-Launch profiles are typed configuration, not arbitrary commands supplied by the browser.
-
-## Process controls
-
-Supported controls may include:
-
-- send interrupt;
-- request graceful stop;
-- terminate pane/session;
-- restart from manifest;
-- detach clients;
-- rename or reclassify;
-- pause new prompt delivery.
-
-Destructive operations require stronger authorization and explicit UI consequences.
-
-## Git operations
-
-Broker Git operations are rooted in registered repositories and worktree directories. Paths are canonicalized and checked against allowlists.
-
-Initial allowlisted actions:
-
-- inspect repository identity/status;
-- resolve current branch and commit;
-- list changed files and diff stats;
-- create worktree from approved base;
-- remove safe worktree;
-- run configured verification commands;
-- collect commits and patch evidence.
-
-Merge, rebase, push, and pull-request actions require explicit policy and separate review.
-
-## Broker protocol
-
-Protocol properties:
-
-- local Unix socket on the primary host;
-- authenticated host channel for remote brokers;
-- version handshake and capability negotiation;
-- typed requests and responses;
-- request IDs and deadlines;
-- bounded payload sizes;
-- streaming channels for terminal and observations;
-- explicit error codes;
-- no implicit trust of the caller’s authorization claim;
-- audit correlation IDs.
+Pacium cannot adopt an arbitrary Terminal.app, iTerm, or other terminal-emulator pane. Existing sessions require an explicit shared runtime such as tmux or a future cooperative helper.
 
 ## Failure behavior
 
-- Broker restart: tmux sessions continue; broker rediscovers and reconciles.
-- tmux server unavailable: associated sessions become disconnected; state remains.
-- terminal client disconnect: lease expires or enters short grace; session continues.
-- input delivery uncertainty: mark unknown and require operator review; do not blindly retry.
-- Git command timeout: preserve worktree and capture bounded diagnostics.
-- version mismatch: disable unsupported operations and expose degraded capability.
+- Browser disconnect: process continues.
+- WebSocket overflow: mark resync required; do not grow memory without limit.
+- Direct local-server exit: direct PTY ends.
+- tmux adapter loss: tmux session may continue; report disconnected.
+- Signal timeout: preserve state and offer deliberate force termination.
+- Unknown input outcome: do not replay.

@@ -1,5 +1,7 @@
 # Success metrics
 
+> Historical blueprint: use the metrics in [PRODUCT_STRATEGY.md](../../PRODUCT_STRATEGY.md) for the local-first product.
+
 ## Measurement philosophy
 
 Metrics should reflect operator leverage, system trust, and verified outcomes. Activity volume alone is not success.

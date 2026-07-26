@@ -1,78 +1,50 @@
 # Vision
 
-## The future Pacium Control is building
+Coding agents are already capable, but using several of them still means juggling terminal windows, remembering which repository each session owns, checking for prompts, and reconstructing what changed.
 
-Software teams are moving from writing every line manually to directing systems that can plan, implement, verify, and revise work in parallel. The limiting factor is no longer merely model intelligence. It is the operator’s ability to understand and control many concurrent streams of work without losing trust.
+Pacium Control makes that local work legible.
 
-Today, serious coding-agent workflows often live in terminal tabs, tmux panes, loosely named sessions, shared queue files, and private context held in one person’s head. The agents may be capable, but the operating environment is fragile. Important questions arrive without context. Permissions are buried in terminal output. It is hard to tell what is alive, what is blocked, what changed, what was verified, and what the human already decided.
+## Product vision
 
-Pacium Control makes that system legible.
+The operator opens one calm workspace and sees:
 
-It is a private operations console where a team can:
+- every active shell and coding-agent session;
+- which session is working, waiting, finished, failed, or needs input;
+- which repository and branch it belongs to;
+- what files changed;
+- which checks ran;
+- which session deserves attention now.
 
-- see all active agent work across repositories and hosts;
-- understand plans, tasks, dependencies, and progress;
-- answer human questions and permission requests rapidly;
-- steer the meta agent, orchestrator, or individual workers;
-- inspect diffs, commits, checks, and review bundles;
-- understand provider usage and context pressure;
-- recover from stuck or disconnected sessions;
-- retain the terminal as a precise, low-level escape hatch.
+The terminal remains immediate and fully usable. Pacium adds hierarchy, attention, context, and evidence around it.
 
-The ambition is not to make terminal output prettier. It is to create the **operating system for human-directed software production**.
+## Pacium vision
 
-## The product promise
+For the specialized Pacium workflow, the same workspace gains:
 
-At any moment, Pacium Control should answer five questions:
+- Meta and Orchestrator as pinned primary sessions;
+- a compact worker view;
+- the queue;
+- clear questions and approvals;
+- decisions and resulting activity.
 
-1. **What is happening?**
-2. **Why is it happening?**
-3. **What needs a human?**
-4. **What changed, and what proves it?**
-5. **How do we safely alter or stop the work?**
+Pacium mode should make the existing workflow easier without forcing it into a generalized project-management system.
 
-If the product cannot answer one of those questions, it is not yet complete.
+## North-star interaction
 
-## The north-star interaction
+The operator launches Claude Code and Codex in different repositories, moves between them by keyboard, notices that one needs input, answers it, inspects another agent’s diff, and returns to the active terminal without changing applications.
 
-The operator enters through a calm Inbox rather than a wall of terminal text. Only consequential decisions are elevated. Each item includes the recommendation, consequences, affected repository, run, files, risk, and waiting time.
+In Pacium mode, Meta and Orchestrator remain one keystroke away and the queue is visible beside the work.
 
-The operator can answer with one keystroke. The decision becomes immutable history. The requesting agent acknowledges it. The UI then shows when and how it was applied.
+## Long-term direction
 
-When the operator wants context, the run view exposes the plan, agents, worktrees, activity, changes, tests, usage, and open risks. When the operator wants to intervene, a command palette routes an instruction to the correct layer. When structured controls are insufficient, the terminal drawer opens immediately with a clear control lease and audit trail.
+First earn daily personal use:
 
-## The strategic wedge
+1. excellent local terminal;
+2. excellent multi-session management;
+3. trustworthy agent attention;
+4. useful Git context;
+5. focused Pacium mode;
+6. native provider enrichment;
+7. optional durability and packaging.
 
-Pacium Control begins with a narrow, high-value use case:
-
-> A technical founder or engineering lead operating Claude Code and Codex CLI agents through tmux on private infrastructure.
-
-That user already has capable agents and a working process. The pain is operational. Pacium Control can create value without asking them to replace their models, repositories, terminal tools, or orchestration logic.
-
-The wedge expands naturally:
-
-1. One operator, one VPS, several sessions.
-2. A small team sharing visibility and decisions.
-3. Multiple repositories and hosts.
-4. Standardized run templates, reviews, and policies.
-5. A durable internal platform for agent-assisted engineering.
-6. Eventually, a product for other high-agency software teams.
-
-## What makes the product defensible
-
-The defensibility is not a chat interface. It is the accumulated operational model:
-
-- reliable control of long-running CLI sessions;
-- a rigorous domain model for runs, tasks, questions, approvals, handoffs, and evidence;
-- provider-neutral observability across different agent CLIs;
-- a deeply refined human-attention workflow;
-- secure remote operation on infrastructure the team controls;
-- historical data about what work patterns succeed, where agents stall, and which decisions matter.
-
-Over time, Pacium Control can become the place where the team’s operational intelligence compounds.
-
-## The end state
-
-In the mature product, a team can start a complex objective, watch a coordinated system of Claude and Codex workers execute it across isolated worktrees, answer only the decisions that require human judgment, review evidence-backed outcomes, and ship with confidence.
-
-The human remains accountable. The agents remain replaceable. The system remains inspectable.
+Remote or team operation may be considered later, but it is not the product Pacium must prove first.

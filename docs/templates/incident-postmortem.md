@@ -24,8 +24,8 @@ How was the incident detected? What should have detected it earlier?
 All times UTC.
 
 | Time | Event/action |
-|---|---|
-| | |
+| ---- | ------------ |
+|      |              |
 
 ## Technical narrative
 
@@ -59,8 +59,8 @@ What was restored, reconciled, rotated, or re-run?
 ## Corrective actions
 
 | Action | Owner | Priority | Due | Verification |
-|---|---|---|---|---|
-| | | | | |
+| ------ | ----- | -------- | --- | ------------ |
+|        |       |          |     |              |
 
 ## Documentation/ADR changes
 

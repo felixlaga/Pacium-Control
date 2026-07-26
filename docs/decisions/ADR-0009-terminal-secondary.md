@@ -1,6 +1,6 @@
 # ADR-0009: Keep the terminal as a secondary escape hatch
 
-- Status: Accepted
+- Status: Superseded by [ADR-0013](ADR-0013-local-pty-runtime.md)
 - Date: 2026-07-20
 
 ## Context

@@ -2,215 +2,98 @@
 
 ## Positioning
 
-Pacium Control is a private operations console for teams that run coding agents through CLI tools on infrastructure they control.
+Pacium Control is a clean local terminal workspace for developers who run several CLI coding agents.
 
-It is not an IDE, a chat wrapper, a general autonomous-agent platform, or a terminal multiplexer. It sits above those tools and provides the operating layer: visibility, human decisions, safe control, evidence, and recovery.
-
-### Category statement
-
-> For technical founders and engineering teams operating multiple coding agents, Pacium Control is the private control plane that turns scattered CLI sessions into an observable, steerable, and reviewable system of work.
-
-### Primary promise
-
-Operate more parallel coding work with less cognitive load and greater confidence.
+It combines real terminals, session organization, attention states, and Git inspection. Pacium mode adds Meta, Orchestrator, and the queue.
 
 ## Initial user
 
-The initial user is a highly technical operator who:
+The initial user:
 
-- uses Claude Code and Codex CLI frequently;
-- keeps long-running sessions in tmux;
-- coordinates work across several repositories;
-- delegates through a meta/orchestrator pattern;
-- tolerates imperfect tooling because the underlying agents are valuable;
-- cares deeply about speed, control, privacy, and inspectability;
-- is currently the routing layer for questions, approvals, status, and recovery.
+- works locally with Claude Code, Codex, shells, and Git;
+- runs several sessions across repositories;
+- wants fewer terminal windows and less manual checking;
+- values keyboard speed, privacy, inspectability, and clean design;
+- already uses a Meta/Orchestrator/queue workflow or wants to.
 
-This user does not need to be convinced that coding agents matter. They need the operational burden reduced.
+## Primary jobs
 
-## Secondary users
+### Manage terminals
 
-### Team operator
+Launch, group, switch, split, rename, pin, interrupt, relaunch, and close without hunting across applications.
 
-A teammate who needs to inspect runs, answer assigned questions, steer allowed sessions, and review evidence without receiving unrestricted shell access.
+### Know what needs attention
 
-### Reviewer
+See which agent is waiting, failed, finished, stale, or needs input.
 
-A technical lead who primarily sees review bundles, diffs, tests, decisions, and risk rather than terminal streams.
+### Inspect work
 
-### Infrastructure owner
+View repository, branch, changed files, diff, commits, and verification beside the terminal.
 
-The person responsible for hosts, credentials, Tailscale policy, backups, session isolation, and recovery.
+### Operate Pacium
 
-### Observer
+Keep Meta and Orchestrator close, surface the queue, answer clearly, and see what happened next.
 
-A founder, product lead, or engineer who needs read-only awareness of progress and decisions.
+## Wedge
 
-## Jobs to be done
+The wedge is not the queue alone. It is a terminal workspace good enough to use every day:
 
-### When I return after being away
+```text
+launch terminals
+→ organize sessions
+→ notice attention
+→ inspect work
+→ act without switching applications
+```
 
-Help me understand what changed, what succeeded, what failed, what is blocked, and what needs me—without reading every terminal pane.
-
-### When an agent needs a decision
-
-Give me the minimum complete context, a recommendation, and clear options so I can answer in seconds.
-
-### When work appears stuck
-
-Tell me whether the agent is thinking, waiting, blocked, disconnected, rate-limited, or simply idle, and give me a safe intervention path.
-
-### When I delegate parallel work
-
-Keep branches, worktrees, ownership, dependencies, and provider sessions organized so agents do not corrupt each other’s work.
-
-### When I review a result
-
-Show the objective, decisions, diff, commits, checks, artifacts, risks, and unresolved items as one evidence bundle.
-
-### When something goes wrong
-
-Let me recover without losing sessions, history, decisions, or control.
-
-## The wedge
-
-The first product wedge is the **human-decision loop** around existing tmux sessions:
-
-1. discover sessions;
-2. display meaningful names and state;
-3. receive a structured question;
-4. answer it rapidly;
-5. deliver and acknowledge the answer;
-6. show resumed work;
-7. link completion to evidence.
-
-This loop provides immediate value and forces the architecture to solve identity, state, reliability, transport, UX, and audit correctly.
-
-## Expansion sequence
-
-### Phase A — Personal control plane
-
-One operator, one host, existing tmux sessions, structured Inbox, terminal drawer, and basic run views.
-
-### Phase B — Team operating console
-
-Tailscale identity, roles, repository scopes, shared observation, assigned decisions, control leases, and review bundles.
-
-### Phase C — Provider-native operations
-
-Claude hooks, Codex App Server, live plans, approvals, usage, context pressure, and richer state confidence.
-
-### Phase D — Distributed execution fabric
-
-Several hosts, local connectors, resource awareness, run templates, restart manifests, and policy-driven placement.
-
-### Phase E — Organizational intelligence
-
-Patterns across runs, recurring failure detection, decision memory, quality analytics, and capacity planning—without compromising inspectability or human control.
+Pacium mode compounds that value for the specialized workflow.
 
 ## Differentiation
 
-Pacium Control should differentiate through depth in five areas:
+1. Real local terminals, not a fake chat shell.
+2. Agent attention without claiming more semantic certainty than exists.
+3. Git context beside the work.
+4. Clean, Linear-inspired interaction discipline.
+5. Focused Meta/Orchestrator/queue mode.
+6. Optional tmux durability without making tmux mandatory.
+7. Local-first operation without accounts or cloud dependencies.
 
-1. **Operational truth:** not merely chat transcripts, but live process, Git, plan, decision, and evidence state.
-2. **Human attention design:** questions and approvals that are fast, contextual, assigned, and closed-loop.
-3. **CLI-native control:** works with the tools advanced users already trust.
-4. **Private infrastructure:** tailnet-only by default, with explicit privilege boundaries.
-5. **Provider collaboration:** Claude and Codex can participate in the same workflow without pretending they are identical.
+## Release sequence
 
-## Feature hierarchy
-
-### Tier 1 — Must make the product useful
-
-- Session discovery and naming.
-- Read-only live activity.
-- Structured prompt delivery.
-- Questions, approvals, decisions, acknowledgement.
-- Run, repository, agent, and task views.
-- Terminal escape hatch.
-- Tailscale identity and RBAC.
-- Git worktree and evidence integration.
-
-### Tier 2 — Must make the product trusted
-
-- Idempotency and recovery.
-- Audit history.
-- Explicit status confidence.
-- Stale-agent detection.
-- Verification gates.
-- Backups and restore.
-- Provider usage visibility.
-- Security hardening.
-
-### Tier 3 — Must make the product scale
-
-- Multi-host connectors.
-- Templates and policies.
-- Provider-aware routing suggestions.
-- Review bundles and summaries.
-- Mobile Inbox.
-- Saved views and command palette.
-
-### Tier 4 — Only after the core is excellent
-
-- Historical analytics.
-- Organization-wide benchmarks.
-- Automated capacity optimization.
-- Sophisticated policy recommendations.
-- External product integrations.
-
-## Non-goals as strategy
-
-Pacium Control will not initially:
-
-- invent a new general-purpose agent runtime;
-- host models;
-- replace GitHub or Git;
-- replace tmux;
-- become a browser IDE;
-- expose public internet access by default;
-- offer a shared credential proxy for personal provider subscriptions;
-- automate every decision;
-- optimize for nontechnical users;
-- support every terminal application equally before the Pacium workflow is strong.
-
-These constraints preserve focus.
+1. Real local terminal.
+2. Multi-session workspace.
+3. Agent attention and Git inspection.
+4. Pacium mode and queue decisions.
+5. Native Claude/Codex enrichment.
+6. Optional tmux and packaged release.
 
 ## Success metrics
 
-The product should measure outcomes, not activity vanity metrics.
+### Primary
 
-### North-star metric
+- Percentage of coding-agent sessions run through Pacium during the pilot.
+- Median time to find the session needing attention.
+- Number of active sessions manageable without confusion.
+- Percentage of agent work inspected without switching applications.
 
-**Verified work completed per hour of human operator attention.**
+### Pacium
 
-This is difficult to measure perfectly, but it expresses the correct optimization target.
+- Percentage of queue items understood and answered from Pacium mode.
+- Duplicate or conflicted decision count.
+- Time from queue item appearance to answer.
+- Percentage of decisions linked to observable resulting activity.
 
-### Leading indicators
+### Quality guardrails
 
-- Median time from question creation to answer.
-- Percentage of blocking questions answered without opening a terminal.
-- Percentage of answers acknowledged by the requesting agent.
-- Time from run start to first verified artifact.
-- Percentage of completed runs with required evidence.
-- Number of active agents per operator without increased failure rate.
-- Percentage of interventions performed through structured controls.
-- Stale-agent detection precision.
-- Recovery time after web, broker, or host disruption.
-- Operator-reported confidence in run state.
+- duplicate terminal input;
+- lost or leaked processes;
+- unbounded terminal memory;
+- false confirmed status;
+- unsafe non-loopback listener;
+- cross-origin terminal-control attempt;
+- notification volume per useful intervention;
+- keyboard/focus defects.
 
-### Guardrail metrics
+## Explicit deferral
 
-- Unauthorized terminal-control attempts.
-- Duplicate prompt or decision delivery.
-- Worktree collision incidents.
-- Lost or corrupt state events.
-- False “complete” states.
-- Human interruptions per completed task.
-- Percentage of actions with missing attribution.
-
-## Product quality bar
-
-The initial release should feel narrow but inevitable. Every visible state should be intentional. Every error should suggest recovery. Every action should have clear scope and feedback. The product should never rely on the operator remembering an invisible convention.
-
-A funded-looking product is not one with many features. It is one where the product thesis, interaction model, system boundaries, and execution discipline all agree.
+Remote, multi-user, multi-host, public SaaS, generalized workflow management, automatic worktree orchestration, and organization analytics are not part of the initial strategy.

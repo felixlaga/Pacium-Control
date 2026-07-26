@@ -1,5 +1,7 @@
 # Security review checklist
 
+> Historical blueprint: use [SECURITY.md](../../SECURITY.md) and the active testing strategy for the localhost product.
+
 Use this checklist for security-sensitive pull requests and milestone gates.
 
 ## Identity

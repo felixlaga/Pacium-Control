@@ -1,93 +1,68 @@
 # Documentation map
 
-This directory contains the detailed product and engineering specification for Pacium Control.
+This directory specifies the local-first Pacium Control product.
 
-## Product
+## Canonical product
 
 - [Product definition](product/product-definition.md)
-- [Users and jobs](product/users-and-jobs.md)
 - [Information architecture](product/information-architecture.md)
 - [Core workflows](product/core-workflows.md)
-- [Feature specification](product/feature-specification.md)
 - [Non-goals](product/non-goals.md)
-- [Success metrics](product/success-metrics.md)
 
-## Design
+## Canonical design
 
 - [Design language](design/design-language.md)
 - [Screen specifications](design/screen-specifications.md)
-- [Keyboard and command model](design/keyboard-and-command-model.md)
 - [Terminal experience](design/terminal-experience.md)
-- [Mobile and notifications](design/mobile-and-notifications.md)
+- [Keyboard and command model](design/keyboard-and-command-model.md)
 - [Accessibility](design/accessibility.md)
 
-## Architecture
+## Canonical architecture
 
 - [Architecture index](architecture/README.md)
 - [System overview](architecture/system-overview.md)
-- [Domain model](architecture/domain-model.md)
-- [Filesystem state](architecture/filesystem-state.md)
-- [Broker and tmux](architecture/broker-and-tmux.md)
+- [Local filesystem state](architecture/filesystem-state.md)
+- [Local terminal runtime and optional tmux](architecture/broker-and-tmux.md)
 - [Provider adapters](architecture/provider-adapters.md)
-- [Git and worktrees](architecture/git-and-worktrees.md)
-- [Events and audit](architecture/events-and-audit.md)
-- [Identity and authorization](architecture/identity-and-authorization.md)
-- [Multi-host model](architecture/multi-host.md)
+- [Git inspection](architecture/git-and-worktrees.md)
+- [Local identity and transport security](architecture/identity-and-authorization.md)
 - [Reliability and recovery](architecture/reliability-and-recovery.md)
 - [Observability](architecture/observability.md)
-- [Deployment topology](architecture/deployment-topology.md)
+- [Local deployment](architecture/deployment-topology.md)
 
-## Workflow
+## Pacium workflow
 
-- [Meta and orchestrator](workflow/meta-and-orchestrator.md)
+- [Meta and Orchestrator](workflow/meta-and-orchestrator.md)
 - [Questions and approvals](workflow/questions-and-approvals.md)
-- [Agent lifecycle](workflow/agent-lifecycle.md)
-- [Handoffs and reviews](workflow/handoffs-and-reviews.md)
-- [Usage and capacity](workflow/usage-and-capacity.md)
 - [Legacy queue migration](workflow/legacy-queue-migration.md)
 
 ## Execution
 
 - [Master plan](execution/master-plan.md)
-- [Continuous agent execution model](execution/agent-factory-operating-model.md)
 - [First 30 days](execution/first-30-days.md)
 - [Workstream map](execution/workstream-map.md)
 - [Implementation backlog](execution/implementation-backlog.md)
-- [Milestone 0](execution/milestone-0-foundations.md)
-- [Milestone 1](execution/milestone-1-control-plane.md)
-- [Milestone 2](execution/milestone-2-pacium-workspace.md)
-- [Milestone 3](execution/milestone-3-provider-integrations.md)
-- [Milestone 4](execution/milestone-4-git-and-review.md)
-- [Milestone 5](execution/milestone-5-multi-host-hardening.md)
+- [First build issue](execution/first-build-issue.md)
+- [First build plan](execution/first-build-plan.md)
+- [Initial toolchain and platform](execution/toolchain-and-platform.md)
+- [Milestone 0 — Foundation](execution/milestone-0-foundations.md)
+- [Milestone 1 — Terminal workspace](execution/milestone-1-terminal-workspace.md)
+- [Milestone 2 — Agent visibility](execution/milestone-2-agent-visibility.md)
+- [Milestone 3 — Pacium mode](execution/milestone-3-pacium-mode.md)
+- [Milestone 4 — Agent integrations](execution/milestone-4-agent-integrations.md)
+- [Milestone 5 — Polish](execution/milestone-5-polish.md)
 - [Testing strategy](execution/testing-strategy.md)
 - [Definition of done](execution/definition-of-done.md)
 - [Risk register](execution/risk-register.md)
-- [Release readiness](execution/release-readiness.md)
-
-## Operations
-
-- [Production deployment](operations/production-deployment.md)
-- [Backup and restore](operations/backup-and-restore.md)
-- [Incident response](operations/incident-response.md)
-- [Release process](operations/release-process.md)
-- [Operator runbook](operations/operator-runbook.md)
-- [Security review checklist](operations/security-review-checklist.md)
 
 ## Decisions
 
-See the [ADR index](decisions/README.md).
-
-## Brand and product voice
-
-- [Product narrative](brand/product-narrative.md)
-- [Product voice and naming](brand/product-voice-and-naming.md)
-
-## Research
-
-- [Assumptions](research/assumptions.md)
-- [Open questions](research/open-questions.md)
-- [Evaluation plan](research/evaluation-plan.md)
+See the [ADR index](decisions/README.md). ADR-0013 through ADR-0015 record the local-first reset and supersede the old mandatory-tmux, tailnet/broker, and generalized-state architecture.
 
 ## Templates
 
-See [templates](templates/README.md) for feature briefs, implementation plans, ADRs, handoffs, questions, approvals, reviews, incidents, and releases.
+See [templates](templates/README.md).
+
+## Retained historical and deferred documents
+
+Some research, operations, multi-host, and generalized workflow documents remain for historical context. They are not implementation authority when they conflict with [STATUS.md](../STATUS.md), the root architecture, or accepted ADR-0013 through ADR-0015. Remote access, multi-user operation, multi-host coordination, and the old control-plane deployment require future product approval and new ADRs.

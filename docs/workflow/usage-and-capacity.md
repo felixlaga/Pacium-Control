@@ -1,5 +1,7 @@
 # Usage and capacity
 
+> Deferred blueprint: provider capacity analytics are not part of the initial roadmap.
+
 ## Principle
 
 Claude and Codex have different context, quota, and reset semantics. Pacium should display them side by side without pretending they are one fungible percentage.

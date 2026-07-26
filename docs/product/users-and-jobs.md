@@ -1,5 +1,7 @@
 # Users and jobs
 
+> Historical blueprint: multi-user and remote operating roles are deferred. The active product is a single-user localhost terminal workspace.
+
 ## Primary persona: founder-operator
 
 The founder-operator combines product judgment, technical depth, and execution responsibility. They are willing to run advanced CLI workflows but do not want to spend the day reconstructing terminal state.

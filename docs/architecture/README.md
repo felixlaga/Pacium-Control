@@ -1,35 +1,30 @@
 # Architecture index
 
-The architecture is designed for one team, one primary Hetzner VPS, and a path to several hosts without prematurely becoming a distributed platform.
+Pacium Control begins as one localhost Node.js process and a React browser application.
 
-## Canonical constraints
+## Invariants
 
-- CLI-only Claude Code and Codex.
-- tmux as the session runtime.
-- no application database.
-- JSON entities plus append-only JSONL events.
-- one authoritative state writer.
-- a separate privileged broker.
-- Tailscale identity and tailnet-only ingress.
-- one branch and worktree per coding worker.
-- provider-neutral core with rich adapters.
-- terminal as a secondary escape hatch.
+- local PTYs are the default runtime;
+- browser lifecycle does not own PTY lifecycle;
+- tmux is optional;
+- server binds to loopback;
+- remote and multi-user operation are unsupported;
+- terminal bytes and application events use separate bounded channels;
+- minimal JSON/JSONL state contains no provider credentials;
+- Git and provider runtimes remain systems of record;
+- status source and confidence are explicit.
 
 ## Documents
 
 - [System overview](system-overview.md)
-- [Domain model](domain-model.md)
-- [Filesystem state](filesystem-state.md)
-- [Broker and tmux](broker-and-tmux.md)
+- [Minimal local state](filesystem-state.md)
+- [Local terminal runtime and optional tmux](broker-and-tmux.md)
 - [Provider adapters](provider-adapters.md)
-- [Git and worktrees](git-and-worktrees.md)
-- [Events and audit](events-and-audit.md)
-- [Identity and authorization](identity-and-authorization.md)
-- [Multi-host model](multi-host.md)
+- [Git inspection](git-and-worktrees.md)
+- [Local identity and transport security](identity-and-authorization.md)
 - [Reliability and recovery](reliability-and-recovery.md)
 - [Observability](observability.md)
-- [Deployment topology](deployment-topology.md)
+- [Local deployment](deployment-topology.md)
+- [Deferred multi-host direction](multi-host.md)
 
-## Review rule
-
-A change that alters a trust boundary, persistence contract, provider protocol, or system of record requires an ADR and updates to this index where relevant.
+The prior remote broker and tailnet architecture is superseded by ADR-0013 through ADR-0015.

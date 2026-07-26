@@ -34,8 +34,8 @@
 ## Options
 
 | Option | Benefits | Costs/risks |
-|---|---|---|
-| | | |
+| ------ | -------- | ----------- |
+|        |          |             |
 
 ## Recommendation
 

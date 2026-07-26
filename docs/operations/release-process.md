@@ -1,5 +1,7 @@
 # Release process
 
+> Historical blueprint: this process targets the superseded server product. A local packaging process belongs to Milestone 5.
+
 ## Purpose
 
 Release discipline prevents a fast-moving, agent-built repository from accumulating invisible deployment and compatibility risk.

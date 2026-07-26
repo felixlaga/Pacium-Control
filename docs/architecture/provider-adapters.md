@@ -130,14 +130,14 @@ Submitting a new prompt, steering an active turn, and interrupting a turn are di
 
 Examples:
 
-| Provider event | Pacium event/state |
-|---|---|
-| Claude permission hook | `approval.requested` |
-| Codex approval event | `approval.requested` |
-| Claude subagent start | `agent.child_started` or task activity |
-| Codex plan update | plan revision or step update |
-| CLI process exit | session lifecycle event |
-| usage payload | provider-specific `UsageSnapshot` |
+| Provider event         | Pacium event/state                     |
+| ---------------------- | -------------------------------------- |
+| Claude permission hook | `approval.requested`                   |
+| Codex approval event   | `approval.requested`                   |
+| Claude subagent start  | `agent.child_started` or task activity |
+| Codex plan update      | plan revision or step update           |
+| CLI process exit       | session lifecycle event                |
+| usage payload          | provider-specific `UsageSnapshot`      |
 
 Retain raw provider type/version in extension metadata for debugging.
 

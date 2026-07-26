@@ -1,251 +1,178 @@
 # Architecture
 
-This document is the canonical high-level architecture. Detailed designs live under [docs/architecture](docs/architecture/README.md).
+## Objective
 
-## Architectural objective
-
-Pacium Control must provide a safe, resilient, provider-neutral control plane around CLI coding agents without replacing tmux, Git, or the agents themselves.
+Provide a fast, reliable localhost workspace for terminal sessions and CLI coding agents, then layer the Pacium Meta/Orchestrator/queue workflow onto the same shell.
 
 ## System overview
 
 ```mermaid
-flowchart TB
-    U[Team browser on tailnet]
-    TS[Tailscale Serve<br/>HTTPS + verified identity]
-    WEB[Pacium Web/API<br/>UI, RBAC, workflows]
-    STATE[State Coordinator<br/>single writer]
-    FS[(JSON entities<br/>JSONL events)]
-    BROKER[Privileged Control Broker<br/>narrow Unix-socket RPC]
-    TMUX[tmux servers and PTYs]
-    CLAUDE[Claude Code CLI]
-    CODEX[Codex CLI / App Server]
-    GIT[Git repositories and worktrees]
-    HOST[Optional remote host agent]
+flowchart LR
+    B[Browser<br/>React + terminal UI]
+    S[Local server<br/>HTTP + WebSocket]
+    T[Terminal manager<br/>PTY lifecycle]
+    H[Headless terminal state<br/>bounded reconnect buffer]
+    G[Git inspector]
+    O[Agent observers<br/>process, hooks, native events]
+    P[Pacium mode<br/>Meta, Orchestrator, queue]
+    F[(Minimal JSON/JSONL state)]
+    PTY[Shell / Claude Code / Codex]
+    TMUX[Optional tmux adapter]
+    REPO[Git repositories]
+    Q[Queue files]
 
-    U --> TS --> WEB
-    WEB --> STATE --> FS
-    WEB --> BROKER
-    BROKER --> TMUX
-    TMUX --> CLAUDE
-    TMUX --> CODEX
-    BROKER --> GIT
-    HOST --> WEB
-    HOST --> TMUX
-    HOST --> GIT
+    B <--> S
+    S --> T
+    T <--> H
+    T <--> PTY
+    T <--> TMUX
+    S --> G --> REPO
+    S --> O
+    S --> P --> Q
+    S --> F
 ```
 
-## Core services
+## Runtime shape
 
-### Web application and API
+`pacium` starts one local Node.js process and opens the browser.
 
-Responsibilities:
+The local server owns:
 
-- serve the product UI;
-- consume verified Tailscale identity;
-- enforce application authorization;
-- expose typed application workflows;
-- stream dashboard events;
-- issue short-lived terminal connection grants;
-- never hold direct access to the tmux socket.
+- HTTP and WebSocket transport;
+- PTY creation and lifecycle;
+- terminal input/output routing;
+- session registry and restoration metadata;
+- Git inspection;
+- agent status observation;
+- Pacium-mode configuration and queue compatibility;
+- minimal local filesystem state.
 
-### State coordinator
+The browser owns:
 
-Responsibilities:
+- application navigation and selection;
+- xterm rendering;
+- terminal tabs and splits;
+- command palette and keyboard model;
+- session, Git, activity, and queue presentation;
+- local view preferences.
 
-- be the only authoritative writer to central state;
-- validate commands and schemas;
-- allocate IDs and monotonic revisions;
-- perform atomic entity writes;
-- append immutable events;
-- maintain in-memory indexes and projections;
-- recover incomplete transactions;
-- create consistent snapshots.
+## Terminal runtime
 
-The state coordinator may begin in the API process, but it must remain a clear module with a single-writer invariant.
+Direct PTYs are the default. A session has:
 
-### Privileged control broker
+- immutable local ID;
+- display name;
+- workspace and optional repository;
+- working directory;
+- shell or launch preset;
+- process ID and lifecycle state;
+- terminal dimensions;
+- bounded screen/scrollback state;
+- agent classification and confidence;
+- optional relaunch manifest;
+- optional tmux target.
 
-Responsibilities:
+Browser connections do not own processes. A browser may disconnect and reconnect while the local server continues the PTY.
 
-- discover tmux servers, sessions, windows, and panes;
-- operate tmux through control mode;
-- attach PTYs for interactive terminal streams;
-- serialize input by pane;
-- manage terminal write leases;
-- launch provider CLI sessions through approved templates;
-- inspect Git repositories and worktrees;
-- execute narrow, policy-checked host operations;
-- emit observed events to the state coordinator.
+The optional tmux adapter supports:
 
-The broker must run as a non-root Unix user with only the privileges required to control designated execution sessions.
+- attaching to configured tmux sessions;
+- keeping selected sessions alive across local-server restart;
+- adopting sessions through explicit user action.
 
-### Host agent
+It is not required for the default path.
 
-The optional host agent enables additional laptops or servers. It initiates an outbound authenticated connection, reports host capabilities and health, and relays constrained commands to a host-local broker. It never writes central state directly.
+## Application transport
 
-## Systems of record
+Shared versioned contracts cover:
 
-| Concern | System of record |
-|---|---|
-| Live process and terminal state | tmux and operating system |
-| Source code, commits, branches, diffs | Git |
-| Coordination entities | JSON files managed by state coordinator |
-| History and audit | Append-only JSONL event streams |
-| Provider-native telemetry | Claude hooks/status input and Codex App Server events |
-| Human identity | Tailscale identity mapped to Pacium membership |
-| Secrets | OS/provider credential stores, never Pacium state files |
+- server welcome and capability report;
+- session list and lifecycle updates;
+- terminal attach/detach;
+- terminal data and resize;
+- create, rename, interrupt, relaunch, and close commands;
+- repository and Git updates;
+- agent attention-state updates;
+- Pacium queue events and decisions;
+- typed errors.
 
-## Domain model
+Terminal bytes use a dedicated bounded stream. Application events never masquerade as terminal bytes.
 
-The stable provider-neutral model includes:
+## Agent observation
 
-- `Workspace`
-- `User`
-- `Membership`
-- `Host`
-- `Repository`
-- `Run`
-- `AgentSession`
-- `Task`
-- `PlanStep`
-- `Question`
-- `ApprovalRequest`
-- `Decision`
-- `Prompt`
-- `TerminalLease`
-- `Handoff`
-- `ReviewBundle`
-- `UsageSnapshot`
-- `Event`
-- `Policy`
+Status sources are ordered by confidence:
 
-Provider-specific data is attached through typed extensions rather than forcing every concept into a lowest-common-denominator schema.
+1. provider-native event;
+2. provider hook;
+3. shell integration or explicit process event;
+4. terminal activity inference;
+5. human classification.
 
-## Data flow: human answers a question
+Each visible state records its source, observation time, and staleness. “Process running” does not automatically mean “agent working.”
 
-```mermaid
-sequenceDiagram
-    participant O as Orchestrator
-    participant C as paciumctl / adapter
-    participant S as State Coordinator
-    participant W as Web UI
-    participant H as Human
+## Git inspection
 
-    O->>C: Emit structured question
-    C->>S: CreateQuestion command
-    S->>S: Validate + atomic write + append event
-    S-->>W: question.created
-    W-->>H: Inbox card
-    H->>W: Select option + comment
-    W->>S: AnswerQuestion command
-    S->>S: Write immutable decision
-    S-->>C: decision.created
-    C->>O: Deliver decision
-    O->>C: Acknowledge / later mark applied
-    C->>S: Update lifecycle
-    S-->>W: acknowledged / applied
-```
+Git remains the source of truth for:
 
-## Data flow: terminal access
+- repository identity;
+- branch and commit;
+- worktree status;
+- changed files and diff;
+- commits;
+- configured verification output.
 
-```mermaid
-sequenceDiagram
-    participant B as Browser
-    participant A as API
-    participant R as Broker
-    participant T as tmux PTY
+The initial inspector is read-mostly. Destructive Git actions and broad shell command execution are not exposed through generic remote endpoints.
 
-    B->>A: Request terminal access
-    A->>A: Authorize user, workspace, repo, session
-    A-->>B: Short-lived single-use grant
-    B->>R: Open WebSocket with grant
-    R->>A: Validate and consume grant
-    R->>T: Attach read-only PTY stream
-    T-->>B: Terminal output
-    B->>A: Request write lease
-    A->>A: Authorize + acquire lease
-    A-->>R: Lease state
-    B->>R: Input while lease valid
-    R->>T: Serialized bytes
-```
+## Pacium mode
 
-## Filesystem state shape
+Pacium mode is a configuration and presentation layer:
 
 ```text
-$PACIUM_STATE_DIR/
-├── meta/
-│   ├── format-version.json
-│   ├── revision
-│   └── instance.json
-├── entities/
-│   ├── workspaces/<id>.json
-│   ├── users/<id>.json
-│   ├── memberships/<id>.json
-│   ├── hosts/<id>.json
-│   ├── repositories/<id>.json
-│   ├── runs/<id>.json
-│   ├── agents/<id>.json
-│   ├── tasks/<id>.json
-│   ├── questions/<id>.json
-│   ├── approvals/<id>.json
-│   ├── decisions/<id>.json
-│   └── ...
-├── events/
-│   ├── global/YYYY-MM-DD.jsonl
-│   └── workspaces/<workspace-id>/YYYY-MM-DD.jsonl
-├── projections/
-│   └── rebuildable materialized views
-├── journal/
-│   └── in-flight transaction manifests
-├── locks/
-├── snapshots/
-└── quarantine/
+PaciumWorkspace
+├── Meta session reference or launch preset
+├── Orchestrator session reference or launch preset
+├── Queue source definitions
+├── Optional worker session classifications
+├── Repository roots
+└── Verification presets
 ```
 
-Entity files are current state. JSONL files are immutable history. Projections are disposable. The journal enables deterministic recovery from interrupted multi-file mutations.
+The first queue adapter observes existing files, tracks provenance, presents questions and approvals separately, and delivers answers through an explicit compatibility path.
 
-## Reliability boundaries
+## State
 
-- Browser disconnects do not affect sessions.
-- Web/API restarts do not affect tmux.
-- Broker restarts trigger rediscovery, not session termination.
-- State commands use idempotency keys.
-- Prompt delivery is serialized per target pane.
-- Terminal write control uses expiring leases.
-- Every observed provider status carries confidence and freshness.
-- Backups include entity state, events, policies, and manifests—but not provider secrets.
-
-## Security boundaries
-
-- Tailscale Serve is the normal HTTPS ingress.
-- The backend binds to loopback in production.
-- Source IP is never treated as human identity.
-- The web process does not access tmux sockets.
-- The broker exposes a narrow allowlisted protocol.
-- Raw terminal is separately authorized and audited.
-- Browser terminal pages load no third-party scripts.
-- Provider execution identity is separate from operator identity.
-- Central state contains references to credentials, never credential material.
-
-## Deployment shape: first production version
+Pacium stores only application-owned metadata in a configurable local data directory:
 
 ```text
-Hetzner VPS
-├── tailscaled
-├── tailscale serve → 127.0.0.1:<web-port>
-├── pacium-web-api.service
-├── pacium-broker.service
-├── pacium-state directory
-├── pacium tmux server
-├── Claude Code CLI credentials for approved execution user
-├── Codex CLI credentials for approved execution user
-└── Git repositories and worktrees
+config.json
+workspaces.json
+sessions.json
+pacium.json
+queue-state.json
+activity/*.jsonl
+cache/
 ```
 
-No public web port is required. A separate, narrow break-glass administration path should exist for host recovery.
+Writes are validated and atomic. Caches are disposable. Terminal history is bounded and ephemeral by default. Provider credentials and complete environment data are excluded.
 
-## Evolution path
+## Security boundary
 
-The architecture begins as a modular monolith plus broker, not a distributed platform. Multi-host support adds outbound host agents without changing the core domain model. A future database is not assumed; scale pressure should first be handled through partitioned event files, snapshots, projections, and host/workspace boundaries.
+- Default bind address is `127.0.0.1`.
+- The server rejects untrusted Origin values.
+- Mutating transports require a local access token.
+- WebSocket frames and terminal buffers are bounded.
+- Terminal titles, hyperlinks, OSC sequences, and clipboard operations are untrusted.
+- Repository paths are canonicalized against configured roots.
+- The process runs with the invoking user’s privileges; no privilege escalation is introduced.
 
-Any proposal to add a database, message broker, container orchestrator, or public cloud dependency must demonstrate a concrete failure of the simpler design and record the decision in an ADR.
+Remote access, multi-user authorization, and a separate privilege broker require a future ADR.
+
+## Failure behavior
+
+- Browser refresh: PTYs continue; client reconnects and restores bounded screen state.
+- Browser crash: PTYs continue.
+- Local-server crash: direct PTYs end; optional tmux-backed sessions may survive.
+- WebSocket interruption: terminal input stops; reconnect never replays unacknowledged input automatically.
+- Git inspection failure: terminal continues and the inspector shows a bounded error.
+- Queue parse failure: original files remain untouched and the item is shown as invalid or conflicted.
+- Corrupt Pacium configuration: preserve the last valid file where practical and fail visibly.

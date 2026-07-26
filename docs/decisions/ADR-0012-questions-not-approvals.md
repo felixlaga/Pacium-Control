@@ -34,4 +34,4 @@ Both may produce immutable `Decision` records, but the decision payload and cons
 
 ## Validation
 
-Tests must prove a question answer cannot authorize a privileged broker operation, and an approval cannot be applied to a changed or expired action.
+Tests must prove a question answer cannot authorize a privileged or destructive local action, and an approval cannot be applied to a changed or expired action.

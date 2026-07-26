@@ -71,8 +71,8 @@ What information is visible? Which actions exist? Which are privileged?
 ## Risks
 
 | Risk | Mitigation |
-|---|---|
-| | |
+| ---- | ---------- |
+|      |            |
 
 ## Open decisions
 
