@@ -1,6 +1,6 @@
 # ADR-0006: Use tailnet-only ingress and Tailscale identity
 
-- Status: Accepted
+- Status: Superseded by [ADR-0014](ADR-0014-localhost-single-process.md)
 - Date: 2026-07-20
 
 ## Context

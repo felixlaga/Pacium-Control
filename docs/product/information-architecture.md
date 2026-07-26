@@ -1,182 +1,125 @@
 # Information architecture
 
-## Navigation model
+## Application shell
 
-The application uses a persistent left rail, a main working area, an optional inspector, and a terminal drawer.
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ Workspace switcher · Search · Command palette · User         │
-├──────────────┬───────────────────────────────┬───────────────┤
-│ Left rail    │ Main list / canvas            │ Inspector     │
-│              │                               │               │
-│ Inbox        │ Runs, questions, agents,      │ Selected item │
-│ Active       │ repository work, review       │ details       │
-│ Repositories │                               │               │
-│ Runs         │                               │               │
-│ Agents       │                               │               │
-│ Review       │                               │               │
-│ Usage        │                               │               │
-│ Activity     │                               │               │
-├──────────────┴───────────────────────────────┴───────────────┤
-│ Collapsible terminal drawer                                  │
-└──────────────────────────────────────────────────────────────┘
-```
-
-## Workspace switcher
-
-Initial workspaces:
-
-- **Pacium** — the startup-specific meta/orchestrator workflow.
-- **General terminals** — sessions not participating in Pacium runs.
-
-Future workspaces may represent another organization, environment, or execution domain. Workspace switching must alter both navigation context and authorization scope.
-
-## Global navigation
-
-### Inbox
-
-Personal, actionable work only:
-
-- Questions.
-- Approvals.
-- Failures requiring intervention.
-- Review requests.
-
-Default grouping is by urgency and waiting time, then repository. The user may switch to grouping by run or assignee.
-
-### Active
-
-Operational pulse:
-
-- starting;
-- working;
-- waiting on agent;
-- waiting on human;
-- verifying;
-- blocked;
-- review ready;
-- disconnected.
-
-### Repositories
-
-Repository health and activity. Each repository page has:
+The interface uses a calm three-panel layout with a compact top bar:
 
 ```text
-Overview · Work · Changes · Decisions · Sessions · Settings
+┌──────────────────────────────────────────────────────────────────┐
+│ Workspace / repository · search       General ○  Pacium ●       │
+├──────────────────┬───────────────────────────────┬───────────────┤
+│ Session sidebar  │ Terminal canvas               │ Inspector     │
+│                  │                               │               │
+│ Workspaces       │ Tabs                          │ Overview      │
+│ Repositories     │ One terminal or splits        │ Changes       │
+│ Sessions         │                               │ Activity      │
+│                  │                               │ Queue         │
+│ + New terminal   │                               │               │
+├──────────────────┴───────────────────────────────┴───────────────┤
+│ Status / focused session / shortcut hints                        │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-### Runs
+The terminal canvas is visually dominant. The sidebar supports orientation and recedes. The inspector appears when it has useful context and can collapse completely.
 
-All coordinated objectives. Default views:
+## General mode
 
-- My runs.
-- Active.
-- Waiting.
-- Review ready.
-- Completed recently.
-- Failed.
-
-### Agents
-
-Fleet view with saved filters for role, provider, host, repository, state, and freshness.
-
-### Review
-
-Bundles waiting for review, revision requested, approved, integrated, or released.
-
-### Usage
-
-Separate Claude and Codex capacity views, plus per-run context and budget information.
-
-### Activity
-
-Searchable, attributable event history. Activity is not an Inbox; it is the audit and understanding surface.
-
-### Terminal
-
-A session directory and terminal-first workspace for exceptional or general-purpose use.
-
-## Entity hierarchy
+The sidebar hierarchy is:
 
 ```text
-Workspace
-├── Repositories
-│   ├── Runs
-│   │   ├── Tasks
-│   │   ├── Agent sessions
-│   │   ├── Questions / approvals / decisions
-│   │   ├── Handoffs
-│   │   ├── Evidence
-│   │   └── Review bundle
-│   └── Generic sessions
-├── Hosts
-├── Members and policies
-└── Activity
+Favorites
+Workspaces
+  Repository
+    Sessions
+Ungrouped
+Recently closed
 ```
 
-A session may exist without a run. A Pacium coding worker should not.
+The primary actions are:
 
-## Personal state
+- create terminal;
+- choose workspace/repository;
+- choose launch preset;
+- switch session;
+- split;
+- inspect work;
+- interrupt, relaunch, or close.
 
-The product stores per-user:
+## Pacium mode
 
-- last-seen event cursor by workspace, run, and repository;
-- saved views;
-- notification preferences;
-- pinned repositories and runs;
-- default terminal behavior;
-- command palette history where safe;
-- display density and accessibility preferences.
+Pacium mode keeps the same shell and terminal layout. It changes emphasis:
 
-Personal state must not alter shared operational truth.
+```text
+Pacium
+  Meta
+  Orchestrator
+  Workers
+
+Needs me
+  Questions
+  Approvals
+  Failures
+  Reviews
+```
+
+The inspector defaults to the queue or Pacium context. The selected terminal remains fully interactive.
+
+## Inspector
+
+Tabs are contextual and stable:
+
+```text
+Overview · Changes · Activity · Queue
+```
+
+- Overview: session, process, agent, cwd, repository, branch, freshness, actions.
+- Changes: files, diff, commits, verification.
+- Activity: meaningful process, provider, terminal-attention, Git, and decision events.
+- Queue: visible in Pacium mode or when a queue item relates to the session.
+
+The inspector updates with selection without forced navigation. Full-screen diff or settings use dedicated routes.
 
 ## URL model
 
-URLs should be stable and shareable within the tailnet:
+The local app uses stable routes:
 
 ```text
-/w/:workspaceSlug/inbox
-/w/:workspaceSlug/active
-/w/:workspaceSlug/repos/:repoId
-/w/:workspaceSlug/runs/:runId
-/w/:workspaceSlug/agents/:agentId
-/w/:workspaceSlug/review/:reviewId
-/w/:workspaceSlug/sessions/:sessionId
+/
+/w/:workspaceId
+/w/:workspaceId/s/:sessionId
+/w/:workspaceId/s/:sessionId/changes
+/w/:workspaceId/pacium
+/w/:workspaceId/pacium/q/:queueItemId
+/settings
+/diagnostics
 ```
 
-Sensitive terminal grants must never appear as durable URL parameters.
+Local access tokens never appear in durable URLs.
 
-## Selection and inspector behavior
+## Selection and focus
 
-Lists support fast selection without navigation. The right inspector shows enough detail to decide whether to open the full object. Deep work opens a stable full-page route.
+- One active terminal pane owns keyboard input.
+- Sidebar selection may preview a session without stealing terminal focus.
+- Opening a session makes it active only through an explicit action.
+- The focused split has an unmistakable but restrained border.
+- `Esc` exits terminal capture through the documented focus model; it does not send bytes accidentally.
+- Browser navigation preserves workspace, selection, split layout, and inspector tab.
 
-Examples:
+## Search and command palette
 
-- Select a question → options, recommendation, context, evidence, answer controls.
-- Select an agent → current task, freshness, worktree, recent events, quick steering.
-- Select a changed file → diff summary and evidence links.
+Search covers:
 
-## Search
+- workspace, repository, session, preset, agent, branch, and changed file names;
+- bounded activity summaries;
+- queue titles and decisions.
 
-Global search should cover:
-
-- repository, run, agent, task, and session names;
-- question and decision text;
-- commit hashes and branch names;
-- changed files;
-- event summaries;
-- human and execution identities.
-
-Terminal scrollback search is local to a session and subject to retention policy.
+The command palette is contextual. It ranks actions for the selected session or queue item before global navigation.
 
 ## Empty states
 
-Empty states should teach the operating model rather than decorate space.
-
-Examples:
-
-- Empty Inbox: “Nothing needs your judgment. Five agents are working.”
-- No active runs: “Start a run or attach existing sessions.”
-- No provider telemetry: “Terminal is connected; native Claude events are unavailable.”
-- No review evidence: “Completion cannot be verified until checks or an explicit waiver are recorded.”
+- No sessions: “Create a terminal in this workspace.”
+- No repository: “Choose a folder or start an ungrouped shell.”
+- No changes: “Working tree clean.”
+- No attention items: “Nothing needs you.”
+- Pacium not configured: “Choose Meta, Orchestrator, and queue sources.”
+- Session ended: state what exited and offer relaunch or close.

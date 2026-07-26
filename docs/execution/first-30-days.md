@@ -1,176 +1,90 @@
 # First 30 days
 
-This sequence assumes a small expert team using agents heavily. Calendar timing may change, but dependency order should remain.
+Calendar estimates may change. Dependency order and evidence gates should not.
 
-## Days 1–3 — Repository and decisions
+## Days 1–3 — Foundation
 
-### Goals
+- Choose and pin supported Node.js and package-manager versions.
+- Establish the web, local-server, contracts, terminal-ui, and test-utils packages.
+- Add `dev`, `test`, `build`, and `verify`.
+- Add CI, formatting, linting, strict typing, and clean-install checks.
+- Define session and WebSocket contracts.
+- Add deterministic fake PTY and repository fixtures.
 
-- Establish the actual monorepo.
-- Pin runtime and package manager.
-- Convert blueprint backlog items PC-001 through PC-015 into GitHub issues.
-- Confirm owners for state, broker, web, security, Claude, and Codex.
-- Run focused tmux/provider research spikes without merging product code prematurely.
+Demonstration: the browser connects to the local server, receives capabilities, and renders the application shell.
 
-### Deliverables
+## Days 4–8 — One real terminal
 
-- Clean clone with one `install`, `dev`, `test`, `build`, and `verify` path.
-- CI skeleton.
-- Shared IDs, command/event envelopes, and entity schema package.
-- Supported-version research plan.
-- No-database dependency guard.
+- Launch a PTY in an explicit working directory.
+- Stream bytes over a bounded WebSocket channel.
+- Render with xterm.
+- Support input, resize, interrupt, exit, and close.
+- Validate loopback, Origin, and local token behavior.
+- Add PTY integration tests.
 
-### Decision gate
+Demonstration: use a real interactive shell from the browser.
 
-Do not begin several UI workflows until core schemas and state-machine names are reviewed.
+Stop if process groups, resize, or byte ordering are ambiguous.
 
-## Days 4–8 — Filesystem truth engine
+## Days 9–12 — Reconnect and terminal quality
 
-### Goals
+- Keep PTYs independent of browser connections.
+- Retain bounded headless terminal state.
+- Reconnect after refresh.
+- Add connection states and errors.
+- Exercise Unicode, alternate screen, mouse, paste, large output, and terminal escape safety.
 
-- Build single-writer state coordinator.
-- Prove atomic entity writes and event append.
-- Add expected revisions and idempotency.
-- Add transaction journal and crash recovery.
+Demonstration: run an interactive full-screen terminal application, refresh, and continue without process loss or duplicate input.
 
-### Deliverables
+## Days 13–17 — Multi-session workspace
 
-- Workspace/user/repository/run/question/decision fixtures.
-- Fault-injection matrix.
-- Event cursor subscription.
-- Integrity checker and quarantine.
-- Projection rebuild.
+- Add workspace/repository grouping.
+- Create, rename, pin, duplicate, relaunch, and close sessions.
+- Add tabs and splits.
+- Add shell, Claude Code, and Codex presets.
+- Add session focus, selection, and unread state.
+- Add command palette and keyboard shortcuts.
 
-### Demonstration
+Demonstration: manage at least three simultaneous sessions without another terminal window.
 
-Create and answer a question, kill at multiple mutation points, recover deterministically, and replay the same result.
+## Days 18–22 — Agent attention and Git
 
-### Stop condition
+- Detect process and agent type.
+- Add working, waiting, needs-input, finished, failed, and stale states.
+- Show source, confidence, and freshness.
+- Add quiet notifications.
+- Add repository, branch, changed files, diff, commits, and verification output.
 
-If crash recovery is ambiguous, pause feature expansion.
+Demonstration: identify which agent needs attention and inspect what it changed without reading every terminal.
 
-## Days 9–12 — Snapshots, backup, and API boundary
+## Days 23–27 — Pacium mode
 
-### Goals
+- Add General/Pacium toggle.
+- Configure and pin Meta and Orchestrator.
+- Add explicit target selection.
+- Observe configured queue files without modifying them.
+- Display questions, approvals, failures, and review items.
+- Add compact workers and objective context.
 
-- Snapshot and restore.
-- Define API-to-state command boundary.
-- Add local development identity.
-- Build first application event stream.
+Demonstration: enter Pacium mode and understand both primary sessions and the queue from one screen.
 
-### Deliverables
+## Days 28–30 — Queue decision loop
 
-- Restore into empty state.
-- Clean-restart tests.
-- Minimal API health/state endpoints.
-- Static web shell against real state, not fake mutable local state.
+- Answer questions and approvals separately.
+- Record provenance and deduplication identity.
+- Deliver through the configured compatibility mechanism.
+- Show delivered, acknowledged, applied, failed, and conflicted states where observable.
+- Add browser and restart tests.
+- Record pilot findings and limitations.
 
-## Days 13–17 — Broker and tmux discovery
+Day-30 demonstration: Meta or Orchestrator creates a real queue item; the operator answers in Pacium; the answer is delivered once and linked to resulting terminal or Git activity.
 
-### Goals
+## Deferred beyond day 30
 
-- Build Unix-socket broker.
-- Integrate tmux control mode.
-- Discover sessions/windows/panes.
-- Assign stable Pacium IDs and metadata.
-
-### Deliverables
-
-- Broker capability report.
-- Dedicated test tmux server.
-- Session registry and classification UI.
-- Broker restart reconciliation.
-- Security tests proving web process lacks tmux access.
-
-### Demonstration
-
-Start, rename, and close tmux sessions outside Pacium; watch the UI reconcile correctly.
-
-## Days 18–21 — Terminal observation and control
-
-### Goals
-
-- PTY terminal stream.
-- Read-only observation.
-- Terminal grant and exclusive write lease.
-- Per-pane input arbitration.
-- Structured prompt delivery.
-
-### Deliverables
-
-- Terminal drawer.
-- Two-browser observation/control transfer test.
-- Reconnect and revocation tests.
-- Strict terminal CSP/assets.
-- Local attach fallback.
-
-### Demonstration
-
-Observe one session from two users, transfer control, send a multiline prompt, restart broker/API, and prove the tmux process survives without duplicate input.
-
-## Days 22–25 — Tailscale identity and application RBAC
-
-### Goals
-
-- Configure production-shaped Tailscale Serve ingress.
-- Map verified users.
-- Add workspace/repository/session policy.
-- Add secure application sessions and revocation.
-
-### Deliverables
-
-- Unknown tailnet user denial.
-- Viewer/operator/approver/owner matrix.
-- Terminal observe/write separation.
-- Public reachability test.
-- Development-auth fail-closed check.
-
-## Days 26–30 — First real Pacium loop
-
-### Goals
-
-- Implement structured question creation.
-- Build Inbox and inspector.
-- Answer immutably.
-- Deliver to orchestrator bridge.
-- Receive acknowledgement.
-- Show application evidence.
-- Begin legacy queue observation.
-
-### Deliverables
-
-- Real question/answer/acknowledgement vertical slice.
-- Mobile-capable question card.
-- Activity chain.
-- Per-user unread cursor.
-- Run shell with objective, sessions, question, and evidence.
-- Pilot report.
-
-### Day-30 demonstration
-
-A real orchestrator session asks a multiple-choice question. Felix answers in Pacium Control. The answer is delivered exactly once, acknowledged, applied, and linked to a resulting event or Git change. No SSH or manual queue-file editing is required.
-
-## Work deliberately deferred beyond day 30
-
-- Complete run/task planning system.
-- Approval policies beyond basic exact-action approval.
-- Full Git worktree automation.
-- Claude native hooks/status.
-- Codex App Server.
-- Cross-provider handoffs.
-- Multi-host.
-- Advanced usage and analytics.
-- GitHub pull requests.
-
-Deferral is not lack of ambition. It protects the first trusted operational loop.
-
-## Day-30 review questions
-
-- Is the state engine trusted under failure?
-- Is terminal control safe enough for team use?
-- Can the operator answer without terminal context?
-- Does acknowledgement close the loop?
-- Which data remains ambiguous?
-- What surprised users?
-- Which frozen decision needs evidence-based reconsideration?
-- Is the next milestone ready, or should the first loop be deepened?
+- Claude/Codex native activity cards beyond minimum status hooks;
+- optional tmux attachment;
+- packaged desktop wrapper;
+- remote access;
+- multi-user and multi-host operation;
+- advanced Git mutation and pull requests;
+- generalized run/task system.

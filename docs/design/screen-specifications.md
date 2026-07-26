@@ -2,280 +2,187 @@
 
 ## Global shell
 
-### Header
+### Top bar
 
-- workspace switcher;
-- global search;
-- command palette trigger;
-- connection/health summary;
-- current user menu.
+- workspace and repository breadcrumb;
+- search;
+- General/Pacium segmented toggle;
+- connection health;
+- command palette;
+- settings.
 
-### Left rail
+The top bar is compact and stable. Screen-specific actions live near the relevant panel rather than accumulating globally.
 
-- Inbox with badge count;
-- Active;
-- Repositories;
-- Runs;
-- Agents;
-- Review;
-- Usage;
-- Activity;
-- Terminal;
-- pinned repositories/runs;
-- Settings for authorized users.
+### Session sidebar
 
-### Global indicators
+Sections:
 
-- workspace paused;
-- broker degraded;
-- disconnected hosts;
-- provider authentication problem;
-- backup overdue.
+- favorites;
+- workspace/repository groups;
+- sessions;
+- ungrouped;
+- recently closed;
+- New terminal.
 
-Indicators should not consume permanent space when healthy.
+Session row:
 
-## Inbox
+- attention icon and text;
+- display name;
+- agent or command label;
+- repository abbreviation;
+- unread marker;
+- optional branch;
+- context menu.
 
-### Purpose
+The selected row and keyboard-focused row are distinguishable.
 
-Resolve human-dependent work quickly and safely.
+### Terminal canvas
 
-### Sections
-
-1. Blocking questions.
-2. Approvals.
-3. Failures needing intervention.
-4. Review requests.
-5. Non-blocking questions.
-
-### List row
-
-- type and severity icon;
-- concise title;
-- repository and run;
-- requesting agent;
-- assignee;
-- waiting time;
-- blocking indicator;
-- recommendation marker;
-- unread state.
+- tab strip when more than one tab is open;
+- one or more split panes;
+- focused-pane indicator;
+- compact terminal header with session name, cwd/repository, process state, and actions;
+- empty pane picker;
+- connection and exit overlays that do not destroy scrollback.
 
 ### Inspector
 
-For a question:
-
-- full prompt;
-- why it is being asked;
-- recommended choice and reasoning;
-- options and consequences;
-- relevant files, diff, logs, commands, or artifacts;
-- free-form note;
-- answer keyboard shortcuts;
-- history and related decisions.
-
-For an approval:
-
-- exact action;
-- host and execution identity;
-- repository/worktree;
-- command or tool parameters;
-- risk;
-- reason;
-- scope and duration;
-- alternative proposed by agent;
-- policy evaluation;
-- deny/allow actions.
-
-## Active
-
-### Purpose
-
-Show the operational pulse without requiring drill-down.
-
-### Grouping
-
-Default by state:
-
-- Needs human.
-- Working.
-- Verifying.
-- Waiting on dependency.
-- Review ready.
-- Stale or disconnected.
-
-Alternative grouping by repository, run, host, or provider.
-
-### Run row
-
-- objective;
-- repository;
-- owner;
-- agent count by state;
-- plan progress;
-- open questions/approvals;
-- latest evidence;
-- usage warning;
-- last meaningful event.
-
-## Repository page
-
-### Overview
-
-- active runs;
-- agent count;
-- branches and worktrees;
-- open decisions;
-- verification health;
-- recent completion;
-- repository usage;
-- configured policies.
-
-### Work
-
-Tasks and runs, with dependency and ownership views.
-
-### Changes
-
-Changed files, commits, diff stats, review state, integration status.
-
-### Decisions
-
-Searchable question, approval, and decision register.
-
-### Sessions
-
-All associated sessions, including generic terminals.
-
-### Settings
-
-Roots, default branch, verification commands, role policy, naming, retention.
-
-## Run page
-
-### Header
-
-- objective;
-- state;
-- repository or repositories;
-- owner;
-- created/updated time;
-- pause/resume/cancel controls;
-- open terminal and command palette actions.
-
-### Summary strip
-
-- tasks complete/total;
-- active agents;
-- waiting items;
-- changed files/commits;
-- checks;
-- context and quota warnings.
-
-### Main tabs
+Tabs:
 
 ```text
-Overview · Plan · Agents · Changes · Decisions · Review · Activity
+Overview · Changes · Activity · Queue
 ```
 
-### Overview
+The inspector remembers width and selected tab per workspace. It collapses with a shortcut and must not steal terminal focus on background updates.
 
-- objective and acceptance criteria;
-- current phase;
-- deterministic “since last checked” summary;
-- current blockers;
-- latest evidence;
-- recommended operator action.
+## New terminal flow
 
-### Plan
+Fields:
 
-Revision history, steps, dependencies, ownership, current state, and reasons for changes.
+- workspace;
+- repository or folder;
+- launch preset;
+- optional display name;
+- optional keep-alive mode when tmux support exists.
 
-### Agents
+Show the working directory and command label before launch. Do not expose or persist complete environment contents.
 
-Cards or table with role, provider, task, branch, worktree, state, freshness, context, usage, and quick actions.
+States:
 
-### Changes
+- ready;
+- validating;
+- creating;
+- failed with retained values.
 
-Commits, changed files, diff, tests, artifacts, integration state.
+## Session overview
 
-### Decisions
+- display name;
+- command/agent type;
+- process state;
+- attention state with source and freshness;
+- cwd;
+- repository, branch, and commit;
+- start time and duration;
+- direct PTY or tmux-backed capability;
+- relaunch availability;
+- actions.
 
-Questions, approvals, immutable answers, acknowledgement, application evidence.
+## Changes
 
-### Review
+Header:
 
-Review bundle, reviewer comments, revisions, approval, integration, post-integration checks.
+- repository;
+- branch;
+- changed file count;
+- additions/deletions;
+- refresh;
+- verification action.
 
-## Agent detail
+Body:
 
-- display name and immutable ID;
-- role and provider;
-- host and tmux target;
-- repository, branch, worktree, base commit;
-- current task and plan step;
-- state, confidence, freshness;
-- context and usage;
-- recent meaningful events;
-- prompts and acknowledgements;
-- questions/approvals;
-- terminal drawer;
-- interrupt, pause, stop, restart-from-manifest actions under policy.
-
-## Usage
-
-Provider cards remain separate.
-
-### Claude
-
-- current model;
-- context usage;
-- five-hour and seven-day windows when available;
-- reset times;
-- session duration;
-- session tokens;
-- lines added/removed;
-- unavailable fields explicitly marked.
-
-### Codex
-
-- current account/plan label where available;
-- primary and secondary rate windows;
-- reset times;
-- token totals;
-- context;
-- current turn state.
-
-### Cross-provider view
-
-Show capacity alongside active task demand. Suggestions may recommend routing, but never imply quotas are directly equivalent.
+- file list;
+- selected diff;
+- large/binary/renamed/deleted states;
+- recent commits;
+- verification result.
 
 ## Activity
 
-A dense chronological timeline with:
+Show meaningful entries:
 
-- actor;
-- action;
-- object;
-- repository/run;
-- result;
-- confidence;
-- evidence link;
-- filter and search.
+- session started, interrupted, exited, relaunched;
+- attention change;
+- provider-native tool or plan event;
+- Git state change;
+- verification result;
+- Pacium decision or delivery.
 
-Raw terminal output is not copied wholesale into Activity.
+Do not reproduce every terminal line.
+
+## Pacium mode
+
+### Sidebar emphasis
+
+```text
+Meta
+Orchestrator
+Workers
+```
+
+Missing configured sessions remain visible with launch or attach action.
+
+### Queue
+
+Sections:
+
+1. Blocking questions.
+2. Approvals.
+3. Failures.
+4. Reviews.
+5. Non-blocking questions.
+6. Conflicts and unclassified items.
+
+Queue row:
+
+- type;
+- concise title;
+- source session;
+- waiting time;
+- blocking or risk indicator;
+- unread state.
+
+Queue inspector:
+
+- original source text;
+- parse confidence;
+- reason and consequence;
+- options or exact approval action;
+- recommendation where present;
+- related terminal and Git evidence;
+- answer controls;
+- delivery and acknowledgement history;
+- source path and provenance in secondary details.
 
 ## Settings
 
 Sections:
 
-- members and roles;
-- repositories;
-- hosts;
-- provider execution identities;
-- approval policies;
-- session naming;
+- appearance and density;
+- terminal font, cursor, scrollback, and paste;
+- workspaces and repositories;
+- launch presets;
+- keyboard shortcuts;
 - notifications;
-- retention and redaction;
-- backup and restore status;
-- system health;
-- emergency controls.
+- Pacium configuration;
+- local server and security;
+- diagnostics.
+
+## Error states
+
+Every error answers:
+
+1. What failed?
+2. Is the PTY still running?
+3. Did Git or queue source data change?
+4. Can the action be retried safely?
+5. What should the operator do?

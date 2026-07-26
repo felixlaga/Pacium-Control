@@ -1,97 +1,75 @@
 # Definition of done
 
-A task or milestone is not done because code exists or an agent says it works.
-
 ## Product
 
-- The user problem is solved within agreed scope.
-- Acceptance criteria are demonstrably met.
-- Empty, loading, error, degraded, and permission-denied states are designed.
-- Keyboard and responsive behavior are addressed where relevant.
-- Copy uses canonical vocabulary.
-- The feature does not expand product scope accidentally.
+- The scoped terminal, agent, Git, or Pacium outcome works from the application.
+- Empty, loading, live, reconnecting, ended, error, and degraded states are complete where applicable.
+- Keyboard, mouse, focus, and accessibility behavior are addressed.
+- The change follows the local-first product scope.
 
 ## Architecture
 
-- The implementation follows accepted ADRs and frozen decisions.
-- Systems of record remain clear.
-- No application database was introduced.
-- State mutations use the authoritative writer.
-- Provider-specific behavior stays behind adapters.
-- tmux and Git ownership boundaries are respected.
-- New protocols or schemas are versioned.
+- Browser lifecycle does not accidentally own PTY lifecycle.
+- Terminal bytes and application events remain separate.
+- Status source and confidence remain explicit.
+- No database, remote exposure, mandatory tmux, or speculative workflow platform is introduced.
+- Persistent state is minimal and versioned.
 
 ## Security
 
-- Server-side authorization exists for every action.
-- Privilege is least-scoped and revocable.
-- Secrets are excluded or redacted.
-- Paths and identifiers are validated.
-- Terminal/WebSocket implications are reviewed.
-- Audit attribution is complete.
-- High-risk behavior has an explicit review.
+- Loopback, Origin, token, path, and message boundaries are respected.
+- Terminal and repository content is treated as untrusted.
+- Process and signal targets are correct.
+- Secrets and complete environments are excluded from logs/state.
+- Questions and approvals remain distinct.
 
 ## Reliability
 
-- Idempotency is defined.
-- Restart and partial-failure behavior is tested.
-- Unknown outcome is handled explicitly.
-- Timeouts and backpressure are bounded.
-- No failure silently loses state.
-- Migration and rollback behavior are documented.
+- Reconnect behavior is tested.
+- Input is not duplicated.
+- Buffers are bounded.
+- Process exit and cleanup are tested.
+- Unknown outcomes remain unknown.
+- Failure states what survived and how to recover.
+
+## Design
+
+- Main work remains visually dominant.
+- Navigation and inactive chrome recede.
+- Tokens, spacing, density, and icons are consistent.
+- Frequent actions follow the visible/context-menu/shortcut/command-palette model.
+- UI changes include screenshots or recording.
+- The interface is inspired by Linear’s discipline without copying its brand.
 
 ## Tests
 
 - Pure logic has unit coverage.
-- Boundary/protocol behavior has contract coverage.
-- Critical workflow has integration or browser coverage.
-- Failure path is tested, not merely described.
-- Tests are deterministic and pass in clean CI.
-- No disabled failing test is hidden without an issue and approval.
+- Protocol behavior has contract coverage.
+- PTY behavior has real integration coverage.
+- Critical user flow has browser coverage.
+- Relevant failure and security paths are exercised.
+- Tests pass from a clean clone without private credentials.
 
 ## Evidence
 
-- Exact commands and results are recorded in the pull request.
-- Screenshots or recordings exist for meaningful UI changes.
-- State/protocol examples exist for new contracts.
-- Performance/security evidence is attached when required.
+- Exact commands and results are recorded.
+- UI evidence exists where meaningful.
+- Supported platform and dependency versions are stated.
+- Performance and security evidence is attached when required.
 - Reviewer can reproduce the result.
 
-## Documentation
+## Documentation and hygiene
 
-- Relevant product/architecture/operations docs are updated.
-- New limitations are recorded.
-- Status claims remain accurate.
-- Glossary and diagrams are updated if vocabulary or flows changed.
-- ADR is accepted where required.
-
-## Repository hygiene
-
-- No secrets.
-- No personal or build-environment traces.
-- No generated build output unless intentionally versioned.
-- No dependency caches or runtime state.
-- No unrelated changes.
-- Commit and pull-request history are understandable.
-
-## Operational readiness
-
-For production-affecting work:
-
-- deployment sequence exists;
-- migration is tested;
-- rollback exists;
-- backup implications are known;
-- monitoring/diagnostics exist;
-- operator runbook is updated;
-- responsible owner is identified.
+- Status claims are synchronized.
+- Relevant specs and ADRs are updated.
+- Limitations are recorded.
+- No secrets, terminal captures, local state, dependencies, caches, build output, or machine-specific paths are committed.
+- No unrelated changes are included.
 
 ## Milestone completion
 
-In addition to task-level criteria:
-
-- milestone demo passes;
-- exit metrics/evidence are collected;
-- known risks are updated;
-- next milestone assumptions are reviewed;
-- product owner accepts completion.
+- Milestone demo passes.
+- Acceptance criteria and evidence are complete.
+- Risk register is updated.
+- Next milestone assumptions are reviewed.
+- Product owner accepts the result.

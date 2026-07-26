@@ -1,6 +1,6 @@
 # Publishing and GitHub setup
 
-This repository is documentation-only and ready to initialize as a Git repository.
+This repository contains an early executable local-terminal slice alongside the active blueprint. Preserve its current Git history and publish only after checking [STATUS.md](STATUS.md), generated artifacts, and the active local-first contracts.
 
 ## Recommended initial visibility
 
@@ -8,15 +8,9 @@ Use a **private GitHub repository** until licensing, credential policy, security
 
 Absence of an open-source license means no broad reuse rights are granted by default. Do not make the repository public accidentally.
 
-## Initialize
+## Create the private remote if needed
 
-```bash
-git init -b main
-git add .
-git commit -m "docs: establish Pacium Control product and engineering blueprint"
-```
-
-Then create and push a private GitHub repository:
+If the checkout has no configured remote, create and push a private GitHub repository:
 
 ```bash
 gh repo create pacium-control \
@@ -55,18 +49,21 @@ For security-critical areas, require code-owner review when maintainers are esta
 
 ### Area
 
-- `area:state`
-- `area:broker`
+- `area:contracts`
+- `area:local-server`
+- `area:pty`
 - `area:tmux`
 - `area:terminal`
-- `area:auth`
+- `area:sessions`
+- `area:design`
 - `area:claude`
 - `area:codex`
 - `area:git`
-- `area:workflow`
+- `area:pacium`
+- `area:queue`
 - `area:web`
-- `area:host`
-- `area:observability`
+- `area:packaging`
+- `area:security`
 
 ### Priority
 
@@ -85,7 +82,12 @@ For security-critical areas, require code-owner review when maintainers are esta
 
 ### Milestone
 
-- `milestone:0` through `milestone:6`
+- `milestone:0-foundation`
+- `milestone:1-terminal`
+- `milestone:2-visibility`
+- `milestone:3-pacium`
+- `milestone:4-integrations`
+- `milestone:5-polish`
 
 ## Suggested GitHub Projects fields
 
@@ -124,10 +126,9 @@ Before every public or private push, scan for:
 
 - secrets and tokens;
 - personal emails not intended for publication;
-- hostnames and tailnet details;
 - absolute machine paths;
 - terminal captures;
-- generated state and backups;
+- local Pacium state and diagnostic exports;
 - provider credentials;
 - private issue references;
 - unsupported implementation claims.

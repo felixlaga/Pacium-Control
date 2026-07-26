@@ -1,5 +1,7 @@
 # Evaluation plan
 
+> Historical blueprint: use the active milestone acceptance criteria for local-first evaluation.
+
 ## Purpose
 
 Pacium Control should be evaluated against real operator outcomes and failure behavior, not only feature completeness.

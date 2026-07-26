@@ -2,158 +2,84 @@
 
 ## Objective
 
-Operators need visibility into both agent work and the health of Pacium Control itself. Product activity and platform telemetry are related but distinct.
+Help the operator understand sessions and help maintainers diagnose the local application without creating a secret-bearing transcript system.
 
-## Three layers
+## Product observability
 
-### Domain observability
+- live/ended process state;
+- attention state with source and freshness;
+- unread meaningful activity;
+- repository and Git changes;
+- verification result;
+- queue item and decision lifecycle;
+- provider observer health.
 
-What users care about:
+## Platform health
 
-- run/task state;
-- questions and approvals;
-- decisions and acknowledgement;
-- agent state and freshness;
-- Git changes and checks;
-- provider usage;
-- host/session lifecycle.
+Components:
 
-This is stored as domain entities and events.
+- local server;
+- browser transport;
+- PTY runtime;
+- terminal buffers;
+- Git inspector;
+- Claude observer;
+- Codex observer;
+- queue watcher;
+- optional tmux adapter;
+- local state.
 
-### Platform telemetry
-
-What maintainers need:
-
-- request latency and errors;
-- state command latency;
-- journal recovery counts;
-- event stream lag;
-- broker operation latency;
-- terminal connections and buffer pressure;
-- host-agent reconnects;
-- adapter parse failures;
-- disk usage;
-- backup age;
-- process CPU/memory/file descriptors.
-
-### Diagnostics
-
-Bounded, detailed material for debugging:
-
-- version/capability reports;
-- recent protocol errors;
-- redacted provider payload samples;
-- broker/tmux command traces under debug mode;
-- state integrity reports;
-- support bundle manifest.
-
-Diagnostics may be sensitive and require owner access.
-
-## Health model
-
-Avoid one binary health light. Expose components:
-
-- web/API;
-- state coordinator;
-- state directory integrity;
-- broker;
-- tmux server(s);
-- each provider adapter;
-- each host agent;
-- backup;
-- event streaming;
-- disk capacity.
-
-Each component reports:
+Each reports:
 
 ```text
-status: healthy | degraded | unavailable | unknown
+healthy | degraded | unavailable | unknown
 since
-lastCheck
 summary
 operatorAction
 ```
 
 ## Logging
 
-Structured logs include correlation IDs and avoid raw secrets.
-
-Recommended fields:
+Useful fields:
 
 - timestamp;
 - level;
-- service/module;
-- request/command/operation IDs;
-- workspace/repository/run/session references;
-- actor type and safe identifier;
-- event name;
+- module;
+- request/session ID;
+- event type;
 - duration;
-- result/error code.
+- bounded result/error code.
 
-Do not log every terminal byte, complete prompt, environment variable, or provider credential payload by default.
+Do not log raw terminal bytes, password input, full prompts, complete environment data, provider tokens, or unrestricted queue contents by default.
 
 ## Metrics
 
-Initial internal metrics:
+Initial local metrics:
 
-- HTTP request rate/error/latency;
-- state command rate/conflict/error/latency;
-- event append latency;
-- event-stream subscriber count and lag;
-- broker request latency and failures;
-- active terminal streams and write leases;
-- tmux sessions by state;
-- provider adapter health;
-- host-agent heartbeat age;
-- disk and backup age;
-- question answer and acknowledgement latency.
+- active PTYs;
+- PTY create/exit failures;
+- WebSocket reconnects and buffer overflow;
+- output/input throughput;
+- terminal buffer size;
+- event-loop delay;
+- CPU, memory, and file descriptors;
+- Git inspection latency/errors;
+- queue parse/delivery conflicts;
+- provider observer failures.
 
-Metrics can initially be exposed locally or through standard telemetry. Do not add a large monitoring stack before it is operationally justified.
+Metrics remain local until a future remote-observability design is approved.
 
-## Tracing
+## Diagnostics
 
-Use correlation IDs across:
+An explicit diagnostics screen or export may include:
 
-```text
-browser action
-→ API request
-→ state command
-→ broker/host operation
-→ provider or tmux observation
-→ committed event
-→ browser update
-```
+- application and dependency versions;
+- platform and PTY capability;
+- session metadata without terminal contents;
+- component health;
+- recent bounded error codes;
+- queue source metadata without secrets;
+- optional tmux capability;
+- redaction manifest.
 
-Full distributed tracing may come later; the ID chain should exist from the beginning.
-
-## Support bundle
-
-An owner can generate a redacted diagnostics bundle containing:
-
-- versions and capabilities;
-- configuration shape without secrets;
-- recent health transitions;
-- state integrity report;
-- journal status;
-- recent error codes;
-- backup status;
-- selected redacted logs;
-- no provider tokens or unrestricted terminal history.
-
-The bundle manifest should list every included file.
-
-## Alerts
-
-Alert only on actionable platform conditions:
-
-- state writes blocked;
-- disk nearly full;
-- broker unavailable beyond grace;
-- host disconnected beyond policy;
-- backup overdue or failed;
-- repeated adapter parse failures;
-- unauthorized terminal attempts;
-- provider authentication expired;
-- event delivery backlog growing.
-
-Product notifications and maintainer alerts should not be conflated.
+The operator previews export contents before saving.

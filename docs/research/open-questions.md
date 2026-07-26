@@ -1,5 +1,7 @@
 # Open questions
 
+> Historical blueprint: current build-blocking decisions are listed in [STATUS.md](../../STATUS.md) and [first-build-plan.md](../execution/first-build-plan.md).
+
 These questions should be answered through focused research or prototypes, not prolonged abstract debate.
 
 ## Product

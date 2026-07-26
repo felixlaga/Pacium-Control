@@ -21,23 +21,24 @@ What problem does this pull request solve, and for whom?
 
 - _Add item._
 
-## Architecture and state
+## Architecture and runtime
 
 - Modules/boundaries changed:
-- Commands/events/schemas changed:
-- Persistence/recovery impact:
-- Provider/tmux/Git impact:
+- WebSocket/contracts changed:
+- PTY/process lifecycle impact:
+- Persistence/reconnect impact:
+- Provider/tmux/Git/Pacium impact:
 
 ## Security
 
-- Authorization and privilege:
+- Loopback/Origin/token/path/privilege:
 - Secrets/logging:
 - Terminal/WebSocket impact:
 - Security review required: Yes | No
 
 ## Failure and recovery
 
-- Idempotency:
+- Input/delivery duplication:
 - Restart behavior:
 - Unknown outcomes:
 - Migration/rollback:
@@ -47,8 +48,8 @@ What problem does this pull request solve, and for whom?
 List exact commands and results. Do not write only “tests pass.”
 
 - [ ] Formatting/lint/type checks
-- [ ] Unit/property/contract tests
-- [ ] Integration/browser tests
+- [ ] Unit/contract tests
+- [ ] PTY integration/browser tests
 - [ ] Failure/recovery tests
 - [ ] Security tests
 - [ ] Clean install/build where applicable
@@ -57,7 +58,7 @@ Evidence:
 
 ## User experience
 
-Include screenshots/recordings for visible changes and describe empty/loading/error/degraded states.
+Include screenshots/recordings for visible changes and describe empty/creating/live/reconnecting/ended/error/degraded states.
 
 ## Documentation
 

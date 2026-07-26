@@ -1,5 +1,7 @@
 # Agent lifecycle
 
+> Deferred blueprint: the active product uses terminal-session lifecycle and attention state. Generalized run/task agent lifecycle is not initial scope.
+
 ## Purpose
 
 Agent state should reflect meaningful operational reality, not merely whether a tmux session exists.

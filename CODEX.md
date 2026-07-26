@@ -1,61 +1,35 @@
 # Codex instructions
 
-Codex agents must follow [AGENTS.md](AGENTS.md). This file adds Codex-specific guidance.
+Codex agents must follow [AGENTS.md](AGENTS.md).
 
 ## Product constraint
 
-Pacium Control integrates **Codex CLI only**. Do not design or implement dependencies on a Codex desktop application.
+Integrate Codex through local CLI/runtime interfaces. Do not depend on a Codex desktop application.
 
-## Integration modes
+## Initial mode
 
-The preferred design supports two modes behind one adapter interface:
+Codex runs inside a Pacium-managed PTY like any other terminal command.
 
-### Native CLI App Server mode
+The UI may infer:
 
-A local Codex App Server process provides structured turns, plans, messages, approvals, usage, and rate-limit events. It is launched and supervised as a CLI-side component and is never exposed directly to the browser or public network.
+- process alive;
+- terminal active;
+- terminal quiet;
+- exited.
 
-### tmux fallback mode
+It must not infer native turn, plan, approval, completion, or usage semantics from terminal motion alone.
 
-An ordinary Codex CLI session runs inside tmux. Pacium provides terminal control and inferred status when native events are unavailable.
+## Native enrichment
 
-The UI must make the active mode and confidence visible.
+After the terminal workspace works, a local Codex runtime observer may provide structured turns, plans, messages, tool activity, approvals, usage, rate limits, completion, and failure.
 
-## Implementation behavior
+- Keep transport local to the server.
+- Detect capabilities and versions.
+- Bound and validate payloads.
+- Label observer health and fallback.
+- Keep the raw terminal usable if native events fail.
+- Never auto-approve because a callback is unavailable.
 
-When implementing Codex support:
+## Pacium roles
 
-- pin and detect compatible CLI protocol versions;
-- keep App Server transport local to the broker or adapter;
-- authenticate any non-stdio transport;
-- normalize shared concepts without discarding Codex-specific details;
-- capture plan revisions and turn lifecycle;
-- distinguish steering an active turn from sending a new terminal prompt;
-- route approval requests through the Pacium approval model;
-- preserve provider reset windows and rate-limit semantics separately from Claude;
-- expose adapter health and fallback state;
-- never silently auto-approve because a callback failed.
-
-## Worker expectations
-
-A Codex coding worker should:
-
-- operate only in its assigned worktree;
-- verify the base commit before changes;
-- keep task scope narrow;
-- record commands and checks that support the result;
-- stop and ask when a decision exceeds granted authority;
-- produce a structured handoff and review evidence;
-- avoid modifying orchestration state except through supported Pacium commands.
-
-## Collaboration with Claude
-
-Claude and Codex communicate through provider-neutral tasks, decisions, handoffs, Git evidence, and orchestrator routing—not by treating each other’s terminal transcript as a protocol.
-
-Useful patterns include:
-
-- Claude plans, Codex implements, Claude reviews;
-- Codex prototypes, Claude evaluates tradeoffs;
-- both produce isolated candidate implementations for orchestrator comparison;
-- one provider continues from a complete handoff when the other reaches capacity.
-
-Never move an in-progress task between providers without recording a handoff packet.
+A Codex session may be classified as Meta, Orchestrator, or worker. Classification changes Pacium presentation and targeting, not operating-system privilege.

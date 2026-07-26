@@ -4,11 +4,9 @@
 
 - Workspace:
 - Repository:
-- Run/task:
-- Requesting agent:
-- Execution identity:
-- Host:
-- Worktree:
+- Requesting session/role:
+- Working directory/worktree:
+- Source file or event:
 - Provider callback deadline:
 
 ## Requested action
@@ -29,9 +27,9 @@
 
 ## Requested scope
 
-- One time | Run scoped
+- One time | Session scoped
 - Duration:
-- Repository/worktree bounds:
+- Repository/path bounds:
 - Parameter bounds:
 
 ## Safer alternative
@@ -46,7 +44,7 @@
 
 - [ ] Deny
 - [ ] Allow once
-- [ ] Allow narrowly for this run
+- [ ] Allow narrowly for this session
 - [ ] Edit and allow
 - [ ] Request another method
 - [ ] Escalate

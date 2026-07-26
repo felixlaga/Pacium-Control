@@ -23,8 +23,8 @@
 ## Human decisions and approvals
 
 | Decision | Actor | Outcome | Applied evidence |
-|---|---|---|---|
-| | | | |
+| -------- | ----- | ------- | ---------------- |
+|          |       |         |                  |
 
 ## Commits
 
@@ -39,8 +39,8 @@
 ## Verification
 
 | Check | Commit | Result | Artifact/log |
-|---|---|---|---|
-| | | | |
+| ----- | ------ | ------ | ------------ |
+|       |        |        |              |
 
 ## Artifacts
 

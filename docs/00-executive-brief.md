@@ -2,98 +2,64 @@
 
 ## One sentence
 
-Pacium Control is a tailnet-only web console for operating Claude Code and Codex CLI agents running in tmux, with structured human decisions, safe terminal control, Git-isolated parallel work, and evidence-backed review.
+Pacium Control is a clean localhost workspace for managing terminal sessions and CLI coding agents, with a specialized Pacium mode for Meta, Orchestrator, workers, and the queue.
 
-## The problem
+## Problem
 
-The underlying coding agents are capable, but the operating environment is not. Work is distributed across terminal panes, session names, queue files, branches, and private context. The operator must continually reconstruct:
+Running several coding agents means juggling terminal windows, repositories, prompts, diffs, and mental state. It is difficult to tell:
 
-- which agents are alive;
-- what each agent is doing;
-- which repository and worktree it owns;
-- what is blocked;
-- what needs a human decision;
-- what has changed;
-- what has been tested;
-- what can be safely stopped or redirected.
+- which sessions are alive;
+- which need input;
+- what each agent changed;
+- which repository and branch it belongs to;
+- what finished or failed;
+- where Meta and Orchestrator are;
+- what is waiting in the queue.
 
-This reconstruction is slow, mentally expensive, and error-prone. It prevents a team from scaling the number of simultaneous agents it can trust.
+## Solution
 
-## The solution
+Pacium provides:
 
-Pacium Control introduces a control plane without replacing the existing tools.
+- real local PTY terminals in the browser;
+- sessions grouped by workspace and repository;
+- tabs, splits, keyboard navigation, and command palette;
+- working/waiting/needs-input/finished/failed attention states;
+- Git changes and diff beside the terminal;
+- Pacium mode with Meta, Orchestrator, workers, and queue decisions;
+- optional tmux attachment for selected durable sessions.
 
-It provides:
-
-- a Linear-inspired workspace organized by Inbox, active runs, repositories, agents, review, usage, and activity;
-- structured questions and approvals with one-keystroke decisions;
-- a closed loop from decision to acknowledgement to application;
-- live agent and plan state from tmux and provider adapters;
-- one branch and worktree per coding worker;
-- evidence-backed summaries, reviews, and completion;
-- secure tailnet access for the whole team;
-- a full terminal drawer for low-level intervention;
-- filesystem-native state with no application database.
-
-## Why now
-
-CLI coding agents can already execute meaningful software work, but the interface around multi-agent operation remains primitive. The immediate opportunity is not another model wrapper. It is the operational layer that makes existing tools safe and comprehensible at team scale.
-
-## Product boundary
-
-Pacium Control is deliberately not:
-
-- a model provider;
-- a new autonomous-agent framework;
-- a replacement for Claude Code or Codex;
-- a replacement for Git or tmux;
-- a public SaaS dependency;
-- a browser IDE;
-- a shared personal-account credential proxy.
-
-## Architecture in one view
-
-```mermaid
-flowchart LR
-    Human --> Web[Pacium Web]
-    Web --> State[Filesystem State Coordinator]
-    Web --> Broker[Privileged Broker]
-    Broker --> Tmux
-    Tmux --> Claude[Claude Code CLI]
-    Tmux --> Codex[Codex CLI]
-    Broker --> Git
-    Tailscale --> Web
-```
-
-The browser and API do not directly control tmux. A narrow broker does. Central coordination state is stored as atomic JSON entities plus append-only JSONL events. tmux and Git remain authoritative for live sessions and source history.
-
-## The decisive workflow
+## Architecture
 
 ```text
-Orchestrator creates question
-→ Meta optionally enriches it
-→ Pacium Inbox assigns it
-→ Human answers
-→ Decision is recorded immutably
-→ Orchestrator acknowledges
-→ Work resumes
-→ Application evidence is linked
+React browser app
+        ↕ localhost WebSocket
+Node local server
+        ├── PTY terminal manager
+        ├── session and attention model
+        ├── Git inspector
+        ├── provider observers
+        └── Pacium queue adapter
 ```
 
-This workflow is the first vertical slice and the product’s most important interaction.
+The application is localhost-only and single-user initially. It has no database, separate broker, Tailscale dependency, or multi-host protocol.
 
-## Initial success criteria
+## Design direction
 
-The first useful release succeeds when:
+The interface is inspired by Linear’s hierarchy, density, consistency, restrained color, contextual actions, and keyboard speed. It does not copy Linear’s brand.
 
-- the operator can discover and understand existing sessions from the web;
-- a blocking question can be answered without SSH;
-- the answer is delivered exactly once and acknowledged;
-- work resumes without manual queue-file editing;
-- the run page links progress to Git and verification evidence;
-- browser, API, or broker restarts do not terminate tmux sessions;
-- access is limited by verified Tailscale identity and application role.
+## First useful release
 
-## Current repository state
+The first release succeeds when the operator can:
 
-This repository is the complete planning foundation. It contains no product code. Implementation agents should treat the decisions, acceptance criteria, and quality gates here as the contract for building the real system.
+1. launch Claude Code, Codex, and shell sessions;
+2. manage them from one clean workspace;
+3. refresh the browser without losing live PTYs;
+4. find which agent needs attention;
+5. inspect changed files and diff;
+6. enter Pacium mode;
+7. see Meta, Orchestrator, workers, and queue;
+8. answer a queue item once with visible result.
+
+## Current status
+
+The repository contains the build-ready blueprint only. Implementation has not started.

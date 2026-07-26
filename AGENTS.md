@@ -1,163 +1,189 @@
 # Agent operating contract
 
-This file is mandatory reading for every Claude, Codex, or other implementation agent working in this repository.
+This file is mandatory reading for every implementation agent working in this repository.
 
 ## Current truth
 
-This repository is a **documentation-only blueprint**. There is no product code yet. Do not claim a feature is implemented, tested, deployed, or production-ready unless the corresponding code and evidence exist in the current branch.
+This repository contains the first executable local-terminal slice. It is not a finished product or release artifact.
 
-Read [STATUS.md](STATUS.md) before starting work.
+Read [STATUS.md](STATUS.md) before making implementation claims.
 
 ## Mission
 
-Build Pacium Control into a private, reliable operating console for CLI coding agents running in tmux. The product must make agent work observable, steerable, reviewable, and recoverable while keeping the human in control.
+Build Pacium Control into a lightweight localhost workspace for managing terminal sessions and CLI coding agents.
 
-## Read order
+The primary goal is to make many local terminals and agents easy to launch, organize, supervise, and inspect through a clean, Linear-inspired interface.
 
-Before implementing a new area, read:
+The secondary goal is Pacium mode: a specialized workspace for Meta, Orchestrator, workers, and the existing queue.
 
-1. [README.md](README.md)
-2. [PRINCIPLES.md](PRINCIPLES.md)
-3. [ARCHITECTURE.md](ARCHITECTURE.md)
-4. [SECURITY.md](SECURITY.md)
-5. The relevant detailed specification under `docs/`
-6. All ADRs related to the change
-7. The issue and implementation plan for the work
+## Required read order
 
-Do not infer architecture from file names alone.
+Before implementation, read:
+
+1. [STATUS.md](STATUS.md)
+2. [README.md](README.md)
+3. [PRINCIPLES.md](PRINCIPLES.md)
+4. [ARCHITECTURE.md](ARCHITECTURE.md)
+5. [SECURITY.md](SECURITY.md)
+6. [ROADMAP.md](ROADMAP.md)
+7. The relevant specification under `docs/`
+8. The applicable accepted ADRs
+9. The issue and implementation plan
+
+Do not infer architecture from filenames. Several retained documents describe superseded decisions and are labelled accordingly.
 
 ## Non-negotiable constraints
 
-1. **CLI-only providers.** No Claude or Codex desktop application integration.
-2. **No application database.** Do not add SQLite, PostgreSQL, Redis, LevelDB, an ORM, or a hosted datastore.
-3. **tmux remains the runtime.** Do not invent a replacement process/session engine.
-4. **One authoritative state writer.** All central entity and event mutations flow through the state coordinator.
-5. **Tailnet-only production ingress.** Do not expose the application publicly by default.
-6. **Verified identity, not IP authorization.** Never model a Tailscale IP as a permanent person.
-7. **Broker privilege boundary.** The web/API process must not receive direct tmux socket access.
-8. **One worktree per coding worker.** Never assign concurrent writers to one checkout.
-9. **Questions and approvals are distinct.** Do not flatten them into one generic “request.”
-10. **Evidence-backed completion.** An agent’s prose claim is not sufficient evidence.
-11. **Terminal is secondary.** Do not make raw terminal output the primary product experience.
-12. **Honest status.** Distinguish designed, implemented, validated, and production-proven behavior.
+1. **Localhost first.** Bind to `127.0.0.1`; remote access is out of initial scope.
+2. **Terminal first.** A polished terminal workspace is the primary product experience.
+3. **Direct PTY default.** Pacium launches and owns local PTYs; tmux is optional.
+4. **Browser lifecycle is not process lifecycle.** Refreshing or closing the browser must not terminate running PTYs.
+5. **CLI providers.** Integrate Claude Code and Codex through CLI/runtime interfaces, not desktop applications.
+6. **No application database.** Use minimal versioned JSON/JSONL state.
+7. **Minimal duplication.** PTYs own live process truth; Git owns code truth; providers own native events; queue files own legacy queue input.
+8. **Honest status.** Native, hooked, process-observed, terminal-inferred, and human-labelled states are distinct.
+9. **Safe browser-to-shell boundary.** Validate Origin, local tokens, paths, message sizes, and terminal content.
+10. **Pacium is a mode.** Do not build a parallel enterprise application shell.
+11. **Meta and Orchestrator first.** Do not generalize Pacium mode before its two-session and queue workflow works.
+12. **Questions and approvals are distinct.** An answer is not permission.
+13. **Evidence-backed completion.** Prose is not proof.
+14. **Linear-inspired discipline.** Calm hierarchy, compact density, predictable actions, keyboard speed, and restrained color.
+15. **One worktree per coding worker.** Concurrent writers never share a mutable checkout.
 
-A change to any of these constraints requires an ADR and explicit approval from the project owner.
+A change to these constraints requires an ADR and explicit owner approval.
 
-## How to work
+## Product scope
 
-### Start from an issue
+### General workspace
 
-Every implementation change should have:
+- local terminal creation and management;
+- workspaces and repository grouping;
+- tabs and splits;
+- session status and attention indicators;
+- Git changes, diffs, commits, and verification;
+- optional provider-aware activity;
+- command palette and keyboard navigation.
 
-- a problem statement;
+### Pacium mode
+
+- pinned Meta and Orchestrator;
+- explicit target selection;
+- queue observation and decisions;
+- compact worker status;
+- objective, plan context, decisions, and resulting evidence.
+
+### Deferred
+
+- remote access and Tailscale;
+- multi-user authorization;
+- multi-host control;
+- public deployment;
+- full runs/tasks/workflow engine;
+- broad provider marketplace;
+- automated PR and integration platform;
+- organization-grade audit and backup systems.
+
+## Start from an issue
+
+Every implementation change needs:
+
+- problem and user outcome;
 - scope and non-scope;
 - acceptance criteria;
-- security and failure considerations;
+- failure and security behavior;
 - test plan;
-- linked specification or ADR;
-- dependencies.
+- dependencies;
+- exact evidence required.
 
-Use [the issue template](docs/templates/issue.md).
+Use [docs/templates/issue.md](docs/templates/issue.md).
 
-### Write an implementation plan
+## Write an implementation plan
 
-Before nontrivial code, create or update an implementation plan using [docs/templates/implementation-plan.md](docs/templates/implementation-plan.md).
+Before nontrivial code, use [docs/templates/implementation-plan.md](docs/templates/implementation-plan.md).
 
-A good plan identifies:
+Plans must cover:
 
-- system boundaries touched;
-- state transitions;
-- concurrency risks;
-- failure points;
+- UI behavior and states;
+- modules and contracts;
+- PTY/process lifecycle;
+- reconnect and failure behavior;
+- security boundary;
 - tests;
-- migration or compatibility behavior;
 - documentation changes.
 
-### Build vertical slices
+## Build vertical slices
 
-Prefer a narrow end-to-end path over a broad layer with no real consumer.
-
-Good:
+Preferred first slice:
 
 ```text
-Create question → persist atomically → display in Inbox → answer → deliver → acknowledge
+Open app → create terminal → launch PTY → render output
+→ send input → resize → refresh browser → reconnect → close safely
 ```
 
-Weak:
+Avoid building a generalized state engine, workflow platform, or provider abstraction without a real UI consumer.
 
-```text
-Create 40 database-style repository classes for future entities
-```
+## Terminal rules
 
-### Keep changes reviewable
-
-One pull request should have one coherent purpose. Avoid drive-by refactors. Separate schema changes, behavior changes, and cosmetic changes when that improves review.
-
-### Update the contract
-
-If implementation reveals a false assumption, update the relevant spec or propose an ADR. Do not silently diverge from the blueprint.
+- PTY sessions launched by Pacium have immutable IDs.
+- Track process groups and distinguish interrupt from terminate.
+- Input and resize messages are ordered and bounded.
+- Reconnect never replays terminal input automatically.
+- Scrollback is bounded and ephemeral by default.
+- Terminal titles, hyperlinks, OSC sequences, clipboard operations, and output are untrusted.
+- Application shortcuts are suspended while terminal input owns focus, except for a documented escape chord.
+- An ended direct PTY is reported honestly after local-server restart.
+- Optional tmux attachment is capability-labelled and never silently assumed.
 
 ## State rules
 
-- Entity IDs are immutable and globally unique.
-- Every entity has `schemaVersion`, `revision`, `createdAt`, and `updatedAt` where applicable.
-- Commands carry idempotency keys.
-- Events are append-only.
-- Materialized projections are rebuildable and never authoritative.
-- Multi-file mutations use the transaction journal.
-- Writes use temporary files, durability barriers where required, and atomic rename.
-- Corrupt or unknown data is quarantined; it is not silently discarded.
-- Remote hosts never write central state directly.
-- Secrets are not stored in entity files or events.
+- Persist only application-owned metadata.
+- Use versioned schemas.
+- Validate before write.
+- Use temporary files and atomic replacement.
+- Keep caches disposable.
+- Do not store provider tokens, passwords, complete environments, or unlimited transcripts.
+- Queue provenance and decisions must survive restart without duplicate delivery.
+
+## Design rules
+
+- Main work receives the strongest visual contrast.
+- Navigation and inactive chrome recede.
+- Use one compact spacing and typography system.
+- Pair color with text or icon.
+- Put frequent actions in buttons, contextual menus, shortcuts, and the command palette consistently.
+- Preserve focus and selection across terminal and inspector changes.
+- Errors state what happened, which processes survived, and what the user can do.
+- Empty states teach the next useful action.
+- Do not mimic Linear branding; borrow its hierarchy, density, consistency, and speed.
 
 ## Security rules
 
-- Validate authorization at the action boundary, not only in the UI.
-- Treat tmux socket access as full control of that tmux server.
-- Use narrow, short-lived terminal grants and leases.
-- Validate WebSocket origin and authentication independently.
-- Self-host browser terminal assets; no analytics or session replay on terminal routes.
-- Redact secrets before durable logging.
-- Separate operator identity, requesting agent, and provider execution identity.
-- Destructive actions need explicit scope and confirmation.
-- Development auth must fail closed in production configuration.
-
-## Git and worktree rules
-
-- Every coding worker receives one branch and one worktree.
-- Record the base commit at assignment time.
-- Do not modify another worker’s worktree.
-- Do not rewrite shared branch history without explicit integration policy.
-- Do not delete a worktree until commits and evidence are preserved and the run permits cleanup.
-- Integration is a separate task owned by the orchestrator or designated integrator.
-
-## User experience rules
-
-- Show the reason, owner, and consequence of every actionable item.
-- Pair color with text or icon; color alone is never semantic.
-- Keep focus and keyboard behavior predictable.
-- Preserve deep links and browser navigation.
-- Surface freshness and confidence for status.
-- Errors must state what happened, what survived, and what the user can do.
-- Do not expose internal identifiers as the primary label.
-- Optimize mobile for decisions, not terminal-heavy work.
+- Validate loopback binding at startup.
+- Reject untrusted HTTP and WebSocket origins.
+- Require a local token for terminal and mutating connections.
+- Self-host terminal assets.
+- Canonicalize configured paths.
+- Treat repository and queue content as untrusted data.
+- Never execute commands parsed from queue text.
+- Avoid logging terminal bytes and environment contents.
+- Remote access requires a new ADR and security review.
 
 ## Testing expectations
 
-Every behavior change should be covered at the lowest useful level and at least one boundary level.
+Behavior changes need the lowest useful test plus a boundary test.
 
 Required categories as applicable:
 
-- unit tests for pure logic;
-- contract tests for broker/provider protocols;
-- property or fault-injection tests for filesystem state;
-- integration tests with real tmux;
-- browser tests for critical workflows;
-- security tests for authorization and terminal grants;
-- restart/recovery tests;
+- unit tests for reducers, status logic, paths, and contracts;
+- PTY integration tests for input, resize, process exit, signals, alternate screen, and Unicode;
+- WebSocket contract tests for ordering, bounds, reconnect, and errors;
+- browser tests for terminal creation, switching, splits, focus, refresh, and keyboard navigation;
+- Git fixture tests;
+- queue deduplication and conflict tests;
+- security tests for loopback, Origin, tokens, terminal injection, and paths;
 - clean-install and production-build tests.
 
-Use [the testing strategy](docs/execution/testing-strategy.md).
+See [docs/execution/testing-strategy.md](docs/execution/testing-strategy.md).
 
 ## Definition of done
 
@@ -165,53 +191,47 @@ A task is done only when:
 
 - acceptance criteria are met;
 - tests pass;
-- failure behavior is tested;
+- failure and reconnect behavior are exercised;
 - security implications are addressed;
-- docs are updated;
+- UI states and keyboard behavior are complete;
+- docs are synchronized;
 - limitations are recorded;
-- no unrelated generated artifacts or environment traces are committed;
-- a reviewer can reproduce the result.
+- a reviewer can reproduce the evidence;
+- no secrets, runtime state, caches, or unrelated artifacts are committed.
 
-See [docs/execution/definition-of-done.md](docs/execution/definition-of-done.md).
+## Git and worktree rules
+
+- Every coding worker receives one branch and one worktree.
+- Record the base commit at assignment.
+- Do not modify another worker’s worktree.
+- Preserve commits and evidence before cleanup.
+- Integration is a separate owned task.
 
 ## Communication protocol
 
-When handing work to another agent, use [the handoff template](docs/templates/agent-handoff.md). Include:
-
-- objective;
-- branch and worktree;
-- base commit;
-- work completed;
-- files changed;
-- tests run and exact results;
-- unresolved issues;
-- assumptions;
-- recommended next action.
-
-Never hand off with only “continue from here.”
+Use [docs/templates/agent-handoff.md](docs/templates/agent-handoff.md) for handoffs. Include objective, branch, worktree, base commit, files changed, exact tests and results, unresolved issues, assumptions, and next action.
 
 ## Prohibited behavior
 
-- Do not fabricate test results or implementation status.
-- Do not add placeholder production behavior without clearly marking and tracking it.
-- Do not bypass security checks to make a demo pass.
-- Do not add broad shell-execution endpoints.
-- Do not parse arbitrary shell strings where a typed operation can exist.
-- Do not use terminal scraping as the sole source of provider truth when a native adapter is available.
-- Do not silently swallow state corruption or failed delivery.
-- Do not introduce a database because filesystem implementation feels unfamiliar.
-- Do not optimize for theoretical scale before measuring the real workload.
-- Do not commit secrets, tokens, machine-specific paths, dependency caches, or generated build output.
+- Do not claim unimplemented behavior works.
+- Do not reintroduce the superseded remote control-plane plan without approval.
+- Do not make tmux mandatory.
+- Do not bind to all interfaces.
+- Do not add a database.
+- Do not add generic remote shell or command endpoints.
+- Do not persist secrets or full terminal transcripts.
+- Do not parse terminal output as authoritative provider state.
+- Do not execute queue contents.
+- Do not build decorative dashboards before the terminal workflow works.
+- Do not hardcode machine-specific paths or credentials.
 
 ## When uncertain
 
-Prefer the choice that is:
+Prefer the choice that makes the local terminal experience:
 
-1. safer;
-2. more inspectable;
-3. more reversible;
-4. narrower in privilege;
-5. easier to test under failure;
-6. aligned with the explicit product philosophy.
-
-If uncertainty affects a frozen decision or public contract, write an ADR rather than guessing.
+1. simpler;
+2. safer;
+3. faster;
+4. more inspectable;
+5. easier to recover;
+6. more honest about status.

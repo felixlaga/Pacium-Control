@@ -1,108 +1,82 @@
-# Legacy queue migration
+# Queue compatibility
 
 ## Existing workflow
 
-The current Pacium process uses files such as:
+Pacium currently uses files such as:
 
-- `FELIX-QUEUE` for questions that the orchestrator needs answered;
-- `NEEDS-FELIX` for work blocked on exceptional permission or intervention;
-- meta-session prompts to relay questions and answers;
-- tmux `send-keys` as transport.
+- `FELIX-QUEUE`;
+- `NEEDS-FELIX`;
+- related repository-specific queue files;
+- Meta or Orchestrator terminal prompts as transport.
 
-Pacium Control must provide value without breaking this workflow abruptly.
+The first Pacium mode must work with these sources instead of requiring an immediate migration.
 
-## Target model
+## Stage 1 — Observe
 
-The target uses one structured object per question or approval, immutable decisions, explicit acknowledgement, and an event timeline.
+- Configure queue paths per Pacium workspace.
+- Read stable file contents conservatively.
+- Bound file size and parsing work.
+- Store source path, content hash, observation revision, and original text.
+- Classify question, approval, failure, review, or unknown with confidence.
+- Never modify source files.
 
-```text
-Orchestrator emits structured item
-→ state coordinator persists it
-→ meta optionally enriches it
-→ assigned user answers in Inbox
-→ decision is delivered
-→ orchestrator acknowledges
-→ application evidence is linked
-```
+## Stage 2 — Answer compatibly
 
-## Migration stages
+- Record an immutable local decision.
+- Deliver through an explicit configured method.
+- Use decision identity to prevent duplicate delivery.
+- Show delivered, failed, or unknown.
+- Observe acknowledgement or application only when evidence exists.
 
-### Stage 1 — Observe existing files
+The compatibility method may be:
 
-- Configure known queue paths per run/repository.
-- Watch changes safely.
-- Parse supported existing formats conservatively.
-- Display imported items with `legacy` source and confidence.
-- Do not modify files automatically.
+- writing a separate answer file atomically;
+- appending to a defined response section;
+- sending a structured prompt to Meta or Orchestrator;
+- a future `paciumctl` command.
 
-### Stage 2 — Bidirectional compatibility
+Each method has its own contract and tests. Pacium never improvises from arbitrary file text.
 
-- Create structured Pacium questions/approvals.
-- Render compatibility Markdown/text views for existing agents.
-- Import answers written by legacy workflow with deduplication.
-- Record file offsets/hashes and provenance.
-- Detect conflicts rather than silently choosing.
+## Stage 3 — Structured transport
 
-### Stage 3 — `paciumctl` transport
+After sustained compatibility:
 
-- Update orchestrator/meta wrappers to emit typed items through `paciumctl`.
-- Keep generating legacy views for safety.
-- Make Pacium state authoritative for lifecycle.
-- Mark manual legacy edits clearly.
+- Meta and Orchestrator may emit typed queue items through `paciumctl`;
+- legacy queue files remain generated or observed compatibility views;
+- Pacium metadata becomes authoritative for decision delivery lifecycle;
+- original source provenance remains visible.
 
-### Stage 4 — Read-only compatibility views
+## Safety
 
-- Legacy files become generated views.
-- Agents read decisions through supported commands or per-item files.
-- Direct edits are warned or rejected according to policy.
+- Debounce and verify stable reads.
+- Detect truncation, reorder, and partial write.
+- Treat content as untrusted data.
+- Never execute commands from queue text.
+- Avoid overwriting human edits.
+- Cap line and file size.
+- Preserve original content where safe.
+- Distinguish the source file from the requesting session.
 
-### Stage 5 — Retirement
+## Deduplication
 
-- Remove legacy dependency after sustained successful operation.
-- Preserve migration documentation and import tooling.
+Use:
 
-## File adapter safety
-
-- Watch files with debouncing and content hashes.
-- Never assume an append is complete until stable.
-- Use atomic writes for generated files.
-- Avoid overwriting human edits without conflict handling.
-- Cap file size and line length.
-- Treat file content as untrusted input.
-- Preserve original source text for audit where safe.
-- Do not execute commands found in queue text.
-
-## Identity generalization
-
-The domain model never hardcodes Felix. It uses:
-
-```text
-assignedToUserId
-assignedToRole
-answeredByUserId
-```
-
-Compatibility output can map user display names to filenames such as `NEEDS-FELIX.md`, but the UI says “Needs me” for each user.
-
-## Legacy item matching
-
-Use stable embedded IDs where possible. Otherwise combine:
-
-- source file;
+- configured source identity;
+- stable embedded ID where present;
 - content hash;
-- observed offset/version;
-- run/session context;
-- timestamp window.
+- observation revision or offset;
+- requesting role/session context;
+- timestamp window only as a last-resort signal.
 
-Matching must avoid creating duplicate questions after restart or file rewrite.
+## Conflicts
 
-## Conflict handling
+Create a visible conflict when:
 
-Examples:
+- the same item receives different answers;
+- source content changes after decision;
+- file truncation or reorder makes identity ambiguous;
+- the same question appears in several sources;
+- a question looks like an approval;
+- delivery outcome is unknown and a new answer is attempted.
 
-- Human answers in Pacium while meta writes a different legacy answer.
-- Legacy question is edited after Pacium import.
-- File is truncated or reordered.
-- Same question appears in two files.
-
-The adapter should create a visible conflict event and require resolution. It must not silently mutate an immutable decision.
+Never resolve these silently.

@@ -1,5 +1,7 @@
 # Incident response
 
+> Historical blueprint: this playbook targets the superseded remote control plane.
+
 ## Incident principles
 
 1. Protect people, credentials, source, and state first.
