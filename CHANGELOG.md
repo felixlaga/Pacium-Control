@@ -2,6 +2,30 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.5.0 — terminal tab workspace — 2026-07-27
+
+### Added
+
+- Browser-owned terminal tabs that open from sidebar selection without duplicating session references.
+- Pinning with a stable leading pinned partition.
+- Pointer drag-and-drop and `Alt+Shift+Left/Right` keyboard reordering inside pin groups.
+- View-only tab closure with deterministic adjacent selection and explicit process-survival messaging.
+- Versioned browser-local tab order and pin restoration with stale-session reconciliation.
+- Horizontally scrollable overflow and active-tab visibility recovery.
+- A scoped PC-022 issue and implementation plan.
+
+### Verified
+
+- Formatting, lint, type checking, 34 automated tests, and both production bundles pass.
+- The development UI and direct `/api/health` endpoint returned HTTP 200.
+- Tab parsing, opening, deduplication, closing, selection recovery, pinning, ordering, reconciliation, and version handling have deterministic tests.
+
+### Known limitations
+
+- Rendered browser workflow and accessibility validation remain pending because no browser backend was available.
+- The current machine ran verification on Node.js 26.4.0; the pinned Node.js 24.18.x runtime remains to be verified.
+- Split panes, richer session actions, and the command palette remain unimplemented.
+
 ## 0.4.0 — preset-aware repository sessions — 2026-07-27
 
 ### Added

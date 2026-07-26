@@ -24,10 +24,18 @@ import {
   type TransportEvent,
 } from "./transport.js";
 import {
-  adjacentSessionId,
-  displayedSessions,
+  adjacentTerminalTabId,
+  closeTerminalTab,
   groupSessions,
+  moveTerminalTab,
+  moveTerminalTabByOffset,
+  openTerminalTab,
+  parseStoredTerminalTabs,
+  reconcileTerminalTabs,
   resolveWorkspaceShortcut,
+  serializeTerminalTabs,
+  toggleTerminalTabPin,
+  type TerminalTab,
 } from "./session-model.js";
 
 interface TerminalSync {
@@ -59,23 +67,34 @@ const INITIAL_LAUNCH_PRESETS: LaunchPresetCapability[] = [
   },
 ];
 
+const TERMINAL_TABS_STORAGE_KEY = "pacium.terminalTabs";
+
 export function App() {
   const terminalRef = useRef<TerminalSurfaceHandle>(null);
   const selectedIdRef = useRef<string | null>(null);
+  const tabsRef = useRef<TerminalTab[]>([]);
   const syncRef = useRef<TerminalSync | null>(null);
   const transportRef = useRef<PaciumTransport | null>(null);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [sessionListReady, setSessionListReady] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(() =>
     window.localStorage.getItem("pacium.selectedSession"),
+  );
+  const [tabs, setTabs] = useState<TerminalTab[]>(() =>
+    parseStoredTerminalTabs(
+      window.localStorage.getItem(TERMINAL_TABS_STORAGE_KEY),
+    ),
   );
   const [defaultCwd, setDefaultCwd] = useState("");
   const [launchPresets, setLaunchPresets] = useState(INITIAL_LAUNCH_PRESETS);
   const [notice, setNotice] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [terminalCaptured, setTerminalCaptured] = useState(false);
+  const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
 
   selectedIdRef.current = selectedId;
+  tabsRef.current = tabs;
 
   const onTransportEvent = useCallback((event: TransportEvent) => {
     if (event.type === "connection") {
@@ -96,7 +115,10 @@ export function App() {
       syncRef,
       terminalRef,
       setSessions,
+      setSessionListReady,
       setSelectedId,
+      tabsRef,
+      setTabs,
       setDefaultCwd,
       setLaunchPresets,
       setNotice,
@@ -112,6 +134,36 @@ export function App() {
       transportRef.current = null;
     };
   }, [onTransportEvent]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      TERMINAL_TABS_STORAGE_KEY,
+      serializeTerminalTabs(tabs),
+    );
+  }, [tabs]);
+
+  useEffect(() => {
+    if (!sessionListReady) {
+      return;
+    }
+    const reconciled = reconcileTerminalTabs(tabs, sessions, selectedId);
+    if (!sameTerminalTabs(tabs, reconciled.tabs)) {
+      setTabs(reconciled.tabs);
+    }
+    if (selectedId !== reconciled.selectedId) {
+      setSelectedId(reconciled.selectedId);
+    }
+  }, [selectedId, sessionListReady, sessions, tabs]);
+
+  useEffect(() => {
+    if (selectedId === null) {
+      return;
+    }
+    document.getElementById(`terminal-tab-${selectedId}`)?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [selectedId, tabs]);
 
   useEffect(() => {
     if (selectedId === null) {
@@ -139,20 +191,42 @@ export function App() {
     [selectedId, sessions],
   );
   const sessionGroups = useMemo(() => groupSessions(sessions), [sessions]);
+  const tabSessions = useMemo(
+    () =>
+      tabs.flatMap((tab) => {
+        const session = sessions.find(({ id }) => id === tab.sessionId);
+        return session === undefined ? [] : [{ tab, session }];
+      }),
+    [sessions, tabs],
+  );
   const sessionShortcutNumbers = useMemo(
     () =>
       new Map(
-        displayedSessions(sessions).map((session, index) => [
-          session.id,
-          index < 9 ? index + 1 : null,
-        ]),
+        tabs.map((tab, index) => [tab.sessionId, index < 9 ? index + 1 : null]),
       ),
-    [sessions],
+    [tabs],
   );
 
   const selectSession = (sessionId: string) => {
     setNotice(null);
+    setTabs((current) => openTerminalTab(current, sessionId));
     setSelectedId(sessionId);
+  };
+
+  const closeViewTab = (sessionId: string) => {
+    const session = sessions.find(({ id }) => id === sessionId);
+    const next = closeTerminalTab(
+      tabsRef.current,
+      sessionId,
+      selectedIdRef.current,
+    );
+    setTabs(next.tabs);
+    setSelectedId(next.selectedId);
+    setNotice(
+      `${
+        session?.displayName ?? "Terminal"
+      } tab closed. Its process is still running in the sidebar.`,
+    );
   };
 
   const createSession = (input: {
@@ -213,17 +287,17 @@ export function App() {
         case "previous-session":
         case "next-session":
           setSelectedId((current) =>
-            adjacentSessionId(
-              sessions,
+            adjacentTerminalTabId(
+              tabs,
               current,
               shortcut.type === "previous-session" ? -1 : 1,
             ),
           );
           return;
         case "select-session": {
-          const session = displayedSessions(sessions)[shortcut.index];
-          if (session !== undefined) {
-            setSelectedId(session.id);
+          const tab = tabs[shortcut.index];
+          if (tab !== undefined) {
+            setSelectedId(tab.sessionId);
           }
         }
       }
@@ -233,7 +307,7 @@ export function App() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [createOpen, sessions]);
+  }, [createOpen, tabs]);
 
   return (
     <div className="app-shell">
@@ -285,7 +359,7 @@ export function App() {
                           className="session-item"
                           onClick={() => selectSession(session.id)}
                           title={`${session.commandLabel} in ${session.cwd}${
-                            sessionShortcutNumbers.get(session.id) === null
+                            sessionShortcutNumbers.get(session.id) == null
                               ? ""
                               : ` · Cmd/Ctrl ${sessionShortcutNumbers.get(
                                   session.id,
@@ -378,9 +452,160 @@ export function App() {
           </div>
         )}
 
-        <section className="terminal-panel" aria-label="Active terminal">
+        {tabSessions.length > 0 && (
+          <div className="terminal-tabs-shell">
+            <div
+              aria-label="Open terminal tabs"
+              className="terminal-tab-list"
+              role="tablist"
+            >
+              {tabSessions.map(({ tab, session }) => (
+                <div
+                  className={`terminal-tab ${
+                    session.id === selectedId ? "is-active" : ""
+                  } ${tab.pinned ? "is-pinned" : ""} ${
+                    draggedTabId === session.id ? "is-dragging" : ""
+                  }`}
+                  draggable
+                  key={session.id}
+                  onDragEnd={() => setDraggedTabId(null)}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDragStart={(event) => {
+                    setDraggedTabId(session.id);
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", session.id);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const sourceId =
+                      draggedTabId || event.dataTransfer.getData("text/plain");
+                    if (sourceId.length > 0) {
+                      setTabs((current) =>
+                        moveTerminalTab(current, sourceId, session.id),
+                      );
+                    }
+                    setDraggedTabId(null);
+                  }}
+                >
+                  <button
+                    aria-controls="active-terminal-panel"
+                    aria-selected={session.id === selectedId}
+                    className="terminal-tab-select"
+                    id={`terminal-tab-${session.id}`}
+                    onClick={() => selectSession(session.id)}
+                    onKeyDown={(event) => {
+                      if (
+                        !event.altKey &&
+                        !event.ctrlKey &&
+                        !event.metaKey &&
+                        !event.shiftKey &&
+                        (event.code === "ArrowLeft" ||
+                          event.code === "ArrowRight" ||
+                          event.code === "Home" ||
+                          event.code === "End")
+                      ) {
+                        event.preventDefault();
+                        const nextId =
+                          event.code === "Home"
+                            ? tabsRef.current[0]?.sessionId
+                            : event.code === "End"
+                              ? tabsRef.current.at(-1)?.sessionId
+                              : adjacentTerminalTabId(
+                                  tabsRef.current,
+                                  session.id,
+                                  event.code === "ArrowLeft" ? -1 : 1,
+                                );
+                        if (nextId !== undefined && nextId !== null) {
+                          selectSession(nextId);
+                          window.requestAnimationFrame(() => {
+                            document
+                              .getElementById(`terminal-tab-${nextId}`)
+                              ?.focus();
+                          });
+                        }
+                        return;
+                      }
+                      if (
+                        event.altKey &&
+                        event.shiftKey &&
+                        (event.code === "ArrowLeft" ||
+                          event.code === "ArrowRight")
+                      ) {
+                        event.preventDefault();
+                        setTabs((current) =>
+                          moveTerminalTabByOffset(
+                            current,
+                            session.id,
+                            event.code === "ArrowLeft" ? -1 : 1,
+                          ),
+                        );
+                      }
+                    }}
+                    role="tab"
+                    tabIndex={session.id === selectedId ? 0 : -1}
+                    title={`${session.displayName} · Alt Shift Left/Right reorders inside ${
+                      tab.pinned ? "pinned" : "regular"
+                    } tabs`}
+                    type="button"
+                  >
+                    <StatusDot state={session.processState} />
+                    <span className="terminal-tab-copy">
+                      <strong>{session.displayName}</strong>
+                      <small>{session.commandLabel}</small>
+                    </span>
+                  </button>
+                  <button
+                    aria-label={`${tab.pinned ? "Unpin" : "Pin"} ${
+                      session.displayName
+                    } tab`}
+                    aria-pressed={tab.pinned}
+                    className="terminal-tab-action"
+                    onClick={() =>
+                      setTabs((current) =>
+                        toggleTerminalTabPin(current, session.id),
+                      )
+                    }
+                    title={tab.pinned ? "Unpin tab" : "Pin tab"}
+                    type="button"
+                  >
+                    <span aria-hidden="true">{tab.pinned ? "◆" : "◇"}</span>
+                  </button>
+                  <button
+                    aria-label={`Close ${session.displayName} tab; terminal keeps running`}
+                    className="terminal-tab-action close-tab-action"
+                    onClick={() => closeViewTab(session.id)}
+                    title="Close tab · terminal keeps running"
+                    type="button"
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <section
+          aria-label="Active terminal"
+          aria-labelledby={
+            selectedSession === null
+              ? undefined
+              : `terminal-tab-${selectedSession.id}`
+          }
+          className="terminal-panel"
+          id="active-terminal-panel"
+          role="tabpanel"
+        >
           {selectedSession === null ? (
-            <EmptyWorkspace onCreate={() => setCreateOpen(true)} />
+            <EmptyWorkspace
+              onCreate={() => setCreateOpen(true)}
+              onOpenRunning={
+                sessions[0] === undefined
+                  ? undefined
+                  : () => selectSession(sessions[0]!.id)
+              }
+              runningSessionCount={sessions.length}
+            />
           ) : (
             <>
               <div className="terminal-chrome">
@@ -491,7 +716,10 @@ function applyServerMessage(
   syncRef: React.MutableRefObject<TerminalSync | null>,
   terminalRef: React.MutableRefObject<TerminalSurfaceHandle | null>,
   setSessions: React.Dispatch<React.SetStateAction<SessionSummary[]>>,
+  setSessionListReady: React.Dispatch<React.SetStateAction<boolean>>,
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>,
+  tabsRef: React.MutableRefObject<TerminalTab[]>,
+  setTabs: React.Dispatch<React.SetStateAction<TerminalTab[]>>,
   setDefaultCwd: React.Dispatch<React.SetStateAction<string>>,
   setLaunchPresets: React.Dispatch<
     React.SetStateAction<LaunchPresetCapability[]>
@@ -505,6 +733,7 @@ function applyServerMessage(
       return;
     case "session.list":
       setSessions(message.sessions);
+      setSessionListReady(true);
       setSelectedId((current) => {
         if (
           current !== null &&
@@ -512,11 +741,15 @@ function applyServerMessage(
         ) {
           return current;
         }
-        return message.sessions[0]?.id ?? null;
+        const restoredTab = tabsRef.current.find((tab) =>
+          message.sessions.some(({ id }) => id === tab.sessionId),
+        );
+        return restoredTab?.sessionId ?? message.sessions[0]?.id ?? null;
       });
       return;
     case "session.created":
       setSessions((current) => upsertSession(current, message.session));
+      setTabs((current) => openTerminalTab(current, message.session.id));
       setSelectedId(message.session.id);
       return;
     case "session.updated":
@@ -527,8 +760,14 @@ function applyServerMessage(
       setSessions((current) =>
         current.filter(({ id }) => id !== message.sessionId),
       );
-      if (selectedIdRef.current === message.sessionId) {
-        setSelectedId(null);
+      {
+        const next = closeTerminalTab(
+          tabsRef.current,
+          message.sessionId,
+          selectedIdRef.current,
+        );
+        setTabs(next.tabs);
+        setSelectedId(next.selectedId);
       }
       return;
     case "terminal.snapshot": {
@@ -733,22 +972,50 @@ function CreateTerminalDialog({
   );
 }
 
-function EmptyWorkspace({ onCreate }: { onCreate: () => void }) {
+function EmptyWorkspace({
+  onCreate,
+  onOpenRunning,
+  runningSessionCount,
+}: {
+  onCreate: () => void;
+  onOpenRunning: (() => void) | undefined;
+  runningSessionCount: number;
+}) {
+  const hasRunningSessions = runningSessionCount > 0;
   return (
     <div className="empty-workspace">
       <div className="empty-glyph" aria-hidden="true">
         &gt;_
       </div>
-      <h2>Your terminal workspace is ready</h2>
+      <h2>
+        {hasRunningSessions
+          ? "No terminal tabs are open"
+          : "Your terminal workspace is ready"}
+      </h2>
       <p>
-        Open a shell for a project. Refreshing the browser reconnects to the
-        same process while the local server stays running.
+        {hasRunningSessions
+          ? `${runningSessionCount} ${
+              runningSessionCount === 1 ? "terminal is" : "terminals are"
+            } still running safely in the sidebar.`
+          : "Open a shell for a project. Refreshing the browser reconnects to the same process while the local server stays running."}
       </p>
-      <button className="primary-button" onClick={onCreate} type="button">
-        Open first terminal
-      </button>
+      {hasRunningSessions && onOpenRunning !== undefined ? (
+        <button
+          className="primary-button"
+          onClick={onOpenRunning}
+          type="button"
+        >
+          Reopen running terminal
+        </button>
+      ) : (
+        <button className="primary-button" onClick={onCreate} type="button">
+          Open first terminal
+        </button>
+      )}
       <span className="shortcut-hint">
-        Cmd/Ctrl Shift T opens this launcher from anywhere in the workspace.
+        {hasRunningSessions
+          ? "Closing a tab never stops its terminal process."
+          : "Cmd/Ctrl Shift T opens this launcher from anywhere in the workspace."}
       </span>
     </div>
   );
@@ -803,5 +1070,16 @@ function isEditableTarget(target: EventTarget | null): boolean {
     target instanceof HTMLTextAreaElement ||
     target instanceof HTMLSelectElement ||
     (target instanceof HTMLElement && target.isContentEditable)
+  );
+}
+
+function sameTerminalTabs(left: TerminalTab[], right: TerminalTab[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every(
+      (tab, index) =>
+        tab.sessionId === right[index]?.sessionId &&
+        tab.pinned === right[index]?.pinned,
+    )
   );
 }

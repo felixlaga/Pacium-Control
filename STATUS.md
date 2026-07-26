@@ -1,6 +1,6 @@
 # Project status
 
-**Current phase:** First local-terminal vertical slice implemented; browser review and runtime-matrix validation pending.
+**Current phase:** Core multi-session terminal workspace in progress; browser review and runtime-matrix validation pending.
 
 Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
 
@@ -38,14 +38,15 @@ The secondary product is **Pacium mode**:
 - A fixed server-owned Shell, Codex, and Claude Code launch catalog with honest executable availability.
 - Canonical repository-root discovery and repository-grouped session navigation.
 - Keyboard commands for session creation, numbered selection, previous/next selection, and leaving terminal capture.
-- Contract, configuration, security, preset, repository, grouping, fake-PTY, real-PTY, and WebSocket reconnect tests.
+- Browser-owned terminal tabs with pinning, pointer/keyboard reordering, view-only close, stale-session reconciliation, and versioned local restoration.
+- Contract, configuration, security, preset, repository, grouping, tab-state, fake-PTY, real-PTY, and WebSocket reconnect tests.
 
 ## What is not present
 
 - No packaged `pacium` launcher or release artifact.
 - No durable session restoration after local-server restart.
 - No browser-driven test or completed visual/accessibility review in the current environment.
-- No durable workspace configuration, tabs, splits, command palette, or complete keyboard model.
+- No durable workspace configuration, splits, command palette, or complete keyboard model.
 - No Claude or Codex observer.
 - No Git inspector.
 - No functional Pacium mode; the toggle is visibly marked as upcoming.
@@ -60,7 +61,7 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm test`: 9 files and 27 tests passed, including preset resolution, repository discovery, grouping and shortcut logic, a real `node-pty` shell, and a disconnect/reconnect snapshot test.
+- `pnpm test`: 9 files and 34 tests passed, including preset resolution, repository discovery, grouping, terminal-tab transitions, shortcut logic, a real `node-pty` shell, and a disconnect/reconnect snapshot test.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and proxied health route both returned 200.
 - The live protocol-version-2 welcome message advertised Shell, Codex, and Claude Code as available on this machine.
@@ -71,10 +72,10 @@ Evidence boundaries:
 
 - The current shell exposed Node.js `26.4.0`, not the approved Node.js `24.18.x`; the commands passed with an engine warning, so the supported runtime remains unverified.
 - No in-app browser backend was available, so create/type/refresh/close has not been validated through the rendered UI.
-- Git commands remain blocked by the unaccepted Xcode license, so `git diff --check` and normal branch-state evidence are unavailable.
+- The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 621 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
+- The current web bundle is 626 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
 
 ## Active decisions
 
@@ -102,4 +103,4 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Finish the pinned Node.js 24 clean-install, CI, browser, security, and sustained-output gates. Then build terminal tabs, splits, richer session actions, and the command palette before agent-aware status and Pacium mode.
+Finish the pinned Node.js 24 clean-install, CI, browser, security, and sustained-output gates. Then build split panes, richer session actions, and the command palette before agent-aware status and Pacium mode.
