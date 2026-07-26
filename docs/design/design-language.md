@@ -1,166 +1,149 @@
 # Design language
 
-## Design intent
+## Direction
 
-Pacium Control should feel calm, precise, dense, and fast. The visual system is inspired by the operational clarity of products such as Linear without copying their identity.
+Pacium should feel calm, precise, fast, and intentionally organized. The reference is the interaction discipline of products such as Linear: strong hierarchy, dense but readable information, restrained chrome, consistent actions, contextual commands, and keyboard speed.
 
-The design must hold up under real load: many repositories, active runs, questions, agents, failures, and usage warnings. Decorative emptiness is not the target.
+Pacium must not copy Linear’s brand, iconography, exact colors, or component styling.
 
-## Experience qualities
+Useful reference principles:
 
-### Calm
+- [Linear UI refresh](https://linear.app/changelog/2026-03-12-ui-refresh)
+- [How Linear redesigned its UI](https://linear.app/now/how-we-redesigned-the-linear-ui)
+- [Linear concepts and action model](https://linear.app/docs/conceptual-model)
 
-Activity should not feel like alarm. Motion is restrained. Severity is earned. Background work is visible without competing with items that need a human.
+## Visual hierarchy
 
-### Legible
+The visual priority is:
 
-Names, ownership, state, freshness, and next action should be readable at a glance. Avoid clever labels and ambiguous icons.
+1. focused terminal or decision;
+2. attention state and immediate action;
+3. contextual work such as diff or activity;
+4. navigation and orientation;
+5. secondary metadata.
 
-### Direct
+The sidebar should be quieter than the terminal canvas. The inspector should never compete with the selected work unless it contains an active queue item.
 
-Common actions are one or two interactions away. Keyboard flows are first-class. The product should feel attached to the underlying machines, not like a delayed reporting dashboard.
+## Color
 
-### Trustworthy
+Use a neutral foundation with one restrained accent.
 
-The UI distinguishes observed, inferred, stale, unavailable, and failed state. It shows consequences before privileged actions and confirms delivery afterward.
+Semantic colors are reserved for:
 
-### Technical without being ugly
+- needs input;
+- failure;
+- success/completion;
+- warning/stale;
+- selected/focused state.
 
-The product can expose branches, commits, commands, panes, and context windows while maintaining hierarchy and typography. Technical density is not an excuse for visual noise.
+Color always pairs with text, shape, or icon. Provider identity should use labels and icons, not broad colored surfaces.
 
-## Layout
+Both dark and light themes are first-class. Dark mode should not collapse into pure black panels separated by bright borders. Light mode should retain enough contrast for dense terminal-adjacent information.
 
-### Left rail
+## Surfaces and borders
 
-- fixed workspace context;
-- global navigation;
-- compact status indicators;
-- collapsible repository favorites;
-- user and system status at the bottom.
-
-### Main area
-
-Supports list, board, timeline, diff, and focused detail layouts. Tables should preserve column alignment and keyboard navigation.
-
-### Inspector
-
-A contextual right panel for quick decisions. It should not duplicate an entire page. Selection state must be shareable only when appropriate; deep objects receive stable URLs.
-
-### Terminal drawer
-
-Hidden by default, resizable, and capable of full-screen expansion. The drawer header always displays session, host, role, provider, repository, run, control owner, and connection state.
+- Prefer subtle tonal separation over stacked cards.
+- Use borders sparingly to express real containment or focus.
+- Keep corner radii modest and consistent.
+- Avoid floating glass, heavy shadows, gradients, and decorative glow.
+- Terminal splits use a clear focused edge and quiet unfocused dividers.
+- Dense lists use alignment and rhythm rather than card boxes.
 
 ## Typography
 
-Use a neutral, high-legibility sans-serif for interface text and a carefully chosen monospace font for terminal, commands, branches, hashes, and code.
+Use two coordinated families:
 
-Hierarchy should rely on size, weight, spacing, and placement before color.
+- interface sans for navigation, labels, metadata, queue items, and inspector;
+- terminal monospace for PTYs, commands, paths, hashes, and diffs.
 
-Suggested scale:
+The hierarchy should rely on weight, size, and contrast—not many unrelated styles.
 
-- Page title: 24–28px.
-- Section title: 16–18px.
-- Body: 13–15px.
-- Dense table: 12–13px.
-- Metadata: 11–12px.
-- Terminal: user-configurable, default 13–14px.
+Suggested levels:
 
-## Color semantics
+- 12 px compact metadata;
+- 13 px dense rows and controls;
+- 14 px default interface text;
+- 16–18 px screen or inspector title;
+- configurable terminal font, default approximately 13–14 px.
 
-Use a restrained neutral base with semantic accents.
+## Spacing and density
 
-### Role accents
+Use a compact 4 px base grid.
 
-- Meta: violet.
-- Orchestrator: amber.
-- Worker: blue.
-- Reviewer: teal.
-- Generic terminal: slate.
+- Dense rows: 28–32 px.
+- Standard controls: 32–36 px.
+- Panel padding: 8–12 px.
+- Major section separation: 16–24 px.
 
-### State accents
+Density is controlled, not cramped. Alignment, baseline consistency, and predictable hit targets matter more than minimizing every pixel.
 
-- Working: blue or neutral animated indicator.
-- Waiting on human: orange.
-- Waiting on agent/dependency: amber.
-- Verifying: indigo.
-- Review ready: teal.
-- Completed: green.
-- Failed or blocked: red.
-- Disconnected or stale: grey with explicit label.
+## Layout
 
-Color must always be paired with text, icon, or shape.
+The desktop layout has:
 
-## Naming pattern
+- compact top bar;
+- 220–280 px session sidebar;
+- dominant flexible terminal canvas;
+- 320–440 px collapsible inspector;
+- optional compact status bar.
 
-Display names should lead with human context:
-
-```text
-Checkout API · Orchestrator · Claude
-Web App · Worker 02 · Codex
-Platform · Reviewer · Claude
-```
-
-Avoid exposing raw tmux identifiers as the main label.
-
-## Density
-
-Support at least two density modes:
-
-- Comfortable for normal use.
-- Compact for operators managing many runs.
-
-Density changes spacing, not information hierarchy or accessibility.
+Panels resize within minimum and maximum limits. The main terminal never becomes an unusably narrow strip merely to preserve the inspector.
 
 ## Motion
 
-Use motion only to explain change:
+- Motion explains state change, focus, panel movement, or item insertion.
+- Keep transitions short and interruptible.
+- Do not animate continuous terminal activity.
+- Respect reduced motion.
+- Avoid celebratory or decorative motion in the work surface.
 
-- newly arrived Inbox item;
-- state transition;
-- terminal drawer opening;
-- control lease change;
-- progress update.
+## Icons
 
-Avoid continuously pulsing every live agent. One subtle activity signal is enough.
+- Use one coherent icon set.
+- Prefer 14–16 px icons in dense controls.
+- Every semantic icon has a label or accessible name.
+- Use filled/stronger variants sparingly for active attention.
+- Provider marks remain visually subordinate to session and state.
 
-## Copy style
+## Interaction consistency
 
-Copy should be concise, specific, and operational.
+Frequent actions should be available through the same four paths where appropriate:
+
+1. visible button;
+2. contextual menu;
+3. keyboard shortcut;
+4. command palette.
+
+The command palette ranks actions for the active context. Context menus display shortcuts to teach the keyboard model.
+
+## Copy
+
+Copy is concise and operational.
 
 Good:
 
-> Waiting for Felix to approve `terraform apply` on staging.
+> Codex is waiting for input.
+
+> Terminal disconnected. The process is still running.
+
+> Direct PTY ended when the local server stopped.
 
 Weak:
 
-> This agent requires your attention.
-
-Good:
-
-> Terminal control expired. The session is still running.
-
-Weak:
+> Agent attention required.
 
 > Something went wrong.
 
-Errors should explain what happened, what survived, and the next safe action.
-
-## Empty and loading states
-
-Avoid generic spinners when a skeleton or explicit connection state is more informative. Empty states should confirm whether the system is healthy.
-
-Examples:
-
-- “No questions need you. Five agents are working.”
-- “No sessions discovered on this host. Broker last contacted 12 seconds ago.”
-- “Native Claude telemetry is unavailable; terminal observation is connected.”
+Errors state what happened, what survived, and the next action.
 
 ## Design review questions
 
-- Can the operator identify the next action in under five seconds?
-- Is uncertainty visible?
-- Does the screen remain legible with ten times the sample data?
-- Is keyboard focus obvious?
-- Is any color carrying meaning alone?
-- Can a dangerous action be triggered accidentally?
-- Does the terminal feel like an escape hatch rather than the default?
+- Is the terminal or active decision visually dominant?
+- Can the operator find the session needing attention within five seconds?
+- Does inactive navigation recede?
+- Are controls located consistently across screens?
+- Can every frequent action be performed by keyboard?
+- Is terminal focus unmistakable?
+- Does every status state its source and freshness where relevant?
+- Does the layout remain legible with twenty sessions?
+- Is any decorative element competing with work?

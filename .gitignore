@@ -1,11 +1,14 @@
 # Future application dependencies and build output
 node_modules/
+.pnpm-store/
 dist/
 build/
 coverage/
 .turbo/
 .next/
 .vite/
+playwright-report/
+test-results/
 
 # Environment and credentials
 .env

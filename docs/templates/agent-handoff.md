@@ -33,8 +33,8 @@
 ## Verification performed
 
 | Command/check | Commit/worktree | Result | Evidence |
-|---|---|---|---|
-| | | | |
+| ------------- | --------------- | ------ | -------- |
+|               |                 |        |          |
 
 ## Decisions that matter
 

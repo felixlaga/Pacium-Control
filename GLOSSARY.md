@@ -1,171 +1,77 @@
 # Glossary
 
-Canonical vocabulary keeps product, code, and operations aligned.
+## Attention state
 
-## Agent
+The operator-facing assessment of whether a session is working, waiting, needs input, finished, failed, stale, or unknown. It always has a source and freshness.
 
-A logical actor performing work. In Pacium, an agent is represented by an `AgentSession` linked to a provider process or generic terminal session.
+## Direct PTY
 
-## Agent session
+A pseudoterminal created and owned by the Pacium local server. It survives browser disconnect but not local-server exit.
 
-A durable Pacium identity for a live or historical session, including host, tmux target, role, provider, repository, run, branch, and worktree.
+## Inspector
 
-## Acknowledged
+The contextual right panel showing session overview, Git changes, activity, or Pacium queue details.
 
-A decision or prompt has been received by the intended workflow or agent. It does not imply the instruction was applied successfully.
+## Launch preset
 
-## Applied
+A typed local definition for starting a shell, Claude Code, Codex, or another configured command.
 
-A decision has been acted upon, with an explanation or evidence of the result.
+## Local access token
 
-## Approval request
+An unguessable token used with Origin validation to protect the localhost browser-to-shell boundary. It is not a remote authentication system.
 
-A request for permission to perform a concrete action. It includes risk, scope, target, duration, and execution context.
+## Meta
 
-## Broker
-
-The narrow privileged service that controls tmux, PTYs, approved Git operations, and provider CLI processes. The web process does not access tmux directly.
-
-## Command
-
-A validated request to mutate Pacium state or perform an operation. Commands carry identity, authorization context, and an idempotency key.
-
-## Control lease
-
-An expiring grant allowing one human to write to a terminal pane. Observation does not require a write lease.
-
-## Decision
-
-An immutable human response to a question or approval request.
-
-## Evidence
-
-Deterministic support for a claim: diff, commit, check result, artifact, log, screenshot, or explicit waiver.
-
-## Event
-
-An append-only record that something happened. Events are historical facts, not mutable current state.
-
-## Execution identity
-
-The provider or operating-system credential context that performs work. It is distinct from the human operator who requested or approved the work.
-
-## Freshness
-
-How recently Pacium received a meaningful signal about an agent, session, host, or adapter.
-
-## Generic workspace
-
-The non-Pacium view for arbitrary tmux sessions and host operations.
-
-## Handoff
-
-A structured transfer of task context and evidence between agents or providers.
-
-## Host
-
-A machine capable of running tmux sessions, repositories, and provider CLIs.
-
-## Inbox
-
-A user-specific queue of questions, approvals, failures, and review requests requiring attention.
-
-## Inferred state
-
-A status derived from indirect signals such as terminal output or process activity rather than a provider-native event.
-
-## Integration task
-
-A distinct task that merges, rebases, resolves conflicts, or validates worker output against an integration branch.
-
-## Meta agent
-
-The human-facing synthesis and steering layer. It explains state, enriches questions, and routes instructions without becoming the sole decision transport.
-
-## Native event
-
-A structured event produced by a provider-supported protocol.
-
-## Operator
-
-A human authorized to steer work or control selected sessions.
+The Pacium role focused on human-facing synthesis, clarification, and steering.
 
 ## Orchestrator
 
-The agent responsible for run planning, task assignment, dependency management, integration, escalation, and completion evidence.
+The Pacium role coordinating the existing workflow, workers, queue items, and completion evidence.
 
-## Pacium workspace
+## Pacium mode
 
-The opinionated workspace implementing the meta/orchestrator/worker workflow.
+The specialized workspace presentation that pins Meta and Orchestrator and adds queue, worker, objective, decision, and evidence context.
 
-## Plan step
+## PTY
 
-A revisioned element of a run plan. Plan progress is not the same as provider quota or context consumption.
+A pseudoterminal connecting the local server to an interactive shell or CLI application.
 
-## Projection
+## Queue item
 
-A rebuildable materialized view derived from authoritative entities and events.
+A question, approval, failure, review request, or unknown item observed from a configured Pacium source.
 
-## Prompt
+## Runtime kind
 
-A durable structured instruction targeted at an agent or workflow level, with delivery lifecycle and idempotency.
+The terminal process substrate: direct PTY initially, or optional tmux-backed session.
 
-## Provider
+## Session
 
-A coding-agent system such as Claude Code or Codex.
+A local terminal with immutable Pacium identity, working directory, process lifecycle, attention state, and optional repository and agent classification.
 
-## Provider adapter
+## Source confidence
 
-The component translating provider-specific CLI protocols and events into Pacium operations and domain state.
+Metadata explaining whether status came from provider-native events, hooks, process observation, terminal inference, or human classification.
 
-## Question
+## Terminal capture
 
-A request for human judgment or direction. Unlike an approval, it does not directly authorize a concrete privileged action.
+The focus state in which keyboard input goes to the selected terminal rather than Pacium application shortcuts.
 
-## Repository
+## tmux-backed session
 
-A configured Git repository and its Pacium policy, roots, verification commands, and access scope.
+An optional terminal attached to or launched under tmux so it may survive local-server restart.
 
-## Review bundle
+## Verification preset
 
-The evidence package presented for human or independent-agent review.
+An explicit configured command for checking a repository, with bounded output and observed Git context.
 
-## Revision
+## Worker
 
-A monotonically increasing version used for optimistic checks, event ordering, and user unread cursors.
-
-## Run
-
-A coordinated unit of work with an objective, participants, tasks, plan, decisions, and evidence.
-
-## Session manifest
-
-The durable description required to explain or recreate an agent session after process or host loss.
-
-## State coordinator
-
-The single authoritative writer for central Pacium entity and event state.
-
-## Structured action
-
-A typed product operation such as answering a question or sending a prompt, as opposed to raw terminal input.
-
-## Tailnet
-
-The private Tailscale network through which Pacium is normally accessed.
-
-## Task
-
-A bounded work assignment with one owner, acceptance criteria, dependencies, and evidence.
-
-## Terminal drawer
-
-The collapsible raw terminal surface available as an escape hatch within the web application.
-
-## Worktree
-
-A Git working directory tied to a branch. Each coding worker receives a separate worktree.
+A coding-agent terminal classified as a worker in Pacium mode.
 
 ## Workspace
 
-A navigation, policy, membership, and state boundary within Pacium Control.
+A local organizational container for repositories, terminal sessions, preferences, and optional Pacium configuration.
+
+## Worktree
+
+A Git checkout associated with a branch. Concurrent coding workers must not share one mutable worktree.

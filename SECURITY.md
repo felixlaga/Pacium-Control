@@ -1,245 +1,111 @@
 # Security
 
-Pacium Control is a remote operations surface over powerful developer tools. Security is part of the product architecture, not a deployment afterthought.
+Pacium Control exposes local shells and coding agents in a browser. Localhost reduces exposure but does not make unsafe browser-to-shell behavior acceptable.
 
 ## Security goals
 
-1. Only authorized tailnet users can access the application.
-2. Users see and control only permitted workspaces, repositories, hosts, and sessions.
-3. The web process cannot directly control tmux or arbitrary host processes.
-4. Terminal access is explicit, narrow, attributable, and revocable.
-5. Provider credentials remain outside Pacium durable state.
-6. Human decisions and privileged actions are auditable.
-7. A compromised browser session has bounded authority.
-8. State corruption, replay, and duplicate delivery are detectable and recoverable.
-9. Public network exposure is absent by default.
-10. Security degradation is visible rather than silently permissive.
+1. The initial server is reachable only through loopback.
+2. Unrelated browser origins cannot control Pacium terminals.
+3. Terminal output cannot inject application HTML or unsafe navigation.
+4. Commands, paths, and launch presets are explicit and bounded.
+5. Provider credentials remain in provider-owned stores.
+6. Logs and saved state do not become a secret-bearing transcript archive.
+7. Queue answers and approvals are attributable and cannot be confused.
+8. Failure preserves repositories and reports which processes survived.
 
-## Threat model
+## Trust model
 
-### Protected assets
+The first product has one operator and runs with that user’s operating-system authority. It does not attempt to sandbox the user from their own terminals.
 
-- source repositories and uncommitted changes;
-- provider credentials and subscription access;
-- shell access to execution hosts;
-- deployment and infrastructure credentials;
-- terminal output that may contain secrets;
-- human decisions and approval policies;
-- audit history;
-- state files and backups;
-- Tailscale identity headers and application sessions.
+Untrusted inputs still include:
 
-### Adversaries and failure sources
+- web pages attempting cross-origin local requests;
+- terminal output and escape sequences;
+- repository contents;
+- agent-generated commands and links;
+- queue-file contents;
+- malformed provider events;
+- paths outside configured workspaces;
+- oversized or rapidly repeated WebSocket messages.
 
-- an unauthorized tailnet member;
-- an authorized user exceeding their intended role;
-- a malicious or compromised browser;
-- cross-site WebSocket or request abuse;
-- a compromised coding agent or prompt injection;
-- an overbroad approval policy;
-- a vulnerable dependency;
-- a compromised host agent;
-- accidental secret logging;
-- stale credentials or revoked users;
-- filesystem tampering or partial writes;
-- misconfigured public firewall or reverse proxy.
+## Local network boundary
 
-## Network boundary
+- Bind to `127.0.0.1` by default.
+- Validate the resolved listening address at startup.
+- Never fall back silently to `0.0.0.0`.
+- Reject untrusted `Origin` headers for HTTP mutations and WebSocket upgrades.
+- Require an unguessable local access token for mutating and terminal connections.
+- Do not put reusable tokens in logs, terminal output, or durable shared URLs.
+- Set a restrictive Content Security Policy and self-host all terminal-route assets.
 
-Production deployment should use Tailscale Serve as the normal HTTPS ingress. The web/API process binds to loopback. Public Hetzner firewall rules should not expose the application or broker ports.
+Remote access is unsupported until a new trust-boundary design is accepted.
 
-The application must not trust arbitrary incoming identity headers. It should accept verified identity only from the configured local Tailscale proxy boundary and reject production startup when that boundary is inconsistent.
+## PTY and process safety
 
-A separate break-glass administration path may exist, but it must be narrow, documented, and tested.
+- Run child processes with the invoking user’s privileges; never request root.
+- Track process groups so interrupt, terminate, and cleanup target the intended session.
+- Make graceful interrupt and force termination visibly distinct.
+- Confirm destructive close actions when work may be lost.
+- Use typed launch presets for reusable agent commands.
+- Do not expose an unauthenticated generic command endpoint.
+- Validate working directories and repository roots.
+- Bound environment inheritance and never persist complete environments.
 
-## Identity and authorization
+## Browser terminal safety
 
-### Identity
+- Treat terminal bytes, titles, OSC sequences, hyperlinks, and clipboard requests as untrusted.
+- Never insert terminal strings as HTML.
+- Disable or confirm unsafe link protocols.
+- Do not permit silent clipboard writes.
+- Bound terminal output buffers and WebSocket frames.
+- Avoid analytics and session replay on terminal surfaces.
+- Keep application shortcuts distinct from terminal input focus.
 
-Tailscale user identity is mapped to a Pacium user. A source IP is a device address, not a person.
+## Agent and repository risk
 
-### Authorization
+Coding agents process untrusted repository instructions. The interface must:
 
-Authorization is evaluated for every server-side action using:
+- identify agent-generated actions;
+- show exact command or consequence for approvals;
+- avoid blanket approval policies;
+- keep ordinary questions separate from privileged approvals;
+- avoid executing commands parsed from queue or repository text;
+- show Git and verification evidence independently of agent narration.
 
-- workspace membership;
-- repository scope;
-- host scope where required;
-- role;
-- action type;
-- object state;
-- approval or terminal lease where applicable.
-
-Suggested roles:
-
-| Role | Typical authority |
-|---|---|
-| Viewer | Read structured state and redacted evidence |
-| Operator | Send structured prompts and operate allowed sessions |
-| Approver | Answer assigned questions and approve permitted action classes |
-| Owner | Manage access, raw terminal, policies, destructive controls |
-
-Roles are a starting point, not a substitute for object-level policy.
-
-## Privilege separation
-
-### Web/API process
-
-Must not have:
-
-- tmux socket access;
-- provider credential files;
-- unrestricted repository write access;
-- arbitrary shell execution;
-- root privileges.
-
-### State coordinator
-
-May write only within the configured Pacium state directory. It validates schemas, authorization context, revisions, and idempotency.
-
-### Broker
-
-Runs as a dedicated non-root user. It accesses only designated tmux servers, repository roots, worktree roots, and approved tools. Its RPC protocol is typed and allowlisted.
-
-### Execution identities
-
-Provider credentials belong to explicit execution identities. Operator identity, approver identity, and execution identity are separately recorded.
-
-## tmux security
-
-Access to a tmux socket is effectively control over every session in that tmux server. Therefore:
-
-- use a dedicated tmux server or Unix identity for Pacium-managed sessions where practical;
-- do not expose the socket to the web process;
-- do not mount it into broad containers;
-- route operations through the broker;
-- treat session classification as security-sensitive;
-- avoid mixing highly sensitive unrelated shells into the same managed tmux server.
-
-## Browser terminal security
-
-The terminal route is high risk because page JavaScript can observe output and keystrokes.
-
-Requirements:
-
-- self-host all JavaScript, fonts, and styles used on the terminal page;
-- no analytics, session replay, advertising, or chat widgets;
-- strict Content Security Policy;
-- secure, HTTP-only, same-site cookies;
-- short-lived, single-use terminal grants;
-- independent WebSocket authentication and origin checks;
-- expiring terminal write leases;
-- output treated as untrusted content;
-- no unsafe HTML insertion from terminal titles or hyperlinks;
-- explicit user-visible control owner;
-- immediate revocation on membership or lease change;
-- bounded scrollback retention;
-- secret-aware logging and optional redaction.
-
-## Agent and prompt-injection risk
-
-Coding agents process untrusted repository content. A malicious file can attempt to influence an agent into requesting or performing unsafe actions.
-
-Controls:
-
-- least-privilege worktree and command scope;
-- structured approval requests with exact action context;
-- no blanket “allow all” policy;
-- run-scoped and expiring grants;
-- independent validation of broker operations;
-- visible provenance for instructions and repository content;
-- human review for high-risk commands;
-- no agent ability to alter its own authorization policy.
-
-## Secrets
-
-Pacium state stores references and metadata, not secrets.
+## Secrets and retention
 
 Never persist:
 
 - provider access tokens;
-- Tailscale auth keys;
-- SSH private keys;
-- cloud credentials;
-- full environment dumps;
+- SSH keys;
 - password input;
-- unredacted terminal streams indefinitely.
+- full environment dumps;
+- unlimited raw terminal transcripts;
+- unredacted queue data known to contain secrets.
 
-Use operating-system permissions, provider credential stores, or dedicated secret tooling. Backups exclude credential material.
+Prefer bounded in-memory scrollback. If diagnostic export is added, it must be explicit, previewable, and redactable.
 
-## Questions and approvals
+## Queue safety
 
-A question is not permission. An approval is not a general conversation.
+- Treat queue files as untrusted text.
+- Use stable source identity and hashes for deduplication.
+- Never overwrite ambiguous human edits silently.
+- Distinguish questions from approvals.
+- Record answer provenance and delivery result.
+- Surface conflicts instead of choosing one answer automatically.
 
-Approval records must include:
+## Required security tests
 
-- requested action;
-- host;
-- repository and worktree;
-- tool or command;
-- reason;
-- risk;
-- scope and duration;
-- approver;
-- decision;
-- execution result.
+- non-loopback reachability;
+- hostile Origin and missing/invalid token;
+- oversized and malformed WebSocket messages;
+- terminal title, link, clipboard, and escape-sequence injection;
+- path traversal and symlink escape;
+- process-group interrupt and termination;
+- duplicate terminal input after reconnect;
+- queue content interpreted as data, never executable code;
+- secret scanning of logs and persisted state.
 
-Policy-derived approval must record the exact policy revision used.
+## Future expansion
 
-## Audit
-
-Audit events should include:
-
-- actor user;
-- requesting agent/session;
-- execution identity;
-- workspace, repository, run, and host;
-- action type;
-- target;
-- timestamp;
-- result;
-- reason or decision;
-- relevant policy revision;
-- payload hash where retaining raw payload is unsafe.
-
-Audit history is append-only. Redaction must preserve evidence that redaction occurred.
-
-## Filesystem state security
-
-- State directory owner and mode are validated at startup.
-- Symlink traversal is forbidden.
-- Paths are constructed from validated IDs, not user input.
-- Writes use atomic replacement.
-- Event lines include integrity fields or are covered by snapshot manifests.
-- Backups are checksummed and optionally encrypted.
-- Restore validates format version and references before activation.
-- Unknown or corrupt files are quarantined.
-- Materialized projections can be deleted and rebuilt.
-
-## Supply chain
-
-- Lock dependency versions.
-- Use supported runtimes.
-- Review high-risk terminal and WebSocket dependencies.
-- Generate a software bill of materials for releases.
-- Run dependency and secret scanning in CI.
-- Do not execute arbitrary install scripts without review.
-- Reproducible clean-clone builds are a release gate.
-
-## Incident response
-
-Security incidents follow [the incident response playbook](docs/operations/incident-response.md). Immediate actions may include:
-
-- pause workspace coordination;
-- revoke user membership;
-- revoke terminal grants;
-- stop host-agent routing;
-- rotate provider credentials;
-- preserve state and audit evidence;
-- isolate affected tmux servers or hosts;
-- restore from verified backup;
-- document impact and corrective action.
-
-## Reporting
-
-Until a formal security contact exists, report security issues privately to the repository owner. Do not open a public issue containing exploit details, credentials, or sensitive host information.
+Remote access, team use, shared machines, or multi-host operation would materially change the threat model. Those capabilities require a new ADR, authentication and authorization design, privilege separation review, and migration plan.

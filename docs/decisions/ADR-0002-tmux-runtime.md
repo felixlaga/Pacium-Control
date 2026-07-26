@@ -1,6 +1,6 @@
 # ADR-0002: Keep tmux as the session runtime
 
-- Status: Accepted
+- Status: Superseded by [ADR-0013](ADR-0013-local-pty-runtime.md)
 - Date: 2026-07-20
 
 ## Context

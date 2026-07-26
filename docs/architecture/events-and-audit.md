@@ -1,5 +1,7 @@
 # Events and audit
 
+> Historical blueprint: the generalized entity/event/state-coordinator model is superseded by [ADR-0015](../decisions/ADR-0015-minimal-local-state.md).
+
 ## Event model
 
 Events answer “what happened?” Entities answer “what is true now?”

@@ -1,5 +1,7 @@
 # Operator runbook
 
+> Historical blueprint: use the active local architecture and first-build plan until a local operator runbook is written.
+
 This runbook defines routine operational actions once the product exists.
 
 ## Check system health

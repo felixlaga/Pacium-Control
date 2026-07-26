@@ -1,711 +1,275 @@
 # Implementation backlog
 
-This backlog is intentionally detailed enough for autonomous agents to convert items into issues. It is ordered by dependency, not by UI visibility.
+Expand each item with [the issue template](../templates/issue.md) before implementation. Items are ordered by dependency.
 
-Each item should be expanded with the [issue template](../templates/issue.md) before implementation.
+## Epic 0 — Local application foundation
 
-## Epic 0 — Repository foundation
+### PC-001 Establish monorepo and toolchain
 
-### PC-001 Establish monorepo and supported toolchain
+- Pin Node.js and package-manager versions.
+- Create `apps/web`, `apps/local-server`, `packages/contracts`, `packages/terminal-ui`, and `packages/test-utils`.
+- Add documented install, dev, test, build, and verify commands.
+- Acceptance: a clean clone verifies without private registries or machine-specific paths.
 
-- Choose and pin supported runtime/package-manager versions.
-- Define package boundaries matching architecture.
-- Add one documented command for install, dev, test, build, and release verification.
-- Acceptance: clean clone succeeds without private registries or machine-specific paths.
+### PC-002 Add repository hygiene and CI
 
-### PC-002 Add repository hygiene and generated-artifact policy
+- Ignore dependencies, build output, local state, terminal captures, credentials, and scratch files.
+- Add format, lint, strict type, test, build, clean-install, secret, and portability checks.
+- Acceptance: CI produces human-readable and machine-readable evidence.
 
-- Ignore dependencies, build output, state, backups, credentials, terminal captures, and agent scratch files.
-- Add portability and secret scans.
-- Acceptance: a staged-tree check rejects forbidden paths and common secret patterns.
+### PC-003 Define local-server configuration
 
-### PC-003 Establish CI quality gates
+- Loopback address, port selection, local access token, data directory, log level, and browser-open behavior.
+- Reject unsafe production-like binding.
+- Acceptance: startup fails clearly on non-loopback configuration.
 
-- Run formatting, lint, strict typing, tests, production build, docs links, and clean-install verification.
-- Preserve machine-readable and human-readable evidence.
-- Acceptance: protected branch can require deterministic checks.
+### PC-004 Define shared transport contracts
 
-### PC-004 Create deterministic test utilities
+- Welcome, capability, request/result, event, typed error, and terminal stream envelopes.
+- Add message size limits and protocol versions.
+- Acceptance: malformed and incompatible messages fail deterministically.
 
-- Controlled clock, ID generator, temporary roots, event cursors, and process harness.
-- Acceptance: tests contain no arbitrary timing sleeps for core state behavior.
+### PC-005 Create deterministic fixtures
 
-### PC-005 Create fake provider and tmux fixtures
+- Fake PTY, process, clock, IDs, repository, Git output, agent events, and queue files.
+- Acceptance: UI and server tests require no provider credentials.
 
-- Reusable fixtures for sessions, provider events, questions, approvals, plans, and failures.
-- Acceptance: frontend and state work can proceed without credentials.
+### PC-006 Build the fixture application shell
 
-## Epic 1 — Domain contracts
+- Linear-inspired three-panel shell, design tokens, session list, terminal canvas, inspector, command palette shell, light/dark themes.
+- Acceptance: all primary loading, empty, connected, failed, and selected states render from fixtures.
 
-### PC-010 Define ID and naming conventions
+## Epic 1 — PTY terminal runtime
 
-- Immutable IDs, display names, tmux names, branch/worktree names.
-- Validate shell/path safety and collision resistance.
+### PC-010 Define terminal session model
 
-### PC-011 Define entity schemas
+- Immutable ID, display name, workspace, repository, cwd, preset, process state, dimensions, attention metadata, and restoration capability.
 
-- Workspace, user, membership, host, repository, run, agent, task, plan, question, approval, decision, prompt, lease, handoff, review, usage, policy.
-- Include schema versions and reference rules.
+### PC-011 Implement PTY creation and process groups
 
-### PC-012 Define state machines
+- Spawn explicit shell/preset in validated cwd with bounded environment inheritance.
+- Track process group, PID, start, exit, and error.
 
-- Run, task, agent, question, approval, prompt, review, host, and lease transitions.
-- Reject invalid transitions with typed reasons.
+### PC-012 Implement terminal input, resize, and signals
 
-### PC-013 Define command and result envelopes
+- Ordered input, resize, interrupt, graceful termination, force termination, and typed results.
 
-- Identity, authorization context, idempotency, expected revision, correlation, error model.
+### PC-013 Implement bounded terminal buffering
 
-### PC-014 Define event envelope and taxonomy
+- Output limits, backpressure, slow-client behavior, and overflow state.
 
-- Stable names, versions, causation/correlation, actor/execution identity, revisions, redaction.
+### PC-014 Implement terminal WebSocket channel
 
-### PC-015 Define provider capability and confidence model
+- Attach/detach, token and Origin validation, terminal frames, ordering, resize, errors, reconnect cursor/epoch.
 
-- Native/hook/terminal/process/human sources; freshness and degradation.
+### PC-015 Integrate xterm
 
-## Epic 2 — Filesystem state coordinator
+- Render, input, resize observer, focus, Unicode, mouse, paste, alternate screen, search, and theme.
 
-### PC-020 Initialize and validate state directory
+### PC-016 Preserve PTYs across browser reconnect
 
-- Format metadata, permissions, owner, symlink protection, empty-state bootstrap.
+- Browser-independent session ownership and bounded headless screen state.
+- Acceptance: refresh reconnects without process loss or duplicate input.
 
-### PC-021 Implement atomic entity store
+### PC-017 Implement safe session close and cleanup
 
-- Validated reads/writes, temp-on-same-filesystem, atomic rename, revisions.
+- Graceful close, force confirmation, orphan detection, server shutdown behavior, and no leaked process groups.
 
-### PC-022 Implement append-only event segments
+### PC-018 Harden terminal content
 
-- Partitioning, line integrity, revisions, rotation, cursor reads.
+- Titles, links, OSC, clipboard, HTML boundaries, buffer limits, and malicious fixture tests.
 
-### PC-023 Implement command idempotency
+## Epic 2 — Terminal workspace UX
 
-- Same key/same payload returns committed result; changed payload rejects.
+### PC-020 Implement workspace and repository grouping
 
-### PC-024 Implement optimistic revision conflicts
+- Recent workspaces, configured repositories, ungrouped sessions, collapse/pin behavior.
+- Current status: repository and other-folder grouping is implemented from canonical session cwd values. Durable recent/configured workspaces and collapse/pin behavior remain.
 
-- Expected revision and typed current-state response.
+### PC-021 Implement session sidebar
 
-### PC-025 Implement transaction journal
+- Dense status rows, agent icon, repository, attention state, unread marker, keyboard selection, context menu.
+- Current status: dense grouped rows expose process status, command label, cwd, and mouse/keyboard selection. Attention state, unread markers, richer agent identity, and context menus remain.
 
-- Prepared/committed/applied states and deterministic multi-file recovery.
+### PC-022 Implement terminal tabs
 
-### PC-026 Implement startup recovery
+- Open, close, reorder, pin, preserve selection, and overflow behavior.
 
-- Journal replay, partial event tail handling, clean-shutdown metadata.
+### PC-023 Implement split panes
 
-### PC-027 Implement in-memory indexes
+- Horizontal/vertical split, resize, focus ring, move session, collapse, and responsive minimum sizes.
 
-- By workspace, repository, run, state, assignee, session target, idempotency key.
+### PC-024 Implement session actions
 
-### PC-028 Implement rebuildable projections
+- Create, rename, duplicate, interrupt, relaunch, close, copy cwd, and reveal repository.
 
-- Inbox, Active, usage, and search seeds; delete/rebuild tooling.
+### PC-025 Implement launch presets
 
-### PC-029 Implement event subscriptions
+- Shell, Claude Code, Codex, and user-defined typed presets with cwd and environment allowlist.
+- Current status: fixed server-owned Shell, Claude Code, and Codex presets with honest availability are implemented. Durable user-defined presets and environment allowlists remain.
 
-- Monotonic cursor, authorization filter, reconnect/resync, backpressure.
+### PC-026 Implement keyboard and command palette
 
-### PC-030 Implement state integrity validator
+- Global navigation, session switching, split focus, create, actions, shortcut help, and terminal escape chord.
+- Current status: create, numbered selection, previous/next selection, and the terminal escape chord are implemented. The command palette, split focus, action commands, and shortcut-help surface remain.
 
-- Schema, path/ID, references, revisions, journal, event tail, projections.
+### PC-027 Implement preferences
 
-### PC-031 Implement quarantine workflow
+- Theme, density, terminal font, scrollback limit, notification settings, and default preset.
 
-- Move corrupt/unknown data safely; generate diagnostics and incident event.
+### PC-028 Implement responsive layout and accessibility baseline
 
-### PC-032 Implement snapshot creation and validation
+- Focus order, labels, live regions, contrast, reduced motion, panel collapse, and minimum supported viewport.
 
-- Consistent revision boundary, manifest, hashes, sizes, format metadata.
+## Epic 3 — Agent attention and Git
 
-### PC-033 Implement backup and restore primitives
+### PC-030 Detect process and agent type
 
-- Staged restore, validation, atomic activation/rollback, encryption hooks.
+- Shell, Claude Code, Codex, configured command, and unknown.
 
-### PC-034 Build filesystem fault-injection suite
+### PC-031 Define attention-state reducer
 
-- Kill/fail each durable step and assert deterministic recovery.
+- Working, waiting, needs input, finished, failed, stale, and unknown with source, confidence, observation, and expiry.
 
-### PC-035 Benchmark representative state sizes
+### PC-032 Add unread and notification policy
 
-- Startup, command latency, event replay, projection rebuild, snapshot/restore.
+- Meaningful activity cursor, needs-input/failure/completion notifications, quiet defaults, per-session mute.
 
-## Epic 3 — Broker foundation
+### PC-033 Detect repository context
 
-### PC-040 Define versioned broker RPC
+- Canonical root, branch, commit, worktree, and detached/error states from session cwd.
 
-- Unix-socket transport, request IDs, deadlines, capabilities, typed errors.
+### PC-034 Implement changed-files inspector
 
-### PC-041 Implement broker authentication and caller binding
+- Status, grouped files, additions/deletions, binary/large/renamed/deleted handling.
 
-- Restrictive socket permissions, process/user identity, replay-safe requests.
+### PC-035 Implement diff viewer
 
-### PC-042 Implement broker health and capability report
+- File selection, syntax-aware rendering, collapse, search, line wrapping, and bounded payload.
 
-- OS, architecture, tmux/Git/provider versions, roots, supported operations.
+### PC-036 Implement commit history
 
-### PC-043 Implement operation audit correlation
+- Current branch commits and relationship to configured base where available.
 
-- Correlate API command, broker request, host operation, result, and event.
+### PC-037 Implement verification presets
 
-### PC-044 Enforce allowed roots and canonical paths
+- Explicit configured commands, bounded output, timeout, result, commit association, and cancellation.
 
-- Repository/worktree root validation, no traversal or symlink escape.
+### PC-038 Implement recent-activity summary
 
-### PC-045 Implement broker restart reconciliation shell
+- Deterministic facts from process, terminal attention, and Git changes; optional agent narrative remains labelled.
 
-- Track in-flight operations and expose unknown outcomes without replay.
+## Epic 4 — Pacium mode
 
-## Epic 4 — tmux and terminal
+### PC-040 Define Pacium workspace configuration
 
-### PC-050 Implement tmux server configuration
+- Meta and Orchestrator session/preset references, repository roots, queue sources, delivery methods, worker classifications, and verification presets.
 
-- Support designated socket/server identities and dedicated execution user.
+### PC-041 Implement General/Pacium toggle
 
-### PC-051 Implement control-mode session discovery
+- Preserve terminal layout and selection while changing navigation emphasis and inspector tools.
 
-- Sessions, windows, panes, names, IDs, clients, notifications.
+### PC-042 Pin Meta and Orchestrator
 
-### PC-052 Implement tmux metadata mirroring
+- Stable role labels, launch/attach state, side-by-side command, and clear missing/disconnected states.
 
-- Read/write approved `@pacium.*` user options and detect unknown sessions.
+### PC-043 Implement explicit prompt targeting
 
-### PC-053 Implement session classification workflow
+- Meta, Orchestrator, or selected worker with visible target and no accidental scope carryover.
 
-- Assign workspace, role, provider, repository, run, and display name.
+### PC-044 Observe queue files
 
-### PC-054 Implement tmux version capability tests
+- Stable reads, debounce, content size limits, source hashes, offsets/revisions, original text, and parse diagnostics.
 
-- Fixture/smoke matrix and clear unsupported behavior.
+### PC-045 Classify queue items
 
-### PC-055 Implement PTY attachment
+- Question, approval, failure, review, and unknown with confidence; never infer permission from an ordinary question.
 
-- Correct terminal type, resize, exit state, bounded buffering.
+### PC-046 Implement queue list and inspector
 
-### PC-056 Implement read-only terminal streaming
+- Waiting time, requesting session, reason, consequence, recommendation, source, evidence, keyboard flow, and conflict state.
 
-- Authorized observation, reconnect, scrollback, connection states.
+### PC-047 Implement immutable local decisions
 
-### PC-057 Implement terminal WebSocket grants
+- Answer/deny/approve payload, actor label, timestamp, source identity, and decision hash.
 
-- Short-lived, single-use, user/session/origin/mode binding.
+### PC-048 Deliver decisions compatibly
 
-### PC-058 Implement exclusive terminal write leases
+- Explicit target and delivery mechanism, idempotency, delivered/unknown/failed state, and no blind retry.
 
-- Acquire, renew, transfer, revoke, expire; server enforcement and audit.
+### PC-049 Implement acknowledgement and conflict handling
 
-### PC-059 Implement per-pane input arbitration
+- Observable acknowledgement/applied state, file rewrites, competing answers, truncation, duplicate items, and manual resolution.
 
-- Human input, structured prompts, adapter controls serialized safely.
+### PC-050 Implement worker and objective context
 
-### PC-060 Implement multiline structured prompt delivery
+- Compact worker list, current objective/plan text from configured sources, recent decisions, and resulting activity.
 
-- Literal/buffered input, payload hash, queue, delivery/unknown semantics.
+## Epic 5 — Native agent enrichment
 
-### PC-061 Implement local attach command
+### PC-060 Define provider observation contract
 
-- Safe copyable fallback based on trusted metadata.
+- Capabilities, version, health, source, confidence, freshness, typed extension data, and bounded raw diagnostics.
 
-### PC-062 Harden terminal page
+### PC-061 Implement Claude observer
 
-- CSP, self-hosted assets, no analytics, untrusted escape/title/link behavior.
+- Supported hooks/status, attention, tool, approval, completion, usage, and failure fixtures.
 
-### PC-063 Test restart and lease races
+### PC-062 Implement Codex observer
 
-- Browser/API/broker disconnects, simultaneous acquisition, revocation mid-stream.
+- Supported native runtime events, turns, plan, tool, approval, completion, usage, and failure fixtures.
 
-## Epic 5 — Identity and authorization
+### PC-063 Build clean agent activity cards
 
-### PC-070 Implement development identity mode
+- Prompt, message, tool, plan, approval, completion, error, and fallback terminal excerpt.
 
-- Loopback-only, explicit banner, impossible production mix.
+### PC-064 Implement capability degradation
 
-### PC-071 Implement Tailscale trusted ingress mode
+- Unsupported version, observer failure, stale native events, terminal fallback, and user-visible diagnostics.
 
-- Verified header mapping, loopback/proxy validation, fail-closed startup.
+### PC-065 Implement relaunch manifests
 
-### PC-072 Implement users and memberships
+- Provider, command, cwd, repository, environment allowlist, and optional resume identifier without secrets.
 
-- Allowlisting, activation, suspension, revocation, historical attribution.
+## Epic 6 — Durability and release
 
-### PC-073 Implement role and scope policy
+### PC-070 Implement optional tmux discovery and attach
 
-- Workspace, repository, host, session, action, object-state evaluation.
+- Explicit local server/socket, session selection, capability detection, and terminal attachment.
 
-### PC-074 Implement secure application sessions
+### PC-071 Implement tmux keep-alive preset
 
-- Cookies, expiry, CSRF, sensitive-action revalidation, logout/revocation.
+- Launch configured sessions under tmux and reconnect after local-server restart.
 
-### PC-075 Implement terminal authorization
+### PC-072 Add lifecycle and memory soak tests
 
-- Separate observe, write, takeover, stop, and raw-history permissions.
+- Repeated create/close, reconnect, large output, long-running agent, split churn, and notification load.
 
-### PC-076 Implement authorization test matrix
+### PC-073 Add diagnostics
 
-- Cross-workspace/repo/host leakage, revocation, object transitions, owner-only actions.
+- Health, versions, PTY/session state, provider status, queue status, and redaction-aware export.
 
-### PC-077 Implement membership and policy audit
+### PC-074 Package macOS application
 
-- Before/after revision, actor, reason, effect.
+- CLI/local-server packaging, browser launch, configuration directory, upgrade, uninstall, and signing decision.
 
-## Epic 6 — Web application foundation
+### PC-075 Validate supported Linux path
 
-### PC-080 Build application shell
+- Build, PTY, browser, packaging, and documented limitations according to the platform decision.
 
-- Workspace switcher, left rail, header, inspector, terminal drawer.
+### PC-076 Run release readiness
 
-### PC-081 Build design tokens and accessible primitives
+- Clean install, full workflow, security checks, accessibility, performance, known limitations, and owner acceptance.
 
-- Typography, spacing, role/state semantics, focus, density, theme.
+## Deferred backlog
 
-### PC-082 Build resumable application event client
+These items require a future strategy and ADR:
 
-- Cursor, reconnect, resync, connection health, update batching.
-
-### PC-083 Build global search and command palette shell
-
-- Navigation and typed action previews.
-
-### PC-084 Build session directory
-
-- Discovery, classification, filters, health, saved views.
-
-### PC-085 Build session detail and agent card primitives
-
-- State, source/confidence, metadata, quick actions, recent events.
-
-### PC-086 Build terminal drawer UI
-
-- Read-only/control states, lease owner, resize/fullscreen, reconnect, escape chord.
-
-### PC-087 Build responsive and mobile shell
-
-- Mobile navigation and decision-first layouts.
-
-### PC-088 Establish accessibility automated checks
-
-- Keyboard, focus, landmarks, live regions, contrast baseline.
-
-## Epic 7 — Pacium workflow
-
-### PC-100 Implement repository entities and views
-
-- Configure roots, branch, worktree, verification, policy, overview.
-
-### PC-101 Implement run lifecycle
-
-- Draft/start/pause/resume/cancel/verify/review/complete with valid transitions.
-
-### PC-102 Implement plans and revisions
-
-- Steps, dependencies, ownership, revision diff, reason.
-
-### PC-103 Implement tasks and dependencies
-
-- Assignment, states, criteria, evidence requirements, blocking.
-
-### PC-104 Implement agent role association
-
-- Meta, orchestrator, worker, reviewer, generic session.
-
-### PC-105 Implement structured question creation
-
-- Context, options, recommendation, assignee, blocking, evidence.
-
-### PC-106 Implement Inbox projection and UI
-
-- Grouping, unread, keyboard selection, inspector, mobile behavior.
-
-### PC-107 Implement immutable question decisions
-
-- Answer idempotency, supersession, conflicts, attribution.
-
-### PC-108 Implement decision delivery and acknowledgement
-
-- Adapter/bridge transport, status, timeout, applied evidence.
-
-### PC-109 Implement approval requests
-
-- Exact action, risk, scope, provider callback, distinct UI.
-
-### PC-110 Implement approval decisions and narrow policies
-
-- Deny/once/run/edit/alternative; policy revisions and expiry.
-
-### PC-111 Implement structured prompt domain workflow
-
-- Target hierarchy, queue/delivery/acknowledgement, command palette.
-
-### PC-112 Implement activity timeline
-
-- Domain event projection, filters, attributable chains, no raw terminal flood.
-
-### PC-113 Implement per-user unread cursors
-
-- Workspace/repository/run cursor semantics and conflict-safe updates.
-
-### PC-114 Implement deterministic “since last checked”
-
-- Completed tasks, changes, checks, decisions, failures, questions, usage.
-
-### PC-115 Implement meta narrative hook
-
-- Generate optional summary only from selected evidence and link each claim.
-
-### PC-116 Implement workspace emergency pause
-
-- Stop new coordination, preserve sessions and observation, audit reason.
-
-### PC-117 Implement mobile Inbox
-
-- Questions, approvals, summaries, deep links, duplicate-safe actions.
-
-## Epic 8 — Legacy migration
-
-### PC-120 Implement legacy queue watcher
-
-- Stable reads, debounce, size limits, content hash, provenance.
-
-### PC-121 Implement conservative legacy parser
-
-- Supported formats, parse confidence, original text retention.
-
-### PC-122 Implement legacy deduplication and conflict state
-
-- File/version/offset/hash matching and visible conflicts.
-
-### PC-123 Implement compatibility file renderer
-
-- Atomic generated question/decision views without overwriting human edits.
-
-### PC-124 Implement `paciumctl` transport
-
-- Emit question/approval/event/handoff/evidence; read decision; acknowledge/apply.
-
-### PC-125 Generalize user-specific legacy names
-
-- Map `FELIX` filenames to user IDs without hardcoding domain logic.
-
-### PC-126 Pilot staged migration
-
-- Read-only import → bidirectional → generated views → retirement evidence.
-
-## Epic 9 — Git, worktrees, and evidence
-
-### PC-140 Implement repository inspection
-
-- Identity, remotes, branch, commit, dirty state under allowed roots.
-
-### PC-141 Implement deterministic branch/worktree creation
-
-- Base commit, ownership, naming, collision validation.
-
-### PC-142 Enforce one active coding owner per worktree
-
-- Assignment checks and emergency transfer workflow.
-
-### PC-143 Implement Git evidence collection
-
-- Commits, changed files, diff stats, merge base, uncommitted changes.
-
-### PC-144 Implement verification command profiles
-
-- Configured commands, exact commit/environment, bounded output, artifacts.
-
-### PC-145 Implement task evidence gates
-
-- Required checks/artifacts/waivers before review-ready/accepted.
-
-### PC-146 Implement review bundle generation
-
-- Deterministic sections and optional labeled narrative.
-
-### PC-147 Implement reviewer workflow
-
-- Assign, approve, request revision, reject, waive, comment.
-
-### PC-148 Implement integration queue/lease
-
-- One integration owner, target branch, source candidates, state.
-
-### PC-149 Implement conflict detection and resolution tasks
-
-- Structured conflict evidence and options.
-
-### PC-150 Implement post-integration verification
-
-- Bind checks and bundle update to integration commit.
-
-### PC-151 Implement safe worktree cleanup
-
-- Dirty/active/reachability/retention checks and audit.
-
-### PC-152 Add optional GitHub draft PR publication
-
-- Local-first behavior, deterministic body, check links, graceful outage.
-
-## Epic 10 — Claude Code adapter
-
-### PC-160 Implement Claude CLI launch profile
-
-- tmux, working directory, environment allowlist, metadata, version capture.
-
-### PC-161 Implement Claude hook receiver bridge
-
-- Local bounded transport, validation, timeout, diagnostics.
-
-### PC-162 Normalize Claude session/tool/task/subagent events
-
-- Versioned fixtures and confidence.
-
-### PC-163 Implement Claude permission bridge
-
-- Approval creation, callback correlation, timeout, fail-closed behavior.
-
-### PC-164 Implement Claude question bridge
-
-- Structured user questions distinct from permissions.
-
-### PC-165 Implement Claude status-line ingestion
-
-- Model, session, context, tokens, duration, lines, quotas/reset when available.
-
-### PC-166 Implement Claude adapter health and fallback
-
-- Hook/status failure, terminal fallback, unsupported version.
-
-### PC-167 Add real Claude CLI smoke scenario
-
-- Safe repository, question, permission, completion, usage, adapter restart.
-
-## Epic 11 — Codex adapter
-
-### PC-170 Implement Codex CLI launch profile
-
-- tmux association, working directory, metadata, version capture.
-
-### PC-171 Implement local Codex App Server supervision
-
-- stdio/local socket, lifecycle, authentication, no browser exposure.
-
-### PC-172 Normalize thread/turn/plan/message events
-
-- Versioned protocol fixtures and capability handling.
-
-### PC-173 Implement Codex approval bridge
-
-- Exact action, callback, expiry, fail-closed behavior.
-
-### PC-174 Implement Codex steering and interruption
-
-- Distinct active-turn steering, new prompt, interrupt, status.
-
-### PC-175 Implement Codex usage and rate-limit snapshots
-
-- Provider windows, reset, context, unavailable semantics.
-
-### PC-176 Implement tmux-only fallback mode
-
-- Clear confidence and reduced capability.
-
-### PC-177 Add real Codex CLI smoke scenario
-
-- Plan, command, approval, steering, completion, adapter restart.
-
-## Epic 12 — Cross-provider coordination
-
-### PC-180 Implement handoff entity and UI
-
-- Required context/evidence fields, lineage, acceptance.
-
-### PC-181 Implement Claude-to-Codex handoff flow
-
-- Freeze ownership, produce packet, transfer/clone worktree policy, resume.
-
-### PC-182 Implement Codex-to-Claude handoff flow
-
-- Same guarantees with provider-specific context handling.
-
-### PC-183 Implement parallel candidate workflow
-
-- Separate worktrees, same objective, orchestrator comparison, winner/abandon evidence.
-
-### PC-184 Implement provider-capacity routing suggestions
-
-- Explainable, advisory, provider-separated data.
-
-### PC-185 Implement context-pressure handoff warning
-
-- Thresholds, recommendation, no automatic destructive switch.
-
-## Epic 13 — Usage and fleet operations
-
-### PC-190 Build provider-separated Usage view
-
-- Claude and Codex cards, freshness, reset times, context.
-
-### PC-191 Build active agent fleet view
-
-- Provider, role, repository, task, state, confidence, freshness, usage.
-
-### PC-192 Implement stale-agent detection
-
-- Signal model, state-specific thresholds, explanation, suppression.
-
-### PC-193 Implement intervention ladder
-
-- Status request, inspect, interrupt, pause, restart, reassign, stop.
-
-### PC-194 Implement session restart manifests
-
-- Launch profile, worktree, base/head, task, lineage, safe restart.
-
-### PC-195 Implement saved views and pins
-
-- Per-user filters without altering shared truth.
-
-### PC-196 Implement notification policy
-
-- Blocking items, approvals, failures, reviews, capacity; quiet hours and digests.
-
-## Epic 14 — Multi-host
-
-### PC-210 Define host protocol and enrollment
-
-- Identity, one-time grant, key rotation, activation, revocation.
-
-### PC-211 Implement outbound host-agent channel
-
-- Authenticated connection, version/capability handshake, reconnect.
-
-### PC-212 Implement remote command delivery
-
-- IDs, deadlines, idempotency, result states, unknown outcome.
-
-### PC-213 Implement remote event resend queue
-
-- Source sequence, acknowledgement, gap detection, bounded persistence.
-
-### PC-214 Implement host health and UI
-
-- Connectivity, versions, capabilities, roots, sessions, warnings.
-
-### PC-215 Implement disconnect reconciliation
-
-- Session matching, missing/new targets, event gaps, uncertain commands.
-
-### PC-216 Implement host-scoped authorization
-
-- Visibility, terminal, operations, enrollment, revocation.
-
-### PC-217 Implement local-machine agent profile
-
-- Optional connector, no critical dependency, attach commands.
-
-### PC-218 Test multi-host failure matrix
-
-- Sleep, network loss, key revoke, clock skew, duplicate events, version mismatch.
-
-## Epic 15 — Operations and security hardening
-
-### PC-230 Create production systemd deployment
-
-- Dedicated users, paths, permissions, restart policy, health checks.
-
-### PC-231 Create Tailscale Serve deployment validation
-
-- Loopback binding, trusted headers, external reachability test.
-
-### PC-232 Create Hetzner firewall and break-glass runbook
-
-- Public exposure checks and recovery path.
-
-### PC-233 Implement encrypted backup automation
-
-- Snapshot, manifest, encryption, off-host copy, status events.
-
-### PC-234 Implement restore and rollback tooling
-
-- Staging validation, atomic activation, prior-state preservation.
-
-### PC-235 Run separate-machine restore drill
-
-- Record time, failures, and evidence.
-
-### PC-236 Implement diagnostics and support bundle
-
-- Redacted versions, health, integrity, errors, manifest.
-
-### PC-237 Implement platform health view
-
-- State, broker, tmux, providers, hosts, backup, disk.
-
-### PC-238 Implement secret and dependency scanning
-
-- CI and release gates, reviewed exceptions.
-
-### PC-239 Conduct terminal security review
-
-- CSP, WebSocket, origin, output injection, clipboard, retention.
-
-### PC-240 Conduct broker privilege review
-
-- Unix users, socket, tmux domain, allowed operations and roots.
-
-### PC-241 Implement disk-capacity safeguards
-
-- Warning, write failure behavior, reserved recovery path, cleanup.
-
-### PC-242 Run long-duration soak test
-
-- Active sessions, streams, event load, restarts, memory/file descriptors.
-
-### PC-243 Conduct production incident simulation
-
-- Credential revoke, state corruption, host disconnect, rollback, emergency pause.
-
-## Epic 16 — Product excellence
-
-### PC-250 Refine Inbox information density
-
-- Real pilot data, prioritization, option readability, waiting context.
-
-### PC-251 Refine run overview and evidence linking
-
-- Five-question product promise and deterministic status.
-
-### PC-252 Refine command palette targeting
-
-- Meta/orchestrator/run/task/worker scope previews and safety.
-
-### PC-253 Refine mobile decision flows
-
-- One-thumb operation, safe high-risk approval details, reconnect.
-
-### PC-254 Complete accessibility review
-
-- Keyboard, screen reader, contrast, zoom, motion, terminal escape.
-
-### PC-255 Establish performance budgets
-
-- Interaction latency, event propagation, startup, terminal responsiveness.
-
-### PC-256 Add search across decisions and evidence
-
-- Filesystem-native index, rebuildable projection, permissions.
-
-### PC-257 Add run and approval templates
-
-- Versioned, reviewed defaults with clear scope.
-
-### PC-258 Add personal “since last checked” digest
-
-- Workspace and run summaries, quiet delivery.
-
-### PC-259 Validate north-star metrics in sustained pilot
-
-- Human attention, answer latency, terminal avoidance, verification, confidence.
-
-## Sequencing note
-
-Agents may work in parallel only when dependencies and interfaces are explicit. The project owner or orchestrator should promote items to `ready` after contracts and prerequisite evidence exist. Do not start all backlog items merely because they are written down.
+- remote access;
+- Tailscale;
+- multi-user authorization;
+- multi-host control;
+- public hosting;
+- generalized tasks/runs;
+- automated worktree and PR orchestration;
+- organization audit and backups.

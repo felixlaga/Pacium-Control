@@ -1,147 +1,34 @@
-# Identity and authorization
+# Local identity and transport security
 
-## Identity model
+## Initial identity
 
-A person may use multiple Tailscale devices, each with a distinct node identity and address. Pacium maps the verified Tailscale user subject/login to one Pacium `User`. Device information is context, not the human primary key.
+The initial product has one local operator: the operating-system user who launches Pacium.
 
-## Request path
+There are no application users, memberships, roles, or repository authorization rules.
 
-```mermaid
-sequenceDiagram
-  participant U as Tailnet user
-  participant T as Tailscale Serve
-  participant A as Pacium API
-  participant Z as Authorization
+## Browser-to-local-server boundary
 
-  U->>T: HTTPS request
-  T->>T: Verify tailnet identity
-  T->>A: Loopback request + identity headers
-  A->>A: Validate trusted proxy boundary
-  A->>Z: Resolve user, membership, action, object
-  Z-->>A: allow / deny + policy reason
-  A-->>U: response
-```
+The server still protects terminal control from unrelated local web pages:
 
-Production must reject requests that bypass the trusted local ingress assumptions.
+- bind to `127.0.0.1`;
+- validate `Origin`;
+- require a local access token;
+- use secure token delivery during application launch;
+- bound requests and WebSocket frames;
+- avoid reusable tokens in durable URLs and logs;
+- reject unknown protocol versions and message types.
 
-## User lifecycle
+## Local process authority
 
-- discovered external identity does not automatically receive access;
-- owner creates or approves membership;
-- membership may be active, suspended, or revoked;
-- revocation invalidates application sessions, terminal grants, and leases;
-- identity changes are audited;
-- departed users retain historical attribution.
+PTY processes run as the invoking user. Pacium does not elevate privileges, request root, or claim to sandbox that user’s shell.
 
-## Authorization dimensions
+## Paths
 
-An authorization decision may consider:
+- Working directories must exist and be directories.
+- Repository roots are canonicalized.
+- Symlink and traversal behavior is tested.
+- Reusable presets store typed command/arguments rather than shell-parsed strings where practical.
 
-- user;
-- workspace membership;
-- role;
-- repository scope;
-- host scope;
-- run ownership;
-- object classification;
-- requested action;
-- current object state;
-- terminal lease;
-- approval policy;
-- workspace pause;
-- execution identity availability.
+## Future remote access
 
-## Roles
-
-### Viewer
-
-- read allowed structured state;
-- observe permitted sessions where policy allows;
-- view redacted evidence;
-- no prompt delivery or terminal write.
-
-### Operator
-
-- viewer capabilities;
-- send structured prompts to allowed sessions;
-- start/pause/resume allowed runs;
-- request and hold terminal control where separately permitted;
-- no access-management or broad approval authority.
-
-### Approver
-
-- operator capabilities as configured;
-- answer assigned questions;
-- resolve allowed approval classes;
-- create narrow run-scoped approval policy when explicitly permitted.
-
-### Owner
-
-- manage membership and policy;
-- high-risk terminal and destructive operations;
-- host/repository configuration;
-- emergency controls;
-- security and retention settings.
-
-The implementation may split roles further, but should not make all tailnet members operators by default.
-
-## Repository and host scope
-
-A workspace role can be narrowed:
-
-```text
-User: Alice
-Workspace role: Operator
-Repositories: web, checkout-api
-Hosts: pacium-vps
-Terminal write: checkout-api only
-Approval classes: none
-```
-
-Deny by default when scope is absent.
-
-## Application sessions
-
-- secure, HTTP-only cookies;
-- short idle and absolute lifetimes appropriate to risk;
-- revalidation of membership for sensitive actions;
-- CSRF protection for state-changing HTTP requests;
-- no long-lived bearer token in browser storage;
-- clear logout and session revocation.
-
-## Terminal grants
-
-A terminal WebSocket grant is:
-
-- short-lived;
-- single-use;
-- bound to user, session/pane, access mode, and origin;
-- invalidated on role/membership change;
-- separate from the terminal write lease.
-
-## Approval policy
-
-Policies are explicit objects with:
-
-- scope;
-- action matcher;
-- maximum risk;
-- host/repository/worktree limits;
-- duration;
-- creator and approver;
-- revision;
-- reason;
-- audit history.
-
-An agent cannot grant or broaden its own policy.
-
-## Development mode
-
-Development authentication must be clearly separate and impossible to enable accidentally in production. Suggested safeguards:
-
-- explicit environment mode;
-- loopback-only binding;
-- startup banner;
-- refusal when Tailscale production mode and dev identity are mixed;
-- no default admin in production;
-- automated configuration test.
+Remote, shared-machine, or multi-user use requires authentication, authorization, privilege separation, and a new ADR. Local tokens are not a remote security architecture.

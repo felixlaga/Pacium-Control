@@ -1,5 +1,7 @@
 # Release readiness
 
+> Historical blueprint: this checklist targets the superseded remote deployment. The local packaged release checklist will be completed under Milestone 5.
+
 ## Release classes
 
 ### Development snapshot

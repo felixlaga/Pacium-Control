@@ -1,111 +1,115 @@
 # Terminal experience
 
-The terminal is essential and deliberately secondary.
+The terminal is Pacium Control’s primary work surface.
 
 ## Product role
 
-The terminal exists for:
+The terminal must feel as immediate and trustworthy as a dedicated terminal application while benefiting from:
 
-- direct observation when structured state is insufficient;
-- exceptional commands;
-- troubleshooting and recovery;
-- unfamiliar or generic sessions;
-- verifying the exact CLI state;
-- maintaining user trust in the abstraction.
+- session organization;
+- tabs and splits;
+- attention states;
+- Git inspection;
+- agent-aware activity;
+- Pacium queue context.
 
-It should not be required for ordinary questions, approvals, steering, status, or review.
+## Session lifecycle
 
-## Entry points
+### Direct PTY
 
-- terminal drawer from a run or agent;
-- session directory in the Terminal workspace;
-- command palette;
-- “Open raw session” from an error or degraded adapter state;
-- local attach command fallback.
+- Created and owned by the local server.
+- Continues across browser refresh and tab close.
+- Ends if the local server exits.
+- May be relaunched from an explicit manifest.
 
-## Read-only by default
+### Optional tmux-backed
 
-Opening a terminal begins in observation mode. The user sees output but cannot type. This prevents accidental interference and allows many viewers.
+- Created or attached through an explicit tmux capability.
+- May survive local-server restart.
+- Always labelled as tmux-backed.
 
-The header shows:
+Pacium cannot silently attach to arbitrary existing terminal-emulator panes.
+
+## Terminal pane
+
+Header:
 
 ```text
-Checkout API · Orchestrator · Claude
-host: pacium-vps · tmux: pacium/checkout-orchestrator
-Watching · Felix has control · lease expires in 04:32
+Codex — Checkout API     working · terminal inferred     •••
+~/code/checkout-api · feat/payment-flow
 ```
 
-## Write lease
+The body is the terminal emulator. Connection or exit overlays preserve visible terminal contents.
 
-One human writer per pane by default.
+## Focus
 
-Lifecycle:
+- Click or explicit keyboard action enters terminal capture.
+- Focused pane has a restrained but unambiguous border.
+- Application shortcuts are suspended during capture.
+- `Ctrl+Shift+.` exits capture by default.
+- The status bar and accessible announcement confirm mode changes.
+- Switching inspector tabs never steals terminal focus.
 
-1. User requests control.
-2. Server authorizes against session, repository, host, and role.
-3. If free, lease is granted for a short duration.
-4. Activity renews the lease up to policy limits.
-5. Other users can request transfer.
-6. Owner may take over with explicit reason.
-7. Lease expires on inactivity, disconnect, revocation, or policy change.
-8. Agent/system prompt delivery is serialized independently by broker.
+## Input
 
-The terminal should never accept input after the UI believes the lease is gone.
+- Bytes are sent only to the focused session.
+- Multiline paste uses bracketed paste where supported.
+- Very large paste requires confirmation.
+- Reconnect never automatically retries uncertain input.
+- Duplicate browser clients do not both become accidental writers; the initial single-user design still establishes one active input owner per session.
+
+## Resize
+
+- Resize follows the focused pane’s measured dimensions.
+- Debounce without leaving the PTY in a stale size.
+- Hidden tabs do not repeatedly fight over dimensions.
+- Moving a session between splits updates the PTY once the destination stabilizes.
+
+## Scrollback and restoration
+
+- Scrollback is bounded by preference and hard maximum.
+- A headless terminal model or equivalent bounded snapshot supports browser reconnect.
+- Search covers retained scrollback only.
+- Scroll position remains stable while reading older output.
+- New-output indicators appear when the user is not at the bottom.
+- Raw scrollback is not persisted indefinitely by default.
 
 ## Connection states
 
-- Connecting.
-- Live, read-only.
-- Live, control granted.
-- Reconnecting.
-- Broker unavailable.
-- Host disconnected.
-- Session ended.
-- Authorization revoked.
+- creating;
+- live;
+- reconnecting;
+- overflow/resync required;
+- process exited;
+- close in progress;
+- failed;
+- tmux target unavailable.
 
-Each state explains what happened to the underlying session. For example:
+Each state explains process survival.
 
-> Broker disconnected. The tmux session is expected to continue. Reconnecting…
+## Terminal content safety
 
-## Scrollback
-
-- Use bounded in-memory or broker-side scrollback.
-- Do not retain all terminal output indefinitely by default.
-- Search operates within retained scrollback.
-- Secret redaction may replace sensitive spans with visible markers.
-- Copy events are local to the user and are not recorded as terminal content.
-
-## Links and terminal metadata
-
-Treat terminal-generated hyperlinks, titles, escape sequences, and clipboard operations as untrusted.
-
-- Disable or confirm risky link protocols.
+- Never render terminal strings as application HTML.
 - Sanitize displayed titles.
-- Do not allow terminal output to inject application HTML.
-- Avoid automatic clipboard writes.
+- Confirm or reject unsafe link protocols.
+- Do not allow silent clipboard writes.
+- Bound OSC, title, hyperlink, and image-like payloads.
+- Self-host terminal assets.
+- Do not load analytics or session replay.
 
-## Multiline prompts
+## Performance
 
-Structured prompts should not be implemented by fragile shell quoting. The broker should use a literal buffered-input strategy appropriate for tmux/provider behavior and record a payload hash.
+- Terminal input should feel immediate.
+- Output batching must reduce render overhead without noticeable lag.
+- Background terminals may reduce render frequency but must not lose bounded state.
+- Large output cannot grow memory without limit.
+- Twenty idle sessions should not produce continuous CPU work.
 
-Raw terminal paste should use bracketed paste when supported and warn for very large or suspicious content.
+## Accessibility
 
-## Local fallback
-
-Every session detail page may provide a copyable attach command for an authorized user with local shell access. This preserves recoverability if the browser terminal fails.
-
-The command should be generated from trusted host/session metadata and never contain credentials.
-
-## Terminal-only sessions
-
-General sessions may have no provider or Pacium run. They still receive:
-
-- stable identity;
-- host and tmux metadata;
-- labels and saved views;
-- access policy;
-- read/write lease;
-- activity and audit;
-- local attach instructions.
-
-Do not force Pacium workflow concepts onto arbitrary terminals.
+- Configurable font size and line height.
+- Screen-reader mode according to the terminal library’s supported behavior.
+- Minimum contrast.
+- Visible focus.
+- Reduced motion.
+- Copy and selection remain usable without pointer-only gestures.

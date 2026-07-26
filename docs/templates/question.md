@@ -4,10 +4,8 @@
 
 - Workspace:
 - Repository:
-- Run:
-- Task:
-- Requesting agent:
-- Assignee:
+- Requesting session/role:
+- Source file or event:
 - Blocking: Yes | No
 - Needed by:
 
@@ -46,8 +44,8 @@ Reasoning:
 
 ## Evidence
 
-- Files/diff:
-- Logs/checks:
+- Terminal/Git evidence:
+- Checks:
 - Related decisions:
 
 ## Free-form response allowed

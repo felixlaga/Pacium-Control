@@ -1,5 +1,7 @@
 # Handoffs and reviews
 
+> Deferred blueprint: automated handoff and review workflows are not part of the initial local terminal and Pacium-mode roadmap.
+
 ## Handoff purpose
 
 A handoff lets another agent or provider continue work without reconstructing context from terminal transcripts.

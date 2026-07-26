@@ -1,6 +1,6 @@
 # ADR-0004: Use a separate privileged control broker
 
-- Status: Accepted
+- Status: Superseded by [ADR-0014](ADR-0014-localhost-single-process.md)
 - Date: 2026-07-20
 
 ## Context

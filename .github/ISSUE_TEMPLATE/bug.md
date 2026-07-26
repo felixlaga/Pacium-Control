@@ -12,8 +12,8 @@ labels: type:bug
 
 ## Impact
 
-- Users/workspaces/repos:
-- State/source/security risk:
+- Workspaces/repositories/sessions:
+- Process/data/security risk:
 - Frequency:
 
 ## Reproduction
@@ -24,13 +24,14 @@ labels: type:bug
 
 - Pacium version/commit:
 - OS:
-- tmux:
+- Runtime kind: direct PTY | tmux
+- Shell and PTY dependency versions:
 - Claude/Codex CLI:
 - Browser:
 
 ## Evidence
 
-Logs/screenshots/state references with secrets removed.
+Logs, screenshots, process/session state, and Git evidence with secrets and terminal contents removed unless essential and redacted.
 
 ## Recovery or workaround
 

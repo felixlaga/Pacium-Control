@@ -1,114 +1,85 @@
 # Product and engineering principles
 
-Each principle includes a decision test. Use these tests in design reviews and pull requests.
+## 1. The terminal is the product
 
-## 1. Structured first, terminal always
+The first job is to make terminal-based agent work easier to see and manage. Structured views support the terminal instead of delaying it.
 
-Routine work should use typed actions and structured views. The terminal remains available for precision and recovery.
+**Decision test:** Does this improve the daily experience of running and supervising terminals?
 
-**Decision test:** Could an operator complete the common task without parsing terminal output? If not, the structured workflow is incomplete.
+## 2. Calm density
 
-## 2. The human sees only consequential work
+Use strong hierarchy, restrained color, consistent spacing, and compact information. Navigation should recede while the active work stays visually dominant.
 
-Do not turn every event into an Inbox item.
+**Decision test:** Can the operator understand the screen quickly without decorative noise?
 
-**Decision test:** Does this item require judgment, permission, or review from this specific person? If not, keep it in activity or telemetry.
+## 3. Fast by keyboard, obvious by mouse
 
-## 3. One source of truth per concern
+Every frequent action should have a stable shortcut, visible control, contextual menu, and command-palette entry where appropriate.
 
-- tmux for live process/session reality;
-- Git for code history;
-- filesystem entities and events for coordination;
-- provider APIs/hooks for provider-native telemetry.
+**Decision test:** Can a new user discover the action and an experienced user perform it without friction?
 
-**Decision test:** Are we duplicating mutable truth that another system already owns? If yes, store a reference or projection instead.
+## 4. Sessions are durable across browser state
 
-## 4. No hidden database
+Closing or refreshing the browser must not terminate running PTYs. The UI reconnects to the local server and restores visible state.
 
-Pacium Control does not introduce SQLite, PostgreSQL, Redis, an embedded key-value store, or a hosted database behind the filesystem abstraction.
+**Decision test:** What happens to this process if the browser tab disappears now?
 
-**Decision test:** Can an operator understand and back up durable state with ordinary filesystem tools?
+## 5. Truth has a source
 
-## 5. One authoritative writer
+Process existence, terminal activity, provider-native events, Git state, and human labels mean different things.
 
-All central state mutations are serialized through one state coordinator. Remote hosts emit commands and events; they do not write central state directly.
+**Decision test:** Is “working” or “done” supported by the source shown in the UI?
 
-**Decision test:** Can two processes race to update the same entity? If yes, the write path violates the architecture.
+## 6. Attention, not telemetry
 
-## 6. Every action is attributable
+The session list should help the operator find what needs input, failed, or finished. Do not convert every byte or command into a notification.
 
-Prompts, answers, approvals, control leases, session operations, policy changes, and destructive actions have an actor and execution identity.
+**Decision test:** Does this state change require the operator to look now?
 
-**Decision test:** Can the audit view explain who requested, authorized, and executed this action?
+## 7. Local first means genuinely local
 
-## 7. Every worker has an isolated checkout
+Bind to loopback, use local credentials already owned by the user, and avoid remote services in the critical path.
 
-Parallel coding work requires one branch and one worktree per worker.
+**Decision test:** Can the first product work offline after dependencies are installed?
 
-**Decision test:** Can two agents modify the same filesystem checkout? If yes, stop and redesign the assignment.
+## 8. Minimal state
 
-## 8. Uncertainty is a state, not a styling problem
+Persist preferences, classifications, queue provenance, and restoration metadata. Do not duplicate terminal, Git, or provider truth into a speculative domain model.
 
-Status must indicate whether it is native, hooked, inferred, stale, or unavailable.
+**Decision test:** Which system already owns this fact?
 
-**Decision test:** Could the interface be presenting an inference as a provider-confirmed fact?
+## 9. Agent-aware, provider-honest
 
-## 9. Restart without regret
+Claude and Codex can enrich the interface, but unavailable native events must degrade visibly to process or terminal inference.
 
-Web, API, and broker processes may restart without killing work or duplicating commands.
+**Decision test:** Would the user mistake an inference for a provider-confirmed event?
 
-**Decision test:** What happens if this process exits immediately after accepting the request but before replying?
+## 10. Pacium is a mode
 
-## 10. Privilege is narrow and temporary
+Meta, Orchestrator, workers, and queue actions live inside the same terminal workspace. They do not require a parallel product shell.
 
-Terminal control, command approval, and host access are separately scoped. Leases expire.
+**Decision test:** Can the operator enter and leave Pacium mode without losing terminal context?
 
-**Decision test:** Does this permission grant more authority, duration, repositories, or hosts than the action requires?
+## 11. Questions are not approvals
 
-## 11. Provider capabilities enrich the core
+Advice, direction, and permission have different consequences and remain visibly distinct.
 
-Normalize shared concepts but preserve rich provider-native events.
+**Decision test:** Could answering an ordinary question grant execution authority?
 
-**Decision test:** Are we throwing away useful Claude or Codex semantics merely to make adapters identical?
+## 12. Safe local shell access
 
-## 12. Evidence-backed completion
+Localhost is a network boundary, not a security exemption. Validate Origin, tokens, paths, commands, terminal content, and message sizes.
 
-A run is not complete until its acceptance criteria and required verification are satisfied or explicitly waived by an authorized human.
+**Decision test:** Could an unrelated page or malformed terminal stream control or confuse this application?
 
-**Decision test:** What exact evidence allows the UI to display “complete”?
+## 13. Build visible value in vertical slices
 
-## 13. Mobile is for decisions, desktop is for operations
+One excellent real terminal is more valuable than a broad backend with no usable surface.
 
-The mobile experience prioritizes Inbox, approvals, summaries, and emergency controls. It does not attempt to reproduce the full desktop workspace.
+**Decision test:** Can the operator demonstrate this increment from the application?
 
-**Decision test:** Is this mobile interaction optimized for a quick, safe decision rather than squeezed desktop UI?
+## 14. Honest maturity
 
-## 14. Names are infrastructure
+Designed, implemented, validated, packaged, and daily-use-proven are separate states.
 
-Session, run, agent, branch, and worktree names must be stable, predictable, and human-readable.
-
-**Decision test:** Can a human identify role, repository, provider, and run without decoding an ad hoc string?
-
-## 15. Build product behavior before decorative breadth
-
-A reliable question loop is more valuable than ten shallow dashboards.
-
-**Decision test:** Does this work strengthen a core operational loop, or merely make the product appear broader?
-
-## 16. No environment mythology
-
-Documentation and UI must distinguish designed behavior, implemented behavior, validated behavior, and production-proven behavior.
-
-**Decision test:** Can this claim be demonstrated in the repository or a recorded verification artifact?
-
-## 17. Defaults should be safe and reversible
-
-The default action should preserve work, preserve evidence, and minimize privilege.
-
-**Decision test:** If the operator clicks through quickly, is the result safe and undoable where practical?
-
-## 18. The product should get quieter as it gets smarter
-
-Improved automation should reduce noise and escalations, not create more dashboards and alerts.
-
-**Decision test:** Does this feature reduce operator attention per unit of completed work?
+**Decision test:** What repository evidence supports this claim?

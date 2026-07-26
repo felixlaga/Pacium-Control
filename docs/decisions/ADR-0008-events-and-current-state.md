@@ -1,6 +1,6 @@
 # ADR-0008: Separate current entities from append-only events
 
-- Status: Accepted
+- Status: Superseded by [ADR-0015](ADR-0015-minimal-local-state.md)
 - Date: 2026-07-20
 
 ## Context

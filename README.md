@@ -1,192 +1,159 @@
 # Pacium Control
 
-> **The private operating console for human-directed coding systems.**
+> A clean local workspace for terminals, coding agents, and the Pacium workflow.
 
-Pacium Control is a tailnet-only web application for supervising, steering, reviewing, and recovering teams of coding agents that run as CLI processes inside tmux on one or more hosts.
+Pacium Control is a localhost web application for people who run several CLI coding agents and terminal sessions at once.
 
-It is designed around a real operating model:
+It turns a collection of shells, Claude Code sessions, Codex sessions, repositories, diffs, and attention signals into one calm, keyboard-first workspace. The visual direction is inspired by products such as Linear: strong hierarchy, restrained chrome, high information density, consistent interactions, and fast navigation.
 
-- a **meta session** translates between the human operator and the system;
-- an **orchestrator session** plans and coordinates work;
-- Claude Code and Codex workers execute bounded tasks in isolated Git worktrees;
-- questions and permission requests are elevated into a first-class Inbox;
-- tmux keeps processes alive;
-- Git records code history;
-- a filesystem event model records coordination state;
-- Pacium Control turns all of that into a calm, legible control surface.
-
-The terminal remains available, but it is not the product. The product is understanding what is happening, deciding what should happen next, and intervening safely when necessary.
-
----
+Pacium mode adds a specialized view for the existing Meta, Orchestrator, and queue workflow.
 
 ## Repository status
 
-**This repository is intentionally documentation-only. It contains no application code.**
-
-It is the product, architecture, design, security, and execution blueprint from which implementation agents should build Pacium Control. The goal is to eliminate ambiguity before large-scale parallel implementation begins.
-
-| Area | Status |
-|---|---|
-| Product vision and positioning | Defined |
-| Product principles and non-goals | Defined |
-| Core UX and screen model | Defined |
-| Domain model | Defined |
-| Filesystem persistence model | Defined |
-| tmux and broker boundary | Defined |
-| Claude Code CLI integration | Defined |
-| Codex CLI/App Server integration | Defined |
-| Identity and authorization model | Defined |
-| Multi-host model | Defined |
-| Milestones and implementation backlog | Defined |
-| Product code | Not started by design |
-| Production validation | Not started |
+**The first local-terminal vertical slice is implemented, but the product is not release-ready.**
 
 Read [STATUS.md](STATUS.md) before making implementation claims.
 
-See [BLUEPRINT_MANIFEST.md](BLUEPRINT_MANIFEST.md) for the packaged scope and verification record.
+## Run the current slice
 
----
+Prerequisites are Node.js `24.18.x` and pnpm `11.17.0`.
 
-## North-star experience
-
-Felix opens Pacium Control from any device on the tailnet and immediately sees:
-
-```text
-3 items need me
-5 agents working across 2 repositories
-1 run ready for review
-Claude: 72% of current window used
-Codex: 43% of current window used
+```bash
+pnpm install
+pnpm dev
 ```
 
-He opens a question, reads the context and recommendation, presses `2`, and sees:
+Open `http://127.0.0.1:4173`. The Vite application connects to the local server on `127.0.0.1:4174`.
 
-```text
-Answered by Felix
-Acknowledged by Checkout Orchestrator
-Implementation resumed
+To exercise the production bundle:
+
+```bash
+pnpm build
+pnpm start
 ```
 
-He opens the run and sees the plan, live agents, branches, worktrees, recent commands, changed files, tests, decisions, usage, and blockers. He asks the meta session to summarize what changed since his last visit. Every claim links to evidence. The terminal is one keystroke away, but he never needs to open it.
+Then open `http://127.0.0.1:4174`.
 
-That is the bar.
+The current slice can launch available Shell, Codex, and Claude Code presets; group sessions by repository; switch with the mouse or keyboard; and interrupt, resize, reconnect to, or close direct-PTY sessions. Sessions survive browser refresh but not local-server restart.
 
----
+Current keyboard shortcuts:
 
-## The product thesis
+- `Cmd/Ctrl+Shift+T`: open the new-terminal dialog.
+- `Cmd/Ctrl+1` through `Cmd/Ctrl+9`: select a visible session.
+- `Cmd/Ctrl+Shift+[` and `Cmd/Ctrl+Shift+]`: select the previous or next session.
+- `Ctrl+Shift+.`: leave terminal keyboard capture without stopping the PTY.
 
-Most coding-agent interfaces optimize for a single conversation. Pacium Control optimizes for **operating a system of work**.
+## Primary experience
 
-The core thesis is:
+The planned packaged command:
 
-1. Coding agents become far more useful when their work is observable, interruptible, reviewable, and recoverable.
-2. Existing CLI agents are already capable; the missing layer is operational clarity.
-3. A team does not need another autonomous agent framework. It needs a trusted control plane around the tools it already uses.
-4. Human attention is the scarce resource. The product must route only consequential questions and approvals to the right person, with enough context to answer quickly.
-5. Durable truth should remain in inspectable systems: tmux, Git, files, and append-only events.
-
----
-
-## Hard constraints
-
-These decisions are not suggestions. Changing one requires an Architecture Decision Record and explicit owner approval.
-
-- **CLI only.** Claude Code and Codex run as command-line processes. No desktop applications.
-- **No application database.** Durable coordination state is stored as JSON entities plus append-only JSONL events on disk.
-- **tmux is the runtime substrate.** Pacium observes and controls tmux; it does not replace process supervision with an invented agent runtime.
-- **Tailnet-only by default.** The web/API surface is not publicly exposed.
-- **Tailscale identity, not IP identity.** Users are authorized by verified identity and application roles.
-- **Terminal as escape hatch.** Structured workflows are primary; raw terminal access is secondary and separately permissioned.
-- **One worker, one branch, one worktree.** Parallel coding agents never share a mutable checkout.
-- **Provider-neutral domain model.** Claude and Codex are adapters to the same run, task, question, approval, event, and review concepts.
-- **Evidence over narration.** “Done” means backed by diffs, commits, checks, artifacts, and explicit completion criteria.
-- **No shared personal credentials as a product assumption.** Operator identity and provider execution identity are separate concepts.
-
----
-
-## Start here
-
-Read these documents in order:
-
-1. [Executive brief](docs/00-executive-brief.md)
-2. [Vision](VISION.md)
-3. [Philosophy](PHILOSOPHY.md)
-4. [Product strategy](PRODUCT_STRATEGY.md)
-5. [Architecture](ARCHITECTURE.md)
-6. [Roadmap](ROADMAP.md)
-7. [Agent operating contract](AGENTS.md)
-8. [Security](SECURITY.md)
-9. [Implementation master plan](docs/execution/master-plan.md)
-10. [Implementation backlog](docs/execution/implementation-backlog.md)
-
-For a narrower question, use the [documentation map](docs/README.md).
-
----
-
-## Repository map
-
-```text
-.
-├── README.md                    Entry point and canonical summary
-├── STATUS.md                    What exists and what does not
-├── VISION.md                    Long-term product vision
-├── PHILOSOPHY.md                Product and engineering worldview
-├── PRINCIPLES.md                Decision tests and invariants
-├── PRODUCT_STRATEGY.md          Users, wedge, positioning, metrics
-├── ARCHITECTURE.md              System architecture overview
-├── ROADMAP.md                   Milestones and release sequence
-├── AGENTS.md                    Mandatory instructions for all agents
-├── CLAUDE.md                    Claude-specific operating notes
-├── CODEX.md                     Codex-specific operating notes
-├── SECURITY.md                  Threat model and security invariants
-├── CONTRIBUTING.md              Contribution and review process
-├── GOVERNANCE.md                Decision rights and change control
-├── GLOSSARY.md                  Canonical vocabulary
-├── PUBLISHING.md                GitHub setup and repository policy
-├── docs/
-│   ├── product/                 Product definition and workflows
-│   ├── design/                  Interaction and visual design
-│   ├── architecture/            Detailed technical design
-│   ├── workflow/                Meta/orchestrator/worker protocols
-│   ├── execution/               Plans, backlog, risks, quality gates
-│   ├── operations/              Deployment and operating playbooks
-│   ├── decisions/               Architecture Decision Records
-│   ├── research/                Assumptions and open questions
-│   └── templates/               Reusable planning and review templates
-└── .github/                     Issue and pull-request templates
+```bash
+pacium
 ```
 
----
+will start a local server bound to `127.0.0.1` and open the application. That packaging command is not implemented yet.
 
-## How implementation should begin
+The application should let the operator:
 
-Do not start with a beautiful dashboard and fake data. Build the narrowest vertical slice that proves the operating model:
+- launch a shell or coding agent in any repository;
+- organize sessions by workspace and repository;
+- move between sessions without hunting through terminal windows;
+- use tabs and splits;
+- see status and unread activity at a glance;
+- inspect changed files and diffs beside the terminal;
+- interrupt, restart, duplicate, rename, pin, and close sessions;
+- recover the visible terminal after a browser refresh;
+- keep selected sessions alive through optional tmux backing.
 
-1. Filesystem state coordinator.
-2. tmux discovery through a privileged broker.
-3. Tailscale-authenticated API.
-4. Read-only session list and live terminal.
-5. Exclusive terminal control lease.
-6. Structured prompt delivery.
-7. Question creation and one-click answer.
-8. Acknowledgement from orchestrator.
-9. Run page with evidence from Git and tmux.
+Pacium manages sessions it launches. It cannot silently adopt an arbitrary existing Terminal.app or iTerm pane. Existing durable sessions can be attached through the optional tmux adapter.
 
-Only after that slice works end to end should the team widen into provider-native events, usage, multi-host support, and advanced review workflows.
+## Pacium mode
 
----
+Pacium mode is a workspace toggle, not a separate application.
 
-## What excellence looks like
+When enabled it adds:
 
-Pacium Control should feel like software from an exceptional infrastructure and product team:
+- pinned Meta and Orchestrator sessions;
+- explicit prompt targeting;
+- questions, approvals, failures, and review requests from the queue;
+- answer and acknowledgement state;
+- a compact worker list;
+- current objective and plan context;
+- recent decisions and resulting Git or terminal activity.
 
-- fast enough that the UI feels directly attached to the machines;
-- visually calm under high activity;
-- explicit about uncertainty and degraded data;
-- secure by construction rather than by warning text;
-- operable without a manual for routine work;
-- inspectable and recoverable when something fails;
-- opinionated about workflow without becoming an agent framework;
-- polished in the small details: names, timestamps, keyboard flow, state transitions, empty states, and error recovery.
+The first Pacium implementation observes the existing queue files conservatively. Structured Pacium state can become authoritative only after the compatibility loop is proven.
 
-The project is not successful when the terminal appears in a browser. It is successful when a human can safely operate more parallel work with less cognitive load and more confidence.
+## Product layout
+
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│ Workspace / repository                  General ○  Pacium ●      │
+├──────────────────┬───────────────────────────────┬───────────────┤
+│ Sessions         │ Active terminal               │ Context       │
+│                  │                               │               │
+│ ● Meta           │ $ codex                       │ Queue         │
+│ ● Orchestrator   │                               │ Changed files │
+│ ◐ Worker API     │                               │ Diff          │
+│ ✓ Worker Docs    │                               │ Checks        │
+│                  │                               │ Activity      │
+│ + New terminal   │                               │               │
+├──────────────────┴───────────────────────────────┴───────────────┤
+│ Composer · target · interrupt · split · command palette          │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+## Architecture
+
+```text
+React browser application
+        ↕ local HTTP/WebSocket
+Node.js local server
+        ├── PTY terminal manager
+        ├── session registry
+        ├── Git inspector
+        ├── agent observers
+        ├── Pacium queue adapter
+        └── minimal filesystem state
+                ↕
+      shells / Claude Code / Codex
+```
+
+The initial product is one local process. There is no separate broker, application database, Tailscale dependency, membership model, or multi-host protocol.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) and the [accepted ADRs](docs/decisions/README.md).
+
+## Build order
+
+1. Repository foundation and contracts.
+2. One real PTY-backed browser terminal.
+3. Multiple sessions, grouping, tabs, splits, and keyboard control.
+4. Agent attention states and Git inspection.
+5. Pacium toggle, Meta, Orchestrator, and queue loop.
+6. Claude and Codex native enrichment.
+7. Optional tmux attachment, packaging, and release polish.
+
+The canonical execution sequence is [ROADMAP.md](ROADMAP.md). The first implementation is specified in [docs/execution/first-build-plan.md](docs/execution/first-build-plan.md).
+
+## Hard boundaries
+
+- Bind to loopback by default.
+- Never expose a shell endpoint to the network accidentally.
+- Treat terminal output, titles, links, and escape sequences as untrusted.
+- Do not persist provider credentials, environment dumps, or unlimited terminal history.
+- Do not introduce a database.
+- Do not claim semantic agent state when only process or terminal activity was observed.
+- Keep questions and approvals separate.
+- Keep remote access, team roles, multi-host operation, and enterprise workflow out of the initial build.
+
+## Documentation
+
+Start with:
+
+1. [Project status](STATUS.md)
+2. [Principles](PRINCIPLES.md)
+3. [Architecture](ARCHITECTURE.md)
+4. [Security](SECURITY.md)
+5. [Roadmap](ROADMAP.md)
+6. [Agent contract](AGENTS.md)
+7. [Master plan](docs/execution/master-plan.md)
+8. [Implementation backlog](docs/execution/implementation-backlog.md)

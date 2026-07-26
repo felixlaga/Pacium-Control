@@ -4,6 +4,8 @@
 - Date: 2026-07-20
 - Owners: Product owner, technical lead
 
+> ADR-0015 supersedes the generalized state-coordinator, transaction-journal, projection, snapshot, and backup scope below. The no-database and inspectable-filesystem decision remains accepted.
+
 ## Context
 
 Pacium Control begins as a private system for one small team on a primary VPS. Its durable coordination data consists of relatively small entities—runs, tasks, questions, approvals, decisions, policies, and events. Live session truth already belongs to tmux, and code history belongs to Git.

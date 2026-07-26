@@ -1,159 +1,59 @@
-# Git and worktrees
+# Git inspection
 
-## Principle
+## Objective
 
-Every coding worker gets one branch and one Git worktree. This is the primary safety boundary for parallel code modification.
+Show what each terminal or coding agent is changing without turning the initial product into a full Git client.
 
-## Repository registration
+## Repository discovery
 
-A repository configuration records:
+For a session cwd:
 
-- canonical host and root;
-- default/integration branch;
-- remote identity;
-- worktree root;
-- naming rules;
-- verification commands;
-- paths or operations requiring stronger approval;
-- allowed execution identities;
-- retention and cleanup policy.
+1. Resolve the canonical path.
+2. Ask Git for the repository root.
+3. Match a configured repository or offer local registration.
+4. Record only Pacium metadata; Git remains authoritative.
 
-All paths are canonicalized. A repository must be under an allowed root.
+## Initial read model
 
-## Assignment contract
+- repository root and display name;
+- branch or detached state;
+- HEAD commit;
+- worktree status;
+- changed files;
+- additions/deletions;
+- diff on demand;
+- recent commits;
+- configured verification results.
 
-When a task is assigned, record:
+Refresh is event-informed and debounced. A failed Git read does not affect terminal operation.
 
-- repository ID;
-- base branch and exact base commit;
-- worker branch;
-- worktree path;
-- owning agent session;
-- run and task IDs;
-- created timestamp;
-- cleanup eligibility;
-- integration target.
+## Diff safety
 
-The agent verifies the expected worktree and base commit before editing.
+- Bound file and total diff size.
+- Mark binary files.
+- Handle renamed, deleted, untracked, and conflicted files.
+- Treat paths and diff text as untrusted.
+- Never render diff content as application HTML.
+- Preserve line endings and encoding diagnostics where possible.
 
-## Naming
+## Verification
 
-Suggested branch pattern:
+Verification commands are explicit local presets. Results include:
 
-```text
-pacium/<run-short>/<task-short>/<provider>-<worker>
-```
-
-Suggested worktree directory:
-
-```text
-<worktree-root>/<repo-short>/<run-id>/<task-id>-<agent-short>
-```
-
-Names should be deterministic, shell-safe, and collision-resistant. IDs remain authoritative.
-
-## Ownership rules
-
-- One active coding owner per worktree.
-- Reviewers use read-only inspection or a separate review worktree when necessary.
-- Orchestrator does not directly edit worker worktrees unless ownership is formally transferred.
-- Integration occurs in a separate integration worktree or controlled branch context.
-- Human emergency edits are recorded as ownership intervention.
-
-## Evidence collection
-
-Pacium derives evidence from Git rather than storing a duplicate commit database.
-
-Evidence references may include:
-
-- base and head commit;
-- commit list;
-- changed file list;
-- diff statistics;
-- patch or diff view generated on demand;
-- author/execution identity;
-- branch status;
-- uncommitted changes;
-- merge base;
-- conflicts;
-- signed or verified status where configured.
-
-## Verification commands
-
-Repositories define explicit commands such as:
-
-- formatting check;
-- type checking;
-- unit tests;
-- integration tests;
-- build;
-- security scan;
-- project-specific smoke tests.
-
-Commands are configuration controlled by repository owners, not arbitrary browser input. Results include:
-
-- exact command profile/version;
+- preset name and command identity;
+- cwd;
 - start/end time;
 - exit status;
-- bounded stdout/stderr or artifact reference;
-- environment metadata safe for retention;
-- commit/worktree tested.
+- bounded output;
+- observed branch/commit/worktree state;
+- cancellation or timeout.
 
-A green check applies only to the commit and environment recorded.
+A result applies only to the recorded repository state.
 
-## Integration flow
+## Mutations
 
-```text
-Worker task review-ready
-→ evidence bundle generated
-→ reviewer approves or requests revision
-→ integration task acquires target ownership
-→ update/rebase/merge under policy
-→ resolve conflicts explicitly
-→ run post-integration verification
-→ record integration commit and result
-→ mark task/run integrated
-```
+The initial inspector does not expose arbitrary Git commands, commit, rebase, merge, push, or pull-request actions. Those require separate issues, UX, failure handling, and security review.
 
-Do not let several workers merge into the same branch concurrently without an integration queue or lock.
+## Worker worktrees
 
-## Conflicts
-
-Conflicts are first-class operational state, not generic command failures.
-
-The UI should show:
-
-- source branch and base;
-- integration target;
-- conflicting files;
-- likely owning tasks;
-- last successful verification;
-- options: rebase worker, assign conflict-resolution task, abandon candidate, or ask human.
-
-## Cleanup
-
-A worktree is removable only when:
-
-- task is completed, cancelled, or superseded;
-- uncommitted changes are absent or explicitly preserved;
-- commits are reachable from a retained branch or bundle;
-- review and integration references are stored;
-- no active session uses the directory;
-- retention policy permits cleanup.
-
-Cleanup is audited and reversible where practical through retained branches and snapshots.
-
-## GitHub integration
-
-GitHub is optional and comes after local Git correctness.
-
-Potential capabilities:
-
-- create draft pull request;
-- attach review bundle summary;
-- read check status;
-- link issues;
-- update PR description from deterministic evidence;
-- record merge outcome.
-
-Pacium must remain usable without GitHub availability.
+Pacium mode may observe workers already using Git worktrees. Concurrent coding agents still follow the repository-wide one-worker/one-worktree rule, but automatic worktree creation is deferred.

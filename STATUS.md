@@ -1,71 +1,105 @@
 # Project status
 
-**Current phase:** Blueprint complete; implementation not started.
+**Current phase:** First local-terminal vertical slice implemented; browser review and runtime-matrix validation pending.
 
-This document is intentionally blunt. It exists to prevent agents, contributors, and reviewers from mistaking design intent for working software.
+Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
+
+## Product direction
+
+Pacium Control is a localhost application for managing terminal sessions and CLI coding agents from one clean, keyboard-first interface.
+
+The primary product is the terminal workspace:
+
+- launch shells, Claude Code, Codex, and configured commands in local PTYs;
+- group sessions by workspace and repository;
+- switch, split, rename, pin, interrupt, relaunch, and close sessions;
+- see which agents are working, waiting, finished, failed, or need input;
+- inspect Git changes, diffs, commits, and verification beside the terminal.
+
+The secondary product is **Pacium mode**:
+
+- pin Meta and Orchestrator;
+- surface the existing queue;
+- answer questions and approvals;
+- see workers, current objective, recent decisions, and resulting work.
 
 ## What is present
 
-- A coherent product thesis.
-- A defined information architecture and north-star user experience.
-- A canonical domain model.
-- A no-database filesystem persistence design.
-- A tmux control and PTY boundary.
-- CLI-only Claude Code and Codex integration plans.
-- A Git worktree isolation model.
-- A Tailscale identity and authorization model.
-- A multi-host direction.
-- Security invariants and a threat model.
-- An implementation roadmap, workstream dependency map, risk register, and backlog.
-- Reusable issue, planning, handoff, review, incident, and release templates.
+- Accepted local-first architecture decisions.
+- Product, design, architecture, security, and execution specifications.
+- A milestone roadmap and dependency-ordered backlog.
+- A first implementation issue and implementation plan.
+- Reusable issue, plan, handoff, review, and release templates.
+- A pnpm monorepo with shared TypeScript configuration and pinned dependencies.
+- A three-panel React/Vite shell with xterm as the dominant workspace surface.
+- An in-memory direct-PTY session registry supporting create, list, input, resize, interrupt, exit, attach, snapshot, and deliberate close.
+- A loopback-only HTTP/WebSocket server with Host, Origin, ephemeral-token, path, schema, and payload-size checks.
+- Bounded xterm headless snapshots that let a new browser transport attach to a still-live PTY.
+- A fixed server-owned Shell, Codex, and Claude Code launch catalog with honest executable availability.
+- Canonical repository-root discovery and repository-grouped session navigation.
+- Keyboard commands for session creation, numbered selection, previous/next selection, and leaving terminal capture.
+- Contract, configuration, security, preset, repository, grouping, fake-PTY, real-PTY, and WebSocket reconnect tests.
 
 ## What is not present
 
-- No frontend.
-- No API.
-- No broker.
-- No filesystem state engine.
-- No tmux integration.
-- No Claude Code hooks.
-- No Codex App Server integration.
-- No authentication implementation.
-- No deployment automation.
-- No tests.
-- No production environment.
+- No packaged `pacium` launcher or release artifact.
+- No durable session restoration after local-server restart.
+- No browser-driven test or completed visual/accessibility review in the current environment.
+- No durable workspace configuration, tabs, splits, command palette, or complete keyboard model.
+- No Claude or Codex observer.
+- No Git inspector.
+- No functional Pacium mode; the toggle is visibly marked as upcoming.
+- No queue integration.
+- No tmux adapter.
 
-Any statement that one of those items “works” is false until code is merged and the corresponding acceptance criteria are demonstrated.
+Do not extrapolate from the working terminal slice to any capability in this list.
 
-## Frozen decisions
+## Current evidence
 
-The following are frozen for the first implementation unless the owner approves an ADR that supersedes them:
+Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
-1. CLI-only provider operation.
-2. No application database.
-3. tmux remains the process/session substrate.
-4. Tailscale is the default network and identity boundary.
-5. The backend binds to loopback when served through Tailscale Serve.
-6. Raw terminal access is a privileged escape hatch.
-7. The generic control plane and Pacium-specific workflow are separate modules.
-8. Questions and approvals are different objects with different semantics.
-9. Each coding worker receives an isolated branch and worktree.
-10. State mutations flow through one authoritative writer.
-11. Provider-native events are normalized into a provider-neutral domain model.
-12. Existing `FELIX-QUEUE` and `NEEDS-FELIX` files are migration inputs or compatibility views, not the long-term source of truth.
+- `pnpm typecheck`: passed across all six workspace projects.
+- `pnpm lint`: passed.
+- `pnpm test`: 9 files and 27 tests passed, including preset resolution, repository discovery, grouping and shortcut logic, a real `node-pty` shell, and a disconnect/reconnect snapshot test.
+- `pnpm build`: web and local-server production bundles completed.
+- `pnpm dev`: Vite and the source local server started together; the UI and proxied health route both returned 200.
+- The live protocol-version-2 welcome message advertised Shell, Codex, and Claude Code as available on this machine.
+- Built server startup: served the application and health endpoint on `127.0.0.1:4174`.
+- Hostile bootstrap Origin: returned HTTP 403.
 
-## Open decisions
+Evidence boundaries:
 
-These should be resolved during Milestone 0 through time-boxed prototypes:
+- The current shell exposed Node.js `26.4.0`, not the approved Node.js `24.18.x`; the commands passed with an engine warning, so the supported runtime remains unverified.
+- No in-app browser backend was available, so create/type/refresh/close has not been validated through the rendered UI.
+- Git commands remain blocked by the unaccepted Xcode license, so `git diff --check` and normal branch-state evidence are unavailable.
+- `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
+- Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
+- The current web bundle is 621 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
 
-- Exact frontend framework and component primitives.
-- Exact API framework and runtime.
-- Broker implementation language, if different from the API.
-- Whether API-to-browser dashboard updates use SSE, WebSockets, or a hybrid.
-- Whether the first Codex integration launches App Server directly or wraps an existing tmux TUI session.
-- Exact Claude status and hook payload compatibility for the installed CLI version.
-- State retention periods and archive policy.
-- Whether a local desktop helper is ever necessary for `pacium://` links.
-- The minimum supported versions of tmux, Node, Claude Code, Codex, Git, and Tailscale.
+## Active decisions
+
+1. Pacium is localhost-only and single-user initially.
+2. The application binds to `127.0.0.1`.
+3. Local PTYs are the default terminal runtime.
+4. tmux is an optional adapter, not a requirement.
+5. The terminal is the primary product surface.
+6. Agent-aware views enhance rather than replace terminal truth.
+7. Pacium mode is a toggle inside the terminal workspace.
+8. Meta, Orchestrator, and the queue are the first Pacium-specific concepts.
+9. Claude Code and Codex are integrated through their CLI/runtime interfaces, not desktop applications.
+10. Durable application state is minimal, filesystem-based, and contains no provider secrets.
+11. Questions and approvals remain distinct.
+12. Remote access, multi-user authorization, and multi-host coordination are out of initial scope.
+
+## Open decisions for Milestone 0
+
+- Confirm Node.js 24 and `node-pty` on a clean supported macOS account with the Xcode license accepted.
+- Complete browser, accessibility, terminal-escape, and sustained-output testing.
+- Decide whether the current ephemeral bootstrap token lifecycle is sufficient for the packaged launcher.
+- Packaging strategy after the development CLI works.
+
+The initial runtime, package manager, application stack, and macOS-first platform are fixed in [the toolchain decision](docs/execution/toolchain-and-platform.md).
 
 ## Next action
 
-Create the first implementation issue from [Milestone 0](docs/execution/milestone-0-foundations.md), establish the monorepo, and merge only after the repository can run one deterministic end-to-end smoke test.
+Finish the pinned Node.js 24 clean-install, CI, browser, security, and sustained-output gates. Then build terminal tabs, splits, richer session actions, and the command palette before agent-aware status and Pacium mode.

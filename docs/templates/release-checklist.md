@@ -4,71 +4,72 @@
 
 - Commit/tag:
 - Release owner:
-- Target environment:
-- State format versions:
-- Broker/host protocol versions:
-- Supported tmux/Claude/Codex versions:
+- Package/platform:
+- Protocol version:
+- State schema versions:
+- Supported Node/browser/PTY versions:
+- Supported Claude/Codex versions:
+- Optional tmux version:
 
 ## Source and build
 
-- [ ] Clean working tree and tagged commit
+- [ ] Clean tagged source
 - [ ] Clean-clone install passes
-- [ ] Formatting/lint/type checks pass
-- [ ] Unit/property/contract tests pass
-- [ ] Integration/browser/security tests pass
-- [ ] Production build passes
+- [ ] Format/lint/strict type checks pass
+- [ ] Unit and contract tests pass
+- [ ] Real PTY integration tests pass
+- [ ] Browser and security tests pass
+- [ ] Production/package build passes
 - [ ] Dependency and secret scans pass
-- [ ] No environment-specific traces or runtime state
-- [ ] Release artifact checksum recorded
+- [ ] No local state, terminal captures, credentials, caches, or machine paths
+- [ ] Release artifacts and checksums recorded
 
-## Product
+## Terminal workspace
 
-- [ ] Acceptance matrix complete
-- [ ] Demo script passes
-- [ ] UI evidence attached
-- [ ] Accessibility checks complete
-- [ ] Known limitations documented
-- [ ] Metrics/pilot evidence reviewed
+- [ ] Shell, Claude Code, and Codex launch
+- [ ] Input, resize, interrupt, exit, and close
+- [ ] Browser refresh preserves live PTYs
+- [ ] Reconnect does not duplicate input
+- [ ] Tabs, splits, focus, and keyboard workflows
+- [ ] Bounded buffers under sustained output
+- [ ] Direct PTY server-restart limitation is clear
+- [ ] Optional tmux behavior verified when included
 
-## State and compatibility
+## Agent and Git
 
-- [ ] Pre-upgrade backup complete
-- [ ] Migration tested on representative copy
-- [ ] Integrity validation passes
-- [ ] Rollback path tested
-- [ ] Projection rebuild tested
-- [ ] Restore evidence current
+- [ ] Attention source/confidence/freshness is honest
+- [ ] Needs-input/failure/completion behavior verified
+- [ ] Git status and diff match direct Git evidence
+- [ ] Verification presets are explicit and bounded
+- [ ] Provider observer loss degrades safely
+
+## Pacium mode
+
+- [ ] General/Pacium toggle preserves terminal context
+- [ ] Meta and Orchestrator targeting is explicit
+- [ ] Queue observation does not mutate sources
+- [ ] Question and approval flows remain distinct
+- [ ] Decision delivery is deduplicated
+- [ ] Conflict and unknown-delivery states are exercised
 
 ## Security
 
-- [ ] Threat model reviewed
-- [ ] Network exposure verified
-- [ ] Authorization matrix tested
-- [ ] Terminal/broker changes reviewed
-- [ ] Secrets/credentials policy reviewed
-- [ ] Residual risk accepted
+- [ ] Server binds only to loopback
+- [ ] Hostile Origin and invalid token are denied
+- [ ] Terminal title/link/OSC/clipboard fixtures pass
+- [ ] Path and symlink tests pass
+- [ ] Logs/state contain no terminal transcript or environment secrets
+- [ ] Residual risks documented
 
-## Operations
+## Product quality
 
-- [ ] Deployment plan approved
-- [ ] Rollback trigger and owner identified
-- [ ] Canary selected
-- [ ] Monitoring/health ready
-- [ ] Backup destination healthy
-- [ ] Incident contact available
-
-## Post-deployment smoke
-
-- [ ] Tailscale authentication
-- [ ] Authorization denial
-- [ ] Session discovery
-- [ ] Read-only terminal
-- [ ] Control lease
-- [ ] Canary prompt
-- [ ] Question/decision/acknowledgement
-- [ ] Git evidence
-- [ ] Provider adapter health
-- [ ] Backup/state integrity
+- [ ] Milestone acceptance matrix complete
+- [ ] Demo script passes
+- [ ] UI recording/screenshots attached
+- [ ] Accessibility checks complete
+- [ ] Performance/soak evidence reviewed
+- [ ] Known limitations documented
+- [ ] Upgrade and uninstall preserve repositories and provider credentials
 
 ## Decision
 

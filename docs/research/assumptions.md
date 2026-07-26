@@ -1,5 +1,7 @@
 # Assumptions
 
+> Historical blueprint: these assumptions concern the superseded remote control plane unless restated in the active roadmap.
+
 Assumptions are hypotheses, not facts. Each should be validated during implementation or pilot use.
 
 ## Product assumptions

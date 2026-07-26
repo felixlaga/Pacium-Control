@@ -1,5 +1,7 @@
 # Backup and restore
 
+> Historical blueprint: generalized server backup and restore are outside the initial localhost roadmap.
+
 ## Scope
 
 Backups protect Pacium coordination state and safe configuration. Git repositories should also be protected through normal remotes and repository backup practices. tmux process memory cannot be backed up meaningfully; session manifests and worktrees enable recovery.

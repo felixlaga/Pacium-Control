@@ -47,8 +47,8 @@ What exists today? Link to code, tests, specs, and observed behavior.
 ## Failure model
 
 | Failure point | Expected state | Recovery |
-|---|---|---|
-| | | |
+| ------------- | -------------- | -------- |
+|               |                |          |
 
 ## Compatibility
 

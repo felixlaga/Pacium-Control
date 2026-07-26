@@ -1,5 +1,7 @@
 # Production deployment
 
+> Superseded blueprint: VPS, Tailscale, and remote deployment are not part of the active product. See [local deployment](../architecture/deployment-topology.md).
+
 This playbook describes the intended first production deployment. It is not a substitute for implementation-specific installation instructions once code exists.
 
 ## Preconditions

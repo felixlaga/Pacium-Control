@@ -3,6 +3,8 @@
 - Status: Accepted
 - Date: 2026-07-20
 
+> The original VPS/tmux context below is historical. The active product runs provider CLIs in local PTYs, with optional tmux support.
+
 ## Context
 
 The intended operating environment is a Hetzner VPS and optional local hosts accessed through Pacium Control. The operator will not use Claude or Codex desktop applications.

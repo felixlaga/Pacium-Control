@@ -1,6 +1,6 @@
 # ADR-0011: Use one authoritative central state writer
 
-- Status: Accepted
+- Status: Superseded by [ADR-0015](ADR-0015-minimal-local-state.md)
 - Date: 2026-07-20
 
 ## Context

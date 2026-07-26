@@ -1,5 +1,7 @@
 # Continuous agent execution model
 
+> Historical blueprint: this operating model is not the active implementation sequence. Use [master-plan.md](master-plan.md) and [first-build-plan.md](first-build-plan.md).
+
 This document describes how to run Claude and Codex implementation agents continuously in this repository without turning speed into architectural entropy.
 
 ## Objective
@@ -198,17 +200,17 @@ The morning summary should include:
 
 ## Review matrix
 
-| Change type | Minimum review |
-|---|---|
-| Local pure logic | Independent code/test review |
-| Shared schema/protocol | Contract owner + affected consumer |
-| Filesystem state/recovery | State owner + fault-test evidence |
-| Terminal/broker | Broker owner + security reviewer |
-| Identity/authorization | Security reviewer + negative tests |
-| Provider adapter | Adapter owner + version fixtures + real smoke test |
-| Git/worktree/integration | Git owner + destructive/failure review |
-| User-facing workflow | Product/design review + browser evidence |
-| Deployment/migration | Operations + rollback evidence |
+| Change type               | Minimum review                                     |
+| ------------------------- | -------------------------------------------------- |
+| Local pure logic          | Independent code/test review                       |
+| Shared schema/protocol    | Contract owner + affected consumer                 |
+| Filesystem state/recovery | State owner + fault-test evidence                  |
+| Terminal/broker           | Broker owner + security reviewer                   |
+| Identity/authorization    | Security reviewer + negative tests                 |
+| Provider adapter          | Adapter owner + version fixtures + real smoke test |
+| Git/worktree/integration  | Git owner + destructive/failure review             |
+| User-facing workflow      | Product/design review + browser evidence           |
+| Deployment/migration      | Operations + rollback evidence                     |
 
 ## Merge discipline
 

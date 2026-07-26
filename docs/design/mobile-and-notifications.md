@@ -1,5 +1,7 @@
 # Mobile and notifications
 
+> Deferred blueprint: mobile and remote notification workflows are outside the initial localhost roadmap. Notification principles may be reused only where they align with the active agent-attention milestone.
+
 ## Mobile purpose
 
 Mobile Pacium is a decision surface, not a pocket terminal workstation.

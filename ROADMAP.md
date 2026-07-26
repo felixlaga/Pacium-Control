@@ -1,192 +1,153 @@
 # Roadmap
 
-The roadmap is ordered by operational risk and learning value, not visual excitement. Each milestone must leave a working, demonstrable vertical slice.
+The roadmap is ordered around daily user value. Every milestone must leave a real, demonstrable application rather than an isolated infrastructure layer.
 
-## Milestone 0 — Foundations and truth
+## Milestone 0 — Local application foundation
 
-**Goal:** establish the repository, domain contracts, filesystem state engine, and verification discipline.
+**Goal:** establish a clean monorepo, shared contracts, deterministic test harness, and one-command local startup.
 
 Deliverables:
 
-- Monorepo and local developer experience.
-- Shared domain schemas and IDs.
-- Single-writer filesystem state coordinator.
-- Atomic entity writes and JSONL event append.
-- Transaction journal and recovery.
-- In-memory indexes rebuilt from disk.
-- Command idempotency.
-- State inspection, validation, snapshot, backup, and restore tools.
-- Fake tmux/provider fixtures for deterministic tests.
-- CI gates and release evidence format.
+- pinned toolchain and package manager;
+- React web application and Node local-server boundaries;
+- shared transport contracts;
+- formatting, linting, strict typing, tests, build, and verification commands;
+- fake PTY and repository fixtures;
+- loopback and local-token configuration;
+- CI and generated-artifact policy.
 
 Exit criteria:
 
-- A clean clone installs and runs locally.
-- State survives forced process termination at defined failure points.
-- Duplicate commands do not duplicate decisions or prompts.
-- A snapshot restores into an empty directory and passes integrity checks.
-- No database dependency exists, direct or transitive by design intent.
+- a clean clone installs and verifies;
+- `pacium` development startup opens the local app;
+- package boundaries match [ARCHITECTURE.md](ARCHITECTURE.md);
+- no application database or machine-specific path is introduced.
 
 See [Milestone 0](docs/execution/milestone-0-foundations.md).
 
-## Milestone 1 — Secure tmux control plane
+## Milestone 1 — Terminal workspace
 
-**Goal:** prove safe observation and control of real tmux sessions on one host.
-
-Deliverables:
-
-- Non-root broker process.
-- tmux control-mode discovery and event ingestion.
-- Session metadata and canonical naming.
-- Read-only xterm terminal stream.
-- Exclusive, renewable terminal write leases.
-- Per-pane serialized input and idempotent prompt delivery.
-- Tailscale Serve identity ingestion.
-- Workspace and repository RBAC.
-- Basic web shell: navigation, sessions, activity, terminal drawer.
-
-Exit criteria:
-
-- Browser and API restarts do not terminate tmux sessions.
-- Two users can observe; only one can control a pane.
-- Unauthorized users cannot enumerate or attach to hidden repositories.
-- Reconnect does not resend a prompt.
-- The web process has no tmux socket access.
-
-See [Milestone 1](docs/execution/milestone-1-control-plane.md).
-
-## Milestone 2 — Pacium operating workflow
-
-**Goal:** make the web app the primary interface for the meta/orchestrator loop.
+**Goal:** make Pacium useful as a polished local terminal manager.
 
 Deliverables:
 
-- Repositories, runs, tasks, plans, and agent cards.
-- Pacium workspace and generic terminal workspace.
-- Structured questions and multiple-choice answers.
-- Separate structured approvals with risk context.
-- Immutable decisions, acknowledgement, and applied states.
-- `FELIX-QUEUE` and `NEEDS-FELIX` migration adapter.
-- Evidence timeline from Git and verification commands.
-- “Since I last checked” summaries with source links.
-- Inbox, Active, Repositories, Runs, Agents, Review, Activity views.
-- Keyboard-first command palette and mobile Inbox.
+- real PTY launch and lifecycle;
+- xterm-based browser terminal;
+- input, resize, interrupt, exit, and close;
+- multiple sessions grouped by workspace and repository;
+- tabs, splits, rename, pin, duplicate, and relaunch;
+- browser reconnect with bounded screen restoration;
+- keyboard navigation and contextual command palette;
+- clear process and connection states.
 
 Exit criteria:
 
-- A normal question-and-steer cycle requires no SSH or terminal parsing.
-- Every answer has actor, timestamp, run, target, and lifecycle state.
-- A run page can explain objective, ownership, progress, blockers, changes, and evidence.
-- Existing legacy queue workflows continue during migration.
+- shell, Claude Code, and Codex can run simultaneously;
+- browser refresh does not terminate them;
+- terminal behavior passes PTY integration tests;
+- the operator can manage routine sessions without another terminal manager.
 
-See [Milestone 2](docs/execution/milestone-2-pacium-workspace.md).
+See [Milestone 1](docs/execution/milestone-1-terminal-workspace.md).
 
-## Milestone 3 — Claude and Codex native adapters
+## Milestone 2 — Agent visibility and work inspection
 
-**Goal:** enrich the shared model with provider-native state while retaining CLI sessions and terminal fallback.
+**Goal:** make several coding agents easy to supervise without reading every terminal.
 
 Deliverables:
 
-- Claude Code hook receiver and CLI launch profile.
-- Claude status-line usage/context ingestion.
-- Claude permission and question bridge.
-- Claude subagent/task lifecycle events.
-- Codex App Server adapter launched and supervised as a CLI process.
-- Codex turn, plan, message, approval, usage, and rate-limit events.
-- Normalized provider state and confidence model.
-- Provider-neutral handoff packets.
-- Cross-provider run patterns.
+- agent and command detection;
+- working, waiting, needs-input, finished, failed, and stale attention states;
+- source, confidence, freshness, and unread indicators;
+- repository, branch, and working-directory context;
+- changed files, diff, commits, and configured verification;
+- relevant notifications and activity summaries.
 
 Exit criteria:
 
-- Claude and Codex operate simultaneously in separate worktrees.
-- Native adapter loss visibly degrades to terminal/inferred state.
-- Provider-specific usage is never collapsed into a misleading unified quota.
-- Approvals cannot be silently granted by an adapter failure.
+- the operator can find which session needs attention in seconds;
+- Git evidence is derived from the repository;
+- inferred agent states are never presented as native confirmation;
+- notifications remain quiet when no decision is needed.
 
-See [Milestone 3](docs/execution/milestone-3-provider-integrations.md).
+See [Milestone 2](docs/execution/milestone-2-agent-visibility.md).
 
-## Milestone 4 — Git execution and review system
+## Milestone 3 — Pacium mode
 
-**Goal:** make parallel implementation safe and review outcomes evidence-backed.
+**Goal:** operate Meta, Orchestrator, workers, and the queue from the same terminal workspace.
 
 Deliverables:
 
-- Worktree creation and ownership.
-- Branch naming and lifecycle.
-- Task-to-worktree enforcement.
-- Changed files, diff stats, commits, checks, and artifacts.
-- Review bundles.
-- Integration queue and conflict handling.
-- Optional GitHub pull-request publication.
-- Reviewer role and independent verification workflows.
+- General/Pacium toggle;
+- pinned Meta and Orchestrator sessions;
+- explicit prompt target selection;
+- conservative queue-file observation;
+- separate question and approval presentation;
+- answer delivery, acknowledgement, conflict, and provenance;
+- worker summary, current objective, recent decisions, and resulting activity.
 
 Exit criteria:
 
-- No two coding workers share a mutable worktree.
-- Completed tasks produce a review bundle or an explicit no-change outcome.
-- Integration failures remain recoverable and attributable.
-- “Complete” cannot be displayed without required verification or a recorded waiver.
+- the existing Pacium workflow can be operated from one screen;
+- source files remain safe during import and conflict;
+- answers cannot be duplicated by refresh or file rewrite;
+- an ordinary answer cannot authorize an approval.
 
-See [Milestone 4](docs/execution/milestone-4-git-and-review.md).
+See [Milestone 3](docs/execution/milestone-3-pacium-mode.md).
 
-## Milestone 5 — Multi-host and operational hardening
+## Milestone 4 — Native agent enrichment
 
-**Goal:** operate reliably across a VPS and additional machines.
+**Goal:** make the workspace cleaner and more informative using supported Claude and Codex runtime events.
 
 Deliverables:
 
-- Outbound host agent and host-local broker.
-- Host registration, trust, health, and capabilities.
-- Local-machine session discovery.
-- Resource-aware placement suggestions.
-- Restart manifests.
-- Encrypted off-host backups and restore drills.
-- Stale-agent, disconnected-host, and credential-expiry detection.
-- Emergency pause and break-glass procedures.
-- Comprehensive production diagnostics.
+- Claude hook and status integration;
+- Codex native event integration where supported;
+- tool, plan, usage, approval, and completion cards;
+- capability and version detection;
+- explicit degradation to terminal/process inference;
+- relaunch manifests and provider diagnostics.
 
 Exit criteria:
 
-- A host disconnect is visible and does not corrupt central state.
-- Reconnection reconciles observed and recorded sessions safely.
-- A production backup restores on a separate machine.
-- A VPS reboot recovery drill succeeds with documented operator actions.
+- provider-native loss never breaks terminal operation;
+- unsupported versions fail clearly;
+- the UI preserves provider-specific semantics;
+- clean activity views link back to raw terminal and Git evidence.
 
-See [Milestone 5](docs/execution/milestone-5-multi-host-hardening.md).
+See [Milestone 4](docs/execution/milestone-4-agent-integrations.md).
 
-## Milestone 6 — Product excellence
+## Milestone 5 — Durability, packaging, and polish
 
-**Goal:** make the system feel inevitable, fast, and trustworthy under daily use.
+**Goal:** make Pacium comfortable for sustained personal use.
 
 Deliverables:
 
-- Refined information density and responsive behavior.
-- Personal unread cursors and saved views.
-- Notification policy and digesting.
-- Run templates and approval policies.
-- Usage/capacity planning.
-- Search across runs, decisions, agents, and evidence.
-- Accessibility review.
-- Performance budgets and long-running soak tests.
-- Security audit and threat-model review.
+- optional tmux attachment and keep-alive mode;
+- startup recovery and honest ended-session handling;
+- bounded diagnostic export;
+- macOS packaging first, with Linux according to the supported-platform decision;
+- performance budgets and soak tests;
+- accessibility and interaction polish;
+- release verification.
 
 Exit criteria:
 
-- Daily operation occurs primarily through structured views.
-- Operators report lower time-to-understand and time-to-decision.
-- The interface remains legible under target load.
-- Security and recovery exercises have documented evidence.
+- repeated daily use does not leak processes or unbounded memory;
+- a packaged clean install reproduces the core workflow;
+- optional tmux sessions reconnect after server restart;
+- all limitations are documented.
 
-## Release philosophy
+See [Milestone 5](docs/execution/milestone-5-polish.md).
 
-Do not label a milestone complete because files exist. Completion requires:
+## Explicitly deferred
 
-1. merged implementation;
-2. automated tests;
-3. an end-to-end demonstration;
-4. updated documentation;
-5. recorded limitations;
-6. release evidence stored in the repository or linked from it.
-
-The product should ship in narrow, trusted increments. Never hide incomplete behavior behind optimistic language.
+- remote access;
+- Tailscale ingress;
+- multi-user memberships and roles;
+- multi-host control;
+- public hosting;
+- application database;
+- generalized run/task/workflow platform;
+- provider marketplace;
+- automatic Git integration and pull-request orchestration;
+- organization-wide audit, backup, and incident systems.
