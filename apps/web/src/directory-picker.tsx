@@ -1,11 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DirectoryListing } from "@pacium/contracts";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
+import {
+  MAX_DIRECTORY_PATH_CHARS,
+  type DirectoryListing,
+} from "@pacium/contracts";
 
 import {
   addRecentDirectory,
   directoryBreadcrumbs,
-  parseRecentDirectories,
-  serializeRecentDirectories,
+  loadRecentDirectories,
+  resolveDirectoryPickerKeyAction,
+  saveRecentDirectories,
+  type DirectoryPickerKeyAction,
 } from "./directory-picker-model.js";
 import { handleModalKeyDown } from "./modal-focus.js";
 
@@ -23,18 +35,19 @@ export function DirectoryPicker({
   onSelect: (path: string) => void;
 }) {
   const dialogRef = useRef<HTMLElement>(null);
+  const filterInputRef = useRef<HTMLInputElement>(null);
+  const pathInputRef = useRef<HTMLInputElement>(null);
   const requestSequenceRef = useRef(0);
+  const resultRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [listing, setListing] = useState<DirectoryListing | null>(null);
   const [requestedPath, setRequestedPath] = useState(initialPath);
+  const [pathDraft, setPathDraft] = useState(initialPath);
+  const [pathEditing, setPathEditing] = useState(false);
   const [query, setQuery] = useState("");
   const [showHidden, setShowHidden] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [recentPaths, setRecentPaths] = useState(() =>
-    parseRecentDirectories(
-      window.localStorage.getItem(RECENT_DIRECTORIES_STORAGE_KEY),
-    ),
-  );
+  const [recentPaths, setRecentPaths] = useState(loadBrowserRecentDirectories);
 
   const navigate = useCallback(
     async (path?: string) => {
@@ -93,11 +106,49 @@ export function DirectoryPicker({
     }
     const nextRecent = addRecentDirectory(recentPaths, listing.currentPath);
     setRecentPaths(nextRecent);
-    window.localStorage.setItem(
-      RECENT_DIRECTORIES_STORAGE_KEY,
-      serializeRecentDirectories(nextRecent),
-    );
+    saveBrowserRecentDirectories(nextRecent);
     onSelect(listing.currentPath);
+  };
+
+  const openPathEditor = () => {
+    setPathDraft(listing?.currentPath ?? requestedPath);
+    setPathEditing(true);
+    window.requestAnimationFrame(() => {
+      pathInputRef.current?.focus();
+      pathInputRef.current?.select();
+    });
+  };
+
+  const closePathEditor = () => {
+    setPathEditing(false);
+    window.requestAnimationFrame(() => {
+      dialogRef.current
+        ?.querySelector<HTMLButtonElement>(".directory-edit-path")
+        ?.focus();
+    });
+  };
+
+  const applyKeyAction = (
+    action: DirectoryPickerKeyAction,
+    event: ReactKeyboardEvent<HTMLElement>,
+  ): boolean => {
+    if (action === null) {
+      return false;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (action.kind === "edit-path") {
+      openPathEditor();
+    } else if (action.kind === "confirm-current") {
+      if (!loading && error === null) {
+        chooseCurrent();
+      }
+    } else if (action.kind === "focus-filter") {
+      filterInputRef.current?.focus();
+    } else {
+      resultRefs.current[action.index]?.focus();
+    }
+    return true;
   };
 
   return (
@@ -106,9 +157,21 @@ export function DirectoryPicker({
         aria-labelledby="directory-picker-title"
         aria-modal="true"
         className="directory-picker-card"
-        onKeyDown={(event) =>
-          handleModalKeyDown(event, dialogRef.current, onCancel)
-        }
+        onKeyDown={(event) => {
+          const handled = applyKeyAction(
+            resolveDirectoryPickerKeyAction({
+              ctrlKey: event.ctrlKey,
+              key: event.key,
+              metaKey: event.metaKey,
+              resultCount: visibleEntries.length,
+              source: "dialog",
+            }),
+            event,
+          );
+          if (!handled) {
+            handleModalKeyDown(event, dialogRef.current, onCancel);
+          }
+        }}
         ref={dialogRef}
         role="dialog"
       >
@@ -134,7 +197,8 @@ export function DirectoryPicker({
               className={
                 listing?.currentPath === listing?.defaultPath ? "is-active" : ""
               }
-              onClick={() => void navigate(listing?.defaultPath ?? initialPath)}
+              onClick={() => void navigate()}
+              title="Open the server-owned default directory"
               type="button"
             >
               <span aria-hidden="true">⌁</span>
@@ -176,49 +240,108 @@ export function DirectoryPicker({
 
           <main className="directory-browser">
             <div className="directory-toolbar">
-              <button
-                aria-label="Go to parent directory"
-                disabled={listing?.parentPath == null || loading}
-                onClick={() => {
-                  if (listing?.parentPath !== null && listing !== null) {
-                    void navigate(listing.parentPath);
-                  }
-                }}
-                title="Parent directory"
-                type="button"
-              >
-                ↑
-              </button>
-              <nav aria-label="Current directory" className="breadcrumbs">
-                {(listing === null
-                  ? [
-                      {
-                        label: compactHostPath(requestedPath),
-                        path: requestedPath,
-                      },
-                    ]
-                  : directoryBreadcrumbs(listing.currentPath)
-                ).map((breadcrumb, index, breadcrumbs) => (
-                  <span key={breadcrumb.path}>
-                    <button
-                      aria-current={
-                        index === breadcrumbs.length - 1
-                          ? "location"
-                          : undefined
+              {pathEditing ? (
+                <form
+                  className="directory-path-editor"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const nextPath = pathDraft.trim();
+                    setPathEditing(false);
+                    void navigate(nextPath);
+                  }}
+                >
+                  <label
+                    className="visually-hidden"
+                    htmlFor="directory-host-path"
+                  >
+                    Absolute path on the Pacium host
+                  </label>
+                  <input
+                    id="directory-host-path"
+                    maxLength={MAX_DIRECTORY_PATH_CHARS}
+                    onChange={(event) => setPathDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        closePathEditor();
                       }
-                      disabled={loading}
-                      onClick={() => void navigate(breadcrumb.path)}
-                      title={breadcrumb.path}
-                      type="button"
-                    >
-                      {breadcrumb.label}
-                    </button>
-                    {index < breadcrumbs.length - 1 && (
-                      <span aria-hidden="true">/</span>
-                    )}
-                  </span>
-                ))}
-              </nav>
+                    }}
+                    ref={pathInputRef}
+                    spellCheck={false}
+                    value={pathDraft}
+                  />
+                  <button
+                    disabled={pathDraft.trim().length === 0 || loading}
+                    type="submit"
+                  >
+                    Go
+                  </button>
+                  <button
+                    aria-label="Cancel path editing"
+                    onClick={closePathEditor}
+                    type="button"
+                  >
+                    ×
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <button
+                    aria-label="Go to parent directory"
+                    disabled={listing?.parentPath == null || loading}
+                    onClick={() => {
+                      if (listing?.parentPath !== null && listing !== null) {
+                        void navigate(listing.parentPath);
+                      }
+                    }}
+                    title="Parent directory"
+                    type="button"
+                  >
+                    ↑
+                  </button>
+                  <nav aria-label="Current directory" className="breadcrumbs">
+                    {(listing === null
+                      ? [
+                          {
+                            label: compactHostPath(requestedPath),
+                            path: requestedPath,
+                          },
+                        ]
+                      : directoryBreadcrumbs(listing.currentPath)
+                    ).map((breadcrumb, index, breadcrumbs) => (
+                      <span key={breadcrumb.path}>
+                        <button
+                          aria-current={
+                            index === breadcrumbs.length - 1
+                              ? "location"
+                              : undefined
+                          }
+                          disabled={loading}
+                          onClick={() => void navigate(breadcrumb.path)}
+                          title={breadcrumb.path}
+                          type="button"
+                        >
+                          {breadcrumb.label}
+                        </button>
+                        {index < breadcrumbs.length - 1 && (
+                          <span aria-hidden="true">/</span>
+                        )}
+                      </span>
+                    ))}
+                  </nav>
+                  <button
+                    aria-keyshortcuts="Meta+L Control+L"
+                    aria-label="Edit absolute host path"
+                    className="directory-edit-path"
+                    onClick={openPathEditor}
+                    title="Edit host path (Cmd/Ctrl+L)"
+                    type="button"
+                  >
+                    <span aria-hidden="true">⌘ L</span>
+                  </button>
+                </>
+              )}
             </div>
 
             <div className="directory-filter-row">
@@ -228,7 +351,20 @@ export function DirectoryPicker({
                   aria-label="Filter directories"
                   autoFocus
                   onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    applyKeyAction(
+                      resolveDirectoryPickerKeyAction({
+                        ctrlKey: event.ctrlKey,
+                        key: event.key,
+                        metaKey: event.metaKey,
+                        resultCount: visibleEntries.length,
+                        source: "filter",
+                      }),
+                      event,
+                    );
+                  }}
                   placeholder="Filter folders"
+                  ref={filterInputRef}
                   type="search"
                   value={query}
                 />
@@ -260,6 +396,9 @@ export function DirectoryPicker({
                   <span aria-hidden="true">!</span>
                   <strong>Folder unavailable</strong>
                   <p>{error}</p>
+                  <p>
+                    Running terminals and the new-terminal form are unchanged.
+                  </p>
                   <button
                     onClick={() => void navigate(requestedPath)}
                     type="button"
@@ -281,11 +420,28 @@ export function DirectoryPicker({
               )}
               {!loading &&
                 error === null &&
-                visibleEntries.map((entry) => (
+                visibleEntries.map((entry, index) => (
                   <button
+                    aria-label={`Open ${entry.name}${entry.repository ? ", Git repository" : ", folder"}`}
                     className="directory-row"
                     key={entry.path}
                     onClick={() => void navigate(entry.path)}
+                    onKeyDown={(event) => {
+                      applyKeyAction(
+                        resolveDirectoryPickerKeyAction({
+                          ctrlKey: event.ctrlKey,
+                          key: event.key,
+                          metaKey: event.metaKey,
+                          resultCount: visibleEntries.length,
+                          resultIndex: index,
+                          source: "result",
+                        }),
+                        event,
+                      );
+                    }}
+                    ref={(node) => {
+                      resultRefs.current[index] = node;
+                    }}
                     title={entry.path}
                     type="button"
                   >
@@ -332,12 +488,13 @@ export function DirectoryPicker({
               Back
             </button>
             <button
+              aria-keyshortcuts="Meta+Enter Control+Enter"
               className="primary-button"
               disabled={listing === null || loading || error !== null}
               onClick={chooseCurrent}
               type="button"
             >
-              Use this folder
+              Use current folder
             </button>
           </div>
         </footer>
@@ -352,4 +509,27 @@ function compactHostPath(path: string): string {
     return path;
   }
   return `…/${parts.slice(-2).join("/")}`;
+}
+
+function loadBrowserRecentDirectories(): string[] {
+  try {
+    return loadRecentDirectories(
+      window.localStorage,
+      RECENT_DIRECTORIES_STORAGE_KEY,
+    );
+  } catch {
+    return [];
+  }
+}
+
+function saveBrowserRecentDirectories(paths: string[]): void {
+  try {
+    saveRecentDirectories(
+      window.localStorage,
+      RECENT_DIRECTORIES_STORAGE_KEY,
+      paths,
+    );
+  } catch {
+    // Browser-local recents are best-effort and never block selection.
+  }
 }
