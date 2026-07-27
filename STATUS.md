@@ -1,6 +1,6 @@
 # Project status
 
-**Current phase:** Core multi-session terminal workspace in progress; browser review and runtime-matrix validation pending.
+**Current phase:** Core multi-session terminal workspace and responsive accessibility baseline implemented; agent visibility is next.
 
 Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
 
@@ -44,14 +44,15 @@ The secondary product is **Pacium mode**:
 - Consistent session actions for rename, duplicate, ended-session relaunch, cwd copy, host repository reveal, `SIGINT`, view closure, and confirmed termination.
 - A contextual `Cmd/Ctrl K` command palette with bounded token search, selected-session ranking, workspace/split/session dispatch, destructive-action review, focus restoration, and a searchable shortcut reference.
 - Versioned browser-local settings for system/dark/light themes, compact/comfortable density, controlled terminal font stacks, bounded font size/line height/scrollback, default launch preset, and future attention-notification level.
-- Contract, configuration, security, preset, preference, terminal-option, repository, grouping, tab-state, action-model, command-search, fake-PTY, real-PTY, and WebSocket reconnect tests.
+- Named application and terminal landmarks, skip navigation, concise connection/selection/keyboard-owner status, persisted sidebar/inspector controls, narrow drawers, shared modal focus behavior, forced-colors support, and reduced-motion behavior.
+- Contract, configuration, security, preset, preference, panel, modal, terminal-option, repository, grouping, tab-state, action-model, command-search, semantic-rendering, fake-PTY, real-PTY, WebSocket reconnect, and Playwright accessibility tests.
 
 ## What is not present
 
 - No packaged `pacium` launcher or release artifact.
 - No durable session restoration after local-server restart.
-- No browser-driven test or completed visual/accessibility review in the current environment.
-- No durable server-owned workspace configuration, shortcut customization, notification delivery, or complete accessibility baseline.
+- No completed manual screen-reader, visual contrast, or full terminal-lifecycle browser review.
+- No durable server-owned workspace configuration, shortcut customization, or notification delivery.
 - No Claude or Codex observer.
 - No Git inspector.
 - No functional Pacium mode; the toggle is visibly marked as upcoming.
@@ -66,7 +67,8 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm test`: 23 files and 94 tests passed, including strict preference parsing/storage boundaries, controlled terminal options, rendered settings states, command catalog/search and keyboard routing; session actions; split-layout transitions; directory authorization; a real `node-pty` shell; and reconnect snapshots.
+- `pnpm verify`: formatting, lint, type checking, 27 test files and 106 tests, plus web and local-server production builds passed.
+- `pnpm test:e2e`: four Chromium workflows passed for skip navigation, panel shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200% zoom, forced colors, and reduced motion.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
 - The live protocol-version-3 welcome message advertised Shell, Codex, and Claude Code as available on this machine.
@@ -76,11 +78,11 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 Evidence boundaries:
 
 - The current shell exposed Node.js `26.4.0`, not the approved Node.js `24.18.x`; the commands passed with an engine warning, so the supported runtime remains unverified.
-- No in-app browser backend was available, so create/type/refresh/close plus settings theme, density, terminal update, pointer, keyboard, modal-focus, and responsive behavior have not been validated through the rendered UI.
+- The repository Playwright suite ran in headless Chromium after its browser binary was installed and verified the PC-028 workflows. The connected in-app browser backend remained unavailable, so manual visual, screen-reader, and full create/type/refresh/close terminal review are still open.
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 684 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
+- The current web bundle is 689 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
 - Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
 ## Active decisions
@@ -109,4 +111,4 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Build the responsive/accessibility baseline before agent-aware status, Git inspection, and Pacium mode. Complete the pinned Node.js 24 clean-install, CI, browser, security, and sustained-output gates before release.
+Build evidence-labelled agent attention and Git inspection before Pacium mode. Complete the pinned Node.js 24 clean-install, CI, broader browser/security, manual accessibility, and sustained-output gates before release.
