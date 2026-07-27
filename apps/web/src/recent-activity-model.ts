@@ -1,8 +1,14 @@
 import type { SessionSummary } from "@pacium/contracts";
 
 import type { AttentionResult } from "./attention-model.js";
-import type { RepositoryChangesViewState } from "./repository-changes-model.js";
-import type { RepositoryHistoryViewState } from "./repository-history-model.js";
+import {
+  visibleRepositoryChanges,
+  type RepositoryChangesViewState,
+} from "./repository-changes-model.js";
+import {
+  visibleRepositoryHistory,
+  type RepositoryHistoryViewState,
+} from "./repository-history-model.js";
 import type { RepositoryVerificationViewState } from "./repository-verification-model.js";
 
 export const MAX_RECENT_ACTIVITY_COMMITS = 3;
@@ -58,8 +64,11 @@ export interface RecentActivityInput {
 }
 
 export function buildRecentActivity(input: RecentActivityInput): RecentActivity {
-  const facts = processFacts(input.session);
-  const sources = sourceLoadingSummaries(input);
+  const facts = [
+    ...processFacts(input.session),
+    ...gitFacts(input),
+  ].toSorted(compareActivityFacts);
+  const sources = sourceSummaries(input);
   return {
     current: {
       attention: input.attention,
@@ -120,16 +129,149 @@ function processExitDetail(session: SessionSummary): string {
   return "Process ended without exit evidence; task outcome is unknown.";
 }
 
-function sourceLoadingSummaries({
+function gitFacts({
+  changes,
+  history,
+}: RecentActivityInput): ActivityFact[] {
+  const facts: ActivityFact[] = [];
+  const changeObservation = visibleRepositoryChanges(changes);
+  if (
+    changeObservation?.status === "ready" &&
+    validTimestamp(changeObservation.observedAt)
+  ) {
+    const { additions, conflictCount, deletions, fileCount } =
+      changeObservation.totals;
+    const clean = fileCount === 0;
+    facts.push({
+      id: `git:changes:${changeObservation.observedAt}`,
+      source: "git",
+      title: clean
+        ? "Working tree observed clean"
+        : `${fileCount} changed ${plural(fileCount, "file")} observed`,
+      detail: clean
+        ? "Git reported no staged, unstaged, conflicted, or untracked files."
+        : `+${additions} −${deletions}${
+            conflictCount > 0
+              ? ` · ${conflictCount} ${plural(conflictCount, "conflict")}`
+              : ""
+          }`,
+      timestamp: changeObservation.observedAt,
+      timestampMeaning: "observed",
+    });
+  }
+
+  const historyObservation = visibleRepositoryHistory(history);
+  if (historyObservation?.status === "ready") {
+    for (const commit of historyObservation.commits.slice(
+      0,
+      MAX_RECENT_ACTIVITY_COMMITS,
+    )) {
+      if (!validTimestamp(commit.authoredAt)) {
+        continue;
+      }
+      facts.push({
+        id: `git:commit:${commit.id}`,
+        source: "git",
+        title: commit.subject,
+        detail: `Git commit ${commit.id.slice(0, 8)} · author recorded as ${commit.authorName}`,
+        timestamp: commit.authoredAt,
+        timestampMeaning: "occurred",
+      });
+    }
+  }
+  return facts;
+}
+
+function sourceSummaries({
   changes,
   history,
   verification,
 }: RecentActivityInput): ActivitySourceSummary[] {
   return [
-    loadingSummary("changes", "Git changes", changes.status),
-    loadingSummary("history", "Git history", history.status),
+    changesSummary(changes),
+    historySummary(history),
     loadingSummary("verification", "Verification", verification.status),
   ];
+}
+
+function changesSummary(
+  state: RepositoryChangesViewState,
+): ActivitySourceSummary {
+  const loading = loadingSummary("changes", "Git changes", state.status);
+  const observation = visibleRepositoryChanges(state);
+  if (observation === null) {
+    return loading;
+  }
+  switch (observation.status) {
+    case "ready":
+      return {
+        id: "changes",
+        label: "Git changes",
+        status: state.status === "loading" ? "loading" : "ready",
+        detail: `${observation.totals.fileCount} changed ${plural(
+          observation.totals.fileCount,
+          "file",
+        )} observed.`,
+      };
+    case "not_repository":
+      return {
+        id: "changes",
+        label: "Git changes",
+        status: "unavailable",
+        detail: "No Git repository is associated with this terminal.",
+      };
+    case "error":
+      return {
+        id: "changes",
+        label: "Git changes",
+        status: "error",
+        detail:
+          observation.error?.message ?? "Changed-file evidence is unavailable.",
+      };
+  }
+}
+
+function historySummary(
+  state: RepositoryHistoryViewState,
+): ActivitySourceSummary {
+  const loading = loadingSummary("history", "Git history", state.status);
+  const observation = visibleRepositoryHistory(state);
+  if (observation === null) {
+    return loading;
+  }
+  switch (observation.status) {
+    case "ready":
+      return {
+        id: "history",
+        label: "Git history",
+        status: state.status === "loading" ? "loading" : "ready",
+        detail: `${observation.commits.length} recent ${plural(
+          observation.commits.length,
+          "commit",
+        )} inspected.`,
+      };
+    case "empty":
+      return {
+        id: "history",
+        label: "Git history",
+        status: "empty",
+        detail: "The repository has an unborn HEAD and no commits.",
+      };
+    case "not_repository":
+      return {
+        id: "history",
+        label: "Git history",
+        status: "unavailable",
+        detail: "No Git repository is associated with this terminal.",
+      };
+    case "error":
+      return {
+        id: "history",
+        label: "Git history",
+        status: "error",
+        detail: observation.error?.message ?? "Commit history is unavailable.",
+      };
+  }
 }
 
 function loadingSummary(
@@ -170,4 +312,8 @@ function compareActivityFacts(left: ActivityFact, right: ActivityFact): number {
 
 function validTimestamp(value: string): boolean {
   return Number.isFinite(Date.parse(value));
+}
+
+function plural(count: number, singular: string): string {
+  return count === 1 ? singular : `${singular}s`;
 }

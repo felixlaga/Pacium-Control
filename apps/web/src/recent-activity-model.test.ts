@@ -117,3 +117,149 @@ describe("recent activity process facts", () => {
     );
   });
 });
+
+describe("recent activity Git facts", () => {
+  it("projects one observed working-tree summary with exact totals", () => {
+    const activity = buildRecentActivity({
+      ...input(),
+      changes: {
+        status: "loaded",
+        requestId: "6b32082f-e6a4-478a-a9f9-b0f05b847581",
+        observation: {
+          status: "ready",
+          root: "/work/pacium",
+          headCommit: "a".repeat(40),
+          observedAt: "2026-07-27T10:04:00.000Z",
+          files: [
+            {
+              path: "apps/web/src/app.tsx",
+              previousPath: null,
+              kind: "modified",
+              staged: false,
+              unstaged: true,
+              untracked: false,
+              conflicted: false,
+              binary: false,
+              large: false,
+              additions: 8,
+              deletions: 2,
+              sizeBytes: 320,
+            },
+          ],
+          totals: {
+            fileCount: 1,
+            additions: 8,
+            deletions: 2,
+            unavailableLineCount: 0,
+            conflictCount: 0,
+          },
+          truncated: false,
+          error: null,
+        },
+      },
+    });
+
+    expect(activity.facts[0]).toMatchObject({
+      source: "git",
+      title: "1 changed file observed",
+      detail: "+8 −2",
+      timestampMeaning: "observed",
+    });
+    expect(activity.sources[0]).toMatchObject({
+      id: "changes",
+      status: "ready",
+      detail: "1 changed file observed.",
+    });
+  });
+
+  it("caps commits at three and orders all facts by their evidence time", () => {
+    const commits = [4, 3, 2, 1].map((minute) => ({
+      id: `${minute}`.repeat(40),
+      parents: minute === 1 ? [] : [`${minute - 1}`.repeat(40)],
+      authorName: `<author-${minute}>`,
+      authoredAt: `2026-07-27T10:0${minute}:00.000Z`,
+      subject: `<commit-${minute}>`,
+    }));
+    const activity = buildRecentActivity({
+      ...input(),
+      history: {
+        status: "loaded",
+        requestId: "6b32082f-e6a4-478a-a9f9-b0f05b847581",
+        sessionId: session.id,
+        observation: {
+          status: "ready",
+          root: "/work/pacium",
+          headCommit: commits[0]!.id,
+          observedAt: "2026-07-27T10:05:00.000Z",
+          commits,
+          truncated: false,
+          error: null,
+        },
+      },
+    });
+
+    const commitFacts = activity.facts.filter(({ id }) =>
+      id.startsWith("git:commit:"),
+    );
+    expect(commitFacts).toHaveLength(3);
+    expect(commitFacts.map(({ title }) => title)).toEqual([
+      "<commit-4>",
+      "<commit-3>",
+      "<commit-2>",
+    ]);
+    expect(commitFacts[0]).toMatchObject({
+      detail: `Git commit ${"4".repeat(8)} · author recorded as <author-4>`,
+      timestampMeaning: "occurred",
+    });
+  });
+
+  it("labels clean, unavailable, empty, and error observations honestly", () => {
+    const noRepository = buildRecentActivity({
+      ...input(),
+      changes: {
+        status: "loaded",
+        requestId: "6b32082f-e6a4-478a-a9f9-b0f05b847581",
+        observation: {
+          status: "not_repository",
+          root: null,
+          headCommit: null,
+          observedAt: now,
+          files: [],
+          totals: {
+            fileCount: 0,
+            additions: 0,
+            deletions: 0,
+            unavailableLineCount: 0,
+            conflictCount: 0,
+          },
+          truncated: false,
+          error: null,
+        },
+      },
+      history: {
+        status: "loaded",
+        requestId: "6b32082f-e6a4-478a-a9f9-b0f05b847581",
+        sessionId: session.id,
+        observation: {
+          status: "empty",
+          root: "/work/pacium",
+          headCommit: null,
+          observedAt: now,
+          commits: [],
+          truncated: false,
+          error: null,
+        },
+      },
+    });
+
+    expect(noRepository.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "changes",
+          status: "unavailable",
+        }),
+        expect.objectContaining({ id: "history", status: "empty" }),
+      ]),
+    );
+  });
+});
