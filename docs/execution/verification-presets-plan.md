@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `b406dbcafddc68869e972f1f5d9e04e987733b39`
 - Target milestone: Milestone 2
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -236,3 +236,24 @@ input.
   results are disposable.
 - Security: preset-ID-only requests, no shell, canonical roots, absolute
   executables, bounded environment/output/processes, and plain-text rendering.
+
+## Result
+
+Completed on 2026-07-27 as the planned protocol-9 vertical slice.
+
+- Startup accepts only an explicit strict external version-1 catalog with
+  canonical roots, absolute executable/argv definitions, and bounded values.
+- Selected-session requests carry identities only. The server owns repository
+  and preset resolution, two global slots, shell-free spawn, bounded
+  environment/output, timeout, process-group cancellation, latest result, and
+  fresh start/end HEAD observations.
+- Checks is a lazy fourth inspector tab with exact argv and privilege copy,
+  explicit Run/Cancel, elapsed and terminal states, bounded stdout/stderr,
+  truncation and HEAD warnings, stale/error recovery, reconnect inspection,
+  keyboard navigation, and narrow responsive layout.
+- `pnpm verify` passed 58 files and 277 tests plus both production builds.
+- `pnpm test:e2e` passed all seven Chromium workflows, including deterministic
+  run, browser reload, recovered cancellation, unchanged terminal selection,
+  and 320 CSS px evidence.
+- Manual in-app-browser visual review could not be performed because no browser
+  backend was connected; that release evidence remains open.
