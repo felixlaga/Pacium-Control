@@ -190,6 +190,19 @@ describe("Pacium control context contracts", () => {
         },
       }),
     ).toThrow();
+    expect(
+      recentDecision({
+        delivery: {
+          attemptCount: 1,
+          deliveryId: "20000000-0000-4000-8000-000000000001",
+          deliveryHash: "d".repeat(64),
+          status: "unknown",
+          requestedAt: "2026-07-27T12:01:00.000Z",
+          completedAt: null,
+          evidenceKind: null,
+        },
+      }).delivery?.status,
+    ).toBe("unknown");
   });
 
   it("enforces source kinds, availability status, and the decision ceiling", () => {

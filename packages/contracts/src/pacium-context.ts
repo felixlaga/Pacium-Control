@@ -184,12 +184,19 @@ export const PaciumRecentDeliverySummarySchema = z
   })
   .strict()
   .superRefine((delivery, context) => {
-    const complete = delivery.status !== "delivering";
-    if (complete !== (delivery.completedAt !== null)) {
+    const requiresCompletion =
+      delivery.status === "delivered" || delivery.status === "failed";
+    if (requiresCompletion && delivery.completedAt === null) {
       context.addIssue({
         code: "custom",
         message:
           "Completed recent delivery evidence requires a completion time.",
+      });
+    }
+    if (delivery.status === "delivering" && delivery.completedAt !== null) {
+      context.addIssue({
+        code: "custom",
+        message: "An active recent delivery cannot have a completion time.",
       });
     }
     if (
