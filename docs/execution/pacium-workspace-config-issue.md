@@ -61,39 +61,55 @@ Pacium mode; terminals, sessions, Git inspection, and verification continue.
 
 ## Acceptance criteria
 
-- [ ] The initial store manages only `<data-dir>/pacium.json`; absence is a
+- [x] The initial store manages only `<data-dir>/pacium.json`; absence is a
       valid unconfigured state and does not create or modify a file on read.
-- [ ] The data directory is absolute, private to the local user when created,
+- [x] The data directory is absolute, private to the local user when created,
       canonicalized before use, and rejected if it resolves inside a configured
       repository.
-- [ ] The complete file is strict, version 1, UTF-8 JSON, byte/record/field
+- [x] The complete file is strict, version 1, UTF-8 JSON, byte/record/field
       bounded, and rejects unknown keys, controls, duplicate IDs/paths,
       dangling references, ambiguous live-session bindings, and invalid
       revisions.
-- [ ] Repository roots are existing canonical directories; queue,
+- [x] Repository roots are existing canonical directories; queue,
       objective/plan, and answer-file targets resolve through existing
       canonical parents and reject existing symlinks or non-files.
-- [ ] A queue source cannot also be an answer target, and every referenced
+- [x] A queue source cannot also be an answer target, and every referenced
       delivery, repository, launch preset, live session, and verification
       preset is revalidated by the server before replacement.
-- [ ] Protocol 10 exposes only get and complete replace; replace requires the
+- [x] Protocol 10 exposes only get and complete replace; replace requires the
       current expected revision, increments exactly once, and a stale request
       cannot overwrite newer state.
-- [ ] The server validates before write, creates one unpredictable temporary
+- [x] The server validates before write, creates one unpredictable temporary
       file in the same directory, writes and syncs it with restrictive
       permissions, atomically renames it, and never leaves partial JSON as the
       authoritative file.
-- [ ] Missing configuration returns unconfigured; corrupt or unsupported
+- [x] Missing configuration returns unconfigured; corrupt or unsupported
       configuration is preserved and reported as a bounded Pacium-only error
       rather than crashing or weakening the generic terminal workspace.
-- [ ] Browser disconnect, duplicate/stale response, failed replacement, or
+- [x] Browser disconnect, duplicate/stale response, failed replacement, or
       local-server restart cannot invent a successful revision or change PTY
       lifecycle, selection, input, or terminal layout.
-- [ ] No configured path is read or watched beyond the minimum filesystem
+- [x] No configured path is read or watched beyond the minimum filesystem
       metadata required for validation; no delivery, prompt, verification, or
       queue action is performed.
-- [ ] Unit, contract, atomic-store, fault, WebSocket ownership, browser-state,
+- [x] Unit, contract, atomic-store, fault, WebSocket ownership, browser-state,
       security, clean-build, and full repository gates pass.
+
+## Completion evidence
+
+- `pnpm verify`: passed formatting, lint, all workspace type checks, 64 test
+  files and 339 tests, plus web and local-server production builds.
+- `pnpm test:e2e`: all seven Chromium regression workflows passed when run
+  with the macOS host permission required to launch Chromium.
+- Atomic-store faults cover validation-before-create, concurrent/stale
+  replacement, rename failure, cleanup, post-rename durability ambiguity,
+  corrupt/unsupported/oversized preservation, private modes, and symlinks.
+- WebSocket coverage proves authenticated unconfigured/get/replace/revision/
+  conflict behavior and rejects a missing live-session binding without touching
+  disk or an existing PTY.
+- Browser model/transport coverage proves typed complete replacement,
+  matching-response acceptance, stale-response rejection, retained accepted
+  evidence, disconnect interruption, and reconnect get.
 
 ## User experience
 

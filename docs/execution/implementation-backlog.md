@@ -240,6 +240,14 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-040 Define Pacium workspace configuration
 
 - Meta and Orchestrator session/preset references, repository roots, queue sources, delivery methods, worker classifications, and verification presets.
+- Current status: protocol 10 and version-1 `pacium.json` provide one strict,
+  private, 96 KiB server-owned workspace definition with canonical
+  repository/metadata paths, live-session/fixed-preset/exact-root verification
+  references, complete graph validation, optimistic revisions, atomic
+  replacement, corruption/drift preservation, authenticated get/replace, and
+  reconnect-safe browser request state. PC-040 reads no configured content,
+  performs no delivery or prompt, starts no PTY/check, and exposes no setup UI;
+  those remain PC-041 through PC-050.
 
 ### PC-041 Implement General/Pacium toggle
 
