@@ -11,14 +11,16 @@ worker summaries, and read-only objective/plan plus recent-decision context are
 complete enough for continued slicing. Optional Tailscale Serve access is
 implemented at the application boundary, and the working-directory picker
 refresh is complete. The bounded provider observation contract is complete;
-live Claude Code observation is next.
+the narrow Pacium-launched Claude Code observer is complete, and Codex native
+observation is next.
 
 Pacium Control now has an executable React application, loopback local server,
 direct-PTY session manager, typed WebSocket protocol, and automated terminal,
 Git, queue, and Pacium-context tests. This proves the bounded local
 compatibility workflow described below; it does not prove live provider-native
-agent observation or management, a real deployed tailnet/grants/public
-boundary, durable PTYs, packaging, or release readiness.
+Codex observation or management, a manual real-provider Claude canary, a real
+deployed tailnet/grants/public boundary, durable PTYs, packaging, or release
+readiness.
 
 ## Product direction
 
@@ -54,7 +56,7 @@ The secondary product is **Pacium mode**:
   canonical `*.ts.net` HTTPS Origin, bounded exact operator-login allowlist,
   canonical local-Origin isolation, exact remote Host/Origin/login checks,
   Funnel denial, and the unchanged ephemeral token for protected transport.
-- Protocol-19 per-socket Local or Tailscale/login evidence, plus one strict
+- Protocol-20 per-socket Local or Tailscale/login evidence, plus one strict
   nullable provider-observation snapshot per session, and a compact accessible
   connection badge that clears stale identity on disconnect.
 - Bounded xterm headless snapshots that let a new browser transport attach to a still-live PTY.
@@ -100,6 +102,12 @@ The secondary product is **Pacium mode**:
   diagnostic bounds, typed Claude/Codex extensions, distinct questions and
   approvals, source/confidence/freshness evidence, secret-like diagnostic-key
   rejection, launch-preset matching, and honest unavailable defaults.
+- A process-local Claude Code observer for Pacium-launched Claude PTYs with
+  fixed observation-only HTTP hooks, an independent random per-session token,
+  exact loopback-only authenticated ingress, installed-version detection,
+  bounded deduplication, typed lifecycle/tool/question/approval/completion/
+  failure evidence, optional strict status usage scalars, and no provider
+  decisions, settings-file edits, raw payload retention, or terminal coupling.
 - Protocol-17 strict Pacium workspace configuration for explicit Meta,
   Orchestrator, and worker session/preset bindings; canonical repositories;
   verification references; and queue, future-delivery, objective, and plan path
@@ -238,7 +246,10 @@ The secondary product is **Pacium mode**:
 - No general browser editor for workspace identity, repositories, workers,
   queue sources, delivery methods, context sources, or verification references,
   and no shortcut customization.
-- No live Claude or Codex observer, provider transport, or event ingestion.
+- No live Codex observer, externally launched Claude attachment, packaged
+  Claude status-line companion, or provider decision/control actions. The
+  Claude hook transport is fixture/integration verified but has not completed a
+  manual real-provider canary on this machine.
 - No multi-item parsing, provider-native acknowledgement/activity, worker
   launching/reconfiguration, task state, or causal decision-to-Git/terminal
   correlation.
@@ -252,8 +263,8 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 114 test files and 705 tests,
-  plus the 906.13 kB web JavaScript, 109.71 kB stylesheet, and 335.82 kB
+- `pnpm verify`: formatting, lint, type checking, 118 test files and 743 tests,
+  plus the 913.94 kB web JavaScript, 109.81 kB stylesheet, and 368.49 kB
   local-server production builds passed.
 - `pnpm test:e2e`: fourteen Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
@@ -271,6 +282,12 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
   launching a PTY, survived browser-storage denial, restored a recent choice
   and invoking focus, and fit 320 CSS px plus 200% zoom with forced colors and
   reduced motion.
+- PC-061 focused evidence passed 139 contract, Claude normalizer, PTY
+  environment, session lifecycle, HTTP/WebSocket boundary, attention, and
+  Activity tests. It covers exact Host/Origin/token/path/content-type/body
+  enforcement, empty no-decision responses, duplicate and provider-session
+  rejection, release-token invalidation, browser reconnect state, bounded
+  usage presentation, and exclusion of prompt/transcript/tool/status secrets.
 - PC-050 browser evidence projected one exact live worker and one preset-only
   worker without launching or inferring either, selected only the existing
   worker PTY, opened/refreshed/closed Control context with focus return,
@@ -327,7 +344,7 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
   keyboard-accessible at 200% zoom.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
-- The protocol-version-18 boundary passed strict contract, atomic-store,
+- The protocol-version-20 boundary passed strict contract, atomic-store,
   canonical path/reference, authenticated WebSocket revision/conflict, PTY
   survival, bounded queue reader/observer/classifier, content-free bulk item
   evidence, exact-current base64 text inspection, stale/config/disconnect
@@ -351,7 +368,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 906.13 kB before gzip and emits Vite's chunk-size
+- The current web bundle is 913.94 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
 - Proxy-shaped Serve application tests do not prove the owner's real Tailscale
   installation, DNS/certificate, deployed grants, Funnel/public/LAN state, or
@@ -384,8 +401,8 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Implement the narrow Claude observer in PC-061, then the Codex observer in
-PC-062 with explicit capability degradation before durability and packaging.
+Implement the Codex observer in PC-062, then explicit capability degradation
+in PC-064 before durability and packaging.
 Complete the real Tailscale
 Serve/grants/Funnel/public canary, pinned Node.js 24 clean-install, CI, broader
 browser/security, manual accessibility, and sustained-output gates before
