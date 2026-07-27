@@ -9,7 +9,10 @@ import {
   visibleRepositoryHistory,
   type RepositoryHistoryViewState,
 } from "./repository-history-model.js";
-import type { RepositoryVerificationViewState } from "./repository-verification-model.js";
+import {
+  visibleVerificationObservation,
+  type RepositoryVerificationViewState,
+} from "./repository-verification-model.js";
 
 export const MAX_RECENT_ACTIVITY_COMMITS = 3;
 export const MAX_RECENT_ACTIVITY_FACTS = 8;
@@ -67,6 +70,7 @@ export function buildRecentActivity(input: RecentActivityInput): RecentActivity 
   const facts = [
     ...processFacts(input.session),
     ...gitFacts(input),
+    ...verificationFacts(input.verification),
   ].toSorted(compareActivityFacts);
   const sources = sourceSummaries(input);
   return {
@@ -182,6 +186,33 @@ function gitFacts({
   return facts;
 }
 
+function verificationFacts(
+  state: RepositoryVerificationViewState,
+): ActivityFact[] {
+  const observation = visibleVerificationObservation(state);
+  if (observation === null || observation.run === null) {
+    return [];
+  }
+  const run = observation.run;
+  const timestamp = run.completedAt ?? run.startedAt;
+  if (!validTimestamp(timestamp)) {
+    return [];
+  }
+  const preset =
+    observation.presets.find(({ id }) => id === run.presetId)?.label ??
+    run.presetId;
+  return [
+    {
+      id: `verification:${run.runId}:${run.status}`,
+      source: "verification",
+      title: verificationTitle(run.status),
+      detail: verificationDetail(preset, run),
+      timestamp,
+      timestampMeaning: "occurred",
+    },
+  ];
+}
+
 function sourceSummaries({
   changes,
   history,
@@ -190,7 +221,7 @@ function sourceSummaries({
   return [
     changesSummary(changes),
     historySummary(history),
-    loadingSummary("verification", "Verification", verification.status),
+    verificationSummary(verification),
   ];
 }
 
@@ -274,6 +305,64 @@ function historySummary(
   }
 }
 
+function verificationSummary(
+  state: RepositoryVerificationViewState,
+): ActivitySourceSummary {
+  const loading = loadingSummary(
+    "verification",
+    "Verification",
+    state.status,
+  );
+  const observation = visibleVerificationObservation(state);
+  if (observation === null) {
+    return loading;
+  }
+  switch (observation.status) {
+    case "ready":
+      return {
+        id: "verification",
+        label: "Verification",
+        status: state.status === "loading" ? "loading" : "ready",
+        detail:
+          observation.run === null
+            ? `${observation.presets.length} configured ${plural(
+                observation.presets.length,
+                "preset",
+              )}; no run observed.`
+            : `${verificationTitle(observation.run.status)} evidence is available.`,
+      };
+    case "unconfigured":
+      return {
+        id: "verification",
+        label: "Verification",
+        status: "empty",
+        detail: "Verification is not configured.",
+      };
+    case "no_presets":
+      return {
+        id: "verification",
+        label: "Verification",
+        status: "empty",
+        detail: "No verification presets match this repository.",
+      };
+    case "not_repository":
+      return {
+        id: "verification",
+        label: "Verification",
+        status: "unavailable",
+        detail: "No Git repository is associated with this terminal.",
+      };
+    case "error":
+      return {
+        id: "verification",
+        label: "Verification",
+        status: "error",
+        detail:
+          observation.error?.message ?? "Verification evidence is unavailable.",
+      };
+  }
+}
+
 function loadingSummary(
   id: ActivitySourceId,
   label: string,
@@ -316,4 +405,58 @@ function validTimestamp(value: string): boolean {
 
 function plural(count: number, singular: string): string {
   return count === 1 ? singular : `${singular}s`;
+}
+
+function verificationTitle(
+  status:
+    | "running"
+    | "cancelling"
+    | "passed"
+    | "failed"
+    | "timed_out"
+    | "cancelled"
+    | "error",
+): string {
+  switch (status) {
+    case "running":
+      return "Verification started";
+    case "cancelling":
+      return "Verification cancellation requested";
+    case "passed":
+      return "Verification passed";
+    case "failed":
+      return "Verification failed";
+    case "timed_out":
+      return "Verification timed out";
+    case "cancelled":
+      return "Verification cancelled";
+    case "error":
+      return "Verification could not run";
+  }
+}
+
+function verificationDetail(
+  preset: string,
+  run: NonNullable<
+    NonNullable<
+      ReturnType<typeof visibleVerificationObservation>
+    >["run"]
+  >,
+): string {
+  if (run.status === "running" || run.status === "cancelling") {
+    return `${preset} · started at observed HEAD ${
+      run.headCommitAtStart?.slice(0, 8) ?? "unavailable"
+    }`;
+  }
+  const duration =
+    run.durationMs === null
+      ? "duration unavailable"
+      : `${(run.durationMs / 1000).toFixed(1)} s`;
+  const outcome =
+    run.exitCode !== null
+      ? `exit ${run.exitCode}`
+      : run.signal !== null
+        ? run.signal
+        : run.error?.code.replaceAll("_", " ") ?? "no exit evidence";
+  return `${preset} · ${duration} · ${outcome}`;
 }

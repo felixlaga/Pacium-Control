@@ -263,3 +263,117 @@ describe("recent activity Git facts", () => {
     );
   });
 });
+
+describe("recent activity verification facts", () => {
+  it("projects one latest result without repeating untrusted output", () => {
+    const activity = buildRecentActivity({
+      ...input(),
+      verification: {
+        status: "loaded",
+        sessionId: session.id,
+        pendingRequestId: null,
+        pendingAction: null,
+        observation: {
+          status: "ready",
+          configured: true,
+          root: "/work/pacium",
+          observedAt: "2026-07-27T10:06:00.000Z",
+          presets: [
+            {
+              id: "verify",
+              label: "<Project verification>",
+              description: "Run the bounded local gate",
+              executable: "/opt/bin/pnpm",
+              args: ["verify"],
+              timeoutMs: 600_000,
+            },
+          ],
+          run: {
+            runId: "03c2723f-e87a-4707-86af-d6fdb1e60f47",
+            presetId: "verify",
+            status: "failed",
+            startedAt: "2026-07-27T10:04:00.000Z",
+            completedAt: "2026-07-27T10:05:00.000Z",
+            durationMs: 60_000,
+            headCommitAtStart: "a".repeat(40),
+            headCommitAtEnd: "a".repeat(40),
+            headComparison: "same",
+            exitCode: 2,
+            signal: null,
+            terminationForced: false,
+            stdout: "<script>terminal narrative</script>",
+            stderr: "secret output",
+            stdoutTruncated: false,
+            stderrTruncated: false,
+            error: null,
+          },
+          error: null,
+        },
+      },
+    });
+
+    const fact = activity.facts.find(
+      ({ source }) => source === "verification",
+    );
+    expect(fact).toMatchObject({
+      title: "Verification failed",
+      detail: "<Project verification> · 60.0 s · exit 2",
+      timestamp: "2026-07-27T10:05:00.000Z",
+      timestampMeaning: "occurred",
+    });
+    expect(JSON.stringify(fact)).not.toContain("terminal narrative");
+    expect(JSON.stringify(fact)).not.toContain("secret output");
+  });
+
+  it("distinguishes empty and degraded verification evidence", () => {
+    const unconfigured = buildRecentActivity({
+      ...input(),
+      verification: {
+        status: "loaded",
+        sessionId: session.id,
+        pendingRequestId: null,
+        pendingAction: null,
+        observation: {
+          status: "unconfigured",
+          configured: false,
+          root: null,
+          observedAt: now,
+          presets: [],
+          run: null,
+          error: null,
+        },
+      },
+    });
+    expect(unconfigured.sources[2]).toMatchObject({
+      status: "empty",
+      detail: "Verification is not configured.",
+    });
+
+    const errored = buildRecentActivity({
+      ...input(),
+      verification: {
+        status: "loaded",
+        sessionId: session.id,
+        pendingRequestId: null,
+        pendingAction: null,
+        observation: {
+          status: "error",
+          configured: true,
+          root: "/work/pacium",
+          observedAt: now,
+          presets: [],
+          run: null,
+          error: {
+            code: "repository_unavailable",
+            message: "Repository moved.",
+          },
+        },
+      },
+    });
+    expect(errored.sources[2]).toMatchObject({
+      status: "error",
+      detail: "Repository moved.",
+    });
+    expect(errored.partial).toBe(true);
+  });
+});
