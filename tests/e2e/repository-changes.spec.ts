@@ -45,6 +45,11 @@ test.afterEach(async ({ page }) => {
   if ((await session.count()) === 0) {
     return;
   }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  if (!(await sidebar.isVisible())) {
+    await page.getByRole("button", { name: "Show session sidebar" }).click();
+    await expect(sidebar).toBeVisible();
+  }
   await session.click({ button: "right" });
   page.once("dialog", (dialog) => dialog.accept());
   await page
@@ -149,6 +154,11 @@ test("recent history loads lazily without changing terminal selection", async ({
   await expect(historyTab).toBeFocused();
   await expect(historyPanel).toBeVisible();
   await expect(workspaceStatus).toContainText("Oversight fixture");
+
+  await page.setViewportSize({ width: 320, height: 720 });
+  await expect(historyPanel).toBeVisible();
+  await expect(commit).toBeVisible();
+  await page.getByRole("button", { name: "Close inspector" }).click();
 });
 
 async function openFixtureTerminal(page: Page) {
