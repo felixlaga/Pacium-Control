@@ -175,7 +175,7 @@ command, prompt, delivery, or shell authority.
 The 96 KiB file ceiling leaves deterministic room inside the 128 KiB
 application-message envelope.
 
-## Protocol 14
+## Protocol 17
 
 The authenticated WebSocket protocol retains the protocol-10 configuration
 operations:
@@ -364,6 +364,41 @@ acknowledgement. A failed or unknown first attempt can unlock one explicit
 second attempt only after its `confirmed_not_delivered` resolution; the server
 revalidates the full boundary, and no third attempt is valid.
 
+Protocol 17 adds one separate read-only Control-context request:
+
+```text
+pacium.context.inspect(requestId)
+pacium.context(requestId, observation)
+```
+
+The request contains no workspace ID/revision, path, source kind, queue
+identity, count, filter, target, session, command, or content. The server
+snapshots the current accepted workspace, reads only its configured objective
+and plan paths, inspects validated queue state, then rechecks the same workspace
+ID and revision before returning evidence.
+
+Each context source independently reports `unconfigured`, `ready`, `empty`,
+`missing`, `changing`, `oversized`, `invalid_utf8`, `unsafe_type`, or
+`unreadable`. Ready content is capped at 32 KiB, transported as strict base64,
+and includes path, byte length, modification/observation time, and SHA-256
+provenance. Reads use no-follow regular-file semantics, stable metadata, and
+strict UTF-8. They never create, watch, poll, repair, truncate, or write a
+source.
+
+Recent decision evidence is derived only from validated `queue-state.json`,
+sorted newest first with deterministic ties, and capped at twelve. A question
+answer exposes only a 320-UTF-8-byte preview; an approval exposes only its exact
+approved/denied outcome. Each summary keeps the local record, latest durable
+transport attempt, and latest explicitly human-labelled lifecycle result
+separate. Notes, delivery target paths, queue text, terminal bytes, commands,
+environments, and provider content are excluded.
+
+The browser accepts a response only for its current pending request and
+accepted workspace revision. Disconnect, configuration drift, mode exit, Back,
+or another inspector route clears decoded content. Context observations and
+worker rows are disposable projections; protocol 17 changes neither
+`pacium.json` schema 1 nor `queue-state.json` schema 3.
+
 ## Atomicity and recovery
 
 An accepted replacement:
@@ -395,13 +430,18 @@ repairs, renames, deletes, or overwrites invalid state.
 Existing exact Origin and ephemeral-token checks protect all operations. The
 browser cannot choose either state-file location or submit commands,
 arguments, executables, environments, signals, terminal bytes, queue source
-content, objective/plan content, actor identity, timestamps, decision
+content, browser-selected objective/plan paths, actor identity, timestamps, decision
 identifiers or hashes, verification definitions, or generic write targets.
 The only accepted decision content is a protocol-14 bounded question answer or
 approval outcome plus an optional bounded note for the exact current item. A
 protocol-16 delivery request contains only its immutable decision identity; a
 resolution request contains only exact immutable references, one fixed action,
 and an optional bounded note.
+
+A protocol-17 context request contains only a server-correlated request ID.
+The server alone resolves the accepted objective/plan paths and decision state;
+the request grants no generic file-read, queue-read, terminal, Git, shell, or
+provider authority.
 
 Configured paths are metadata candidates until the local server canonicalizes
 them. Queue observation can read only the accepted queue-source subset after
