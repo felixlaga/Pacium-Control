@@ -2,6 +2,47 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.11.0 — responsive accessibility baseline — 2026-07-27
+
+### Added
+
+- Stable names for the session navigation, terminal workspace, inspector,
+  terminal panes, status, and all current modal surfaces.
+- Keyboard-visible skip navigation plus a compact live status line for
+  connection, selected session, and terminal/application keyboard ownership.
+- Browser-local version-1 sidebar and inspector visibility with visible
+  controls, `Cmd/Ctrl B`, `Cmd/Ctrl Shift B`, and command-palette actions.
+- Responsive sidebar and inspector drawers that preserve PTYs, tabs, splits,
+  selection, and reconnect state.
+- One tested Escape and Tab-containment contract across create, directory,
+  session-action, rename, settings, and command dialogs, with invoking-focus
+  restoration.
+- Reduced-motion and forced-colors behavior plus a documented 320 CSS px
+  minimum.
+- Deterministic panel, shortcut, focus, status, and server-rendered semantic
+  tests plus four Playwright accessibility workflows.
+
+### Verified
+
+- `pnpm verify` passes formatting, lint, type checking, 27 test files and
+  106 tests, and both production bundles.
+- `pnpm test:e2e` passes skip navigation, panel shortcuts, nested modal focus
+  return, 320 CSS px drawers, 200% zoom, forced colors, and reduced motion in
+  Chromium.
+- The browser suite caught and now guards a compact-layout selector that had
+  made the drawer’s New terminal action unreachable.
+
+### Known limitations
+
+- Manual screen-reader, visual contrast, and international keyboard-layout
+  checks remain release evidence rather than automated certification.
+- The full rendered create/type/refresh/reconnect/close terminal lifecycle is
+  not yet a browser test.
+- The current machine ran verification on Node.js 26.4.0; the pinned Node.js
+  24.18.x runtime remains to be verified.
+- The web bundle is 689 kB before gzip and still emits the tracked chunk-size
+  warning.
+
 ## 0.10.0 — local workspace preferences — 2026-07-27
 
 ### Added

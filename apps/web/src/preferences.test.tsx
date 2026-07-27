@@ -50,6 +50,9 @@ describe("preferences dialog markup", () => {
     expect(markup).toContain('max="18"');
     expect(markup).toContain('value="2000"');
     expect(markup).toContain("Stored in this browser");
+    expect(markup).toContain('role="dialog"');
+    expect(markup).toContain('aria-modal="true"');
+    expect(markup).toContain('aria-labelledby="preferences-title"');
   });
 
   it("renders custom selections and unavailable host presets honestly", () => {

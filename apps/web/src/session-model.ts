@@ -26,6 +26,8 @@ export type WorkspaceShortcut =
   | { type: "open-command-palette" }
   | { type: "open-shortcut-reference" }
   | { type: "open-settings" }
+  | { type: "toggle-sidebar" }
+  | { type: "toggle-inspector" }
   | { type: "new-terminal" }
   | { type: "previous-session" }
   | { type: "next-session" }
@@ -77,6 +79,11 @@ export function resolveWorkspaceShortcut(input: {
     input.code === "Comma"
   ) {
     return { type: "open-settings" };
+  }
+  if (commandModifier && !input.altKey && input.code === "KeyB") {
+    return {
+      type: input.shiftKey ? "toggle-inspector" : "toggle-sidebar",
+    };
   }
   if (commandModifier && input.shiftKey && input.code === "KeyT") {
     return { type: "new-terminal" };

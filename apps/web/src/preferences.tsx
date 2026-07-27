@@ -1,12 +1,7 @@
 import type { LaunchPresetCapability } from "@pacium/contracts";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-  type KeyboardEvent,
-} from "react";
+import { useRef, useState, type FormEvent } from "react";
 
+import { handleModalKeyDown } from "./modal-focus.js";
 import {
   DEFAULT_WORKSPACE_PREFERENCES,
   TERMINAL_FONT_SIZE_MAX,
@@ -39,17 +34,6 @@ export function PreferencesDialog({
   const [draft, setDraft] = useState(preferences);
   const [defaultsLoaded, setDefaultsLoaded] = useState(false);
 
-  useEffect(() => {
-    const onWindowKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onCancel();
-      }
-    };
-    window.addEventListener("keydown", onWindowKeyDown);
-    return () => window.removeEventListener("keydown", onWindowKeyDown);
-  }, [onCancel]);
-
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     onApply(draft);
@@ -69,7 +53,9 @@ export function PreferencesDialog({
         aria-labelledby="preferences-title"
         aria-modal="true"
         className="preferences-dialog"
-        onKeyDown={(event) => keepDialogFocus(event, dialogRef.current)}
+        onKeyDown={(event) =>
+          handleModalKeyDown(event, dialogRef.current, onCancel)
+        }
         ref={dialogRef}
         role="dialog"
       >
@@ -337,30 +323,4 @@ function NumberControl({
       {suffix !== undefined && <small>{suffix}</small>}
     </span>
   );
-}
-
-function keepDialogFocus(
-  event: KeyboardEvent<HTMLElement>,
-  dialog: HTMLElement | null,
-): void {
-  if (event.key !== "Tab" || dialog === null) {
-    return;
-  }
-  const focusable = [
-    ...dialog.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])',
-    ),
-  ];
-  const first = focusable[0];
-  const last = focusable.at(-1);
-  if (first === undefined || last === undefined) {
-    return;
-  }
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
-  }
 }

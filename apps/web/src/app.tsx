@@ -30,6 +30,14 @@ import {
   type PaletteCommand,
 } from "./command-palette-model.js";
 import { DirectoryPicker } from "./directory-picker.js";
+import { handleModalKeyDown } from "./modal-focus.js";
+import {
+  loadPanelView,
+  savePanelView,
+  toggleInspector,
+  toggleSidebar,
+  workspaceStatusText,
+} from "./panel-model.js";
 import {
   TERMINAL_FONT_STACKS,
   loadPreferences,
@@ -121,7 +129,11 @@ export function App() {
   const layoutRef = useRef<SplitLayoutState>(
     createSplitLayout(`pane-${crypto.randomUUID()}`),
   );
+  const actionInvokerRef = useRef<HTMLElement | null>(null);
+  const createInvokerRef = useRef<HTMLElement | null>(null);
   const paletteInvokerRef = useRef<HTMLElement | null>(null);
+  const panelViewRef = useRef<ReturnType<typeof loadPanelView> | null>(null);
+  const renameInvokerRef = useRef<HTMLElement | null>(null);
   const settingsInvokerRef = useRef<HTMLElement | null>(null);
   const transportRef = useRef<PaciumTransport | null>(null);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
@@ -159,7 +171,11 @@ export function App() {
   const [systemPrefersDark, setSystemPrefersDark] = useState(
     () => window.matchMedia("(prefers-color-scheme: dark)").matches,
   );
+  const [panelView, setPanelView] = useState(() =>
+    loadPanelView(window.localStorage, window.innerWidth),
+  );
 
+  panelViewRef.current = panelView;
   selectedIdRef.current = selectedId;
   tabsRef.current = tabs;
   layoutRef.current = layout;
@@ -332,8 +348,10 @@ export function App() {
         paneCount: listPanes(layout.root).length,
         selectedSessionId: selectedId,
         sessions,
+        sidebarOpen: panelView.sidebarOpen,
+        inspectorOpen: panelView.inspectorOpen,
       }),
-    [layout, selectedId, sessions],
+    [layout, panelView, selectedId, sessions],
   );
 
   useEffect(() => {
@@ -472,7 +490,29 @@ export function App() {
       cols: 100,
       rows: 30,
     });
+    closeCreateDialog();
+  };
+
+  const openCreateDialog = () => {
+    createInvokerRef.current = activeControl("new-terminal-trigger");
+    setCapturedPaneId(null);
+    setCreateOpen(true);
+  };
+
+  const closeCreateDialog = () => {
     setCreateOpen(false);
+    restoreControlFocus(createInvokerRef, "new-terminal-trigger");
+  };
+
+  const openSessionActions = (sessionId: string) => {
+    actionInvokerRef.current = activeControl("session-actions-trigger");
+    setCapturedPaneId(null);
+    setActionSessionId(sessionId);
+  };
+
+  const closeSessionActions = () => {
+    setActionSessionId(null);
+    restoreControlFocus(actionInvokerRef, "session-actions-trigger");
   };
 
   const loadDirectories = useCallback(
@@ -498,7 +538,7 @@ export function App() {
       return;
     }
     transportRef.current?.closeSession(session.id, isLive);
-    setActionSessionId(null);
+    closeSessionActions();
   };
 
   const copySessionDirectory = async (session: SessionSummary) => {
@@ -513,7 +553,7 @@ export function App() {
         `Pacium could not access the clipboard. The path is ${session.cwd}`,
       );
     }
-    setActionSessionId(null);
+    closeSessionActions();
   };
 
   const duplicateSession = (session: SessionSummary) => {
@@ -521,7 +561,7 @@ export function App() {
     setNotice(
       `Starting a duplicate of ${session.displayName}. The original process is unchanged.`,
     );
-    setActionSessionId(null);
+    closeSessionActions();
   };
 
   const relaunchSession = (session: SessionSummary) => {
@@ -532,7 +572,7 @@ export function App() {
         `Starting a new ${session.displayName} process from its retained preset and directory.`,
       );
     }
-    setActionSessionId(null);
+    closeSessionActions();
   };
 
   const interruptSession = (session: SessionSummary) => {
@@ -540,12 +580,23 @@ export function App() {
     setNotice(
       `Sent SIGINT to ${session.displayName}. The process may continue running.`,
     );
-    setActionSessionId(null);
+    closeSessionActions();
   };
 
   const beginRenameSession = (session: SessionSummary) => {
+    renameInvokerRef.current =
+      actionSessionId !== null
+        ? actionInvokerRef.current
+        : paletteView !== null
+          ? paletteInvokerRef.current
+          : activeControl("session-actions-trigger");
     setRenameSessionId(session.id);
     setActionSessionId(null);
+  };
+
+  const closeRenameDialog = () => {
+    setRenameSessionId(null);
+    restoreControlFocus(renameInvokerRef, "session-actions-trigger");
   };
 
   const revealSessionRepository = (session: SessionSummary) => {
@@ -553,15 +604,11 @@ export function App() {
     setNotice(
       `Asked the Pacium host to reveal ${session.repositoryName ?? "the repository"}.`,
     );
-    setActionSessionId(null);
+    closeSessionActions();
   };
 
   const openPalette = (view: CommandPaletteView) => {
-    const activeElement = document.activeElement;
-    paletteInvokerRef.current =
-      activeElement instanceof HTMLElement && activeElement !== document.body
-        ? activeElement
-        : document.getElementById("command-palette-trigger");
+    paletteInvokerRef.current = activeControl("command-palette-trigger");
     setCapturedPaneId(null);
     setPaletteView(view);
   };
@@ -571,41 +618,24 @@ export function App() {
     if (!restoreFocus) {
       return;
     }
-    const target = paletteInvokerRef.current;
-    window.requestAnimationFrame(() => {
-      if (target?.isConnected) {
-        target.focus();
-        return;
-      }
-      document.getElementById("command-palette-trigger")?.focus();
-    });
+    restoreControlFocus(paletteInvokerRef, "command-palette-trigger");
   };
 
   const openSettings = () => {
-    const activeElement = document.activeElement;
-    settingsInvokerRef.current =
-      activeElement instanceof HTMLElement && activeElement !== document.body
-        ? activeElement
-        : document.getElementById("settings-trigger");
+    settingsInvokerRef.current = activeControl("settings-trigger");
     setCapturedPaneId(null);
     setSettingsOpen(true);
   };
 
   const closeSettings = () => {
     setSettingsOpen(false);
-    const target = settingsInvokerRef.current;
-    window.requestAnimationFrame(() => {
-      if (target?.isConnected) {
-        target.focus();
-        return;
-      }
-      document.getElementById("settings-trigger")?.focus();
-    });
+    restoreControlFocus(settingsInvokerRef, "settings-trigger");
   };
 
   const applyPreferences = (next: WorkspacePreferences) => {
     setPreferences(next);
     setSettingsOpen(false);
+    restoreControlFocus(settingsInvokerRef, "settings-trigger");
     if (savePreferences(window.localStorage, next)) {
       setNotice("Workspace settings applied and saved in this browser.");
       return;
@@ -613,6 +643,24 @@ export function App() {
     setNotice(
       "Workspace settings are active, but this browser could not save them for refresh.",
     );
+  };
+
+  const setPanelVisibility = (next: typeof panelView) => {
+    panelViewRef.current = next;
+    setPanelView(next);
+    if (!savePanelView(window.localStorage, next)) {
+      setNotice(
+        "Panel visibility changed, but this browser could not save it for refresh.",
+      );
+    }
+  };
+
+  const toggleSidebarPanel = () => {
+    setPanelVisibility(toggleSidebar(panelViewRef.current ?? panelView));
+  };
+
+  const toggleInspectorPanel = () => {
+    setPanelVisibility(toggleInspector(panelViewRef.current ?? panelView));
   };
 
   const executePaletteCommand = (command: PaletteCommand) => {
@@ -627,10 +675,16 @@ export function App() {
     closePalette(false);
     switch (command.action.type) {
       case "new-terminal":
-        setCreateOpen(true);
+        openCreateDialog();
         return;
       case "open-settings":
         openSettings();
+        return;
+      case "toggle-sidebar":
+        toggleSidebarPanel();
+        return;
+      case "toggle-inspector":
+        toggleInspectorPanel();
         return;
       case "split-pane":
         splitPane(command.action.direction);
@@ -738,8 +792,14 @@ export function App() {
         case "open-settings":
           openSettings();
           return;
+        case "toggle-sidebar":
+          toggleSidebarPanel();
+          return;
+        case "toggle-inspector":
+          toggleInspectorPanel();
+          return;
         case "new-terminal":
-          setCreateOpen(true);
+          openCreateDialog();
           return;
         case "previous-session":
         case "next-session": {
@@ -782,8 +842,31 @@ export function App() {
   }, [capturedPaneId, modalOpen, tabs]);
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div
+      className={`app-shell ${
+        panelView.sidebarOpen ? "" : "is-sidebar-collapsed"
+      } ${panelView.inspectorOpen ? "" : "is-inspector-collapsed"}`}
+    >
+      <a className="skip-link" href="#primary-workspace">
+        Skip to terminal workspace
+      </a>
+      <button
+        aria-label="Close open side panel"
+        className="panel-drawer-scrim"
+        onClick={() =>
+          setPanelVisibility({
+            ...panelView,
+            sidebarOpen: false,
+            inspectorOpen: false,
+          })
+        }
+        type="button"
+      />
+      <aside
+        aria-label="Session navigation"
+        className="sidebar"
+        id="session-sidebar"
+      >
         <header className="brand-row">
           <div className="brand-mark" aria-hidden="true">
             P
@@ -792,11 +875,20 @@ export function App() {
             <strong>Pacium</strong>
             <span>Control</span>
           </div>
+          <button
+            aria-label="Close session sidebar"
+            className="sidebar-close"
+            onClick={toggleSidebarPanel}
+            type="button"
+          >
+            ×
+          </button>
         </header>
 
         <button
           className="new-terminal-button"
-          onClick={() => setCreateOpen(true)}
+          id="new-terminal-trigger"
+          onClick={openCreateDialog}
           title="New terminal (Cmd/Ctrl Shift T)"
           type="button"
         >
@@ -832,7 +924,7 @@ export function App() {
                           onClick={() => selectSession(session.id)}
                           onContextMenu={(event) => {
                             event.preventDefault();
-                            setActionSessionId(session.id);
+                            openSessionActions(session.id);
                           }}
                           title={`${session.commandLabel} in ${session.cwd}${
                             sessionShortcutNumbers.get(session.id) == null
@@ -882,7 +974,12 @@ export function App() {
         </div>
       </aside>
 
-      <main className="workspace">
+      <main
+        aria-label="Terminal workspace"
+        className="workspace"
+        id="primary-workspace"
+        tabIndex={-1}
+      >
         <header className="workspace-header">
           <div className="workspace-title">
             <StatusDot state={selectedSession?.processState ?? "idle"} />
@@ -895,6 +992,32 @@ export function App() {
             </div>
           </div>
           <div className="header-actions">
+            <button
+              aria-controls="session-sidebar"
+              aria-expanded={panelView.sidebarOpen}
+              aria-keyshortcuts="Meta+B Control+B"
+              aria-label={`${
+                panelView.sidebarOpen ? "Hide" : "Show"
+              } session sidebar`}
+              className="panel-toggle"
+              onClick={toggleSidebarPanel}
+              title="Toggle sessions (Cmd/Ctrl B)"
+              type="button"
+            >
+              <span aria-hidden="true">▌</span>
+            </button>
+            <button
+              aria-controls="session-inspector"
+              aria-expanded={panelView.inspectorOpen}
+              aria-keyshortcuts="Meta+Shift+B Control+Shift+B"
+              aria-label={`${panelView.inspectorOpen ? "Hide" : "Show"} inspector`}
+              className="panel-toggle"
+              onClick={toggleInspectorPanel}
+              title="Toggle inspector (Cmd/Ctrl Shift B)"
+              type="button"
+            >
+              <span aria-hidden="true">▐</span>
+            </button>
             <ConnectionBadge state={connection} />
             <button
               aria-keyshortcuts="Meta+K Control+K"
@@ -930,7 +1053,12 @@ export function App() {
             </button>
             <button
               disabled={selectedSession === null}
-              onClick={() => setActionSessionId(selectedSession?.id ?? null)}
+              id="session-actions-trigger"
+              onClick={() => {
+                if (selectedSession !== null) {
+                  openSessionActions(selectedSession.id);
+                }
+              }}
               title="Session actions"
               type="button"
             >
@@ -986,7 +1114,7 @@ export function App() {
                     }}
                     onContextMenu={(event) => {
                       event.preventDefault();
-                      setActionSessionId(session.id);
+                      openSessionActions(session.id);
                     }}
                   >
                     <button
@@ -1123,7 +1251,7 @@ export function App() {
         >
           {sessions.length === 0 ? (
             <EmptyWorkspace
-              onCreate={() => setCreateOpen(true)}
+              onCreate={openCreateDialog}
               onOpenRunning={undefined}
               runningSessionCount={0}
             />
@@ -1149,7 +1277,7 @@ export function App() {
               onInput={(sessionId, data) =>
                 transportRef.current?.input(sessionId, data)
               }
-              onOpenActions={(sessionId) => setActionSessionId(sessionId)}
+              onOpenActions={openSessionActions}
               onResize={(sessionId, cols, rows) =>
                 transportRef.current?.resize(sessionId, cols, rows)
               }
@@ -1185,12 +1313,31 @@ export function App() {
             />
           )}
         </section>
+        <WorkspaceStatus
+          connection={connection}
+          selectedSessionName={selectedSession?.displayName ?? null}
+          terminalCaptured={capturedPaneId !== null}
+        />
       </main>
 
-      <aside className="inspector">
+      <aside
+        aria-label="Session inspector"
+        className="inspector"
+        id="session-inspector"
+      >
         <header>
           <span>Session</span>
-          <span className="panel-label">Details</span>
+          <span>
+            <span className="panel-label">Details</span>
+            <button
+              aria-label="Close inspector"
+              className="inspector-close"
+              onClick={toggleInspectorPanel}
+              type="button"
+            >
+              ×
+            </button>
+          </span>
         </header>
         {selectedSession === null ? (
           <p className="inspector-empty">
@@ -1249,7 +1396,7 @@ export function App() {
           )}
           launchPresets={launchPresets}
           loadDirectories={loadDirectories}
-          onCancel={() => setCreateOpen(false)}
+          onCancel={closeCreateDialog}
           onCreate={createSession}
         />
       )}
@@ -1272,10 +1419,10 @@ export function App() {
       )}
       {actionSession !== null && (
         <SessionActionsMenu
-          onClose={() => setActionSessionId(null)}
+          onClose={closeSessionActions}
           onCloseView={() => {
             closeViewTab(actionSession.id);
-            setActionSessionId(null);
+            closeSessionActions();
           }}
           onCopyDirectory={() => {
             void copySessionDirectory(actionSession);
@@ -1291,11 +1438,11 @@ export function App() {
       )}
       {renameSession !== null && (
         <RenameSessionDialog
-          onCancel={() => setRenameSessionId(null)}
+          onCancel={closeRenameDialog}
           onRename={(displayName) => {
             transportRef.current?.renameSession(renameSession.id, displayName);
             setNotice(`Renaming ${renameSession.displayName}…`);
-            setRenameSessionId(null);
+            closeRenameDialog();
           }}
           session={renameSession}
         />
@@ -1437,7 +1584,7 @@ function upsertSession(
   );
 }
 
-function CreateTerminalDialog({
+export function CreateTerminalDialog({
   defaultCwd,
   defaultLaunchPreset,
   launchPresets,
@@ -1456,6 +1603,8 @@ function CreateTerminalDialog({
     launchPreset: LaunchPresetId;
   }) => void;
 }) {
+  const browseButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [cwd, setCwd] = useState(defaultCwd);
   const [displayName, setDisplayName] = useState("");
   const [launchPreset, setLaunchPreset] =
@@ -1475,12 +1624,19 @@ function CreateTerminalDialog({
     });
   };
 
+  const closeDirectoryPicker = () => {
+    setPickerOpen(false);
+    window.requestAnimationFrame(() => {
+      browseButtonRef.current?.focus();
+    });
+  };
+
   if (pickerOpen) {
     return (
       <DirectoryPicker
         initialPath={cwd.trim() || defaultCwd}
         loadDirectories={loadDirectories}
-        onCancel={() => setPickerOpen(false)}
+        onCancel={closeDirectoryPicker}
         onSelect={(path) => {
           setCwd(path);
           setPickerOpen(false);
@@ -1494,6 +1650,10 @@ function CreateTerminalDialog({
       aria-labelledby="create-terminal-title"
       aria-modal="true"
       className="dialog-backdrop"
+      onKeyDown={(event) =>
+        handleModalKeyDown(event, dialogRef.current, onCancel)
+      }
+      ref={dialogRef}
       role="dialog"
     >
       <form className="dialog-card" onSubmit={submit}>
@@ -1561,6 +1721,7 @@ function CreateTerminalDialog({
             <button
               className="browse-directory-button"
               onClick={() => setPickerOpen(true)}
+              ref={browseButtonRef}
               type="button"
             >
               <span aria-hidden="true">⌘</span>
@@ -1596,6 +1757,38 @@ function CreateTerminalDialog({
         </div>
       </form>
     </div>
+  );
+}
+
+export function WorkspaceStatus({
+  connection,
+  selectedSessionName,
+  terminalCaptured,
+}: {
+  connection: ConnectionState;
+  selectedSessionName: string | null;
+  terminalCaptured: boolean;
+}) {
+  return (
+    <footer
+      aria-atomic="true"
+      aria-live="polite"
+      className="workspace-status"
+      role="status"
+    >
+      <span>
+        {workspaceStatusText({
+          connection,
+          selectedSessionName,
+          terminalCaptured,
+        })}
+      </span>
+      <span>
+        {terminalCaptured
+          ? "Ctrl+Shift+. returns to application controls"
+          : "Click a terminal to enter capture"}
+      </span>
+    </footer>
   );
 }
 
@@ -1709,4 +1902,25 @@ function sameTerminalTabs(left: TerminalTab[], right: TerminalTab[]): boolean {
         tab.pinned === right[index]?.pinned,
     )
   );
+}
+
+function activeControl(fallbackId: string): HTMLElement | null {
+  const activeElement = document.activeElement;
+  return activeElement instanceof HTMLElement && activeElement !== document.body
+    ? activeElement
+    : document.getElementById(fallbackId);
+}
+
+function restoreControlFocus(
+  invokerRef: React.MutableRefObject<HTMLElement | null>,
+  fallbackId: string,
+): void {
+  const target = invokerRef.current;
+  window.requestAnimationFrame(() => {
+    if (target?.isConnected) {
+      target.focus();
+      return;
+    }
+    document.getElementById(fallbackId)?.focus();
+  });
 }

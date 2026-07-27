@@ -110,6 +110,16 @@ describe("workspace shortcuts", () => {
     expect(resolveWorkspaceShortcut({ ...baseKeys, code: "Comma" })).toEqual({
       type: "open-settings",
     });
+    expect(resolveWorkspaceShortcut({ ...baseKeys, code: "KeyB" })).toEqual({
+      type: "toggle-sidebar",
+    });
+    expect(
+      resolveWorkspaceShortcut({
+        ...baseKeys,
+        code: "KeyB",
+        shiftKey: true,
+      }),
+    ).toEqual({ type: "toggle-inspector" });
     expect(
       resolveWorkspaceShortcut({
         ...baseKeys,
@@ -194,6 +204,13 @@ describe("workspace shortcuts", () => {
         ...baseKeys,
         code: "Comma",
         editable: true,
+      }),
+    ).toBeNull();
+    expect(
+      resolveWorkspaceShortcut({
+        ...baseKeys,
+        code: "KeyB",
+        terminalCaptured: true,
       }),
     ).toBeNull();
   });

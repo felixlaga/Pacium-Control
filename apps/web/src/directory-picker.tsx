@@ -7,6 +7,7 @@ import {
   parseRecentDirectories,
   serializeRecentDirectories,
 } from "./directory-picker-model.js";
+import { handleModalKeyDown } from "./modal-focus.js";
 
 const RECENT_DIRECTORIES_STORAGE_KEY = "pacium.recentDirectories";
 
@@ -21,6 +22,7 @@ export function DirectoryPicker({
   onCancel: () => void;
   onSelect: (path: string) => void;
 }) {
+  const dialogRef = useRef<HTMLElement>(null);
   const requestSequenceRef = useRef(0);
   const [listing, setListing] = useState<DirectoryListing | null>(null);
   const [requestedPath, setRequestedPath] = useState(initialPath);
@@ -104,6 +106,10 @@ export function DirectoryPicker({
         aria-labelledby="directory-picker-title"
         aria-modal="true"
         className="directory-picker-card"
+        onKeyDown={(event) =>
+          handleModalKeyDown(event, dialogRef.current, onCancel)
+        }
+        ref={dialogRef}
         role="dialog"
       >
         <header className="directory-picker-header">
