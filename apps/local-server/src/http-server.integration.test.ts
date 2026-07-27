@@ -89,6 +89,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     expect(welcome).toMatchObject({
       type: "server.welcome",
       protocolVersion: PROTOCOL_VERSION,
+      connection: { kind: "local" },
       capabilities: {
         launchPresets: [
           { id: "shell", available: true },
@@ -2511,7 +2512,14 @@ describe("localhost HTTP and WebSocket boundary", () => {
         "tailscale-user-login": "owner@example.com",
       },
     });
-    await nextMessage(remote, (message) => message.type === "server.welcome");
+    await expect(
+      nextMessage(remote, (message) => message.type === "server.welcome"),
+    ).resolves.toMatchObject({
+      connection: {
+        kind: "tailscale",
+        login: "owner@example.com",
+      },
+    });
     const session = await createTestSession(remote);
     factory.processes[0]?.emitData("remote canary remains local\r\n");
     remote.socket.close();
