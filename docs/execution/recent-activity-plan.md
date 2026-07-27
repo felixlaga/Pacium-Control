@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `42bef969d4be49941160ee1652e56e0a97b64fdd`
 - Target milestone: Milestone 2
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -216,3 +216,26 @@ and repository file content never enter the projection.
   system of record or protocol.
 - Security: no new authority, content interpretation, terminal input,
   execution, persistence, or logging surface.
+
+## Result
+
+Completed on 2026-07-27 as the planned protocol-9 browser projection.
+
+- The fifth Activity tab lazily combines the existing selected-session process,
+  attention, Git changes, local history, and verification evidence with one
+  explicit Refresh action.
+- Current observations and occurred facts remain distinct. The list has stable
+  identities, newest-first ordering, a three-commit cap, and a seven-fact
+  ceiling; source loading, empty, unavailable, and error states remain visible.
+- Process existence never becomes working evidence, a clean exit never becomes
+  task completion, commits are not attributed to the selected agent, and
+  terminal/check output never becomes activity narration.
+- There is no protocol change, event journal, durable projection, polling,
+  filesystem watcher, new process authority, terminal input, or provider
+  narrative.
+- `pnpm verify` passed 60 files and 292 tests plus both production builds.
+- `pnpm test:e2e` passed all seven Chromium workflows, including lazy Activity,
+  Refresh, latest check and Git evidence, browser reload, unchanged terminal
+  selection, five-tab keyboard navigation, and 320 CSS px layout.
+- Manual in-app-browser visual and screen-reader review could not be performed
+  because no browser backend was connected; that release evidence remains open.
