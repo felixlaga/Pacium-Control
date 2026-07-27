@@ -584,9 +584,7 @@ kbd {
 .pacium-queue-source.classification-unknown
   > div
   > .pacium-queue-classification,
-.pacium-queue-source.classification-none
-  > div
-  > .pacium-queue-classification {
+.pacium-queue-source.classification-none > div > .pacium-queue-classification {
   color: var(--text-muted);
 }
 
