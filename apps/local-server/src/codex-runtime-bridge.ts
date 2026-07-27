@@ -43,11 +43,16 @@ export class CodexRuntimeBridge {
     perMessageDeflate: false,
   });
   private readonly active = new Map<string, ActiveBridge>();
+  private readonly unsubscribeRelease: () => void;
 
   public constructor(
     private readonly observer: CodexObserver,
     private readonly childFactory: CodexRuntimeChildFactory = spawnCodexRuntime,
-  ) {}
+  ) {
+    this.unsubscribeRelease = observer.onRelease((sessionId) => {
+      this.disposeSession(sessionId);
+    });
+  }
 
   public handleUpgrade(
     request: IncomingMessage,
@@ -93,6 +98,7 @@ export class CodexRuntimeBridge {
   }
 
   public dispose(): void {
+    this.unsubscribeRelease();
     for (const bridge of [...this.active.values()]) {
       bridge.finish(false, "codex.server_shutdown");
     }

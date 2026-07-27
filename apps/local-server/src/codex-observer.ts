@@ -86,6 +86,7 @@ export class CodexObserver {
   private readonly listeners = new Set<
     (sessionId: string, observation: ProviderObservationSnapshot) => void
   >();
+  private readonly releaseListeners = new Set<(sessionId: string) => void>();
   private readonly now: () => string;
   private readonly tokenFactory: () => string;
   private readonly remoteOrigin: string;
@@ -157,6 +158,12 @@ export class CodexObserver {
   }
 
   public release(sessionId: string): void {
+    if (!this.sessions.has(sessionId)) {
+      return;
+    }
+    for (const listener of this.releaseListeners) {
+      listener(sessionId);
+    }
     this.sessions.delete(sessionId);
   }
 
@@ -195,6 +202,13 @@ export class CodexObserver {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
+    };
+  }
+
+  public onRelease(listener: (sessionId: string) => void): () => void {
+    this.releaseListeners.add(listener);
+    return () => {
+      this.releaseListeners.delete(listener);
     };
   }
 

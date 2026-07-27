@@ -3,6 +3,7 @@ import { FakePtyFactory } from "@pacium/test-utils";
 import type { SessionSummary } from "@pacium/contracts";
 
 import { ClaudeObserver } from "./claude-observer.js";
+import { CodexObserver } from "./codex-observer.js";
 import type { HostActions } from "./host-actions.js";
 import type { LaunchPresetDefinition } from "./launch-presets.js";
 import type { GitChangesInspector } from "./git-changes.js";
@@ -76,6 +77,7 @@ function createManager(
   verificationRunner?: VerificationRunner,
   claudeObserver?: ClaudeObserver,
   launchPresets: readonly LaunchPresetDefinition[] = testPresets,
+  codexObserver?: CodexObserver,
 ): SessionManager {
   return new SessionManager(
     factory,
@@ -88,6 +90,7 @@ function createManager(
     verificationCatalog,
     verificationRunner,
     claudeObserver,
+    codexObserver,
   );
 }
 
@@ -750,6 +753,84 @@ describe("SessionManager", () => {
 
     factory.processes[0]?.emitExit(0, 0);
     expect(observer.hasSession(claude.id)).toBe(false);
+    manager.shutdown();
+  });
+
+  it("prepares only Codex launches and applies native observer updates", async () => {
+    const factory = new FakePtyFactory();
+    const token = "c".repeat(43);
+    const observer = new CodexObserver({
+      baseUrl: "http://127.0.0.1:4174",
+      executable: "/opt/test/bin/codex",
+      environment: { PATH: "/opt/test/bin" },
+      capability: { available: true, version: "0.145.0" },
+      tokenFactory: () => token,
+    });
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      observer,
+    );
+    const updates: SessionSummary[] = [];
+    manager.onSessionEvent((event) => {
+      if (event.type === "updated") {
+        updates.push(event.session);
+      }
+    });
+
+    const codex = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "codex",
+      cols: 80,
+      rows: 24,
+    });
+    expect(factory.createCalls[0]).toMatchObject({
+      executable: "/opt/test/bin/codex",
+      args: [
+        "--remote",
+        `ws://127.0.0.1:4174/api/provider/codex/${codex.id}/runtime`,
+        "--remote-auth-token-env",
+        "PACIUM_CODEX_RUNTIME_TOKEN",
+      ],
+      environment: { PACIUM_CODEX_RUNTIME_TOKEN: token },
+    });
+    expect(JSON.stringify(factory.createCalls[0]?.args)).not.toContain(token);
+    expect(codex.providerObservation).toMatchObject({
+      provider: "codex",
+      providerVersion: "0.145.0",
+      health: { state: "unavailable" },
+    });
+    expect(observer.hasSession(codex.id)).toBe(true);
+
+    expect(
+      observer.ingestServerMessage(codex.id, {
+        id: 9,
+        method: "item/tool/requestUserInput",
+        params: {
+          threadId: "thread-1",
+          turnId: "turn-1",
+          itemId: "item-1",
+          questions: [{ question: "private question" }],
+        },
+      }).status,
+    ).toBe("accepted");
+    expect(updates.at(-1)?.providerObservation).toMatchObject({
+      health: { state: "ready", source: "native" },
+      attention: { state: "needs_input", source: "native" },
+      activities: [{ kind: "question_requested" }],
+    });
+    expect(JSON.stringify(updates.at(-1))).not.toContain("private question");
+
+    factory.processes[0]?.emitExit(0, 0);
+    expect(observer.hasSession(codex.id)).toBe(false);
     manager.shutdown();
   });
 });

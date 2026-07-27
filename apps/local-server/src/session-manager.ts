@@ -24,6 +24,7 @@ import {
 
 import type { LaunchPresetDefinition } from "./launch-presets.js";
 import type { ClaudeObserver } from "./claude-observer.js";
+import type { CodexObserver } from "./codex-observer.js";
 import { inspectGitChanges, type GitChangesInspector } from "./git-changes.js";
 import { inspectGitDiff, type GitDiffInspector } from "./git-diff.js";
 import { inspectGitHistory, type GitHistoryInspector } from "./git-history.js";
@@ -122,6 +123,7 @@ export class SessionManager {
   private readonly verificationRuns = new Map<string, VerificationRun>();
   private readonly unsubscribeVerification: (() => void) | undefined;
   private readonly unsubscribeClaudeObserver: (() => void) | undefined;
+  private readonly unsubscribeCodexObserver: (() => void) | undefined;
 
   public constructor(
     private readonly ptyFactory: PtyFactory,
@@ -162,6 +164,7 @@ export class SessionManager {
     },
     private readonly verificationRunner?: VerificationRunner,
     private readonly claudeObserver?: ClaudeObserver,
+    private readonly codexObserver?: CodexObserver,
   ) {
     this.unsubscribeVerification = verificationRunner?.onUpdate((event) => {
       const session = this.sessions.get(event.ownerId);
@@ -182,6 +185,19 @@ export class SessionManager {
           session === undefined ||
           session.summary.launchPreset !== "claude"
         ) {
+          return;
+        }
+        session.summary = {
+          ...session.summary,
+          providerObservation: observation,
+        };
+        this.emitSession({ type: "updated", session: { ...session.summary } });
+      },
+    );
+    this.unsubscribeCodexObserver = codexObserver?.onUpdate(
+      (sessionId, observation) => {
+        const session = this.sessions.get(sessionId);
+        if (session === undefined || session.summary.launchPreset !== "codex") {
           return;
         }
         session.summary = {
@@ -234,21 +250,31 @@ export class SessionManager {
         this.claudeObserver.release(id);
       }
     }
+    let codexPreparation: ReturnType<CodexObserver["prepare"]> | undefined;
+    if (preset.id === "codex" && this.codexObserver !== undefined) {
+      try {
+        codexPreparation = this.codexObserver.prepare(id, createdAt);
+      } catch {
+        this.codexObserver.release(id);
+      }
+    }
+    const providerPreparation = claudePreparation ?? codexPreparation;
 
     let pty: PtyProcess;
     try {
       pty = this.ptyFactory.create({
         executable: preset.executable,
-        args: [...preset.args, ...(claudePreparation?.args ?? [])],
+        args: [...preset.args, ...(providerPreparation?.args ?? [])],
         cwd,
         cols: input.cols,
         rows: input.rows,
-        ...(claudePreparation === undefined
+        ...(providerPreparation === undefined
           ? {}
-          : { environment: claudePreparation.environment }),
+          : { environment: providerPreparation.environment }),
       });
     } catch (error) {
       this.claudeObserver?.release(id);
+      this.codexObserver?.release(id);
       terminal.dispose();
       throw new SessionError(
         "PTY_SPAWN_FAILED",
@@ -273,7 +299,7 @@ export class SessionManager {
           observedAt: createdAt,
         },
         providerObservation:
-          claudePreparation?.observation ??
+          providerPreparation?.observation ??
           initialProviderObservation(preset.id, createdAt),
         repository,
         runtime: "pty",
@@ -540,9 +566,11 @@ export class SessionManager {
   public shutdown(): void {
     this.unsubscribeVerification?.();
     this.unsubscribeClaudeObserver?.();
+    this.unsubscribeCodexObserver?.();
     this.verificationRunner?.shutdown();
     for (const session of this.sessions.values()) {
       this.claudeObserver?.release(session.summary.id);
+      this.codexObserver?.release(session.summary.id);
       if (session.forceTimer !== undefined) {
         clearTimeout(session.forceTimer);
       }
@@ -624,6 +652,7 @@ export class SessionManager {
       exitSignal: signal,
     };
     this.claudeObserver?.release(session.summary.id);
+    this.codexObserver?.release(session.summary.id);
     this.emitSession({ type: "exited", session: { ...session.summary } });
 
     if (session.closeRequestId !== undefined) {
@@ -650,6 +679,7 @@ export class SessionManager {
     }
     this.verificationRuns.delete(session.summary.id);
     this.claudeObserver?.release(session.summary.id);
+    this.codexObserver?.release(session.summary.id);
     session.terminal.dispose();
     this.sessions.delete(session.summary.id);
     const event: SessionEvent =
