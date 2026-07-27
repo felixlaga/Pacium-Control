@@ -57,25 +57,25 @@ existing status line automatically.
 
 ## Acceptance criteria
 
-- [ ] Only a Pacium-created live Claude session with its exact random token can
+- [x] Only a Pacium-created live Claude session with its exact random token can
       submit hook or status observations.
-- [ ] Hook requests require POST, exact loopback Host, no Origin, JSON content
+- [x] Hook requests require POST, exact loopback Host, no Origin, JSON content
       type, a canonical session UUID path, and a bounded body.
-- [ ] Every hook response is a 2xx empty/no-decision response after successful
+- [x] Every hook response is a 2xx empty/no-decision response after successful
       observation; ingestion failure is non-authoritative and cannot approve or
       block Claude.
-- [ ] Unknown, malformed, oversized, mismatched-session, and duplicate inputs
+- [x] Unknown, malformed, oversized, mismatched-session, and duplicate inputs
       fail safely without terminal interruption or raw-payload retention.
-- [ ] Prompt text, transcript paths, tool input/output, environments, and
+- [x] Prompt text, transcript paths, tool input/output, environments, and
       credentials never enter provider snapshots, diagnostics, or logs.
-- [ ] Supported hook fixtures produce honest activity and attention for start,
+- [x] Supported hook fixtures produce honest activity and attention for start,
       prompt, tool, approval, question, completion, and failure.
-- [ ] Status fixtures produce bounded usage/version evidence without storing
+- [x] Status fixtures produce bounded usage/version evidence without storing
       repository, transcript, or session-name content.
-- [ ] Capabilities remain unknown until matching evidence arrives, and observer
+- [x] Capabilities remain unknown until matching evidence arrives, and observer
       health/freshness degrades honestly.
-- [ ] Shell and Codex launch behavior is unchanged.
-- [ ] Browser refresh preserves current process-local Claude evidence while the
+- [x] Shell and Codex launch behavior is unchanged.
+- [x] Browser refresh preserves current process-local Claude evidence while the
       local server is alive.
 
 ## User experience

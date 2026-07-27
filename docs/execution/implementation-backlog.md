@@ -420,6 +420,20 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-061 Implement Claude observer
 
 - Supported hooks/status, attention, tool, approval, completion, usage, and failure fixtures.
+- Current status: protocol 20 adds bounded Claude model, context, token, and
+  cost fields. Each Pacium-launched Claude PTY receives fixed observation-only
+  HTTP hooks and one random session-scoped token through its bounded
+  environment. The exact loopback POST ingress validates Host, absent Origin,
+  bearer token, UUID path, JSON type, body size, provider-session identity, and
+  typed payload before projecting deduplicated lifecycle, tool, question,
+  approval, completion, failure, and optional status evidence. Successful hook
+  responses are empty and cannot decide for Claude. Activity shows only
+  normalized evidence and usage scalars; prompts, transcripts, tool
+  input/output, environments, credentials, and raw payloads are discarded.
+  Pacium does not edit Claude settings or replace an operator status line.
+  Managed hook policy, externally launched sessions, live-provider canary
+  evidence, decision/control actions, and durable observation remain outside
+  this slice.
 
 ### PC-062 Implement Codex observer
 
