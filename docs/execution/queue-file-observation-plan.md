@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `529b65f31f900fc394b2d7752bb05150c0608bc4`
 - Target milestone: Milestone 3
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -335,6 +335,27 @@ not stop the server observer or alter browser terminal state.
 - Durable `queue-state.json` begins only when classification/decision consumers
   require restart-safe import provenance; it will not store unrestricted raw
   queue text.
+
+## Completion evidence
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 81 test
+  files and 451 tests, plus the 801.90 kB web and 185.93 kB local-server
+  production bundles.
+- `pnpm test:e2e` passed all ten Chromium workflows in one run. The new workflow
+  observed a disposable real queue file, withheld its text from the UI,
+  refreshed changed byte/hash evidence, preserved the selected real PTY,
+  removed the source group in General mode, and cleaned its terminal afterward.
+- Reader/model/observer tests cover exact bounds, empty and missing input,
+  invalid UTF-8, oversized and unsafe files, no-follow identity drift, content
+  hashing, semantic deduplication, debounced updates, stale configuration
+  generations, watcher failure, disposal, and server-only original text.
+- Authenticated integration evidence proves content-free protocol messages and
+  byte-for-byte preservation of the queue source and `pacium.json`.
+- Responsive browser coverage keeps the source-health region and Refresh usable
+  at 320 CSS px, 200% zoom, forced colors, and reduced motion.
+- Verification used Node.js 26.4.0 rather than the pinned Node.js 24.18.x. The
+  first managed-sandbox Chromium attempt could not register its macOS Mach port;
+  the approved outside-sandbox rerun passed all workflows.
 
 ## Approval
 
