@@ -7,6 +7,7 @@ import {
   encodeTerminalDataFrame,
   MAX_TERMINAL_INPUT_CHARS,
   PROTOCOL_VERSION,
+  RepositoryObservationSchema,
   SessionSummarySchema,
 } from "./protocol.js";
 
@@ -216,6 +217,115 @@ describe("agent classification contract", () => {
       SessionSummarySchema.safeParse({
         ...session,
         agentClassification: undefined,
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("repository observation contract", () => {
+  const observedAt = "2026-07-27T10:00:00.000Z";
+  const ready = {
+    status: "ready",
+    root: "/work/pacium",
+    name: "pacium",
+    branch: "codex/repository-context",
+    headCommit: "a".repeat(40),
+    headState: "branch",
+    worktreeKind: "linked",
+    observedAt,
+    error: null,
+  };
+
+  it("accepts complete branch, detached, unborn, and non-repository states", () => {
+    expect(RepositoryObservationSchema.safeParse(ready).success).toBe(true);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...ready,
+        branch: null,
+        headState: "detached",
+      }).success,
+    ).toBe(true);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...ready,
+        headCommit: null,
+        headState: "unborn",
+      }).success,
+    ).toBe(true);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        status: "not_repository",
+        root: null,
+        name: null,
+        branch: null,
+        headCommit: null,
+        headState: "unknown",
+        worktreeKind: "unknown",
+        observedAt,
+        error: null,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("requires evidence combinations to match status and head state", () => {
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...ready,
+        headState: "detached",
+      }).success,
+    ).toBe(false);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...ready,
+        headState: "unborn",
+      }).success,
+    ).toBe(false);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...ready,
+        status: "error",
+        branch: null,
+        headCommit: null,
+        headState: "unknown",
+        error: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...ready,
+        terminalOutput: "secret",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts bounded degraded evidence with or without a known root", () => {
+    const error = {
+      status: "error",
+      root: "/work/pacium",
+      name: "pacium",
+      branch: null,
+      headCommit: null,
+      headState: "unknown",
+      worktreeKind: "linked",
+      observedAt,
+      error: {
+        code: "timeout",
+        message: "Git inspection timed out.",
+      },
+    };
+    expect(RepositoryObservationSchema.safeParse(error).success).toBe(true);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...error,
+        root: null,
+        name: null,
+        worktreeKind: "unknown",
+      }).success,
+    ).toBe(true);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...error,
+        error: { ...error.error, message: "x".repeat(201) },
       }).success,
     ).toBe(false);
   });

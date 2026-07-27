@@ -61,6 +61,122 @@ export const AgentClassificationSchema = z
   .strict();
 export type AgentClassification = z.infer<typeof AgentClassificationSchema>;
 
+export const RepositoryStatusSchema = z.enum([
+  "ready",
+  "not_repository",
+  "error",
+]);
+export const RepositoryHeadStateSchema = z.enum([
+  "branch",
+  "detached",
+  "unborn",
+  "unknown",
+]);
+export const RepositoryWorktreeKindSchema = z.enum([
+  "main",
+  "linked",
+  "unknown",
+]);
+export const RepositoryErrorCodeSchema = z.enum([
+  "git_unavailable",
+  "timeout",
+  "inspection_failed",
+  "invalid_output",
+]);
+
+export const RepositoryObservationSchema = z
+  .object({
+    status: RepositoryStatusSchema,
+    root: z.string().min(1).max(4096).nullable(),
+    name: z.string().min(1).max(255).nullable(),
+    branch: z.string().min(1).max(512).nullable(),
+    headCommit: z
+      .string()
+      .regex(/^[0-9a-f]{40,64}$/)
+      .nullable(),
+    headState: RepositoryHeadStateSchema,
+    worktreeKind: RepositoryWorktreeKindSchema,
+    observedAt: z.string().datetime(),
+    error: z
+      .object({
+        code: RepositoryErrorCodeSchema,
+        message: z.string().min(1).max(200),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict()
+  .superRefine((observation, context) => {
+    const rootPairValid =
+      (observation.root === null && observation.name === null) ||
+      (observation.root !== null && observation.name !== null);
+    if (!rootPairValid) {
+      context.addIssue({
+        code: "custom",
+        message: "Repository root and name must be present together.",
+      });
+    }
+
+    if (observation.status === "not_repository") {
+      if (
+        observation.root !== null ||
+        observation.branch !== null ||
+        observation.headCommit !== null ||
+        observation.headState !== "unknown" ||
+        observation.worktreeKind !== "unknown" ||
+        observation.error !== null
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "A non-repository observation cannot contain Git evidence.",
+        });
+      }
+      return;
+    }
+
+    if (observation.status === "error") {
+      if (
+        observation.branch !== null ||
+        observation.headCommit !== null ||
+        observation.headState !== "unknown" ||
+        observation.error === null
+      ) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "An error observation must contain only bounded error evidence.",
+        });
+      }
+      return;
+    }
+
+    if (
+      observation.root === null ||
+      observation.worktreeKind === "unknown" ||
+      observation.headState === "unknown" ||
+      observation.error !== null
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "A ready observation requires complete repository evidence.",
+      });
+      return;
+    }
+    const branchExpected =
+      observation.headState === "branch" || observation.headState === "unborn";
+    const commitExpected = observation.headState !== "unborn";
+    if (
+      (observation.branch !== null) !== branchExpected ||
+      (observation.headCommit !== null) !== commitExpected
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Branch and commit must match the repository head state.",
+      });
+    }
+  });
+export type RepositoryObservation = z.infer<typeof RepositoryObservationSchema>;
+
 export const SessionSummarySchema = z.object({
   id: SessionIdSchema,
   epoch: z.number().int().positive(),
