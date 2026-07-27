@@ -340,13 +340,23 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
   returns identical replays without writing, rejects competing decisions, and
   recovers exact records after reload/restart. The inspector exposes a bounded
   answer form or separately confirmed Approve/Deny controls, then replaces
-  them with the local immutable record. No decision is delivered,
-  acknowledged, applied, executed, or sent to a terminal; PC-048 owns that
-  compatibility boundary.
+  them with the local immutable record. Recording itself never delivers,
+  acknowledges, applies, executes, or sends a decision; PC-048 owns the
+  separate compatibility boundary.
 
 ### PC-048 Deliver decisions compatibly
 
 - Explicit target and delivery mechanism, idempotency, delivered/unknown/failed state, and no blind retry.
+- Current status: protocol 15 accepts only immutable decision ID/hash delivery
+  authority. The server revalidates exact source/config truth, snapshots the
+  accepted answer-file or live role-PTY target, persists one hashed intent
+  before the side effect, and stores delivered/failed/unknown evidence in
+  queue-state schema 2 with compatible schema-1 migration. Answer files are
+  deterministic private no-clobber JSON; role prompts are one JSON-escaped
+  comment line and claim only terminal transport acceptance. The inspector
+  requires Review/Cancel/Confirm, reloads durable evidence, and never retries a
+  completed or uncertain attempt. Acknowledgement, conflict resolution,
+  applied state, supersession, and explicit resolution remain PC-049.
 
 ### PC-049 Implement acknowledgement and conflict handling
 

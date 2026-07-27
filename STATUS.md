@@ -5,7 +5,8 @@ Pacium configuration, the General/Pacium toggle, and pinned Meta/Orchestrator
 roles plus explicit terminal prompt targeting and conservative queue-file
 observation, whole-source queue classification, and a read-only queue
 list/original-text inspector plus immutable local question/approval decisions
-are complete enough for continued slicing; compatible delivery is next.
+and explicit compatible answer-file/role-prompt delivery are complete enough
+for continued slicing; acknowledgement and conflict resolution are next.
 
 Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
 
@@ -74,11 +75,11 @@ The secondary product is **Pacium mode**:
   current/latest verification run into at most seven deterministic facts with
   explicit observed/occurred timestamps, source availability, partial errors,
   Refresh, reconnect recovery, and no terminal/provider narrative.
-- Protocol-14 strict Pacium workspace configuration for explicit Meta,
+- Protocol-15 strict Pacium workspace configuration for explicit Meta,
   Orchestrator, and worker session/preset bindings; canonical repositories;
   verification references; and queue, future-delivery, objective, and plan path
-  metadata without execution authority, plus content-free queue-source
-  observation.
+  metadata without generic execution authority, plus content-free queue-source
+  observation and identity-only explicit decision-delivery requests.
 - One private server-owned version-1 `pacium.json` with a 96 KiB ceiling,
   complete graph/path/catalog validation, optimistic revisions,
   same-directory atomic replacement, corruption preservation, read-time drift
@@ -139,15 +140,28 @@ The secondary product is **Pacium mode**:
   exact current workspace/source/observation/hash/item identity and classified
   type, with UTF-8 byte bounds and rejection of browser-supplied actor,
   timestamp, decision ID/hash, delivery, command, or authority fields.
-- A private version-1 `queue-state.json` with a 4 MiB/4,096-record ceiling,
+- A private version-2 `queue-state.json` with a 4 MiB/4,096-record ceiling,
   strict schema/uniqueness/hash validation, serialized same-directory atomic
-  append, identical-replay detection, competing-decision rejection,
-  corruption preservation, and explicit unknown-durability recovery.
+  mutation, compatible version-1 reads and first-mutation migration,
+  identical-replay detection, competing-decision rejection, one delivery
+  attempt per decision, corruption preservation, and explicit
+  unknown-durability recovery.
 - Question answer and optional-note controls plus distinct approval/denial
   controls with inline confirmation, pending and failure states, stale-evidence
   clearing, and immutable local record presentation after reload or server
   restart. Recording does not deliver, acknowledge, execute, or send terminal
   input.
+- A separate decided-item Delivery section that resolves only the exact
+  accepted source method and target, shows ready/unconfigured/unavailable/
+  delivering/delivered/failed/unknown truth, and requires explicit
+  Review/Cancel/Confirm before invoking one transport.
+- Deterministic private mode-`0600` answer-file delivery with atomic no-clobber
+  publication, plus one bounded JSON-escaped comment line to an exact
+  configured live Meta or Orchestrator PTY. Terminal acceptance does not claim
+  provider receipt, handling, acknowledgement, application, or completion.
+- Durable intent-before-effect ordering, immutable one-attempt records,
+  duplicate suppression, restart recovery, and no automatic or manual retry
+  for failed or unknown attempts in the current slice.
 - Mode changes and reload preserve selected PTY, terminal tabs/splits,
   inspector context, panel state, terminal sync/input ownership, and existing
   Git/check evidence.
