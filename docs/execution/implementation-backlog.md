@@ -129,7 +129,10 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-029 Implement host working-directory picker
 
 - Token-protected host directory browsing, breadcrumbs, parent/home navigation, repository markers, filtering, recent choices, hidden-folder control, typed-path fallback, bounded results, and remote-safe behavior.
-- Current status: implemented with resolver, contract, HTTP-boundary, transport, and state tests. Rendered browser and accessibility validation remain pending because no browser backend was available.
+- Current status: implemented with resolver, contract, HTTP-boundary,
+  transport, state, and rendered-browser coverage. PC-078 closed the original
+  navigation, recovery, storage, focus, narrow-layout, zoom, forced-color, and
+  reduced-motion evidence gaps.
 
 ### PC-078 Refresh host working-directory picker
 
@@ -137,8 +140,10 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
   first-load default recovery, failure-safe browser-local recents, and complete
   rendered workflow evidence without changing the read-only filesystem or
   PC-077 request-authority boundary.
-- Current status: in progress on `codex/directory-picker-refresh`; issue and
-  implementation plan are committed before code changes.
+- Current status: complete. The existing protocol-18 endpoint remains
+  unchanged; path edit, server-default recovery, storage failure, deterministic
+  focus, 200%-zoom launch-form reachability, and three complete Chromium
+  workflows are implemented and verified.
 
 ## Epic 3 — Agent attention and Git
 
