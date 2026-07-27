@@ -16,9 +16,9 @@ export class VerificationOutputCapture {
   private readonly edgeBytes = Math.floor(
     (MAX_VERIFICATION_OUTPUT_BYTES - TRUNCATION_MARKER.byteLength) / 2,
   );
-  private complete: Buffer | null = Buffer.alloc(0);
-  private prefix = Buffer.alloc(0);
-  private tail = Buffer.alloc(0);
+  private complete: Buffer<ArrayBufferLike> | null = Buffer.alloc(0);
+  private prefix: Buffer<ArrayBufferLike> = Buffer.alloc(0);
+  private tail: Buffer<ArrayBufferLike> = Buffer.alloc(0);
 
   public append(chunk: Uint8Array | string): void {
     const bytes =
