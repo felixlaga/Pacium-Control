@@ -16,6 +16,7 @@ import {
 } from "@pacium/contracts";
 
 import type { LaunchPresetDefinition } from "./launch-presets.js";
+import { HostActionError, type HostActions } from "./host-actions.js";
 import type { PtyFactory, PtyProcess } from "./pty-adapter.js";
 import { discoverRepositoryContext } from "./repository-context.js";
 
@@ -93,6 +94,7 @@ export class SessionManager {
   public constructor(
     private readonly ptyFactory: PtyFactory,
     private readonly launchPresets: readonly LaunchPresetDefinition[],
+    private readonly hostActions?: HostActions,
   ) {}
 
   public list(): SessionSummary[] {
@@ -232,6 +234,48 @@ export class SessionManager {
   public interrupt(sessionId: string): void {
     const session = this.requireLiveSession(sessionId);
     session.pty.kill("SIGINT");
+  }
+
+  public rename(sessionId: string, displayName: string): void {
+    const normalized = displayName.trim();
+    if (normalized.length === 0 || normalized.length > 120) {
+      throw new SessionError(
+        "INVALID_DISPLAY_NAME",
+        "Session names must contain between 1 and 120 characters.",
+      );
+    }
+    const session = this.requireSession(sessionId);
+    session.summary = { ...session.summary, displayName: normalized };
+    this.emitSession({ type: "updated", session: { ...session.summary } });
+  }
+
+  public async revealRepository(sessionId: string): Promise<void> {
+    const session = this.requireSession(sessionId);
+    const repositoryRoot = session.summary.repositoryRoot;
+    if (repositoryRoot === null) {
+      throw new SessionError(
+        "SESSION_HAS_NO_REPOSITORY",
+        "This terminal is not associated with a Git repository.",
+      );
+    }
+    if (this.hostActions === undefined) {
+      throw new SessionError(
+        "REVEAL_UNSUPPORTED",
+        "Revealing a repository is not supported on this Pacium host.",
+      );
+    }
+    try {
+      await this.hostActions.revealPath(repositoryRoot);
+    } catch (error) {
+      if (error instanceof HostActionError) {
+        throw new SessionError(error.code, error.message, error.retryable);
+      }
+      throw new SessionError(
+        "REVEAL_FAILED",
+        "Pacium could not open the repository on the host.",
+        true,
+      );
+    }
   }
 
   public close(sessionId: string, force: boolean, requestId: string): void {
