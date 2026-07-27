@@ -2585,6 +2585,43 @@ describe("localhost HTTP and WebSocket boundary", () => {
     local.socket.close();
     await once(local.socket, "close");
   });
+
+  it("keeps the listener loopback-only and denies direct LAN or tailnet-shaped hosts", async () => {
+    const setup = await startTestServer(new FakePtyFactory());
+    application = setup.application;
+    manager = setup.manager;
+    const address = setup.application.server.address() as AddressInfo;
+    expect(address.address).toBe("127.0.0.1");
+    const httpUrl = setup.url.replace("ws://", "http://");
+
+    for (const host of [
+      "192.168.1.20:4174",
+      "100.64.0.10:4174",
+      "pacium-host.example-tailnet.ts.net",
+      "public.example",
+    ]) {
+      const health = await requestHttp(`${httpUrl}/api/health`, {
+        headers: { host },
+      });
+      expect(health.status).toBe(403);
+      expect(health.json).toEqual({ error: "Forbidden" });
+
+      const asset = await requestHttp(`${httpUrl}/`, {
+        headers: { host },
+      });
+      expect(asset.status).toBe(403);
+      expect(asset.json).toEqual({ error: "Forbidden" });
+    }
+
+    const localSpoof = await requestHttp(`${httpUrl}/api/health`, {
+      headers: {
+        host: "127.0.0.1:4174",
+        "tailscale-user-login": "owner@example.com",
+      },
+    });
+    expect(localSpoof.status).toBe(200);
+    expect(localSpoof.json).toEqual({ status: "ok" });
+  });
 });
 
 async function startTestServer(
