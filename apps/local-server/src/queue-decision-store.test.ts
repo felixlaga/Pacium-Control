@@ -485,6 +485,57 @@ describe("queue delivery store mutations", () => {
       code: "invalid_state",
     });
   });
+
+  it("permits exactly one retry after confirmed-not-delivered", async () => {
+    const fixture = await stateFixture();
+    const decision = sampleDecision();
+    const first = sampleDelivery(decision);
+    await fixture.store.append(decision);
+    await fixture.store.beginDelivery(first);
+    const failed = await fixture.store.finishDelivery(first.deliveryId, {
+      status: "failed",
+      recordedAt: "2026-07-27T15:00:01.000Z",
+      evidence: null,
+      error: {
+        code: "DELIVERY_WRITE_FAILED",
+        message:
+          "The configured transport failed before delivery could be confirmed.",
+      },
+    });
+    const retry = sampleDelivery(decision, {
+      deliveryId: "bb3d98ca-8308-46d7-9fe3-cf8a131e8dad",
+      requestedAt: "2026-07-27T15:02:00.000Z",
+    });
+
+    await expect(fixture.store.beginDelivery(retry)).resolves.toMatchObject({
+      status: "existing",
+      delivery: { deliveryId: first.deliveryId },
+    });
+    await fixture.store.appendResolution(
+      sampleResolution(decision, failed.delivery, "confirmed_not_delivered"),
+    );
+    await expect(fixture.store.beginDelivery(retry)).resolves.toEqual({
+      status: "recorded",
+      revision: 5,
+      delivery: retry,
+    });
+    await expect(
+      fixture.store.beginDelivery(
+        sampleDelivery(decision, {
+          deliveryId: "27adb772-f575-459b-a74e-993437a706d8",
+          requestedAt: "2026-07-27T15:03:00.000Z",
+        }),
+      ),
+    ).resolves.toEqual({
+      status: "existing",
+      revision: 5,
+      delivery: retry,
+    });
+    await expect(fixture.store.inspect()).resolves.toMatchObject({
+      status: "ready",
+      deliveries: [failed.delivery, retry],
+    });
+  });
 });
 
 describe("queue lifecycle resolution mutations", () => {
@@ -592,9 +643,12 @@ function sampleDecision(
   };
 }
 
-function sampleDelivery(decision: QueueDecisionRecord): QueueDeliveryRecord {
+function sampleDelivery(
+  decision: QueueDecisionRecord,
+  overrides: { deliveryId?: string; requestedAt?: string } = {},
+): QueueDeliveryRecord {
   const unhashed = {
-    deliveryId: "4699b11f-94d3-430a-960e-1c574a03db41",
+    deliveryId: overrides.deliveryId ?? "4699b11f-94d3-430a-960e-1c574a03db41",
     decisionId: decision.decisionId,
     decisionHash: decision.decisionHash,
     target: {
@@ -605,7 +659,7 @@ function sampleDelivery(decision: QueueDecisionRecord): QueueDeliveryRecord {
     },
     payloadHash: "d".repeat(64),
     payloadByteLength: 512,
-    requestedAt: "2026-07-27T15:00:00.000Z",
+    requestedAt: overrides.requestedAt ?? "2026-07-27T15:00:00.000Z",
     outcome: null,
   };
   return {

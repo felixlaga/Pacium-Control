@@ -3,7 +3,7 @@ import { lstat, mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
-  MAX_QUEUE_DELIVERIES,
+  MAX_QUEUE_DELIVERIES_V3,
   MAX_QUEUE_DECISIONS,
   MAX_QUEUE_RESOLUTIONS,
   MAX_QUEUE_STATE_BYTES,
@@ -423,15 +423,53 @@ export class QueueDecisionStore {
         "Existing queue decision state must be repaired before delivery.",
       );
     }
-    const existing = current.deliveries.find(
+    const attempts = current.deliveries.filter(
       (candidate) => candidate.decisionId === parsedDelivery.decisionId,
     );
-    if (existing !== undefined) {
+    const matchingAttempt = attempts.find(
+      (candidate) =>
+        candidate.deliveryId === parsedDelivery.deliveryId ||
+        candidate.deliveryHash === parsedDelivery.deliveryHash,
+    );
+    if (matchingAttempt !== undefined) {
       return {
         status: "existing",
         revision: current.revision,
-        delivery: existing,
+        delivery: matchingAttempt,
       };
+    }
+    if (attempts.length >= 2) {
+      const latest = attempts.at(-1);
+      if (latest === undefined) {
+        throw new QueueDecisionStoreWriteError(
+          "invalid_state",
+          "Queue delivery attempt history is inconsistent.",
+        );
+      }
+      return {
+        status: "existing",
+        revision: current.revision,
+        delivery: latest,
+      };
+    }
+    if (attempts.length === 1) {
+      const first = attempts[0];
+      const retryUnlocked =
+        first !== undefined &&
+        current.resolutions.some(
+          (resolution) =>
+            resolution.decisionId === parsedDelivery.decisionId &&
+            resolution.action === "confirmed_not_delivered" &&
+            resolution.delivery?.deliveryId === first.deliveryId &&
+            resolution.delivery.deliveryHash === first.deliveryHash,
+        );
+      if (!retryUnlocked && first !== undefined) {
+        return {
+          status: "existing",
+          revision: current.revision,
+          delivery: first,
+        };
+      }
     }
     const decision = current.decisions.find(
       (candidate) =>
@@ -444,7 +482,7 @@ export class QueueDecisionStore {
         "Queue delivery must reference an existing immutable decision.",
       );
     }
-    if (current.deliveries.length >= MAX_QUEUE_DELIVERIES) {
+    if (current.deliveries.length >= MAX_QUEUE_DELIVERIES_V3) {
       throw new QueueDecisionStoreWriteError(
         "state_full",
         "Queue delivery state reached its safe record bound.",
