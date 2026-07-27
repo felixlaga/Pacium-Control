@@ -229,30 +229,30 @@ function changesSummary(
   }
   switch (observation.status) {
     case "ready":
-      return {
+      return withRefreshState(state.status, {
         id: "changes",
         label: "Git changes",
-        status: state.status === "loading" ? "loading" : "ready",
+        status: "ready",
         detail: `${observation.totals.fileCount} changed ${plural(
           observation.totals.fileCount,
           "file",
         )} observed.`,
-      };
+      });
     case "not_repository":
-      return {
+      return withRefreshState(state.status, {
         id: "changes",
         label: "Git changes",
         status: "unavailable",
         detail: "No Git repository is associated with this terminal.",
-      };
+      });
     case "error":
-      return {
+      return withRefreshState(state.status, {
         id: "changes",
         label: "Git changes",
         status: "error",
         detail:
           observation.error?.message ?? "Changed-file evidence is unavailable.",
-      };
+      });
   }
 }
 
@@ -266,36 +266,36 @@ function historySummary(
   }
   switch (observation.status) {
     case "ready":
-      return {
+      return withRefreshState(state.status, {
         id: "history",
         label: "Git history",
-        status: state.status === "loading" ? "loading" : "ready",
+        status: "ready",
         detail: `${observation.commits.length} recent ${plural(
           observation.commits.length,
           "commit",
         )} inspected.`,
-      };
+      });
     case "empty":
-      return {
+      return withRefreshState(state.status, {
         id: "history",
         label: "Git history",
         status: "empty",
         detail: "The repository has an unborn HEAD and no commits.",
-      };
+      });
     case "not_repository":
-      return {
+      return withRefreshState(state.status, {
         id: "history",
         label: "Git history",
         status: "unavailable",
         detail: "No Git repository is associated with this terminal.",
-      };
+      });
     case "error":
-      return {
+      return withRefreshState(state.status, {
         id: "history",
         label: "Git history",
         status: "error",
         detail: observation.error?.message ?? "Commit history is unavailable.",
-      };
+      });
   }
 }
 
@@ -309,10 +309,10 @@ function verificationSummary(
   }
   switch (observation.status) {
     case "ready":
-      return {
+      return withRefreshState(state.status, {
         id: "verification",
         label: "Verification",
-        status: state.status === "loading" ? "loading" : "ready",
+        status: "ready",
         detail:
           observation.run === null
             ? `${observation.presets.length} configured ${plural(
@@ -320,36 +320,36 @@ function verificationSummary(
                 "preset",
               )}; no run observed.`
             : `${verificationTitle(observation.run.status)} evidence is available.`,
-      };
+      });
     case "unconfigured":
-      return {
+      return withRefreshState(state.status, {
         id: "verification",
         label: "Verification",
         status: "empty",
         detail: "Verification is not configured.",
-      };
+      });
     case "no_presets":
-      return {
+      return withRefreshState(state.status, {
         id: "verification",
         label: "Verification",
         status: "empty",
         detail: "No verification presets match this repository.",
-      };
+      });
     case "not_repository":
-      return {
+      return withRefreshState(state.status, {
         id: "verification",
         label: "Verification",
         status: "unavailable",
         detail: "No Git repository is associated with this terminal.",
-      };
+      });
     case "error":
-      return {
+      return withRefreshState(state.status, {
         id: "verification",
         label: "Verification",
         status: "error",
         detail:
           observation.error?.message ?? "Verification evidence is unavailable.",
-      };
+      });
   }
 }
 
@@ -380,6 +380,19 @@ function loadingSummary(
     status: "ready",
     detail: "Local evidence is available.",
   };
+}
+
+function withRefreshState(
+  state: "idle" | "loading" | "loaded",
+  summary: ActivitySourceSummary,
+): ActivitySourceSummary {
+  return state === "loading"
+    ? {
+        ...summary,
+        status: "loading",
+        detail: `${summary.detail} Refreshing.`,
+      }
+    : summary;
 }
 
 function compareActivityFacts(left: ActivityFact, right: ActivityFact): number {

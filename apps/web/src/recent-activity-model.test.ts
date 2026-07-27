@@ -1,4 +1,4 @@
-import type { SessionSummary } from "@pacium/contracts";
+import type { GitChangesObservation, SessionSummary } from "@pacium/contracts";
 import { describe, expect, it } from "vitest";
 
 import { deriveProcessAttention } from "./attention-model.js";
@@ -266,6 +266,42 @@ describe("recent activity Git facts", () => {
         expect.objectContaining({ id: "history", status: "empty" }),
       ]),
     );
+  });
+
+  it("keeps prior unavailable evidence visible but marks its refresh in flight", () => {
+    const previous: GitChangesObservation = {
+      status: "error",
+      root: "/work/pacium",
+      headCommit: null,
+      observedAt: now,
+      files: [],
+      totals: {
+        fileCount: 0,
+        additions: 0,
+        deletions: 0,
+        unavailableLineCount: 0,
+        conflictCount: 0,
+      },
+      truncated: false,
+      error: {
+        code: "timeout",
+        message: "Git inspection timed out.",
+      },
+    };
+    const activity = buildRecentActivity({
+      ...input(),
+      changes: {
+        status: "loading",
+        requestId: "6b32082f-e6a4-478a-a9f9-b0f05b847581",
+        previous,
+      },
+    });
+
+    expect(activity.sources[0]).toMatchObject({
+      status: "loading",
+      detail: "Git inspection timed out. Refreshing.",
+    });
+    expect(activity.loading).toBe(true);
   });
 });
 
