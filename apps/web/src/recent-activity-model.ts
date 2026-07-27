@@ -154,12 +154,47 @@ function providerFacts(session: SessionSummary): ActivityFact[] {
     id: `provider:${observation.provider}:${activity.id}`,
     source: "provider",
     title: providerActivityTitle(activity.kind),
-    detail: `${providerLabel(observation.provider)} · ${providerSourceLabel(
-      activity.source,
-    )} · ${providerConfidenceLabel(activity.confidence)} · ${activity.summary}`,
+    detail: providerActivityDetail(observation.provider, activity),
     timestamp: activity.occurredAt,
     timestampMeaning: "occurred",
   }));
+}
+
+function providerActivityDetail(
+  provider: "claude" | "codex",
+  activity: NonNullable<
+    SessionSummary["providerObservation"]
+  >["activities"][number],
+): string {
+  const details = [
+    providerLabel(provider),
+    providerSourceLabel(activity.source),
+    providerConfidenceLabel(activity.confidence),
+    activity.summary,
+  ];
+  if (
+    activity.kind !== "usage_updated" ||
+    activity.extension.provider !== "claude"
+  ) {
+    return details.join(" · ");
+  }
+  const extension = activity.extension;
+  if (extension.modelId !== null) {
+    details.push(`Model ${extension.modelId}`);
+  }
+  if (extension.contextUsedPercent !== null) {
+    details.push(`Context ${extension.contextUsedPercent}%`);
+  }
+  if (extension.totalInputTokens !== null) {
+    details.push(`${formatCount(extension.totalInputTokens)} input tokens`);
+  }
+  if (extension.totalOutputTokens !== null) {
+    details.push(`${formatCount(extension.totalOutputTokens)} output tokens`);
+  }
+  if (extension.totalCostUsd !== null) {
+    details.push(`Cost $${extension.totalCostUsd.toFixed(2)}`);
+  }
+  return details.join(" · ");
 }
 
 function gitFacts({ changes, history }: RecentActivityInput): ActivityFact[] {
@@ -470,6 +505,10 @@ function validTimestamp(value: string): boolean {
 
 function plural(count: number, singular: string): string {
   return count === 1 ? singular : `${singular}s`;
+}
+
+function formatCount(count: number): string {
+  return new Intl.NumberFormat("en-US").format(count);
 }
 
 function providerHealthStatus(

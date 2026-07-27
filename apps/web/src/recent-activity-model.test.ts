@@ -268,6 +268,51 @@ describe("recent provider activity", () => {
     expect(activity.sources[0]?.detail).toContain("1.0.0");
   });
 
+  it("shows bounded Claude status usage without raw status content", () => {
+    const candidate = providerSession({
+      provider: "claude",
+      providerVersion: "2.1.207",
+      health: {
+        state: "ready",
+        source: "hook",
+        confidence: "high",
+        detail: "Claude hooks are connected.",
+      },
+      activities: [
+        {
+          id: "usage-1",
+          kind: "usage_updated",
+          source: "hook",
+          confidence: "high",
+          occurredAt: "2026-07-27T10:03:00.000Z",
+          observedAt: "2026-07-27T10:03:00.000Z",
+          summary: "Claude status and usage snapshot updated.",
+          extension: {
+            provider: "claude",
+            eventType: "status",
+            providerSessionId: "claude-session-1",
+            toolName: null,
+            modelId: "claude-opus-5",
+            contextUsedPercent: 12.5,
+            totalCostUsd: 0.5,
+            totalInputTokens: 1_000,
+            totalOutputTokens: 100,
+          },
+        },
+      ],
+    });
+    const activity = buildRecentActivity(input(candidate));
+    const fact = activity.facts.find(({ source }) => source === "provider");
+
+    expect(fact).toMatchObject({
+      title: "Provider usage updated",
+      detail:
+        "Claude Code · Provider hook · High confidence · Claude status and usage snapshot updated. · Model claude-opus-5 · Context 12.5% · 1,000 input tokens · 100 output tokens · Cost $0.50",
+    });
+    expect(fact?.detail).not.toContain("session_name");
+    expect(fact?.detail).not.toContain("transcript");
+  });
+
   it("labels expired provider evidence stale while retaining process truth", () => {
     const candidate = providerSession({
       attention: {
