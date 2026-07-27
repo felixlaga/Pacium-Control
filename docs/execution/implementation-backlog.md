@@ -262,6 +262,15 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-042 Pin Meta and Orchestrator
 
 - Stable role labels, launch/attach state, side-by-side command, and clear missing/disconnected states.
+- Current status: Pacium mode pins stable Meta and Orchestrator cards above
+  ordinary sessions; resolves exact accepted session IDs into
+  live/starting/ending/ended/failed/missing/disconnected evidence; opens the
+  existing PTY through the current tab/split/attach path; and provides a
+  role-scoped editor for eligible live sessions or fixed launch presets. A
+  preset launch correlates the exact `session.created` request, preserves the
+  new PTY on partial failure, and optimistically replaces only that role with
+  the created session ID. No display-name inference, queue/content behavior,
+  worker launching, or prompt targeting is present.
 
 ### PC-043 Implement explicit prompt targeting
 
