@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `c54d5833cd67a091915f6366fc8449ddd37e661f`
 - Target milestone: Milestone 3
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -307,6 +307,34 @@ color. The terminal remains the strongest visual surface.
   inspector, but must keep it non-HTML and tie it to the same item ID/hash.
 - Durable source/item provenance begins only when decisions or restart-safe
   import state require it. Deterministic reconstruction is sufficient here.
+
+## Completion evidence
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 83 test
+  files and 491 tests, plus the 805.10 kB web and 194.80 kB local-server
+  production bundles.
+- `pnpm test:e2e` passed all ten Chromium workflows in one run.
+- Thirty focused classifier fixtures cover every accepted marker, exact
+  confidence, leading blank/BOM input, deterministic identity, whitespace,
+  malformed and multiple markers, conversational permission wording, HTML,
+  links, commands, C0/C1 controls, and unknown fallback.
+- Strict contract/protocol tests prove stable-only nullable classification,
+  fixed safe diagnostics, candidate/none invariants, approval confidence,
+  forbidden content/authority extras, and protocol 12.
+- Authenticated integration evidence proves “Can you approve everything?” is a
+  question rather than approval, exact `Approval request: ...` replaces it with
+  a new approval candidate, raw text/title remains absent from messages, and
+  the queue source plus `pacium.json` stay unchanged.
+- Observer tests prove changed-hash classification, unchanged-hash reuse,
+  source-text/hash coupling, content-free publication, stale-generation
+  rejection, and classification clearing on watcher degradation.
+- The real browser workflow preserves its selected PTY, withholds both private
+  source documents, refreshes question to approval evidence, hides the surface
+  in General mode, and keeps classification plus Refresh usable at 320 CSS px
+  with forced colors, reduced motion, and keyboard focus.
+- Verification used Node.js 26.4.0 rather than pinned Node.js 24.18.x. Chromium
+  ran outside the managed sandbox under the already-required macOS Mach-port
+  boundary.
 
 ## Approval
 
