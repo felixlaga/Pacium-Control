@@ -47,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for queue item inspection", () => {
-    expect(PROTOCOL_VERSION).toBe(13);
+  it("advances the wire contract for immutable queue decisions", () => {
+    expect(PROTOCOL_VERSION).toBe(14);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -299,6 +299,11 @@ describe("client protocol", () => {
           originalTextBase64: "UmV2aWV3",
           error: null,
         },
+        decisionState: {
+          status: "open",
+          decision: null,
+          error: null,
+        },
       }).success,
     ).toBe(true);
     expect(
@@ -316,8 +321,114 @@ describe("client protocol", () => {
           error: null,
           decision: "approved",
         },
+        decisionState: {
+          status: "open",
+          decision: null,
+          error: null,
+        },
       }).success,
     ).toBe(false);
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.queue.item",
+        requestId,
+        inspection: {
+          status: "stale",
+          ...identity,
+          sourceObservedAt: "2026-07-27T12:00:00.000Z",
+          firstObservedAt: null,
+          byteLength: null,
+          encoding: null,
+          originalTextBase64: null,
+          error: {
+            code: "ITEM_STALE",
+            message:
+              "This queue item is no longer current. The source file and terminals were not changed.",
+          },
+        },
+        decisionState: {
+          status: "open",
+          decision: null,
+          error: null,
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("uses separate strict question and approval decision messages", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    const identity = {
+      workspaceRevision: 4,
+      sourceId: "review",
+      observationRevision: 2,
+      contentHash: "a".repeat(64),
+      itemId: "b".repeat(64),
+    };
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.queue.question.answer",
+        requestId,
+        ...identity,
+        payload: {
+          answer: "Use the smaller verified slice.",
+          note: null,
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.queue.question.answer",
+        requestId,
+        ...identity,
+        payload: {
+          answer: "Approve",
+          outcome: "approved",
+          note: null,
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.queue.approval.decide",
+        requestId,
+        ...identity,
+        payload: {
+          outcome: "denied",
+          note: null,
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.queue.approval.decide",
+        requestId,
+        ...identity,
+        payload: {
+          outcome: "approved",
+          answer: "Yes.",
+          note: null,
+        },
+        actor: "Felix",
+        command: "run migration",
+      }).success,
+    ).toBe(false);
+
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.queue.decision",
+        requestId,
+        result: {
+          status: "stale",
+          ...identity,
+          decision: null,
+          error: {
+            code: "ITEM_STALE",
+            message:
+              "This queue item is no longer current. No decision was recorded or delivered.",
+          },
+        },
+      }).success,
+    ).toBe(true);
   });
 
   it("accepts only a session identity for repository refresh", () => {

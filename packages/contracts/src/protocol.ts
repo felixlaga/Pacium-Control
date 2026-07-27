@@ -5,12 +5,18 @@ import {
   PaciumWorkspaceSchema,
 } from "./pacium-config.js";
 import {
+  QueueApprovalDecisionPayloadSchema,
+  QueueDecisionResultSchema,
+  QueueItemDecisionStateSchema,
+  QueueQuestionAnswerPayloadSchema,
+} from "./queue-decision.js";
+import {
   QueueItemInspectionIdentitySchema,
   QueueItemInspectionSchema,
 } from "./queue-item-inspection.js";
 import { QueueSourcesObservationSchema } from "./queue-observation.js";
 
-export const PROTOCOL_VERSION = 13 as const;
+export const PROTOCOL_VERSION = 14 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -1196,6 +1202,22 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
       ...QueueItemInspectionIdentitySchema.shape,
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("pacium.queue.question.answer"),
+      requestId: RequestIdSchema,
+      ...QueueItemInspectionIdentitySchema.shape,
+      payload: QueueQuestionAnswerPayloadSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("pacium.queue.approval.decide"),
+      requestId: RequestIdSchema,
+      ...QueueItemInspectionIdentitySchema.shape,
+      payload: QueueApprovalDecisionPayloadSchema,
+    })
+    .strict(),
   z.object({
     type: z.literal("session.close"),
     requestId: RequestIdSchema,
@@ -1298,6 +1320,26 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
       type: z.literal("pacium.queue.item"),
       requestId: RequestIdSchema,
       inspection: QueueItemInspectionSchema,
+      decisionState: QueueItemDecisionStateSchema.nullable(),
+    })
+    .strict()
+    .superRefine((message, context) => {
+      if (
+        (message.inspection.status === "ready") !==
+        (message.decisionState !== null)
+      ) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Only a ready queue item inspection contains decision state.",
+        });
+      }
+    }),
+  z
+    .object({
+      type: z.literal("pacium.queue.decision"),
+      requestId: RequestIdSchema,
+      result: QueueDecisionResultSchema,
     })
     .strict(),
   z.object({
