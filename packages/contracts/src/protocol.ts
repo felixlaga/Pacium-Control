@@ -4,6 +4,7 @@ import {
   PaciumConfigObservationSchema,
   PaciumWorkspaceSchema,
 } from "./pacium-config.js";
+import { PaciumContextObservationSchema } from "./pacium-context.js";
 import {
   QueueApprovalDecisionPayloadSchema,
   QueueDecisionResultSchema,
@@ -25,7 +26,7 @@ import {
   QueueResolutionResultSchema,
 } from "./queue-reconciliation.js";
 
-export const PROTOCOL_VERSION = 16 as const;
+export const PROTOCOL_VERSION = 17 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -1200,6 +1201,12 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     .strict(),
   z
     .object({
+      type: z.literal("pacium.context.inspect"),
+      requestId: RequestIdSchema,
+    })
+    .strict(),
+  z
+    .object({
       type: z.literal("pacium.queue.observe"),
       requestId: RequestIdSchema,
     })
@@ -1324,6 +1331,13 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
       type: z.literal("pacium.config"),
       requestId: RequestIdSchema,
       observation: PaciumConfigObservationSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("pacium.context"),
+      requestId: RequestIdSchema,
+      observation: PaciumContextObservationSchema,
     })
     .strict(),
   z
