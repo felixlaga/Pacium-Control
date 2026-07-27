@@ -82,6 +82,8 @@ describe("Pacium queue source semantics", () => {
       message: "No Pacium queue sources are configured.",
       disconnected: false,
       canRefresh: true,
+      workspaceRevision: null,
+      itemCount: 0,
       sources: [],
     });
     expect(markup).toContain("No Pacium queue sources are configured.");
@@ -101,6 +103,8 @@ function ready(): PaciumQueueProjection {
     message: "Whole-source classification is metadata only; no queue actions.",
     disconnected: false,
     canRefresh: true,
+    workspaceRevision: 4,
+    itemCount: 1,
     sources: [
       {
         source: {

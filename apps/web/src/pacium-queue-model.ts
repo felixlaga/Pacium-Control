@@ -31,6 +31,8 @@ export interface PaciumQueueProjection {
   message: string;
   disconnected: boolean;
   canRefresh: boolean;
+  workspaceRevision: number | null;
+  itemCount: number;
   sources: PaciumQueueSourceModel[];
 }
 
@@ -95,6 +97,8 @@ export function buildPaciumQueueProjection(input: {
   const common = {
     disconnected,
     canRefresh: !disconnected && input.queue.requestId === null,
+    workspaceRevision: null,
+    itemCount: 0,
   };
   if (config === null) {
     return {
@@ -139,8 +143,15 @@ export function buildPaciumQueueProjection(input: {
         ) ?? null)
       : null,
   }));
+  const itemCount = sources.filter(
+    ({ observation }) =>
+      observation?.classification?.status === "candidate" &&
+      observation.classification.candidate !== null,
+  ).length;
   return {
     ...common,
+    workspaceRevision: evidenceCurrent ? observation.workspaceRevision : null,
+    itemCount,
     status: "ready",
     message:
       input.queue.requestId !== null
@@ -148,7 +159,9 @@ export function buildPaciumQueueProjection(input: {
         : disconnected
           ? "Last accepted source evidence · disconnected."
           : evidenceCurrent
-            ? "Whole-source classification is metadata only; no queue actions."
+            ? `${itemCount} current whole-source ${
+                itemCount === 1 ? "item" : "items"
+              } · inspection is read-only.`
             : "Waiting for queue source evidence at this config revision.",
     sources,
   };
@@ -195,7 +208,7 @@ export function queueClassificationPresentation(
   };
 }
 
-function queueItemTypeLabel(
+export function queueItemTypeLabel(
   type: Exclude<QueueClassificationPresentation["kind"], "none">,
 ): string {
   switch (type) {
@@ -212,8 +225,40 @@ function queueItemTypeLabel(
   }
 }
 
-function confidenceLabel(
+export function confidenceLabel(
   confidence: "confirmed" | "high" | "medium" | "low",
 ): string {
   return `${confidence.charAt(0).toUpperCase()}${confidence.slice(1)}`;
+}
+
+export function requestingRoleLabel(
+  role: PaciumQueueSource["requestingRole"],
+): string {
+  return role === "meta"
+    ? "Meta"
+    : role === "orchestrator"
+      ? "Orchestrator"
+      : "Unknown requester";
+}
+
+export function queueWaitingLabel(
+  firstObservedAt: string,
+  now = Date.now(),
+): string {
+  const firstSeen = Date.parse(firstObservedAt);
+  if (!Number.isFinite(firstSeen) || firstSeen > now) {
+    return "First seen this server run";
+  }
+  const minutes = Math.floor((now - firstSeen) / 60_000);
+  if (minutes < 1) {
+    return "Seen <1m this run";
+  }
+  if (minutes < 60) {
+    return `Seen ${minutes}m this run`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `Seen ${hours}h this run`;
+  }
+  return `Seen ${Math.floor(hours / 24)}d this run`;
 }

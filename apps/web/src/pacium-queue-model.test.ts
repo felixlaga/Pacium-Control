@@ -8,6 +8,7 @@ import {
   buildPaciumQueueProjection,
   interruptPaciumQueueRequest,
   queueClassificationPresentation,
+  queueWaitingLabel,
 } from "./pacium-queue-model.js";
 import type { PaciumConfigViewState } from "./pacium-config-model.js";
 
@@ -60,6 +61,8 @@ describe("Pacium queue source projection", () => {
 
     expect(projection.status).toBe("ready");
     expect(projection.sources).toHaveLength(2);
+    expect(projection.workspaceRevision).toBe(4);
+    expect(projection.itemCount).toBe(1);
     expect(projection.sources[0]).toMatchObject({
       source: { id: "needs-felix", label: "Needs Felix" },
       observation: { sourceId: "needs-felix", status: "stable" },
@@ -80,6 +83,8 @@ describe("Pacium queue source projection", () => {
       projection.sources.every(({ observation }) => observation === null),
     ).toBe(true);
     expect(projection.message).toContain("this config revision");
+    expect(projection.workspaceRevision).toBeNull();
+    expect(projection.itemCount).toBe(0);
   });
 
   it("retains accepted evidence but labels disconnect and disables refresh", () => {
@@ -117,6 +122,24 @@ describe("Pacium queue source projection", () => {
         connection: "connected",
       }).status,
     ).toBe("unconfigured");
+  });
+});
+
+describe("Pacium queue waiting evidence", () => {
+  it("labels process-local age without claiming durable queue time", () => {
+    const now = Date.parse("2026-07-27T12:00:00.000Z");
+    expect(queueWaitingLabel("2026-07-27T11:59:40.000Z", now)).toBe(
+      "Seen <1m this run",
+    );
+    expect(queueWaitingLabel("2026-07-27T11:42:00.000Z", now)).toBe(
+      "Seen 18m this run",
+    );
+    expect(queueWaitingLabel("2026-07-27T09:00:00.000Z", now)).toBe(
+      "Seen 3h this run",
+    );
+    expect(queueWaitingLabel("invalid", now)).toBe(
+      "First seen this server run",
+    );
   });
 });
 
