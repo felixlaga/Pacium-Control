@@ -485,6 +485,136 @@ kbd {
   border-color: color-mix(in srgb, var(--green) 32%, var(--border));
 }
 
+.pacium-queue-sources {
+  margin-bottom: 13px;
+}
+
+.pacium-queue-sources > .section-heading {
+  padding-bottom: 6px;
+}
+
+.pacium-queue-source-list {
+  display: grid;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.pacium-queue-source-list > p {
+  margin: 0;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  color: var(--text-faint);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.pacium-queue-source {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-raised);
+}
+
+.pacium-queue-source-indicator {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border: 1px solid var(--text-faint);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.pacium-queue-source > div {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.pacium-queue-source strong,
+.pacium-queue-source span,
+.pacium-queue-source small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pacium-queue-source strong {
+  color: var(--text);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.pacium-queue-source > div > span {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.pacium-queue-source small {
+  color: var(--text-faint);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 7px;
+}
+
+.pacium-queue-source.status-stable .pacium-queue-source-indicator,
+.pacium-queue-source.status-empty .pacium-queue-source-indicator {
+  border-color: var(--green);
+  background: var(--green);
+}
+
+.pacium-queue-source.status-missing .pacium-queue-source-indicator,
+.pacium-queue-source.status-changing .pacium-queue-source-indicator,
+.pacium-queue-source.status-oversized .pacium-queue-source-indicator,
+.pacium-queue-source.status-pending .pacium-queue-source-indicator {
+  border-color: var(--amber);
+}
+
+.pacium-queue-source.status-invalid_utf8,
+.pacium-queue-source.status-unsafe_type,
+.pacium-queue-source.status-read_error,
+.pacium-queue-source.status-watch_error {
+  border-color: color-mix(in srgb, var(--red) 36%, var(--border));
+}
+
+.pacium-queue-sources > footer {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  padding: 6px 8px 0;
+}
+
+.pacium-queue-sources > footer span {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 7px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pacium-queue-sources > footer button {
+  min-height: 24px;
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--bg);
+  font-size: 8px;
+}
+
+.pacium-queue-sources > footer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .section-heading {
   display: flex;
   justify-content: space-between;
@@ -5218,12 +5348,14 @@ html[data-density="comfortable"] .terminal-panel {
 
   .status-dot,
   .focused-label,
-  .pacium-role-glyph {
+  .pacium-role-glyph,
+  .pacium-queue-source-indicator {
     border: 1px solid CanvasText;
   }
 
   .pacium-role-card,
   .pacium-prompt-composer,
+  .pacium-queue-source,
   .pacium-role-binding-dialog,
   .pacium-binding-options > label {
     forced-color-adjust: auto;
