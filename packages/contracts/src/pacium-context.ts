@@ -279,6 +279,9 @@ export const PaciumRecentDecisionStateSchema = z.discriminatedUnion("status", [
     })
     .strict(),
 ]);
+export type PaciumRecentDecisionState = z.infer<
+  typeof PaciumRecentDecisionStateSchema
+>;
 
 export const PaciumContextObservationSchema = z.discriminatedUnion("status", [
   z
