@@ -1,5 +1,8 @@
 import { once } from "node:events";
+import { mkdtemp, rm } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { FakePtyFactory } from "@pacium/test-utils";
 import {
@@ -43,6 +46,7 @@ interface TestClient {
 
 const TEST_DIFF_PATCH = "@@ -1 +1 @@\n-old\n+new\n";
 const TEST_DIFF_BYTES = Buffer.byteLength(TEST_DIFF_PATCH);
+const temporaryDirectories: string[] = [];
 
 describe("localhost HTTP and WebSocket boundary", () => {
   let application: PaciumHttpServer | undefined;
@@ -53,6 +57,11 @@ describe("localhost HTTP and WebSocket boundary", () => {
     if (application !== undefined) {
       await application.close();
     }
+    await Promise.all(
+      temporaryDirectories
+        .splice(0)
+        .map((path) => rm(path, { force: true, recursive: true })),
+    );
   });
 
   it("keeps a PTY alive across browser transport reconnection", async () => {
@@ -741,6 +750,8 @@ async function startTestServer(
   config: ServerConfig;
   url: string;
 }> {
+  const fixtureRoot = await mkdtemp(join(tmpdir(), "pacium-http-"));
+  temporaryDirectories.push(fixtureRoot);
   const config: ServerConfig = {
     host: "127.0.0.1",
     port: 4174,
@@ -749,7 +760,7 @@ async function startTestServer(
     serverId: "d5805287-d2b0-41f4-b80f-56c77d892cbc",
     defaultCwd: process.cwd(),
     homeDirectory: process.env.HOME ?? process.cwd(),
-    dataDirectory: "/private/tmp/pacium-control-http-test",
+    dataDirectory: join(fixtureRoot, "data"),
     shell: "/bin/zsh",
     environmentKeys: [],
     verificationCatalog: verification?.catalog ?? {
