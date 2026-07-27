@@ -6,6 +6,9 @@ import {
   repositoryDiffMessage,
   repositoryHistoryMessage,
   repositoryRefreshMessage,
+  repositoryVerificationCancelMessage,
+  repositoryVerificationInspectMessage,
+  repositoryVerificationRunMessage,
 } from "./transport.js";
 
 describe("repository transport", () => {
@@ -60,6 +63,36 @@ describe("repository transport", () => {
       type: "repository.history",
       requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
       sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+    });
+  });
+
+  it("sends only server-owned verification identities", () => {
+    const sessionId = "5fe26a52-3f3c-41ef-8dba-6f93062eeec5";
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    expect(repositoryVerificationInspectMessage(sessionId, requestId)).toEqual({
+      type: "repository.verification.inspect",
+      requestId,
+      sessionId,
+    });
+    expect(
+      repositoryVerificationRunMessage(sessionId, "verify", requestId),
+    ).toEqual({
+      type: "repository.verification.run",
+      requestId,
+      sessionId,
+      presetId: "verify",
+    });
+    expect(
+      repositoryVerificationCancelMessage(
+        sessionId,
+        "03c2723f-e87a-4707-86af-d6fdb1e60f47",
+        requestId,
+      ),
+    ).toEqual({
+      type: "repository.verification.cancel",
+      requestId,
+      sessionId,
+      runId: "03c2723f-e87a-4707-86af-d6fdb1e60f47",
     });
   });
 });
