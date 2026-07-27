@@ -4,13 +4,13 @@ import { join } from "node:path";
 
 import { defineConfig } from "@playwright/test";
 
-const verificationDirectory = mkdtempSync(
-  join(tmpdir(), "pacium-playwright-verification-"),
-);
+const verificationDirectory =
+  process.env.PACIUM_E2E_CONFIG_DIRECTORY ??
+  mkdtempSync(join(tmpdir(), "pacium-playwright-verification-"));
 const verificationConfigPath = join(verificationDirectory, "verification.json");
-const paciumStateDirectory = mkdtempSync(
-  join(tmpdir(), "pacium-playwright-state-"),
-);
+const paciumStateDirectory =
+  process.env.PACIUM_E2E_STATE_DIRECTORY ??
+  mkdtempSync(join(tmpdir(), "pacium-playwright-state-"));
 const queueFixturePath = join(paciumStateDirectory, "NEEDS-FELIX");
 writeFileSync(
   verificationConfigPath,
