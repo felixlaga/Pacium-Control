@@ -2,24 +2,33 @@ import type { QueueSourceObservationStatus } from "@pacium/contracts";
 
 import {
   queueClassificationPresentation,
+  queueItemTypeLabel,
+  queueWaitingLabel,
+  requestingRoleLabel,
   type PaciumQueueProjection,
 } from "./pacium-queue-model.js";
+import {
+  queueItemSelection,
+  type QueueItemSelection,
+} from "./pacium-queue-inspection-model.js";
 
 export function PaciumQueueSources({
+  onOpenItem,
   projection,
   onRefresh,
 }: {
+  onOpenItem: (selection: QueueItemSelection) => void;
   projection: PaciumQueueProjection;
   onRefresh: () => void;
 }) {
   return (
     <section
-      aria-label="Queue source observation"
+      aria-label="Pacium queue"
       className={`pacium-queue-sources status-${projection.status}`}
     >
       <div className="section-heading">
-        <span>Queue sources</span>
-        <span>{projection.sources.length}</span>
+        <span>Queue</span>
+        <span>{projection.itemCount}</span>
       </div>
       <div className="pacium-queue-source-list">
         {projection.sources.length === 0 ? (
@@ -29,43 +38,90 @@ export function PaciumQueueSources({
             const status = observation?.status ?? "pending";
             const label = queueStatusLabel(status);
             const classification = queueClassificationPresentation(observation);
-            return (
-              <article
-                aria-label={`${source.label} queue source, ${label}${
-                  classification === null ? "" : `, ${classification.label}`
-                }`}
-                className={`pacium-queue-source status-${status}${
-                  classification === null
-                    ? ""
-                    : ` classification-${classification.kind}`
-                }`}
-                key={source.id}
-              >
+            const selection = queueItemSelection(
+              source,
+              observation,
+              projection.workspaceRevision,
+            );
+            const className = `pacium-queue-source status-${status}${
+              classification === null
+                ? ""
+                : ` classification-${classification.kind}`
+            }`;
+            const content = (
+              <>
                 <span
                   aria-hidden="true"
                   className="pacium-queue-source-indicator"
                 />
                 <div>
-                  <strong>{source.label}</strong>
+                  <strong>
+                    {selection === null
+                      ? source.label
+                      : `${queueItemTypeLabel(selection.type)} from ${
+                          source.label
+                        }`}
+                  </strong>
                   <span>
-                    {label} · {requestingRoleLabel(source.requestingRole)}
+                    {selection === null
+                      ? `${label} · ${requestingRoleLabel(
+                          source.requestingRole,
+                        )}`
+                      : `${requestingRoleLabel(source.requestingRole)} · ${
+                          selection.confidence
+                        } confidence`}
                   </span>
-                  {classification === null ? null : (
+                  {selection === null && classification !== null ? (
                     <span className="pacium-queue-classification">
                       {classification.label}
                     </span>
-                  )}
-                  {classification?.diagnostic === null ||
-                  classification?.diagnostic === undefined ? null : (
+                  ) : null}
+                  {selection === null &&
+                  classification?.diagnostic !== null &&
+                  classification?.diagnostic !== undefined ? (
                     <small className="pacium-queue-diagnostic">
                       {classification.diagnostic}
                     </small>
-                  )}
+                  ) : null}
                   <small title={source.path}>
-                    {sourceEvidenceDetail(observation)}
+                    {selection === null
+                      ? sourceEvidenceDetail(observation)
+                      : queueWaitingLabel(selection.firstObservedAt)}
                   </small>
                 </div>
+                {selection !== null ? (
+                  <span aria-hidden="true" className="queue-row-chevron">
+                    ›
+                  </span>
+                ) : null}
+              </>
+            );
+            return selection === null ? (
+              <article
+                aria-label={`${source.label} queue source, ${label}${
+                  classification === null ? "" : `, ${classification.label}`
+                }`}
+                className={className}
+                key={source.id}
+              >
+                {content}
               </article>
+            ) : (
+              <button
+                aria-label={`${queueItemTypeLabel(selection.type)} from ${
+                  source.label
+                }, ${requestingRoleLabel(source.requestingRole)}, ${
+                  selection.confidence
+                } confidence, ${queueWaitingLabel(selection.firstObservedAt)}`}
+                className={`${className} pacium-queue-item`}
+                disabled={projection.disconnected}
+                id={`queue-item-${source.id}`}
+                key={source.id}
+                onClick={() => onOpenItem(selection)}
+                type="button"
+              >
+                {content}
+              </button>
             );
           })
         )}
@@ -107,14 +163,6 @@ function queueStatusLabel(status: QueueSourceObservationStatus): string {
     case "watch_error":
       return "Watch error";
   }
-}
-
-function requestingRoleLabel(role: "meta" | "orchestrator" | "unknown") {
-  return role === "meta"
-    ? "Meta"
-    : role === "orchestrator"
-      ? "Orchestrator"
-      : "Unknown requester";
 }
 
 function sourceEvidenceDetail(

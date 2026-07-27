@@ -4,20 +4,22 @@ import { describe, expect, it } from "vitest";
 import { PaciumQueueSources } from "./pacium-queue-sources.js";
 import type { PaciumQueueProjection } from "./pacium-queue-model.js";
 
-describe("Pacium queue source semantics", () => {
-  it("renders source health and content-free classification metadata", () => {
+describe("Pacium queue list semantics", () => {
+  it("renders current candidates as content-free queue buttons", () => {
     const markup = render();
 
-    expect(markup).toContain('aria-label="Queue source observation"');
+    expect(markup).toContain('aria-label="Pacium queue"');
     expect(markup).toContain(
-      "Needs Felix queue source, Stable, Question · High confidence",
+      "Question from Needs Felix, Meta, high confidence",
     );
-    expect(markup).toContain("Stable · Meta");
-    expect(markup).toContain("Question · High confidence");
-    expect(markup).toContain("A supported plain-text legacy marker was used.");
-    expect(markup).toContain("2 KiB · aaaaaaaa · observed");
-    expect(markup).toContain("metadata only; no queue actions");
+    expect(markup).toContain('id="queue-item-needs-felix"');
+    expect(markup).toContain("Question from Needs Felix");
+    expect(markup).toContain("Meta · high confidence");
+    expect(markup).toContain("Seen");
+    expect(markup).toContain("inspection is read-only");
     expect(markup).not.toContain("bbbbbbbb");
+    expect(markup).not.toContain("A supported plain-text legacy marker");
+    expect(markup).not.toContain("2 KiB");
   });
 
   it("renders degraded evidence and disables refresh while disconnected", () => {
@@ -32,6 +34,7 @@ describe("Pacium queue source semantics", () => {
       modifiedAt: null,
       contentHash: null,
       classification: null,
+      candidateFirstObservedAt: null,
       error: {
         code: "WATCH_FAILED",
         message: "The source parent could not be watched.",
@@ -52,8 +55,9 @@ describe("Pacium queue source semantics", () => {
     projection.sources[0]!.observation!.classification!.diagnostics[0]!.message =
       "</span><script>classify()</script>";
     const classificationMarkup = render(projection);
+    expect(classificationMarkup).not.toContain("classify()");
     expect(classificationMarkup).toContain(
-      "&lt;/span&gt;&lt;script&gt;classify()",
+      "&lt;script&gt;queue()&lt;/script&gt;",
     );
     projection.sources[0]!.observation = {
       ...projection.sources[0]!.observation!,
@@ -62,6 +66,7 @@ describe("Pacium queue source semantics", () => {
       modifiedAt: null,
       contentHash: null,
       classification: null,
+      candidateFirstObservedAt: null,
       error: {
         code: "READ_FAILED",
         message: "</small><script>read()</script>",
@@ -93,14 +98,18 @@ describe("Pacium queue source semantics", () => {
 
 function render(projection: PaciumQueueProjection = ready()) {
   return renderToStaticMarkup(
-    <PaciumQueueSources onRefresh={() => undefined} projection={projection} />,
+    <PaciumQueueSources
+      onOpenItem={() => undefined}
+      onRefresh={() => undefined}
+      projection={projection}
+    />,
   );
 }
 
 function ready(): PaciumQueueProjection {
   return {
     status: "ready",
-    message: "Whole-source classification is metadata only; no queue actions.",
+    message: "1 current whole-source item · inspection is read-only.",
     disconnected: false,
     canRefresh: true,
     workspaceRevision: 4,
