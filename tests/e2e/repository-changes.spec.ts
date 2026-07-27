@@ -1,4 +1,39 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { expect, test } from "@playwright/test";
+
+import { runGitOk } from "../../apps/local-server/src/git-fixture-test-utils.js";
+
+let repositoryDirectory: string;
+
+test.beforeAll(async () => {
+  repositoryDirectory = await mkdtemp(
+    join(tmpdir(), "pacium-repository-changes-e2e-"),
+  );
+  await runGitOk(repositoryDirectory, ["init", "--quiet"]);
+  await runGitOk(repositoryDirectory, [
+    "config",
+    "user.email",
+    "pacium@example.test",
+  ]);
+  await runGitOk(repositoryDirectory, ["config", "user.name", "Pacium E2E"]);
+  await writeFile(
+    join(repositoryDirectory, "file.txt"),
+    "before\nshared context\n",
+  );
+  await runGitOk(repositoryDirectory, ["add", "file.txt"]);
+  await runGitOk(repositoryDirectory, ["commit", "--quiet", "-m", "fixture"]);
+  await writeFile(
+    join(repositoryDirectory, "file.txt"),
+    "after\nshared context\n",
+  );
+});
+
+test.afterAll(async () => {
+  await rm(repositoryDirectory, { force: true, recursive: true });
+});
 
 test.afterEach(async ({ page }) => {
   const sidebar = page.getByRole("complementary", {
@@ -27,7 +62,7 @@ test("changed files load lazily without changing terminal selection", async ({
 
   await page.getByRole("button", { name: "Open first terminal" }).click();
   const workingDirectory = page.getByLabel("Working directory");
-  await expect(workingDirectory).not.toHaveValue("");
+  await workingDirectory.fill(repositoryDirectory);
   await page.getByPlaceholder("Project shell").fill("Oversight fixture");
   await page.getByRole("button", { name: "Open terminal" }).click();
 
@@ -42,9 +77,10 @@ test("changed files load lazily without changing terminal selection", async ({
   await changesTab.click();
   const changesPanel = page.getByRole("tabpanel", { name: "Changes" });
   await expect(changesPanel).toBeVisible();
-  await expect(changesPanel).toContainText(
-    /Working tree clear|\d+ reported changes/,
-  );
+  await expect(changesPanel).toContainText("1 reported change");
+  await expect(
+    changesPanel.getByRole("button", { name: "Open diff for file.txt" }),
+  ).toBeVisible();
   await expect(
     changesPanel.getByRole("button", { name: "Refresh" }),
   ).toBeVisible();
