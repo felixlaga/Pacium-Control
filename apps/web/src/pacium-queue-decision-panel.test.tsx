@@ -46,7 +46,8 @@ describe("Pacium queue decision panel", () => {
     expect(html).toContain("Immutable local decision");
     expect(html).toContain("Use the verified slice.");
     expect(html).toContain("Local operator");
-    expect(html).toContain("Not delivered yet");
+    expect(html).toContain("Stored locally");
+    expect(html).toContain("Checking delivery");
     expect(html).toContain("c".repeat(64));
     expect(html).not.toContain("Record answer");
   });
@@ -74,8 +75,10 @@ describe("Pacium queue decision panel", () => {
 function render(state: PaciumQueueInspectionState): string {
   return renderToStaticMarkup(
     <PaciumQueueDecisionPanel
+      onDeliver={() => undefined}
       onRecordApproval={() => undefined}
       onRecordQuestion={() => undefined}
+      onResolve={() => undefined}
       state={state}
     />,
   );
@@ -125,6 +128,14 @@ function questionState(): PaciumQueueInspectionState {
     decisionRequestId: null,
     decisionStatus: "idle",
     decisionErrorMessage: null,
+    deliveryState: null,
+    deliveryRequestId: null,
+    deliveryStatus: "idle",
+    deliveryErrorMessage: null,
+    reconciliation: null,
+    resolutionRequestId: null,
+    resolutionStatus: "idle",
+    resolutionErrorMessage: null,
   };
 }
 

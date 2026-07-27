@@ -5,17 +5,24 @@ import {
   type QueueApprovalDecisionPayload,
   type QueueDecisionRecord,
   type QueueQuestionAnswerPayload,
+  type QueueResolutionRequest,
 } from "@pacium/contracts";
 
 import type { PaciumQueueInspectionState } from "./pacium-queue-inspection-model.js";
+import { PaciumQueueDeliveryPanel } from "./pacium-queue-delivery-panel.js";
+import { PaciumQueueReconciliationPanel } from "./pacium-queue-reconciliation-panel.js";
 
 export function PaciumQueueDecisionPanel({
+  onDeliver,
   onRecordApproval,
   onRecordQuestion,
+  onResolve,
   state,
 }: {
+  onDeliver: () => void;
   onRecordApproval: (payload: QueueApprovalDecisionPayload) => void;
   onRecordQuestion: (payload: QueueQuestionAnswerPayload) => void;
+  onResolve: (request: QueueResolutionRequest) => void;
   state: PaciumQueueInspectionState;
 }) {
   const [answer, setAnswer] = useState("");
@@ -40,7 +47,26 @@ export function PaciumQueueDecisionPanel({
   }
 
   if (state.decisionState.status === "decided") {
-    return <ImmutableDecision decision={state.decisionState.decision} />;
+    return (
+      <>
+        <ImmutableDecision decision={state.decisionState.decision} />
+        {state.reconciliation !== null && (
+          <PaciumQueueReconciliationPanel
+            errorMessage={state.resolutionErrorMessage}
+            onResolve={onResolve}
+            reconciliation={state.reconciliation}
+            status={state.resolutionStatus}
+          />
+        )}
+        <PaciumQueueDeliveryPanel
+          decision={state.decisionState.decision}
+          errorMessage={state.deliveryErrorMessage}
+          onDeliver={onDeliver}
+          state={state.deliveryState}
+          status={state.deliveryStatus}
+        />
+      </>
+    );
   }
 
   if (state.decisionState.status === "unavailable") {
@@ -294,7 +320,7 @@ function ImmutableDecision({ decision }: { decision: QueueDecisionRecord }) {
     >
       <div className="inspector-section-heading">
         <h3 id="queue-decision-title">Immutable local decision</h3>
-        <span>Not delivered yet</span>
+        <span>Stored locally</span>
       </div>
       <dl className="metadata">
         <div>
@@ -343,14 +369,10 @@ function ImmutableDecision({ decision }: { decision: QueueDecisionRecord }) {
             <code>{decision.decisionHash}</code>
           </dd>
         </div>
-        <div>
-          <dt>Delivery</dt>
-          <dd>Not delivered yet</dd>
-        </div>
       </dl>
       <p>
-        This record cannot be edited here. PC048 will add explicit compatible
-        delivery as a separate action and lifecycle.
+        This record cannot be edited here. Delivery remains a separate explicit
+        action below.
       </p>
     </section>
   );

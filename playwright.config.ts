@@ -12,6 +12,8 @@ const paciumStateDirectory =
   process.env.PACIUM_E2E_STATE_DIRECTORY ??
   mkdtempSync(join(tmpdir(), "pacium-playwright-state-"));
 const queueFixturePath = join(paciumStateDirectory, "NEEDS-FELIX");
+const objectiveFixturePath = join(paciumStateDirectory, "OBJECTIVE");
+const planFixturePath = join(paciumStateDirectory, "PLAN");
 writeFileSync(
   verificationConfigPath,
   JSON.stringify({
@@ -44,9 +46,19 @@ writeFileSync(
 process.env.PACIUM_E2E_CONFIG_DIRECTORY = verificationDirectory;
 process.env.PACIUM_E2E_STATE_DIRECTORY = paciumStateDirectory;
 process.env.PACIUM_E2E_QUEUE_PATH = queueFixturePath;
+process.env.PACIUM_E2E_OBJECTIVE_PATH = objectiveFixturePath;
+process.env.PACIUM_E2E_PLAN_PATH = planFixturePath;
 process.env.PACIUM_VERIFICATION_CONFIG = verificationConfigPath;
 process.env.PACIUM_DATA_DIR = paciumStateDirectory;
 writeFileSync(queueFixturePath, "Initial private queue\n", { mode: 0o600 });
+writeFileSync(objectiveFixturePath, "Make local agents easy to supervise.\n", {
+  mode: 0o600,
+});
+writeFileSync(
+  planFixturePath,
+  "Keep terminal truth primary and context explicit.\n",
+  { mode: 0o600 },
+);
 
 export default defineConfig({
   testDir: "./tests/e2e",

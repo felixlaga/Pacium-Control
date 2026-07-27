@@ -63,7 +63,7 @@ test("configured checks run, reconnect, cancel, and fit the narrow inspector", a
   );
   await expect(activityPanel).toContainText("Verification passed");
   await expect(activityPanel).toContainText("Project verify");
-  await expect(activityPanel).toContainText("Deterministic local facts only");
+  await expect(activityPanel).toContainText("Validated local evidence only");
   await expect(workspaceStatus).toContainText("Verification fixture");
 
   await activityPanel.getByRole("button", { name: "Refresh" }).click();

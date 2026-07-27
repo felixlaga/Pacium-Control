@@ -3,12 +3,18 @@ import { z } from "zod";
 import { PaciumIdentifierSchema } from "./pacium-config.js";
 import { QUEUE_ITEM_BOUNDARY_VERSION } from "./queue-classification.js";
 import { QueueItemInspectionIdentitySchema } from "./queue-item-inspection.js";
+import {
+  MAX_QUEUE_DECISIONS,
+  MAX_QUEUE_DECISION_NOTE_BYTES,
+} from "./queue-limits.js";
 
-export const QUEUE_STATE_SCHEMA_VERSION = 1 as const;
+export const QUEUE_STATE_SCHEMA_VERSION_V1 = 1 as const;
 export const MAX_QUEUE_STATE_BYTES = 4 * 1024 * 1024;
-export const MAX_QUEUE_DECISIONS = 4096;
 export const MAX_QUEUE_ANSWER_BYTES = 8 * 1024;
-export const MAX_QUEUE_DECISION_NOTE_BYTES = 2 * 1024;
+export {
+  MAX_QUEUE_DECISIONS,
+  MAX_QUEUE_DECISION_NOTE_BYTES,
+} from "./queue-limits.js";
 
 const QueueHashSchema = z.string().regex(/^[0-9a-f]{64}$/);
 
@@ -126,9 +132,9 @@ export const QueueDecisionRecordSchema = z.union([
 ]);
 export type QueueDecisionRecord = z.infer<typeof QueueDecisionRecordSchema>;
 
-export const QueueStateDocumentSchema = z
+export const QueueStateV1DocumentSchema = z
   .object({
-    schemaVersion: z.literal(QUEUE_STATE_SCHEMA_VERSION),
+    schemaVersion: z.literal(QUEUE_STATE_SCHEMA_VERSION_V1),
     revision: z.number().int().positive().safe(),
     decisions: z.array(QueueDecisionRecordSchema).max(MAX_QUEUE_DECISIONS),
   })
@@ -165,7 +171,7 @@ export const QueueStateDocumentSchema = z
       hashes.add(decision.decisionHash);
     }
   });
-export type QueueStateDocument = z.infer<typeof QueueStateDocumentSchema>;
+export type QueueStateV1Document = z.infer<typeof QueueStateV1DocumentSchema>;
 
 export const QueueDecisionErrorCodeSchema = z.enum([
   "ITEM_STALE",

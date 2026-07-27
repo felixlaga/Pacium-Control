@@ -60,7 +60,11 @@ observed
 → acknowledged | applied | superseded | unable_to_apply
 ```
 
-Not every legacy workflow can expose every later state. Missing evidence remains unavailable rather than guessed.
+Not every legacy workflow can expose every later state. Missing evidence
+remains unavailable rather than guessed. Current answer-file bytes are
+transport-artifact evidence only. A lifecycle state is provider-native only
+when a future observer proves it; the current compatibility slice records
+explicitly human-labelled acknowledgement and application evidence.
 
 ## Keyboard safety
 
@@ -71,7 +75,10 @@ Not every legacy workflow can expose every later state. Missing evidence remains
 ## Failure rules
 
 - Parse failure leaves source untouched.
-- Delivery uncertainty does not trigger blind retry.
-- Duplicate source content resolves through provenance and stable identity.
+- Delivery uncertainty does not trigger blind retry. One second attempt is
+  possible only after an explicit human `confirmed_not_delivered` resolution
+  for a failed or unknown first attempt and another confirmation.
+- Duplicate source content is surfaced through provenance and stable identity;
+  Pacium does not choose or merge a source.
 - Competing answers create a visible conflict.
 - Original source text remains inspectable.

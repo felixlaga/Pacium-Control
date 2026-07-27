@@ -47,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for immutable queue decisions", () => {
-    expect(PROTOCOL_VERSION).toBe(14);
+  it("advances the wire contract for Claude observations", () => {
+    expect(PROTOCOL_VERSION).toBe(20);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -173,6 +173,83 @@ describe("client protocol", () => {
     ).toBe(false);
   });
 
+  it("accepts only an identity-free control context request", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.context.inspect",
+        requestId,
+      }).success,
+    ).toBe(true);
+    for (const extra of [
+      { path: "/private/context" },
+      { workspaceRevision: 7 },
+      { sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5" },
+      { count: 100 },
+      { command: "cat OBJECTIVE" },
+    ]) {
+      expect(
+        ClientMessageSchema.safeParse({
+          type: "pacium.context.inspect",
+          requestId,
+          ...extra,
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  it("accepts a strict workspace-bound control context response", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    const observedAt = "2026-07-27T12:00:00.000Z";
+    const source = (kind: "objective" | "plan") => ({
+      kind,
+      status: "unconfigured",
+      path: null,
+      format: null,
+      observedAt,
+      byteLength: null,
+      modifiedAt: null,
+      contentHash: null,
+      contentBase64: null,
+      error: null,
+    });
+    const message = {
+      type: "pacium.context",
+      requestId,
+      observation: {
+        status: "ready",
+        workspaceId: "primary",
+        workspaceRevision: 7,
+        objective: source("objective"),
+        plan: source("plan"),
+        recentDecisions: {
+          status: "ready",
+          decisions: [],
+          truncated: false,
+          error: null,
+        },
+        observedAt,
+        error: null,
+      },
+    };
+    expect(ServerMessageSchema.safeParse(message).success).toBe(true);
+    expect(
+      ServerMessageSchema.safeParse({
+        ...message,
+        observation: {
+          ...message.observation,
+          targetPath: "/private/answer",
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      ServerMessageSchema.safeParse({
+        ...message,
+        command: "cat OBJECTIVE",
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts only a content-free queue observation request", () => {
     const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
     expect(
@@ -208,6 +285,7 @@ describe("client protocol", () => {
           contentHash: null,
           classification: null,
           candidateFirstObservedAt: null,
+          conflicts: [],
           error: null,
         },
         {
@@ -229,6 +307,7 @@ describe("client protocol", () => {
             diagnostics: [],
           },
           candidateFirstObservedAt: "2026-07-27T11:58:00.000Z",
+          conflicts: [],
           error: null,
         },
       ],
@@ -304,6 +383,75 @@ describe("client protocol", () => {
           decision: null,
           error: null,
         },
+        deliveryState: null,
+        reconciliation: null,
+      }).success,
+    ).toBe(true);
+    const decided = {
+      decisionId: "28c9142a-8986-43c7-9451-445fd8c13c3e",
+      kind: "question_answer",
+      source: {
+        workspaceId: "primary",
+        ...identity,
+        boundary: "whole_source_v1",
+        itemType: "question",
+      },
+      payload: {
+        answer: "Use the smaller verified slice.",
+        note: null,
+      },
+      actor: {
+        kind: "local_operator",
+        label: "Local operator",
+      },
+      decidedAt: "2026-07-27T14:00:00.000Z",
+      decisionHash: "c".repeat(64),
+    };
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.queue.item",
+        requestId,
+        inspection: {
+          status: "ready",
+          ...identity,
+          sourceObservedAt: "2026-07-27T12:00:00.000Z",
+          firstObservedAt: "2026-07-27T11:58:00.000Z",
+          byteLength: 7,
+          encoding: "utf8_base64",
+          originalTextBase64: "UmV2aWV3",
+          error: null,
+        },
+        decisionState: {
+          status: "decided",
+          decision: decided,
+          error: null,
+        },
+        deliveryState: {
+          status: "not_configured",
+          decisionId: decided.decisionId,
+          decisionHash: decided.decisionHash,
+          target: null,
+          delivery: null,
+          error: {
+            code: "DELIVERY_NOT_CONFIGURED",
+            message: "This queue source has no configured delivery method.",
+          },
+        },
+        reconciliation: {
+          decisionId: decided.decisionId,
+          decisionHash: decided.decisionHash,
+          conflicts: [],
+          priorDecisions: { decisions: [], truncated: false },
+          attempts: [],
+          artifact: null,
+          lifecycle: {
+            status: "awaiting_evidence",
+            current: null,
+            history: [],
+            historyTruncated: false,
+          },
+          retry: { status: "not_applicable" },
+        },
       }).success,
     ).toBe(true);
     expect(
@@ -326,6 +474,8 @@ describe("client protocol", () => {
           decision: null,
           error: null,
         },
+        deliveryState: null,
+        reconciliation: null,
       }).success,
     ).toBe(false);
     expect(
@@ -351,6 +501,8 @@ describe("client protocol", () => {
           decision: null,
           error: null,
         },
+        deliveryState: null,
+        reconciliation: null,
       }).success,
     ).toBe(false);
   });
@@ -425,6 +577,93 @@ describe("client protocol", () => {
             code: "ITEM_STALE",
             message:
               "This queue item is no longer current. No decision was recorded or delivered.",
+          },
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts only decision identity for explicit delivery", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    const delivery = {
+      type: "pacium.queue.decision.deliver",
+      requestId,
+      decisionId: "28c9142a-8986-43c7-9451-445fd8c13c3e",
+      decisionHash: "c".repeat(64),
+    };
+    expect(ClientMessageSchema.safeParse(delivery).success).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        ...delivery,
+        path: "/tmp/answers",
+        role: "orchestrator",
+        payload: "approve",
+        retry: true,
+      }).success,
+    ).toBe(false);
+
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.queue.delivery",
+        requestId,
+        result: {
+          status: "rejected",
+          decisionId: delivery.decisionId,
+          decisionHash: delivery.decisionHash,
+          state: {
+            status: "not_configured",
+            decisionId: delivery.decisionId,
+            decisionHash: delivery.decisionHash,
+            target: null,
+            delivery: null,
+            error: {
+              code: "DELIVERY_NOT_CONFIGURED",
+              message: "This queue source has no configured delivery method.",
+            },
+          },
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts only bounded lifecycle resolution authority", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    const request = {
+      type: "pacium.queue.decision.resolve",
+      requestId,
+      decisionId: "28c9142a-8986-43c7-9451-445fd8c13c3e",
+      decisionHash: "c".repeat(64),
+      action: "acknowledged",
+      delivery: {
+        deliveryId: "4699b11f-94d3-430a-960e-1c574a03db41",
+        deliveryHash: "d".repeat(64),
+      },
+      relatedDecision: null,
+      note: null,
+    };
+    expect(ClientMessageSchema.safeParse(request).success).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        ...request,
+        actor: "remote-user",
+        path: "/tmp/answers",
+        providerAcknowledged: true,
+        retry: true,
+      }).success,
+    ).toBe(false);
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.queue.resolution",
+        requestId,
+        result: {
+          status: "rejected",
+          decisionId: request.decisionId,
+          decisionHash: request.decisionHash,
+          resolution: null,
+          error: {
+            code: "RESOLUTION_TRANSITION_INVALID",
+            message:
+              "This lifecycle change is not valid from the current immutable state.",
           },
         },
       }).success,
@@ -628,6 +867,94 @@ describe("client protocol", () => {
   });
 });
 
+describe("server connection authority evidence", () => {
+  const welcome = {
+    type: "server.welcome",
+    protocolVersion: PROTOCOL_VERSION,
+    serverId: "d5805287-d2b0-41f4-b80f-56c77d892cbc",
+    platform: "darwin",
+    defaultCwd: "/work/pacium",
+    capabilities: {
+      directPty: true,
+      reconnectSnapshot: true,
+      tmux: false,
+      launchPresets: [
+        {
+          id: "shell",
+          label: "Shell",
+          available: true,
+          unavailableReason: null,
+        },
+        {
+          id: "codex",
+          label: "Codex",
+          available: false,
+          unavailableReason: "Unavailable.",
+        },
+        {
+          id: "claude",
+          label: "Claude Code",
+          available: false,
+          unavailableReason: "Unavailable.",
+        },
+      ],
+    },
+  };
+
+  it("accepts strict local and bounded Tailscale connection evidence", () => {
+    expect(
+      ServerMessageSchema.safeParse({
+        ...welcome,
+        connection: { kind: "local" },
+      }).success,
+    ).toBe(true);
+    expect(
+      ServerMessageSchema.safeParse({
+        ...welcome,
+        connection: {
+          kind: "tailscale",
+          login: "owner@example.com",
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects claimed network, profile, device, and token evidence", () => {
+    for (const connection of [
+      {
+        kind: "local",
+        login: "owner@example.com",
+      },
+      {
+        kind: "tailscale",
+        login: "owner@example.com, other@example.com",
+      },
+      {
+        kind: "tailscale",
+        login: "owner@example.com",
+        displayName: "Owner",
+      },
+      {
+        kind: "tailscale",
+        login: "owner@example.com",
+        sourceIp: "100.64.0.1",
+      },
+      {
+        kind: "tailscale",
+        login: "owner@example.com",
+        accessToken: "secret",
+      },
+    ]) {
+      expect(
+        ServerMessageSchema.safeParse({
+          ...welcome,
+          connection,
+        }).success,
+      ).toBe(false);
+    }
+  });
+});
+
 describe("agent classification contract", () => {
   const classification = {
     type: "codex",
@@ -635,6 +962,24 @@ describe("agent classification contract", () => {
     source: "launch_preset",
     confidence: "confirmed",
     observedAt: "2026-07-27T10:00:00.000Z",
+  };
+  const providerObservation = {
+    contractVersion: 1,
+    provider: "codex",
+    adapterVersion: "1",
+    providerVersion: null,
+    health: {
+      state: "unavailable",
+      source: "none",
+      confidence: "low",
+      detail: "No provider observer is connected.",
+    },
+    capabilities: [],
+    attention: null,
+    activities: [],
+    diagnostics: [],
+    observedAt: "2026-07-27T10:00:00.000Z",
+    staleAfter: "2026-07-27T10:05:00.000Z",
   };
 
   it("accepts bounded launch evidence and rejects unknown fields", () => {
@@ -655,7 +1000,7 @@ describe("agent classification contract", () => {
     ).toBe(false);
   });
 
-  it("requires classification on every session summary", () => {
+  it("requires classification and provider state on every session summary", () => {
     const session = {
       id: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
       epoch: 1,
@@ -665,6 +1010,7 @@ describe("agent classification contract", () => {
       launchPreset: "codex",
       commandLabel: "Codex",
       agentClassification: classification,
+      providerObservation,
       repository: {
         status: "not_repository",
         root: null,
@@ -694,6 +1040,41 @@ describe("agent classification contract", () => {
         agentClassification: undefined,
       }).success,
     ).toBe(false);
+    expect(
+      SessionSummarySchema.safeParse({
+        ...session,
+        providerObservation: undefined,
+      }).success,
+    ).toBe(false);
+    expect(
+      SessionSummarySchema.safeParse({
+        ...session,
+        providerObservation: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      SessionSummarySchema.safeParse({
+        ...session,
+        providerObservation: {
+          ...providerObservation,
+          provider: "claude",
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      SessionSummarySchema.safeParse({
+        ...session,
+        shell: "/bin/zsh",
+        launchPreset: "shell",
+        commandLabel: "Shell",
+        agentClassification: {
+          ...classification,
+          type: "shell",
+          label: "Shell",
+        },
+        providerObservation: null,
+      }).success,
+    ).toBe(true);
   });
 });
 

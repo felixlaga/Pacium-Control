@@ -109,7 +109,8 @@ export function RecentActivityPanel({
         <h2 id="activity-facts-heading">Recent facts</h2>
         {activity.facts.length === 0 ? (
           <p className="activity-empty" role="status">
-            No valid recent process, Git, or verification facts are available.
+            No valid recent provider, process, Git, or verification facts are
+            available.
           </p>
         ) : (
           <ol className="activity-fact-list">
@@ -139,8 +140,8 @@ export function RecentActivityPanel({
       </section>
 
       <p className="activity-boundary-note" role="note">
-        Deterministic local facts only. Terminal text and agent narrative are
-        not interpreted as activity.
+        Validated local evidence only. Terminal text and agent narrative are not
+        interpreted as activity.
       </p>
     </section>
   );
@@ -207,6 +208,8 @@ function sourceLabel(source: ActivityFact["source"]): string {
   switch (source) {
     case "process":
       return "Process";
+    case "provider":
+      return "Provider";
     case "git":
       return "Git";
     case "verification":
@@ -226,6 +229,10 @@ function sourceStatusLabel(status: ActivitySourceSummary["status"]): string {
       return "No evidence";
     case "unavailable":
       return "Unavailable";
+    case "degraded":
+      return "Degraded";
+    case "stale":
+      return "Stale";
     case "error":
       return "Error";
   }

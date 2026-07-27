@@ -11,7 +11,7 @@ import type { QueueFileReadResult } from "./queue-file-reader.js";
 
 export interface QueueSourceRuntimeState {
   definition: PaciumQueueSource;
-  observation: Omit<QueueSourceObservation, "classification">;
+  observation: Omit<QueueSourceObservation, "classification" | "conflicts">;
   classification: QueueSourceClassification | null;
   text: string | null;
 }
@@ -176,6 +176,7 @@ export function readyQueueSources(
     sources: states.map(({ classification, observation }) => ({
       ...observation,
       classification,
+      conflicts: [],
     })),
     error: null,
   };

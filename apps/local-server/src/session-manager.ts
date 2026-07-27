@@ -23,6 +23,7 @@ import {
 } from "@pacium/contracts";
 
 import type { LaunchPresetDefinition } from "./launch-presets.js";
+import type { ClaudeObserver } from "./claude-observer.js";
 import { inspectGitChanges, type GitChangesInspector } from "./git-changes.js";
 import { inspectGitDiff, type GitDiffInspector } from "./git-diff.js";
 import { inspectGitHistory, type GitHistoryInspector } from "./git-history.js";
@@ -32,6 +33,7 @@ import {
   inspectRepositoryContext,
   type RepositoryInspector,
 } from "./repository-context.js";
+import { initialProviderObservation } from "./provider-observation.js";
 import {
   verificationPresetsForRepository,
   type VerificationCatalog,
@@ -119,6 +121,7 @@ export class SessionManager {
   private readonly sessionListeners = new Set<(event: SessionEvent) => void>();
   private readonly verificationRuns = new Map<string, VerificationRun>();
   private readonly unsubscribeVerification: (() => void) | undefined;
+  private readonly unsubscribeClaudeObserver: (() => void) | undefined;
 
   public constructor(
     private readonly ptyFactory: PtyFactory,
@@ -158,6 +161,7 @@ export class SessionManager {
       repositories: [],
     },
     private readonly verificationRunner?: VerificationRunner,
+    private readonly claudeObserver?: ClaudeObserver,
   ) {
     this.unsubscribeVerification = verificationRunner?.onUpdate((event) => {
       const session = this.sessions.get(event.ownerId);
@@ -171,6 +175,22 @@ export class SessionManager {
         observation: this.buildVerificationObservation(session),
       });
     });
+    this.unsubscribeClaudeObserver = claudeObserver?.onUpdate(
+      (sessionId, observation) => {
+        const session = this.sessions.get(sessionId);
+        if (
+          session === undefined ||
+          session.summary.launchPreset !== "claude"
+        ) {
+          return;
+        }
+        session.summary = {
+          ...session.summary,
+          providerObservation: observation,
+        };
+        this.emitSession({ type: "updated", session: { ...session.summary } });
+      },
+    );
   }
 
   public list(): SessionSummary[] {
@@ -206,17 +226,29 @@ export class SessionManager {
     });
     const serializer = new SerializeAddon();
     terminal.loadAddon(serializer);
+    let claudePreparation: ReturnType<ClaudeObserver["prepare"]> | undefined;
+    if (preset.id === "claude" && this.claudeObserver !== undefined) {
+      try {
+        claudePreparation = this.claudeObserver.prepare(id, createdAt);
+      } catch {
+        this.claudeObserver.release(id);
+      }
+    }
 
     let pty: PtyProcess;
     try {
       pty = this.ptyFactory.create({
         executable: preset.executable,
-        args: preset.args,
+        args: [...preset.args, ...(claudePreparation?.args ?? [])],
         cwd,
         cols: input.cols,
         rows: input.rows,
+        ...(claudePreparation === undefined
+          ? {}
+          : { environment: claudePreparation.environment }),
       });
     } catch (error) {
+      this.claudeObserver?.release(id);
       terminal.dispose();
       throw new SessionError(
         "PTY_SPAWN_FAILED",
@@ -240,6 +272,9 @@ export class SessionManager {
           ...preset.classification,
           observedAt: createdAt,
         },
+        providerObservation:
+          claudePreparation?.observation ??
+          initialProviderObservation(preset.id, createdAt),
         repository,
         runtime: "pty",
         processState: "live",
@@ -504,8 +539,10 @@ export class SessionManager {
 
   public shutdown(): void {
     this.unsubscribeVerification?.();
+    this.unsubscribeClaudeObserver?.();
     this.verificationRunner?.shutdown();
     for (const session of this.sessions.values()) {
+      this.claudeObserver?.release(session.summary.id);
       if (session.forceTimer !== undefined) {
         clearTimeout(session.forceTimer);
       }
@@ -586,6 +623,7 @@ export class SessionManager {
       exitCode,
       exitSignal: signal,
     };
+    this.claudeObserver?.release(session.summary.id);
     this.emitSession({ type: "exited", session: { ...session.summary } });
 
     if (session.closeRequestId !== undefined) {
@@ -611,6 +649,7 @@ export class SessionManager {
       }
     }
     this.verificationRuns.delete(session.summary.id);
+    this.claudeObserver?.release(session.summary.id);
     session.terminal.dispose();
     this.sessions.delete(session.summary.id);
     const event: SessionEvent =

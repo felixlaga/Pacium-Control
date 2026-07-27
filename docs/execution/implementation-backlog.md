@@ -129,7 +129,21 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-029 Implement host working-directory picker
 
 - Token-protected host directory browsing, breadcrumbs, parent/home navigation, repository markers, filtering, recent choices, hidden-folder control, typed-path fallback, bounded results, and remote-safe behavior.
-- Current status: implemented with resolver, contract, HTTP-boundary, transport, and state tests. Rendered browser and accessibility validation remain pending because no browser backend was available.
+- Current status: implemented with resolver, contract, HTTP-boundary,
+  transport, state, and rendered-browser coverage. PC-078 closed the original
+  navigation, recovery, storage, focus, narrow-layout, zoom, forced-color, and
+  reduced-motion evidence gaps.
+
+### PC-078 Refresh host working-directory picker
+
+- Add in-picker absolute-path navigation, compact keyboard traversal,
+  first-load default recovery, failure-safe browser-local recents, and complete
+  rendered workflow evidence without changing the read-only filesystem or
+  PC-077 request-authority boundary.
+- Current status: complete. The existing protocol-18 endpoint remains
+  unchanged; path edit, server-default recovery, storage failure, deterministic
+  focus, 200%-zoom launch-form reachability, and three complete Chromium
+  workflows are implemented and verified.
 
 ## Epic 3 — Agent attention and Git
 
@@ -340,31 +354,86 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
   returns identical replays without writing, rejects competing decisions, and
   recovers exact records after reload/restart. The inspector exposes a bounded
   answer form or separately confirmed Approve/Deny controls, then replaces
-  them with the local immutable record. No decision is delivered,
-  acknowledged, applied, executed, or sent to a terminal; PC-048 owns that
-  compatibility boundary.
+  them with the local immutable record. Recording itself never delivers,
+  acknowledges, applies, executes, or sends a decision; PC-048 owns the
+  separate compatibility boundary.
 
 ### PC-048 Deliver decisions compatibly
 
 - Explicit target and delivery mechanism, idempotency, delivered/unknown/failed state, and no blind retry.
+- Current status: protocol 15 accepts only immutable decision ID/hash delivery
+  authority. The server revalidates exact source/config truth, snapshots the
+  accepted answer-file or live role-PTY target, persists one hashed intent
+  before the side effect, and stores delivered/failed/unknown evidence in
+  queue-state schema 2 with compatible schema-1 migration. Answer files are
+  deterministic private no-clobber JSON; role prompts are one JSON-escaped
+  comment line and claim only terminal transport acceptance. The inspector
+  requires Review/Cancel/Confirm, reloads durable evidence, and never retries a
+  completed or uncertain attempt. Acknowledgement, conflict resolution,
+  applied state, supersession, and explicit resolution remain PC-049.
 
 ### PC-049 Implement acknowledgement and conflict handling
 
 - Observable acknowledgement/applied state, file rewrites, competing answers, truncation, duplicate items, and manual resolution.
+- Current status: protocol 16 and queue-state schema 3 expose content-free
+  source conflicts, no-follow exact answer-artifact evidence, immutable
+  human-labelled lifecycle resolutions, and one separately confirmed retry
+  only after a failed or unknown first attempt is explicitly confirmed not
+  delivered. Browser and authenticated restart evidence preserve queue,
+  target, configuration, terminal, and prior decision truth. Provider-native
+  acknowledgement remains unavailable rather than inferred.
 
 ### PC-050 Implement worker and objective context
 
 - Compact worker list, current objective/plan text from configured sources, recent decisions, and resulting activity.
+- Current status: protocol 17 exposes one identity-free read-only Control
+  context request. The server performs bounded stable no-follow reads of only
+  the accepted objective/plan paths and projects at most twelve newest
+  validated immutable decisions with recording, latest transport attempt, and
+  latest human-labelled lifecycle evidence kept distinct. Pacium mode renders
+  every accepted worker once in configured order from exact session or
+  capability-labelled preset bindings; Open selects only an existing exact
+  PTY, and Git changes appear only when already loaded for that selected
+  worker. Browser correlation, config/mode/disconnect invalidation, restart
+  reconstruction, inert text, responsive/forced-color UI, and unchanged
+  terminal/source/config evidence are covered. Multi-item parsing,
+  provider-native status, causal resulting-work links, task state, worker
+  launch, and background Git fan-out remain absent.
 
 ## Epic 5 — Native agent enrichment
 
 ### PC-060 Define provider observation contract
 
 - Capabilities, version, health, source, confidence, freshness, typed extension data, and bounded raw diagnostics.
+- Current status: protocol 19 carries one strict version-1 provider snapshot on
+  each Claude Code or Codex session and forbids provider state on shell
+  sessions. Fixed bounds cover capabilities, activity, diagnostics, strings,
+  scalar diagnostic fields, timestamps, uniqueness, and provider-matched typed
+  extensions; secret-like diagnostic keys and arbitrary raw payloads are
+  rejected. Provider attention enters the existing source-precedence/staleness
+  reducer, while validated provider facts and observer
+  ready/degraded/stale/unavailable health appear in the Activity inspector.
+  Sessions currently start honestly unavailable with unknown capabilities.
+  Live Claude/Codex detection, transport, ingestion, approval/question
+  responses, persistence, and runtime control remain PC-061/PC-062 work.
 
 ### PC-061 Implement Claude observer
 
 - Supported hooks/status, attention, tool, approval, completion, usage, and failure fixtures.
+- Current status: protocol 20 adds bounded Claude model, context, token, and
+  cost fields. Each Pacium-launched Claude PTY receives fixed observation-only
+  HTTP hooks and one random session-scoped token through its bounded
+  environment. The exact loopback POST ingress validates Host, absent Origin,
+  bearer token, UUID path, JSON type, body size, provider-session identity, and
+  typed payload before projecting deduplicated lifecycle, tool, question,
+  approval, completion, failure, and optional status evidence. Successful hook
+  responses are empty and cannot decide for Claude. Activity shows only
+  normalized evidence and usage scalars; prompts, transcripts, tool
+  input/output, environments, credentials, and raw payloads are discarded.
+  Pacium does not edit Claude settings or replace an operator status line.
+  Managed hook policy, externally launched sessions, live-provider canary
+  evidence, decision/control actions, and durable observation remain outside
+  this slice.
 
 ### PC-062 Implement Codex observer
 
@@ -415,6 +484,14 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-077 Implement optional Tailscale Serve access
 
 - Keep Pacium loopback-bound; configure tailnet-only HTTPS/WebSocket proxying, exact remote Origin, verified Serve identity, explicit operator allowlist, connection labelling, grants example, disable path, and spoof/revocation/public-reachability tests.
+- Current status: complete. Protocol 18 reports strict per-socket Local or
+  Tailscale/login evidence. Startup configuration, canonical local/remote
+  Origin separation, Host/Origin/login/token/Funnel enforcement, exact WSS
+  policy, compact accessible labelling, proxy-shaped HTTP/WebSocket/PTy tests,
+  direct non-loopback denial, and the active Serve/grants/revocation runbook
+  are implemented. Real tailnet, certificate, deployed-grant, Funnel/public,
+  and revocation propagation checks remain an explicit release gate rather than
+  claimed repository evidence.
 
 ## Deferred backlog
 

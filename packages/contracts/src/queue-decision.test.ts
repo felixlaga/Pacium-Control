@@ -7,7 +7,7 @@ import {
   QueueDecisionResultSchema,
   QueueItemDecisionStateSchema,
   QueueQuestionAnswerPayloadSchema,
-  QueueStateDocumentSchema,
+  QueueStateV1DocumentSchema,
   queueDecisionError,
 } from "./queue-decision.js";
 
@@ -117,14 +117,14 @@ describe("queue decision contracts", () => {
 
   it("enforces one immutable record per queue-item identity", () => {
     expect(
-      QueueStateDocumentSchema.safeParse({
+      QueueStateV1DocumentSchema.safeParse({
         schemaVersion: 1,
         revision: 1,
         decisions: [questionDecision],
       }).success,
     ).toBe(true);
     expect(
-      QueueStateDocumentSchema.safeParse({
+      QueueStateV1DocumentSchema.safeParse({
         schemaVersion: 1,
         revision: 2,
         decisions: [

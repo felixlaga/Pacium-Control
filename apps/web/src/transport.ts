@@ -10,6 +10,7 @@ import {
   type QueueItemInspectionIdentity,
   type PaciumWorkspace,
   type QueueQuestionAnswerPayload,
+  type QueueResolutionRequest,
   type ServerMessage,
   type TerminalDataFrame,
 } from "@pacium/contracts";
@@ -206,6 +207,12 @@ export class PaciumTransport {
     return requestId;
   }
 
+  public requestPaciumContext(): string {
+    const requestId = crypto.randomUUID();
+    this.send(paciumContextInspectMessage(requestId));
+    return requestId;
+  }
+
   public requestQueueItemInspection(
     identity: QueueItemInspectionIdentity,
   ): string {
@@ -229,6 +236,23 @@ export class PaciumTransport {
   ): string {
     const requestId = crypto.randomUUID();
     this.send(queueApprovalDecisionMessage(identity, payload, requestId));
+    return requestId;
+  }
+
+  public deliverQueueDecision(
+    decisionId: string,
+    decisionHash: string,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(
+      queueDecisionDeliveryMessage(decisionId, decisionHash, requestId),
+    );
+    return requestId;
+  }
+
+  public resolveQueueDecision(request: QueueResolutionRequest): string {
+    const requestId = crypto.randomUUID();
+    this.send(queueDecisionResolutionMessage(request, requestId));
     return requestId;
   }
 
@@ -263,6 +287,7 @@ export class PaciumTransport {
       const response = await fetch("/api/bootstrap", {
         credentials: "same-origin",
         headers: { accept: "application/json" },
+        method: browserReadMethod(window.location.protocol),
       });
       if (!response.ok) {
         throw new Error(`Bootstrap failed with HTTP ${response.status}`);
@@ -486,6 +511,15 @@ export function paciumConfigGetMessage(
   };
 }
 
+export function paciumContextInspectMessage(
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.context.inspect" }> {
+  return {
+    type: "pacium.context.inspect",
+    requestId,
+  };
+}
+
 export function paciumConfigReplaceMessage(
   expectedRevision: number,
   workspace: PaciumWorkspace,
@@ -557,6 +591,30 @@ export function queueApprovalDecisionMessage(
   };
 }
 
+export function queueDecisionDeliveryMessage(
+  decisionId: string,
+  decisionHash: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.queue.decision.deliver" }> {
+  return {
+    type: "pacium.queue.decision.deliver",
+    requestId,
+    decisionId,
+    decisionHash,
+  };
+}
+
+export function queueDecisionResolutionMessage(
+  request: QueueResolutionRequest,
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.queue.decision.resolve" }> {
+  return {
+    type: "pacium.queue.decision.resolve",
+    requestId,
+    ...request,
+  };
+}
+
 export function sessionCreateMessage(
   input: {
     cwd: string;
@@ -600,6 +658,7 @@ export async function fetchDirectoryListing(input: {
   accessToken: string;
   path?: string;
   fetcher?: typeof fetch;
+  secure?: boolean;
 }): Promise<DirectoryListing> {
   const fetcher = input.fetcher ?? fetch;
   const query =
@@ -610,6 +669,15 @@ export async function fetchDirectoryListing(input: {
       accept: "application/json",
       authorization: `Bearer ${input.accessToken}`,
     },
+    method: browserReadMethod(
+      input.secure === undefined
+        ? typeof window === "undefined"
+          ? "http:"
+          : window.location.protocol
+        : input.secure
+          ? "https:"
+          : "http:",
+    ),
   });
   if (!response.ok) {
     let message = `Host folder browsing failed with HTTP ${response.status}`;
@@ -633,4 +701,8 @@ export async function fetchDirectoryListing(input: {
     throw new Error("The Pacium host returned an invalid directory listing.");
   }
   return parsed.data;
+}
+
+export function browserReadMethod(protocol: string): "GET" | "POST" {
+  return protocol === "https:" ? "POST" : "GET";
 }

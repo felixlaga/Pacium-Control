@@ -4,6 +4,8 @@ import {
   PaciumConfigObservationSchema,
   PaciumWorkspaceSchema,
 } from "./pacium-config.js";
+import { PaciumContextObservationSchema } from "./pacium-context.js";
+import { ProviderObservationSnapshotSchema } from "./provider-observation.js";
 import {
   QueueApprovalDecisionPayloadSchema,
   QueueDecisionResultSchema,
@@ -11,12 +13,21 @@ import {
   QueueQuestionAnswerPayloadSchema,
 } from "./queue-decision.js";
 import {
+  QueueDeliveryResultSchema,
+  QueueDeliveryStateSchema,
+} from "./queue-delivery.js";
+import { QueueItemReconciliationSchema } from "./queue-item-reconciliation.js";
+import {
   QueueItemInspectionIdentitySchema,
   QueueItemInspectionSchema,
 } from "./queue-item-inspection.js";
 import { QueueSourcesObservationSchema } from "./queue-observation.js";
+import {
+  QueueResolutionRequestSchema,
+  QueueResolutionResultSchema,
+} from "./queue-reconciliation.js";
 
-export const PROTOCOL_VERSION = 14 as const;
+export const PROTOCOL_VERSION = 20 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -55,6 +66,28 @@ export const LaunchPresetCapabilitySchema = z.object({
 export type LaunchPresetCapability = z.infer<
   typeof LaunchPresetCapabilitySchema
 >;
+
+export const ConnectionAccessSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("local") }).strict(),
+  z
+    .object({
+      kind: z.literal("tailscale"),
+      login: z
+        .string()
+        .min(3)
+        .max(254)
+        .regex(/^[\x21-\x2b\x2d-\x7e]+$/)
+        .refine(
+          (value) =>
+            value.indexOf("@") > 0 &&
+            value.indexOf("@") === value.lastIndexOf("@") &&
+            value.indexOf("@") < value.length - 1,
+          { message: "Tailscale login must be one exact provider login." },
+        ),
+    })
+    .strict(),
+]);
+export type ConnectionAccess = z.infer<typeof ConnectionAccessSchema>;
 
 export const ProcessStateSchema = z.enum([
   "creating",
@@ -1043,26 +1076,43 @@ export type VerificationObservation = z.infer<
   typeof VerificationObservationSchema
 >;
 
-export const SessionSummarySchema = z.object({
-  id: SessionIdSchema,
-  epoch: z.number().int().positive(),
-  displayName: z.string().min(1).max(120),
-  cwd: z.string().min(1).max(4096),
-  shell: z.string().min(1).max(4096),
-  launchPreset: LaunchPresetIdSchema,
-  commandLabel: z.string().min(1).max(40),
-  agentClassification: AgentClassificationSchema,
-  repository: RepositoryObservationSchema,
-  runtime: z.literal("pty"),
-  processState: ProcessStateSchema,
-  pid: z.number().int().positive().nullable(),
-  cols: z.number().int().min(2).max(500),
-  rows: z.number().int().min(1).max(300),
-  createdAt: z.string().datetime(),
-  exitedAt: z.string().datetime().nullable(),
-  exitCode: z.number().int().nullable(),
-  exitSignal: z.number().int().nullable(),
-});
+export const SessionSummarySchema = z
+  .object({
+    id: SessionIdSchema,
+    epoch: z.number().int().positive(),
+    displayName: z.string().min(1).max(120),
+    cwd: z.string().min(1).max(4096),
+    shell: z.string().min(1).max(4096),
+    launchPreset: LaunchPresetIdSchema,
+    commandLabel: z.string().min(1).max(40),
+    agentClassification: AgentClassificationSchema,
+    providerObservation: ProviderObservationSnapshotSchema.nullable(),
+    repository: RepositoryObservationSchema,
+    runtime: z.literal("pty"),
+    processState: ProcessStateSchema,
+    pid: z.number().int().positive().nullable(),
+    cols: z.number().int().min(2).max(500),
+    rows: z.number().int().min(1).max(300),
+    createdAt: z.string().datetime(),
+    exitedAt: z.string().datetime().nullable(),
+    exitCode: z.number().int().nullable(),
+    exitSignal: z.number().int().nullable(),
+  })
+  .superRefine((session, context) => {
+    if (
+      (session.launchPreset === "shell" &&
+        session.providerObservation !== null) ||
+      (session.launchPreset !== "shell" &&
+        session.providerObservation?.provider !== session.launchPreset)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "Provider observation must match the server-owned launch preset.",
+        path: ["providerObservation"],
+      });
+    }
+  });
 
 export type SessionSummary = z.infer<typeof SessionSummarySchema>;
 export type ProcessState = z.infer<typeof ProcessStateSchema>;
@@ -1191,6 +1241,12 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     .strict(),
   z
     .object({
+      type: z.literal("pacium.context.inspect"),
+      requestId: RequestIdSchema,
+    })
+    .strict(),
+  z
+    .object({
       type: z.literal("pacium.queue.observe"),
       requestId: RequestIdSchema,
     })
@@ -1218,6 +1274,21 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
       payload: QueueApprovalDecisionPayloadSchema,
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("pacium.queue.decision.deliver"),
+      requestId: RequestIdSchema,
+      decisionId: z.string().uuid(),
+      decisionHash: z.string().regex(/^[0-9a-f]{64}$/),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("pacium.queue.decision.resolve"),
+      requestId: RequestIdSchema,
+      ...QueueResolutionRequestSchema.shape,
+    })
+    .strict(),
   z.object({
     type: z.literal("session.close"),
     requestId: RequestIdSchema,
@@ -1229,19 +1300,22 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
 
 export const ServerMessageSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("server.welcome"),
-    protocolVersion: z.literal(PROTOCOL_VERSION),
-    serverId: z.string().uuid(),
-    platform: z.string(),
-    defaultCwd: z.string(),
-    capabilities: z.object({
-      directPty: z.literal(true),
-      reconnectSnapshot: z.literal(true),
-      tmux: z.literal(false),
-      launchPresets: z.array(LaunchPresetCapabilitySchema).length(3),
-    }),
-  }),
+  z
+    .object({
+      type: z.literal("server.welcome"),
+      protocolVersion: z.literal(PROTOCOL_VERSION),
+      serverId: z.string().uuid(),
+      platform: z.string(),
+      defaultCwd: z.string(),
+      connection: ConnectionAccessSchema,
+      capabilities: z.object({
+        directPty: z.literal(true),
+        reconnectSnapshot: z.literal(true),
+        tmux: z.literal(false),
+        launchPresets: z.array(LaunchPresetCapabilitySchema).length(3),
+      }),
+    })
+    .strict(),
   z.object({
     type: z.literal("session.list"),
     requestId: RequestIdSchema,
@@ -1304,6 +1378,13 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
     .strict(),
   z
     .object({
+      type: z.literal("pacium.context"),
+      requestId: RequestIdSchema,
+      observation: PaciumContextObservationSchema,
+    })
+    .strict(),
+  z
+    .object({
       type: z.literal("pacium.queue.sources"),
       requestId: RequestIdSchema,
       observation: QueueSourcesObservationSchema,
@@ -1321,6 +1402,8 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
       requestId: RequestIdSchema,
       inspection: QueueItemInspectionSchema,
       decisionState: QueueItemDecisionStateSchema.nullable(),
+      deliveryState: QueueDeliveryStateSchema.nullable(),
+      reconciliation: QueueItemReconciliationSchema.nullable(),
     })
     .strict()
     .superRefine((message, context) => {
@@ -1334,12 +1417,73 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
             "Only a ready queue item inspection contains decision state.",
         });
       }
+      const decided =
+        message.inspection.status === "ready" &&
+        message.decisionState?.status === "decided";
+      if (decided !== (message.deliveryState !== null)) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Only a decided queue item inspection contains delivery state.",
+        });
+      }
+      if (decided !== (message.reconciliation !== null)) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Only a decided queue item inspection contains reconciliation state.",
+        });
+      }
+      if (
+        message.decisionState?.status === "decided" &&
+        message.decisionState.decision !== null &&
+        message.deliveryState !== null &&
+        (message.deliveryState.decisionId !==
+          message.decisionState.decision.decisionId ||
+          message.deliveryState.decisionHash !==
+            message.decisionState.decision.decisionHash)
+      ) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Queue item delivery state must reference its immutable decision.",
+        });
+      }
+      if (
+        message.decisionState?.status === "decided" &&
+        message.decisionState.decision !== null &&
+        message.reconciliation !== null &&
+        (message.reconciliation.decisionId !==
+          message.decisionState.decision.decisionId ||
+          message.reconciliation.decisionHash !==
+            message.decisionState.decision.decisionHash)
+      ) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Queue item reconciliation must reference its immutable decision.",
+        });
+      }
     }),
   z
     .object({
       type: z.literal("pacium.queue.decision"),
       requestId: RequestIdSchema,
       result: QueueDecisionResultSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("pacium.queue.delivery"),
+      requestId: RequestIdSchema,
+      result: QueueDeliveryResultSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("pacium.queue.resolution"),
+      requestId: RequestIdSchema,
+      result: QueueResolutionResultSchema,
     })
     .strict(),
   z.object({

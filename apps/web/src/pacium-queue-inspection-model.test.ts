@@ -3,13 +3,19 @@ import { describe, expect, it } from "vitest";
 import {
   CLOSED_QUEUE_INSPECTION,
   acceptQueueDecision,
+  acceptQueueDelivery,
   acceptQueueItemInspection,
+  acceptQueueResolution,
   beginQueueDecision,
+  beginQueueDelivery,
   beginQueueItemInspection,
+  beginQueueResolution,
   closeQueueItemInspection,
   decodeQueueItemText,
   interruptQueueItemInspection,
   interruptQueueDecision,
+  interruptQueueDelivery,
+  interruptQueueResolution,
   queueItemSelection,
   reconcileQueueItemInspection,
   reconcileQueueItemInspectionConfig,
@@ -289,6 +295,146 @@ describe("queue item inspection state", () => {
       decisionStatus: "error",
     });
   });
+
+  it("accepts only one correlated explicit delivery outcome", () => {
+    const selection = queueItemSelection(source(), observation(), 4)!;
+    const ready = acceptQueueItemInspection(
+      beginQueueItemInspection(selection, "inspect-1"),
+      "inspect-1",
+      detail(),
+      decided(),
+      readyDelivery(),
+    );
+    const submitting = beginQueueDelivery(ready, "delivery-1");
+    expect(submitting).toMatchObject({
+      deliveryRequestId: "delivery-1",
+      deliveryStatus: "submitting",
+    });
+    expect(
+      acceptQueueDelivery(submitting, "unrelated", deliveredResult()),
+    ).toBe(submitting);
+    expect(
+      acceptQueueDelivery(submitting, "delivery-1", {
+        ...deliveredResult(),
+        decisionHash: "f".repeat(64),
+      }),
+    ).toBe(submitting);
+    expect(
+      acceptQueueDelivery(submitting, "delivery-1", deliveredResult()),
+    ).toMatchObject({
+      deliveryRequestId: null,
+      deliveryStatus: "idle",
+      deliveryErrorMessage: null,
+      deliveryState: {
+        status: "delivered",
+        delivery: {
+          outcome: {
+            status: "delivered",
+            evidence: { kind: "answer_file_created" },
+          },
+        },
+      },
+    });
+  });
+
+  it("does not retry an interrupted delivery request", () => {
+    const selection = queueItemSelection(source(), observation(), 4)!;
+    const ready = acceptQueueItemInspection(
+      beginQueueItemInspection(selection, "inspect-1"),
+      "inspect-1",
+      detail(),
+      decided(),
+      readyDelivery(),
+    );
+    const submitting = beginQueueDelivery(ready, "delivery-1");
+    expect(interruptQueueDelivery(submitting, "unrelated", "failed")).toBe(
+      submitting,
+    );
+    expect(
+      interruptQueueDelivery(
+        submitting,
+        "delivery-1",
+        "Delivery outcome requires inspection.",
+      ),
+    ).toMatchObject({
+      deliveryRequestId: null,
+      deliveryStatus: "error",
+      deliveryErrorMessage: "Delivery outcome requires inspection.",
+      deliveryState: { status: "ready" },
+    });
+  });
+
+  it("correlates lifecycle labels to the exact inspected decision", () => {
+    const selection = queueItemSelection(source(), observation(), 4)!;
+    const ready = acceptQueueItemInspection(
+      beginQueueItemInspection(selection, "inspect-1"),
+      "inspect-1",
+      detail(),
+      decided(),
+      readyDelivery(),
+      reconciliation(),
+    );
+    const request = {
+      decisionId: decisionResult().decision.decisionId,
+      decisionHash: decisionResult().decision.decisionHash,
+      action: "acknowledged" as const,
+      delivery: {
+        deliveryId: "4699b11f-94d3-430a-960e-1c574a03db41",
+        deliveryHash: "e".repeat(64),
+      },
+      relatedDecision: null,
+      note: null,
+    };
+    const submitting = beginQueueResolution(ready, "resolution-1", request);
+    expect(submitting).toMatchObject({
+      resolutionRequestId: "resolution-1",
+      resolutionStatus: "submitting",
+    });
+    const result = {
+      status: "recorded" as const,
+      decisionId: request.decisionId,
+      decisionHash: request.decisionHash,
+      resolution: {
+        resolutionId: "253a4e0e-d606-4438-9e7e-c27b0021994c",
+        ...request,
+        actor: {
+          kind: "local_operator" as const,
+          label: "Local operator" as const,
+        },
+        source: "human_labelled" as const,
+        recordedAt: "2026-07-27T12:07:00.000Z",
+        resolutionHash: "f".repeat(64),
+      },
+      error: null,
+    };
+    expect(acceptQueueResolution(submitting, "unrelated", result)).toBe(
+      submitting,
+    );
+    expect(
+      acceptQueueResolution(submitting, "resolution-1", {
+        ...result,
+        decisionHash: "0".repeat(64),
+      }),
+    ).toBe(submitting);
+    expect(
+      acceptQueueResolution(submitting, "resolution-1", result),
+    ).toMatchObject({
+      resolutionRequestId: null,
+      resolutionStatus: "idle",
+      resolutionErrorMessage: null,
+    });
+    expect(
+      interruptQueueResolution(
+        submitting,
+        "resolution-1",
+        "Lifecycle outcome is unknown.",
+      ),
+    ).toMatchObject({
+      resolutionRequestId: null,
+      resolutionStatus: "error",
+      resolutionErrorMessage: "Lifecycle outcome is unknown.",
+    });
+  });
 });
 
 function source() {
@@ -327,6 +473,7 @@ function observation() {
       ],
     },
     candidateFirstObservedAt: firstObservedAt,
+    conflicts: [],
     error: null,
   };
 }
@@ -398,6 +545,89 @@ function decisionResult() {
       decisionHash: "c".repeat(64),
     },
     error: null,
+  };
+}
+
+function decided() {
+  return {
+    status: "decided" as const,
+    decision: decisionResult().decision,
+    error: null,
+  };
+}
+
+function readyDelivery() {
+  return {
+    status: "ready" as const,
+    decisionId: decisionResult().decision.decisionId,
+    decisionHash: decisionResult().decision.decisionHash,
+    target: answerTarget(),
+    delivery: null,
+    error: null,
+  };
+}
+
+function deliveredResult() {
+  const target = answerTarget();
+  const payloadHash = "d".repeat(64);
+  return {
+    status: "delivered" as const,
+    decisionId: decisionResult().decision.decisionId,
+    decisionHash: decisionResult().decision.decisionHash,
+    state: {
+      status: "delivered" as const,
+      decisionId: decisionResult().decision.decisionId,
+      decisionHash: decisionResult().decision.decisionHash,
+      target,
+      delivery: {
+        deliveryId: "4699b11f-94d3-430a-960e-1c574a03db41",
+        decisionId: decisionResult().decision.decisionId,
+        decisionHash: decisionResult().decision.decisionHash,
+        target,
+        payloadHash,
+        payloadByteLength: 512,
+        requestedAt: "2026-07-27T12:06:00.000Z",
+        outcome: {
+          status: "delivered" as const,
+          recordedAt: "2026-07-27T12:06:01.000Z",
+          evidence: {
+            kind: "answer_file_created" as const,
+            byteLength: 512,
+            contentHash: payloadHash,
+          },
+          error: null,
+        },
+        deliveryHash: "e".repeat(64),
+      },
+      error: null,
+    },
+  };
+}
+
+function answerTarget() {
+  return {
+    type: "answer_file" as const,
+    methodId: "answers",
+    methodLabel: "Pacium answers",
+    path: "/queue/PACIUM-ANSWERS",
+  };
+}
+
+function reconciliation() {
+  return {
+    decisionId: decisionResult().decision.decisionId,
+    decisionHash: decisionResult().decision.decisionHash,
+    conflicts: [],
+    priorDecisions: { decisions: [], truncated: false },
+    attempts: [],
+    artifact: null,
+    lifecycle: {
+      status: "awaiting_evidence" as const,
+      current: null,
+      history: [],
+      historyTruncated: false,
+    },
+    retry: { status: "not_applicable" as const },
   };
 }
 

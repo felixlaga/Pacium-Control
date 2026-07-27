@@ -41,11 +41,35 @@ Untrusted inputs still include:
 Optional remote access is supported only through the trust boundary in ADR-0016:
 
 - Pacium remains bound to loopback.
+- `PACIUM_TAILSCALE_ORIGIN` and `PACIUM_TAILSCALE_OPERATOR_LOGINS` must both be
+  absent or both pass strict bounded startup validation.
 - Tailscale Serve proxies tailnet-only HTTPS and WebSockets.
 - Tailscale Funnel is prohibited.
-- Remote requests require an exact configured Origin, verified Serve identity headers, an explicit login allowlist, and the ephemeral Pacium token.
+- Remote navigation requires the exact configured Serve Host, a verified
+  bounded `Tailscale-User-Login` in the exact allowlist, safe fetch metadata,
+  and no Funnel marker.
+- Remote bootstrap, protected HTTP, and WebSocket upgrades additionally require
+  the exact configured HTTPS Origin. Protected HTTP and WebSocket access still
+  requires the ephemeral token.
+- Missing identity denies tagged source devices. Display name, profile picture,
+  app capabilities, forwarded/source IP, and device identity are not
+  authorization inputs.
+- Custom local allowed Origins are restricted to canonical loopback HTTP
+  origins and cannot activate remote mode.
+- Content Security Policy permits only the exact configured remote WSS host
+  when remote mode is enabled.
 - Network grants and application identity checks are both required.
 - A Tailscale IP is never treated as permanent user identity.
+- Protocol 18 exposes only Local, or Tailscale plus the current exact verified
+  login. Connection identity is cleared on disconnect and never persisted.
+
+Current Tailscale Serve strips inbound identity/Funnel headers, preserves the
+tailnet Host, and adds verified identity context before the loopback proxy
+request. Pacium still treats a process already running as the invoking OS user
+as inside its accepted host-local trust boundary. See the
+[Serve operations runbook](docs/operations/tailscale-serve.md) for grants,
+validation, immediate non-PTY-killing disable/revocation, and the manual
+public-reachability gate.
 
 ## PTY and process safety
 
@@ -120,8 +144,9 @@ Coding agents process untrusted repository instructions. The interface must:
 - Existing metadata leaves must be regular non-symlink files; missing leaves
   require an existing canonical parent. A source path cannot also be an answer
   target.
-- Configuration grants no permission to read queue/objective/plan content,
-  write an answer, send a prompt, run verification, or send terminal input.
+- Configuration replacement alone grants no automatic read, write, prompt,
+  verification, or terminal-input side effect. Queue/item and Control-context
+  reads require their separate typed authenticated requests.
 - Reject command, executable, argument, environment, signal, terminal-byte,
   content, secret, and generic write-target fields at the shared protocol
   boundary.
@@ -129,6 +154,33 @@ Coding agents process untrusted repository instructions. The interface must:
 See the
 [workspace configuration contract](docs/execution/pacium-workspace-configuration.md)
 for exact schemas, bounds, atomicity, and recovery.
+
+## Control-context safety
+
+- Accept only the identity-free `pacium.context.inspect(requestId)` request.
+  The browser cannot submit a path, workspace revision, source kind, queue
+  identity, range, count, filter, session, command, or read option.
+- Resolve objective and plan paths only from the current accepted workspace.
+  Open each leaf with no-follow semantics, require a regular file, cap it at
+  32 KiB, verify stable metadata, and validate strict UTF-8 before returning
+  content.
+- Recheck the accepted workspace ID and revision after both reads and queue
+  state inspection. Return no mixed-revision content after configuration
+  drift.
+- Render context and question previews only as inert text. Never interpret
+  Markdown, HTML, ANSI, OSC, hyperlinks, paths, or commands from them.
+- Bound recent decisions to twelve newest validated immutable records and
+  question previews to 320 UTF-8 bytes. Exclude notes, target paths, queue
+  source text, terminal bytes, commands, environments, and provider data.
+- Keep recording, durable transport attempts, and explicit human-labelled
+  lifecycle results separate. None authorizes or proves provider handling,
+  acknowledgement, application, task completion, or resulting Git/terminal
+  work.
+- Clear decoded text and pending intent on disconnect, accepted-config drift,
+  mode exit, Back, and route replacement. Reject late and cross-revision
+  responses.
+- Never watch, poll, repair, create, truncate, or write objective or plan
+  sources through the Control-context path.
 
 ## Secrets and retention
 
@@ -166,15 +218,50 @@ Prefer bounded in-memory scrollback. If diagnostic export is added, it must be e
 - If state is corrupt, unsafe, unsupported, oversized, full, or has unknown
   post-rename durability, fail mutation closed while preserving terminal and
   read-only queue operation.
-- Record decision provenance separately from delivery. A local decision is not
-  delivered, acknowledged, applied, authorized provider action, or terminal
-  input.
+- Record decision provenance before and separately from delivery. Recording a
+  local decision is not delivery, acknowledgement, application, authorized
+  provider action, or terminal input.
+- Accept delivery requests containing only the immutable decision ID/hash.
+  Resolve source, method, path, role, session ID/epoch, and serialized payload
+  exclusively from current server-owned state and exact runtime evidence.
+- Persist one hashed delivery intent before invoking a transport. Join a
+  duplicate request to that attempt; never replay a completed or uncertain
+  attempt automatically.
+- Create answer files privately with deterministic bounded bytes and atomic
+  no-clobber publication. Reject existing, symlinked, unsafe, or drifted
+  targets without choosing another path.
+- Reinspect only the exact server-resolved answer target with bounded
+  no-follow reads. Exact bytes prove only that the transport artifact is
+  present; missing, changed, unreadable, or unsafe bytes never imply provider
+  acknowledgement or application.
+- Derive source conflicts from accepted source IDs, hashes, and immutable
+  decision provenance. Never expose conflict text, choose a duplicate source,
+  edit queue bytes, or execute content.
+- Accept lifecycle mutations containing only exact decision/attempt identities,
+  one fixed action, an optional bounded note, and an exact related decision for
+  supersession. The server authors actor, evidence source, timestamp, ID, and
+  hash and validates every monotonic transition.
+- Permit one second delivery attempt only after the operator explicitly records
+  `confirmed_not_delivered` for a failed or unknown first attempt and confirms
+  delivery again. Revalidate the exact source, configuration, target, payload,
+  and attempt ceiling immediately before persisting that intent.
+- Send role-prompt decisions only as one bounded JSON-escaped,
+  comment-prefixed line to the exact configured live PTY. Treat PTY write
+  acceptance as transport evidence only, never provider handling or approval
+  execution.
 - Surface conflicts instead of choosing one answer automatically.
 
 ## Required security tests
 
 - non-loopback reachability;
 - hostile Origin and missing/invalid token;
+- incomplete/unsafe remote startup configuration;
+- spoofed, duplicate, missing, tagged-device-only, unlisted, or non-ASCII
+  Tailscale login headers;
+- wrong remote Host/Origin, Funnel marker, direct LAN/tailnet Host, and exact
+  remote WSS policy;
+- Local/Tailscale socket evidence, stale-identity clearing, and canary PTY
+  survival across browser reconnect;
 - oversized and malformed WebSocket messages;
 - terminal title, link, clipboard, and escape-sequence injection;
 - path traversal and symlink escape;
@@ -183,6 +270,9 @@ Prefer bounded in-memory scrollback. If diagnostic export is added, it must be e
 - queue content interpreted as data, never executable code;
 - forged queue-decision identity/actor/hash fields, cross-type requests,
   duplicate replays, competing decisions, and restart recovery;
+- forged queue-delivery target/payload/path/role/session/retry fields,
+  answer-file no-clobber and symlink boundaries, shell-safe role-prompt bytes,
+  intent-before-effect ordering, duplicate suppression, and unknown recovery;
 - secret scanning of logs and persisted state.
 
 ## Future expansion

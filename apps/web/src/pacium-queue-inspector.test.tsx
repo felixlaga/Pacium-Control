@@ -12,8 +12,10 @@ describe("Pacium queue item inspector", () => {
     const markup = renderToStaticMarkup(
       <PaciumQueueInspector
         onBack={() => undefined}
+        onDeliver={() => undefined}
         onRecordApproval={() => undefined}
         onRecordQuestion={() => undefined}
+        onResolve={() => undefined}
         requestingSessionLabel="Meta shell"
         state={state}
       />,
@@ -28,7 +30,7 @@ describe("Pacium queue item inspector", () => {
     expect(markup).toContain("Meta shell");
     expect(markup).toContain("High");
     expect(markup).toContain("whole-source adapter");
-    expect(markup).toContain("Conflict detection is not implemented yet");
+    expect(markup).toContain("No current conflict signal");
     expect(markup).toContain("/queue/NEEDS-FELIX");
     expect(markup).toContain("whole_source_v1");
     expect(markup).toContain("Record answer");
@@ -40,8 +42,10 @@ describe("Pacium queue item inspector", () => {
     const loading = renderToStaticMarkup(
       <PaciumQueueInspector
         onBack={() => undefined}
+        onDeliver={() => undefined}
         onRecordApproval={() => undefined}
         onRecordQuestion={() => undefined}
+        onResolve={() => undefined}
         requestingSessionLabel={null}
         state={{
           ...ready("Private answer"),
@@ -58,8 +62,10 @@ describe("Pacium queue item inspector", () => {
     const stale = renderToStaticMarkup(
       <PaciumQueueInspector
         onBack={() => undefined}
+        onDeliver={() => undefined}
         onRecordApproval={() => undefined}
         onRecordQuestion={() => undefined}
+        onResolve={() => undefined}
         requestingSessionLabel={null}
         state={{
           ...ready("Private answer"),
@@ -123,5 +129,13 @@ function ready(originalText: string): PaciumQueueInspectionState {
     decisionRequestId: null,
     decisionStatus: "idle",
     decisionErrorMessage: null,
+    deliveryState: null,
+    deliveryRequestId: null,
+    deliveryStatus: "idle",
+    deliveryErrorMessage: null,
+    reconciliation: null,
+    resolutionRequestId: null,
+    resolutionStatus: "idle",
+    resolutionErrorMessage: null,
   };
 }

@@ -2,6 +2,359 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.35.0 — Claude Code observer — 2026-07-28
+
+### Added
+
+- Protocol 20 bounded Claude status extensions for model, context use, total
+  input/output tokens, and cost, with the same strict provider-matched snapshot
+  boundary.
+- One process-local Claude observer registration per Pacium-launched Claude
+  PTY, including installed-version detection, a random 256-bit URL-safe token,
+  fixed observation-only HTTP hook settings, and bounded server-owned
+  environment additions.
+- Strict loopback hook/status ingress requiring POST, exact Host, no Origin,
+  JSON content type, a canonical session UUID, bearer authentication, a 64 KiB
+  body ceiling, provider-session correlation, and typed normalization.
+- Deduplicated SessionStart, prompt, tool, permission, question, completion,
+  failure, and SessionEnd evidence with source/confidence/freshness and
+  capability transitions. Successful hooks receive only an empty `204` and
+  cannot approve, deny, block, retry, or otherwise decide for Claude.
+- Activity details for bounded Claude model/context/token/cost evidence while
+  discarding prompts, transcripts, tool inputs/outputs, environments,
+  credentials, status titles, and raw payloads.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 118 test
+  files and 743 tests, plus the 913.94 kB web JavaScript, 109.81 kB stylesheet,
+  and 368.49 kB local-server production bundles.
+- `pnpm test:e2e` passed all 14 Chromium workflows after the required
+  unsandboxed macOS launch. The first sandboxed attempt was blocked before page
+  creation by Chromium Mach-port permission denial, not an application
+  assertion.
+- A 139-test focused contract/observer/PTY/session/HTTP/WebSocket/attention/
+  Activity gate passed. Security cases cover wrong method, Host, Origin, token,
+  content type, malformed/oversized input, provider-session drift, duplicate
+  delivery, released tokens, raw-field exclusion, and no decision response.
+
+### Known limitations
+
+- Only Claude sessions launched by Pacium are observed. Existing external
+  Claude processes are not adopted, and observations/tokens disappear with the
+  local server.
+- Pacium does not edit user/project settings or replace the operator's single
+  Claude status-line command. The strict status receiver exists, but a
+  companion command is not packaged; managed HTTP-hook allowlists can leave
+  the observer unavailable while the PTY continues working.
+- Current evidence is fixture and local integration coverage, not a
+  manual real-provider Claude canary. Codex native observation remains PC-062.
+- Questions and approvals remain observation-only. No browser or server action
+  answers, approves, prompts, steers, interrupts, or executes for Claude.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's existing chunk-size warning.
+
+## 0.34.0 — provider observation contract — 2026-07-28
+
+### Added
+
+- Protocol 19 session snapshots with one strict nullable version-1 provider
+  observation that must match the server-owned Claude Code or Codex launch
+  preset; shell sessions cannot carry provider state.
+- Fixed capability, activity, diagnostic, scalar-field, string, and timestamp
+  bounds; duplicate IDs, arbitrary raw payloads, cross-provider extensions,
+  secret-like diagnostic keys, and impossible freshness order are rejected.
+- Distinct question and approval activity kinds, typed Claude/Codex extension
+  data, provider/adapter versions, adapter health, source, confidence, and
+  freshness without storing prompts, transcripts, environments, tool
+  input/output, credentials, or tokens.
+- Honest initial unavailable health and unknown capabilities for agent
+  terminals while their direct PTYs and process evidence remain independent.
+- Explicit native/hook attention integration through the existing precedence
+  and staleness reducer, plus bounded provider facts and
+  ready/degraded/stale/unavailable observer evidence in the Activity inspector.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 116 test
+  files and 722 tests, plus the 913.12 kB web JavaScript, 109.81 kB stylesheet,
+  and 345.21 kB local-server production bundles.
+- `pnpm test:e2e` passed all 14 Chromium workflows after the Activity evidence
+  boundary copy was synchronized. The existing terminal, directory,
+  responsive/accessibility, Pacium roles/context/queue, Git, verification,
+  reconnect, and mode-preservation workflows remained green.
+- Focused schema, protocol, server, attention, activity-model, semantic-render,
+  and preset/provider-boundary tests cover unavailable defaults, native/hook
+  precedence, stale evidence, distinct questions/approvals, diagnostic
+  rejection, provider matching, and PTY independence.
+
+### Known limitations
+
+- PC-060 defines and consumes the contract only. It does not start, attach to,
+  detect, or ingest Claude Code hooks/status or Codex App Server events.
+- No provider CLI version is declared supported yet. PC-061 and PC-062 must use
+  current capability detection and explicit degradation because vendor
+  protocols and hook availability are version-sensitive.
+- Provider observations are disposable process-local projections. Pacium does
+  not persist transcripts or raw provider events, and direct PTYs retain the
+  existing local-server restart limitation.
+- Questions and approvals are observation-only here; this contract grants no
+  authority to answer, approve, prompt, steer, interrupt, or execute.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's existing chunk-size warning.
+
+## 0.33.0 — host directory-picker refresh — 2026-07-28
+
+### Added
+
+- A compact in-picker absolute host-path editor opened by the visible toolbar
+  action or `Cmd/Ctrl+L`; Enter navigates without launching a terminal and
+  Escape returns to breadcrumbs.
+- `Cmd/Ctrl+Enter` current-folder confirmation, filter-to-result ArrowDown,
+  result ArrowUp/ArrowDown/Home/End traversal, and authoritative post-navigation
+  focus restoration.
+- True server-owned default recovery when an initial typed path is missing or
+  inaccessible, while Retry, known Home, recents, Back, and the parent
+  absolute-path field remain available.
+- Failure-safe version-1 browser-local recent reads and writes. Storage denial
+  or quota failure cannot prevent opening the picker or returning the selected
+  canonical path.
+- Scrollable 200%-zoom terminal-launch presentation, explicit keyboard focus
+  rings, light-theme picker surfaces, and retained compact desktop/320px
+  hierarchy.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 114 test
+  files and 705 tests, plus the 906.13 kB web JavaScript, 109.71 kB stylesheet,
+  and 335.82 kB local-server production bundles.
+- `pnpm test:e2e` passed all 14 Chromium workflows. The three new PC-078
+  workflows cover invalid-first-path recovery, direct exact-path navigation,
+  filtering, keyboard traversal, canonical selection without premature PTY
+  launch, recent reuse, storage denial, focus return, 320 CSS px, 200% zoom,
+  forced colors, and reduced motion.
+- Before/after desktop and final 320px screenshots were inspected from the
+  localhost application. Existing local and proxy-shaped Serve protected-read
+  tests remained green.
+
+### Known limitations
+
+- The picker remains read-only and non-recursive. It does not create folders,
+  clone repositories, index the filesystem, or persist server-side favorites.
+- Recents are best-effort browser-local path references and are revalidated
+  only when chosen. Filtering applies only to the server's bounded returned
+  entries.
+- The connected interactive browser was unavailable, so rendered automation
+  used the repository's installed Playwright Chromium. Manual screen-reader
+  review and the real Tailscale canary remain release gates.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's existing chunk-size warning.
+
+## 0.32.0 — optional Tailscale Serve access — 2026-07-28
+
+### Added
+
+- Optional all-or-nothing startup configuration for one canonical
+  `https://*.ts.net` Serve Origin and a bounded exact operator-login allowlist,
+  while the Pacium server remains bound only to `127.0.0.1`.
+- A single request-authority classifier for local and proxied HTTP/WebSocket
+  traffic with exact Host and Origin checks, strict
+  `Tailscale-User-Login` handling, explicit Funnel denial, and the existing
+  ephemeral-token requirement on protected transport.
+- Protocol 18 connection evidence that exposes only Local or the accepted
+  Tailscale login for the current socket, plus a compact accessible connection
+  badge that clears stale identity when the connection is no longer live.
+- Secure same-origin POST reads for remote bootstrap and directory browsing,
+  exact configured `wss://` CSP support, and canonical loopback-only custom
+  local Origins.
+- An operator runbook covering loopback setup, grants, Serve activation,
+  canary and denial checks, Funnel/public checks, revocation, rollback, and the
+  evidence boundary.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 114 test
+  files and 701 tests, plus the 903.24 kB web JavaScript, 107.74 kB stylesheet,
+  and 335.82 kB local-server production bundles.
+- `pnpm test:e2e` passed all 11 Chromium workflows, including persistent Local
+  connection evidence, reconnect, narrow layout, forced colors, and reduced
+  motion.
+- Startup, HTTP, WebSocket, CSP, protocol, transport, reducer, semantic-render,
+  and accessibility tests covered partial configuration, non-loopback direct
+  access, malformed or duplicate identity, unlisted users, tagged-device
+  missing identity, Funnel requests, local spoofing, exact remote authority,
+  token enforcement, and stale-identity clearing.
+
+### Known limitations
+
+- Tests use proxy-shaped requests; they do not prove the owner's real
+  Tailscale installation, MagicDNS/certificate state, deployed grants,
+  revocation propagation, or the absence of alternate LAN, tailnet, Funnel,
+  and public ingress. The manual runbook canary remains a release gate.
+- Runtime environment changes require a server restart. Immediate ingress
+  revocation should happen at Tailscale Serve or the tailnet policy layer so
+  the local Pacium process and its PTYs can remain running.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's existing chunk-size warning.
+
+## 0.31.0 — worker and control context — 2026-07-27
+
+### Added
+
+- Protocol 17 `pacium.context.inspect` and correlated
+  `pacium.context` messages with no browser-selected workspace, revision, path,
+  queue identity, filter, count, session, command, or content authority.
+- Independent 32 KiB objective and plan observations using stable no-follow
+  regular-file reads, strict UTF-8, SHA-256 provenance, fixed safe failures,
+  and a second accepted-config revision check.
+- At most twelve newest validated immutable decision summaries with
+  UTF-8-safe 320-byte answer previews, exact approval outcomes, latest durable
+  transport evidence, and latest explicitly human-labelled lifecycle evidence.
+  Notes, targets, queue text, terminal bytes, commands, and provider data stay
+  excluded.
+- A compact configured Worker group in accepted order. Exact session UUIDs
+  project current process, command classification, repository, attention,
+  freshness, and already-loaded selected-session change evidence; preset-only
+  workers remain visibly not started and cannot launch from this surface.
+- An explicit Control-context route in the existing right inspector with
+  Open/Refresh/Back/Escape, focus restoration, inert objective/plan text,
+  independent degraded states, recent decisions, config/disconnect/mode
+  invalidation, and no terminal reselection.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 111 test
+  files and 675 tests, plus the 901.71 kB web JavaScript, 107.52 kB stylesheet,
+  and 328.37 kB local-server production bundles.
+- `pnpm test:e2e` passed all 11 Chromium workflows. The PC-050 workflow covered
+  exact live and preset-only worker rows, existing-PTY Open, explicit
+  context/Refresh/Back/Escape, focus return, browser reconnect, mode exit,
+  selected-terminal preservation, 320 CSS px, forced colors, and reduced
+  motion.
+- Authenticated integration tests proved byte-for-byte unchanged objective,
+  plan, configuration, queue, and PTY evidence; exclusion of notes, target
+  paths, and queue text; durable decision/transport/lifecycle reconstruction
+  after local-server restart; and no inferred replacement for ended direct
+  PTYs.
+
+### Known limitations
+
+- Provider-native events, task progress, usage, tool calls, completion, and
+  causal links to later Git or terminal activity remain unavailable. Current
+  process, transport, and human-labelled lifecycle facts are not promoted to
+  those claims.
+- Worker launch/reconfiguration, background Git fan-out, objective/plan
+  editing or watching, generalized tasks/runs, and multi-item queue parsing
+  remain out of scope.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's existing chunk-size warning.
+
+## 0.30.0 — explicit queue reconciliation — 2026-07-27
+
+### Added
+
+- Protocol 16 content-free source conflicts, exact-item reconciliation, and
+  identity-only lifecycle-resolution requests with strict cross-reference and
+  message bounds.
+- Queue-state schema 3 with compatible schema-1/2 reads, immutable
+  hash-verified human-labelled resolutions, monotonic lifecycle transitions,
+  and at most two delivery attempts per decision.
+- Source rewrite/degradation and exact-hash duplicate conflict evidence without
+  exposing, choosing, or modifying queue text.
+- On-demand no-follow answer-target inspection that distinguishes an exact
+  transport artifact from unavailable provider acknowledgement and reports
+  changed or unsafe targets as conflicts.
+- Review/Cancel/Confirm controls for acknowledged, applied, unable-to-apply,
+  confirmed-not-delivered, and superseded lifecycle labels, with immutable
+  evidence reconstruction after reload or local-server restart.
+- One separately confirmed retry after a failed or unknown first attempt is
+  explicitly labelled not delivered. The exact decision, source,
+  configuration, target, and payload are revalidated; a third attempt is
+  invalid.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 104 test
+  files and 623 tests, plus the 876.41 kB web JavaScript, 100.24 kB stylesheet,
+  and 307.56 kB local-server production bundles.
+- `pnpm test:e2e` passed all 10 Chromium workflows, including artifact versus
+  acknowledgement evidence, lifecycle cancellation and confirmation, reload
+  reconstruction, source-rewrite conflict, focus, 320 CSS px, forced colors,
+  and reduced motion.
+- Authenticated restart and PTY integration tests proved state reconstruction,
+  exact target evidence, transition rejection, the locked retry gate, one
+  human-unlocked successful retry, and rejection of a third attempt.
+
+### Known limitations
+
+- Provider-native acknowledgement remains unavailable. Current lifecycle
+  records are visibly human-labelled and never inferred from files, terminal
+  output, process activity, or queue rewrites.
+- Duplicate detection is exact-content-hash only. A missing answer file is
+  ambiguous, and target evidence is recomputed only on explicit inspection or
+  Refresh.
+- Worker/objective/plan context and recent-result summaries remain PC-050.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x, and the
+  web build retains Vite's existing chunk-size warning.
+
+## 0.29.0 — explicit compatible decision delivery — 2026-07-27
+
+### Added
+
+- Protocol 15 identity-only `pacium.queue.decision.deliver` requests,
+  correlated results, and decided-item delivery state. Strict schemas reject
+  browser-selected paths, roles, sessions, payloads, terminal bytes, commands,
+  actors, and retry flags.
+- Queue-state schema 2 with compatible version-1 reads and first-mutation
+  migration, immutable target/payload snapshots, intent-before-effect
+  ordering, one attempt per decision, duplicate joining, hashed outcomes, and
+  restart-safe unknown state for unfinished intent.
+- A deterministic versioned answer document published as a private mode-`0600`
+  regular file through same-directory no-clobber creation. Existing files,
+  symlinks, unsafe parents, and uncertain post-publish durability are preserved
+  and reported without fallback targets.
+- A role-prompt adapter that resolves only the accepted live Meta or
+  Orchestrator session ID/epoch and sends one bounded JSON-escaped,
+  comment-prefixed line plus one carriage return. Success means terminal
+  transport accepted the bytes; provider handling remains unverified.
+- A compact decided-item Delivery section with accepted-target preview,
+  explicit Review/Cancel/Confirm, pending and durable states, no action for
+  unconfigured or unavailable targets, and distinct delivered, failed, and
+  unknown evidence. Recording a decision still never delivers automatically.
+- Browser and authenticated-server coverage for Cancel without side effect,
+  private answer-file creation, reload recovery, duplicate no-op, exact role
+  PTY isolation, hostile multiline/metacharacter escaping, and unchanged queue,
+  configuration, unrelated PTY, and approval boundaries.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 97 test
+  files and 584 tests, plus the 850.51 kB web JavaScript, 97.09 kB stylesheet,
+  and 263.56 kB local-server production bundles.
+- `pnpm test:e2e` passed all 10 Chromium workflows on the exact head, including
+  explicit delivery review, cancellation, confirmation, durable evidence,
+  reload, narrow layout, forced colors, and reduced motion.
+- Contract, migration/store, serializer, file adapter, service, authenticated
+  WebSocket, reducer, semantic-rendering, and real SessionManager/FakePty
+  integration tests passed. Exact role evidence proves one line reaches only
+  the configured live PTY.
+
+### Known limitations
+
+- Delivery evidence is not acknowledgement or applied/unable-to-apply state.
+  There is no conflict-resolution or retry workflow; failed and unknown
+  attempts remain terminal until PC-049 adds an explicit resolution model.
+- The no-clobber answer-file method is a single-slot compatibility mailbox.
+  Appending or rewriting another legacy format requires a separately typed
+  adapter rather than inference from existing content.
+- Recent decision/delivery activity and compact resulting-work summaries remain
+  PC-050. Provider-native receipt, processing, approval execution, and
+  completion evidence remain later enrichment.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x.
+  Chromium required the approved outside-sandbox macOS run with the Xcode Git
+  path.
+- The web bundle remains above Vite's 500 kB warning threshold.
+
 ## 0.28.0 — immutable local queue decisions — 2026-07-27
 
 ### Added

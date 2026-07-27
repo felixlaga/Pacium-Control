@@ -1,0 +1,2 @@
+export const MAX_QUEUE_DECISIONS = 4096;
+export const MAX_QUEUE_DECISION_NOTE_BYTES = 2 * 1024;

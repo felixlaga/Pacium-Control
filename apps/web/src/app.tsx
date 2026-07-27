@@ -11,6 +11,7 @@ import {
   type TerminalSurfaceHandle,
 } from "@pacium/terminal-ui";
 import type {
+  ConnectionAccess,
   DirectoryListing,
   GitChangedFile,
   LaunchPresetCapability,
@@ -18,12 +19,15 @@ import type {
   PaciumBinding,
   PaciumRoleId,
   QueueApprovalDecisionPayload,
+  QueueDeliveryResult,
   QueueQuestionAnswerPayload,
+  QueueResolutionRequest,
   ServerMessage,
   SessionSummary,
   TerminalDataFrame,
 } from "@pacium/contracts";
 
+import { ConnectionBadge } from "./connection-badge.js";
 import {
   PaciumTransport,
   type ConnectionState,
@@ -57,7 +61,7 @@ import {
 } from "./attention-inbox-model.js";
 import {
   attentionStateLabel,
-  deriveProcessAttention,
+  deriveSessionAttention,
 } from "./attention-model.js";
 import {
   loadPanelView,
@@ -74,6 +78,16 @@ import {
   visiblePaciumConfig,
   type PaciumConfigViewState,
 } from "./pacium-config-model.js";
+import { PaciumContextInspector } from "./pacium-context-inspector.js";
+import {
+  acceptPaciumContextResponse,
+  beginPaciumContextInspection,
+  clearPaciumContext,
+  initialPaciumContextState,
+  reconcilePaciumContextConfig,
+  rejectPaciumContextResponse,
+  type PaciumContextViewState,
+} from "./pacium-context-model.js";
 import { buildPaciumModeSummary } from "./pacium-mode-summary-model.js";
 import { PaciumModeSummaryCard } from "./pacium-mode-summary.js";
 import { PaciumPromptComposer } from "./pacium-prompt-composer.js";
@@ -105,12 +119,18 @@ import {
 import {
   CLOSED_QUEUE_INSPECTION,
   acceptQueueDecision,
+  acceptQueueDelivery,
   acceptQueueItemInspection,
+  acceptQueueResolution,
   beginQueueDecision,
+  beginQueueDelivery,
   beginQueueItemInspection,
+  beginQueueResolution,
   closeQueueItemInspection,
   interruptQueueItemInspection,
+  interruptQueueResolution,
   interruptQueueDecision,
+  interruptQueueDelivery,
   reconcileQueueItemInspection,
   reconcileQueueItemInspectionConfig,
   type PaciumQueueInspectionState,
@@ -130,6 +150,8 @@ import {
   roleLabel,
   type PendingPaciumRoleLaunch,
 } from "./pacium-role-model.js";
+import { PaciumWorkers } from "./pacium-workers.js";
+import { buildPaciumWorkersProjection } from "./pacium-worker-model.js";
 import {
   TERMINAL_FONT_STACKS,
   loadPreferences,
@@ -279,6 +301,7 @@ export function App() {
   const renameInvokerRef = useRef<HTMLElement | null>(null);
   const roleEditorInvokerRef = useRef<HTMLElement | null>(null);
   const queueInspectorInvokerRef = useRef<HTMLElement | null>(null);
+  const contextInspectorInvokerRef = useRef<HTMLElement | null>(null);
   const settingsInvokerRef = useRef<HTMLElement | null>(null);
   const transportRef = useRef<PaciumTransport | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() =>
@@ -287,6 +310,8 @@ export function App() {
   const workspaceModeRef = useRef(workspaceMode);
   const workspaceModeChordRef = useRef(IDLE_WORKSPACE_MODE_CHORD);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
+  const [connectionAccess, setConnectionAccess] =
+    useState<ConnectionAccess | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionListReady, setSessionListReady] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(() =>
@@ -374,6 +399,12 @@ export function App() {
   const [paciumQueueInspection, setPaciumQueueInspection] =
     useState<PaciumQueueInspectionState>(CLOSED_QUEUE_INSPECTION);
   const paciumQueueInspectionRef = useRef(paciumQueueInspection);
+  const [paciumContext, setPaciumContext] = useState<PaciumContextViewState>(
+    initialPaciumContextState,
+  );
+  const paciumContextRef = useRef(paciumContext);
+  const [paciumContextOpen, setPaciumContextOpen] = useState(false);
+  const paciumContextOpenRef = useRef(paciumContextOpen);
   const [editingPaciumRole, setEditingPaciumRole] =
     useState<PaciumRoleId | null>(null);
   const roleSaveRequestRef = useRef<{
@@ -399,6 +430,8 @@ export function App() {
   paciumPromptRef.current = paciumPrompt;
   paciumQueueRef.current = paciumQueue;
   paciumQueueInspectionRef.current = paciumQueueInspection;
+  paciumContextRef.current = paciumContext;
+  paciumContextOpenRef.current = paciumContextOpen;
   pendingPaciumRoleLaunchRef.current = pendingPaciumRoleLaunch;
   workspaceModeRef.current = workspaceMode;
 
@@ -421,6 +454,7 @@ export function App() {
     if (event.type === "connection") {
       setConnection(event.state);
       if (event.state !== "connected") {
+        setConnectionAccess(null);
         const pendingRoleLaunch = pendingPaciumRoleLaunchRef.current;
         if (pendingRoleLaunch !== null) {
           pendingPaciumRoleLaunchRef.current = null;
@@ -519,6 +553,14 @@ export function App() {
           setPaciumQueueInspection(closed);
           queueInspectorInvokerRef.current = null;
         }
+        if (paciumContextOpenRef.current) {
+          const cleared = clearPaciumContext();
+          paciumContextRef.current = cleared;
+          setPaciumContext(cleared);
+          paciumContextOpenRef.current = false;
+          setPaciumContextOpen(false);
+          contextInspectorInvokerRef.current = null;
+        }
       }
       return;
     }
@@ -549,6 +591,9 @@ export function App() {
       setPaciumQueue(next);
       return;
     }
+    if (event.message.type === "server.welcome") {
+      setConnectionAccess(event.message.connection);
+    }
     if (event.message.type === "command.result") {
       const currentPrompt = paciumPromptRef.current;
       const acceptedPrompt = acceptPaciumPromptResult(
@@ -565,6 +610,19 @@ export function App() {
         setNotice(
           `Terminal input accepted for ${targetLabel}. Agent handling is not confirmed.`,
         );
+      }
+      return;
+    }
+    if (event.message.type === "pacium.context") {
+      const accepted = acceptPaciumContextResponse(
+        paciumContextRef.current,
+        event.message.requestId,
+        event.message.observation,
+        paciumConfigRef.current,
+      );
+      if (accepted !== paciumContextRef.current) {
+        paciumContextRef.current = accepted;
+        setPaciumContext(accepted);
       }
       return;
     }
@@ -613,6 +671,8 @@ export function App() {
         event.message.requestId,
         event.message.inspection,
         event.message.decisionState,
+        event.message.deliveryState,
+        event.message.reconciliation,
       );
       if (accepted !== paciumQueueInspectionRef.current) {
         paciumQueueInspectionRef.current = accepted;
@@ -627,14 +687,94 @@ export function App() {
         event.message.result,
       );
       if (accepted !== paciumQueueInspectionRef.current) {
-        paciumQueueInspectionRef.current = accepted;
-        setPaciumQueueInspection(accepted);
+        let next = accepted;
+        if (
+          (event.message.result.status === "recorded" ||
+            event.message.result.status === "existing") &&
+          accepted.selection !== null &&
+          transportRef.current !== null
+        ) {
+          const inspectionRequestId =
+            transportRef.current.requestQueueItemInspection(
+              accepted.selection.identity,
+            );
+          next = beginQueueItemInspection(
+            accepted.selection,
+            inspectionRequestId,
+          );
+        }
+        paciumQueueInspectionRef.current = next;
+        setPaciumQueueInspection(next);
         setNotice(
           event.message.result.status === "recorded"
-            ? "Immutable local decision recorded. Nothing was delivered or executed."
+            ? "Immutable local decision recorded. Checking its accepted delivery method; nothing is sent automatically."
             : event.message.result.status === "existing"
-              ? "The existing immutable decision was recovered. Nothing was delivered or executed."
+              ? "The existing immutable decision was recovered. Checking its accepted delivery method; nothing is sent automatically."
               : `${event.message.result.error?.message ?? "The decision was not recorded."} Pacium did not retry or deliver anything.`,
+        );
+      }
+      return;
+    }
+    if (event.message.type === "pacium.queue.delivery") {
+      const accepted = acceptQueueDelivery(
+        paciumQueueInspectionRef.current,
+        event.message.requestId,
+        event.message.result,
+      );
+      if (accepted !== paciumQueueInspectionRef.current) {
+        let next = accepted;
+        if (
+          event.message.result.state.delivery !== null &&
+          accepted.selection !== null &&
+          transportRef.current !== null
+        ) {
+          const inspectionRequestId =
+            transportRef.current.requestQueueItemInspection(
+              accepted.selection.identity,
+            );
+          next = beginQueueItemInspection(
+            accepted.selection,
+            inspectionRequestId,
+          );
+        }
+        paciumQueueInspectionRef.current = next;
+        setPaciumQueueInspection(next);
+        setNotice(queueDeliveryNotice(event.message.result));
+      }
+      return;
+    }
+    if (event.message.type === "pacium.queue.resolution") {
+      const accepted = acceptQueueResolution(
+        paciumQueueInspectionRef.current,
+        event.message.requestId,
+        event.message.result,
+      );
+      if (accepted !== paciumQueueInspectionRef.current) {
+        let next = accepted;
+        if (
+          (event.message.result.status === "recorded" ||
+            event.message.result.status === "existing") &&
+          accepted.selection !== null &&
+          transportRef.current !== null
+        ) {
+          const inspectionRequestId =
+            transportRef.current.requestQueueItemInspection(
+              accepted.selection.identity,
+            );
+          next = beginQueueItemInspection(
+            accepted.selection,
+            inspectionRequestId,
+          );
+        }
+        paciumQueueInspectionRef.current = next;
+        setPaciumQueueInspection(next);
+        setNotice(
+          event.message.result.status === "recorded"
+            ? "Human-labelled lifecycle evidence recorded. Rechecking the exact item and target."
+            : event.message.result.status === "existing"
+              ? "The existing lifecycle evidence was recovered. Rechecking the exact item and target."
+              : (event.message.result.error?.message ??
+                "The lifecycle label was not recorded."),
         );
       }
       return;
@@ -655,6 +795,22 @@ export function App() {
         if (reconciled !== paciumQueueInspectionRef.current) {
           paciumQueueInspectionRef.current = reconciled;
           setPaciumQueueInspection(reconciled);
+        }
+        const reconciledContext = reconcilePaciumContextConfig(
+          paciumContextRef.current,
+          accepted,
+        );
+        if (reconciledContext !== paciumContextRef.current) {
+          paciumContextRef.current = reconciledContext;
+          setPaciumContext(reconciledContext);
+          if (paciumContextOpenRef.current) {
+            paciumContextOpenRef.current = false;
+            setPaciumContextOpen(false);
+            contextInspectorInvokerRef.current = null;
+            setNotice(
+              "Control context closed because the accepted Pacium definition changed. Terminals and source files are unchanged.",
+            );
+          }
         }
       }
       const savedRole = roleSaveRequestRef.current;
@@ -837,6 +993,19 @@ export function App() {
       event.message.type === "error" &&
       event.message.requestId !== undefined
     ) {
+      const rejectedContext = rejectPaciumContextResponse(
+        paciumContextRef.current,
+        event.message.requestId,
+        `Control context could not be inspected. ${event.message.message}`,
+      );
+      if (rejectedContext !== paciumContextRef.current) {
+        paciumContextRef.current = rejectedContext;
+        setPaciumContext(rejectedContext);
+        setNotice(
+          "Control context inspection failed. Terminals and configured files remain unchanged.",
+        );
+        return;
+      }
       const rejectedPrompt = rejectPaciumPromptResult(
         paciumPromptRef.current,
         event.message.requestId,
@@ -858,6 +1027,32 @@ export function App() {
         setPaciumQueue(interruptedQueue);
         setNotice(
           `Queue source refresh failed. ${event.message.message} Terminals and source files are unchanged.`,
+        );
+        return;
+      }
+      const interruptedDelivery = interruptQueueDelivery(
+        paciumQueueInspectionRef.current,
+        event.message.requestId,
+        `Delivery outcome is not confirmed. ${event.message.message}`,
+      );
+      if (interruptedDelivery !== paciumQueueInspectionRef.current) {
+        paciumQueueInspectionRef.current = interruptedDelivery;
+        setPaciumQueueInspection(interruptedDelivery);
+        setNotice(
+          "Delivery outcome is not confirmed. Pacium did not retry; reopen the exact item to inspect durable state.",
+        );
+        return;
+      }
+      const interruptedResolution = interruptQueueResolution(
+        paciumQueueInspectionRef.current,
+        event.message.requestId,
+        `Lifecycle outcome is not confirmed. ${event.message.message}`,
+      );
+      if (interruptedResolution !== paciumQueueInspectionRef.current) {
+        paciumQueueInspectionRef.current = interruptedResolution;
+        setPaciumQueueInspection(interruptedResolution);
+        setNotice(
+          "Lifecycle outcome is not confirmed. Reopen the exact item before another deliberate action.",
         );
         return;
       }
@@ -1562,10 +1757,36 @@ export function App() {
     return new Map(
       sessions.map((session) => [
         session.id,
-        deriveProcessAttention(session, observedAt),
+        deriveSessionAttention(session, observedAt),
       ]),
     );
   }, [sessions]);
+  const paciumWorkers = useMemo(
+    () =>
+      buildPaciumWorkersProjection({
+        config: paciumConfig,
+        connection,
+        sessions,
+        launchPresets,
+        attentionBySession,
+        selectedChanges:
+          selectedSession === null
+            ? null
+            : {
+                sessionId: selectedSession.id,
+                state: selectedRepositoryChanges,
+              },
+      }),
+    [
+      attentionBySession,
+      connection,
+      launchPresets,
+      paciumConfig,
+      selectedRepositoryChanges,
+      selectedSession,
+      sessions,
+    ],
+  );
   const selectedAttention =
     selectedSession === null
       ? null
@@ -2168,6 +2389,87 @@ export function App() {
     setPanelVisibility(toggleSidebar(panelViewRef.current ?? panelView));
   };
 
+  const closePaciumContextInspector = () => {
+    const cleared = clearPaciumContext();
+    paciumContextRef.current = cleared;
+    setPaciumContext(cleared);
+    paciumContextOpenRef.current = false;
+    setPaciumContextOpen(false);
+    const invoker = contextInspectorInvokerRef.current;
+    contextInspectorInvokerRef.current = null;
+    window.requestAnimationFrame(() => {
+      if (invoker?.isConnected) {
+        invoker.focus();
+        return;
+      }
+      document.getElementById("pacium-context-trigger")?.focus();
+    });
+  };
+
+  const inspectPaciumContext = () => {
+    const transport = transportRef.current;
+    const observation = visiblePaciumConfig(paciumConfigRef.current);
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      observation?.status !== "ready" ||
+      observation.workspace === null ||
+      observation.revision === null
+    ) {
+      setNotice(
+        "Control context needs a live connection and accepted Pacium definition. Terminals and files are unchanged.",
+      );
+      return;
+    }
+    const requestId = transport.requestPaciumContext();
+    const loading = beginPaciumContextInspection(
+      paciumContextRef.current,
+      requestId,
+      paciumConfigRef.current,
+    );
+    paciumContextRef.current = loading;
+    setPaciumContext(loading);
+  };
+
+  const openPaciumContextInspector = () => {
+    const transport = transportRef.current;
+    const observation = visiblePaciumConfig(paciumConfigRef.current);
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      observation?.status !== "ready" ||
+      observation.workspace === null ||
+      observation.revision === null
+    ) {
+      setNotice(
+        "Control context needs a live connection and accepted Pacium definition. Terminals and files are unchanged.",
+      );
+      return;
+    }
+    contextInspectorInvokerRef.current = activeControl(
+      "pacium-context-trigger",
+    );
+    if (paciumQueueInspectionRef.current.selection !== null) {
+      const closed = closeQueueItemInspection();
+      paciumQueueInspectionRef.current = closed;
+      setPaciumQueueInspection(closed);
+      queueInspectorInvokerRef.current = null;
+    }
+    paciumContextOpenRef.current = true;
+    setPaciumContextOpen(true);
+    setCapturedPaneId(null);
+    if (!panelViewRef.current?.inspectorOpen) {
+      setPanelVisibility({
+        ...(panelViewRef.current ?? panelView),
+        inspectorOpen: true,
+      });
+    }
+    inspectPaciumContext();
+    setNotice(
+      "Reading accepted objective, plan, and immutable decision evidence. Terminal selection is unchanged.",
+    );
+  };
+
   const toggleInspectorPanel = () => {
     if (
       panelViewRef.current?.inspectorOpen === true &&
@@ -2177,6 +2479,17 @@ export function App() {
       paciumQueueInspectionRef.current = closed;
       setPaciumQueueInspection(closed);
       queueInspectorInvokerRef.current = null;
+    }
+    if (
+      panelViewRef.current?.inspectorOpen === true &&
+      paciumContextOpenRef.current
+    ) {
+      const cleared = clearPaciumContext();
+      paciumContextRef.current = cleared;
+      setPaciumContext(cleared);
+      paciumContextOpenRef.current = false;
+      setPaciumContextOpen(false);
+      contextInspectorInvokerRef.current = null;
     }
     setPanelVisibility(toggleInspector(panelViewRef.current ?? panelView));
   };
@@ -2192,6 +2505,14 @@ export function App() {
     queueInspectorInvokerRef.current = activeControl(
       `queue-item-${selection.identity.sourceId}`,
     );
+    if (paciumContextOpenRef.current) {
+      const cleared = clearPaciumContext();
+      paciumContextRef.current = cleared;
+      setPaciumContext(cleared);
+      paciumContextOpenRef.current = false;
+      setPaciumContextOpen(false);
+      contextInspectorInvokerRef.current = null;
+    }
     setCapturedPaneId(null);
     const requestId = transport.requestQueueItemInspection(selection.identity);
     const loading = beginQueueItemInspection(selection, requestId);
@@ -2264,6 +2585,73 @@ export function App() {
     );
   };
 
+  const deliverQueueDecision = () => {
+    const transport = transportRef.current;
+    const current = paciumQueueInspectionRef.current;
+    const deliveryState = current.deliveryState;
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      current.status !== "ready" ||
+      current.decisionState?.status !== "decided" ||
+      deliveryState === null ||
+      (deliveryState.status !== "ready" &&
+        deliveryState.status !== "ready_retry")
+    ) {
+      setNotice(
+        "This exact immutable decision is not ready for delivery. No target or terminal was changed.",
+      );
+      return;
+    }
+    const decision = current.decisionState.decision;
+    const requestId = transport.deliverQueueDecision(
+      decision.decisionId,
+      decision.decisionHash,
+    );
+    const submitting = beginQueueDelivery(current, requestId);
+    paciumQueueInspectionRef.current = submitting;
+    setPaciumQueueInspection(submitting);
+    setNotice(
+      deliveryState.status === "ready_retry"
+        ? "Sending the sole human-unlocked retry to the revalidated exact target. The first attempt remains immutable."
+        : deliveryState.target.type === "answer_file"
+          ? "Publishing the immutable decision to the one accepted answer-file target. Existing files are never overwritten."
+          : `Sending one comment-prefixed decision line to the accepted ${roleLabel(deliveryState.target.role)} session. Terminal acceptance will not confirm agent handling.`,
+    );
+  };
+
+  const resolveQueueDecision = (request: QueueResolutionRequest) => {
+    const transport = transportRef.current;
+    const current = paciumQueueInspectionRef.current;
+    const decision =
+      current.decisionState?.status === "decided"
+        ? current.decisionState.decision
+        : null;
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      current.status !== "ready" ||
+      current.reconciliation === null ||
+      decision === null ||
+      request.decisionId !== decision.decisionId ||
+      request.decisionHash !== decision.decisionHash
+    ) {
+      setNotice(
+        "This exact decision is not ready for a lifecycle label. External state was not changed.",
+      );
+      return;
+    }
+    const requestId = transport.resolveQueueDecision(request);
+    const submitting = beginQueueResolution(current, requestId, request);
+    paciumQueueInspectionRef.current = submitting;
+    setPaciumQueueInspection(submitting);
+    setNotice(
+      request.action === "confirmed_not_delivered"
+        ? "Recording human confirmation only. This does not send the retry."
+        : "Recording one human-labelled lifecycle record. No queue text or requested action is executed.",
+    );
+  };
+
   const closePaciumQueueInspector = () => {
     const sourceId =
       paciumQueueInspectionRef.current.selection?.identity.sourceId ?? null;
@@ -2296,6 +2684,12 @@ export function App() {
       paciumQueueInspectionRef.current = closed;
       setPaciumQueueInspection(closed);
       queueInspectorInvokerRef.current = null;
+      const clearedContext = clearPaciumContext();
+      paciumContextRef.current = clearedContext;
+      setPaciumContext(clearedContext);
+      paciumContextOpenRef.current = false;
+      setPaciumContextOpen(false);
+      contextInspectorInvokerRef.current = null;
     }
     const saved = saveWorkspaceMode(window.localStorage, next);
     setNotice(
@@ -2576,6 +2970,7 @@ export function App() {
           {workspaceMode === "pacium" && (
             <>
               <PaciumModeSummaryCard
+                onOpenContext={openPaciumContextInspector}
                 onRetry={() => transportRef.current?.requestPaciumConfig()}
                 summary={paciumModeSummary}
               />
@@ -2585,6 +2980,10 @@ export function App() {
                 onOpen={selectSession}
                 onRetry={() => transportRef.current?.requestPaciumConfig()}
                 roles={paciumRoleModels}
+              />
+              <PaciumWorkers
+                onOpen={selectSession}
+                projection={paciumWorkers}
               />
               <PaciumQueueSources
                 onOpenItem={openPaciumQueueItem}
@@ -2751,7 +3150,7 @@ export function App() {
             >
               <span aria-hidden="true">▐</span>
             </button>
-            <ConnectionBadge state={connection} />
+            <ConnectionBadge access={connectionAccess} state={connection} />
             <button
               aria-keyshortcuts="Meta+K Control+K"
               id="command-palette-trigger"
@@ -3064,20 +3463,30 @@ export function App() {
 
       <aside
         aria-label={
-          paciumQueueInspection.selection === null
-            ? "Session inspector"
-            : "Queue item inspector"
+          paciumQueueInspection.selection !== null
+            ? "Queue item inspector"
+            : paciumContextOpen
+              ? "Control context inspector"
+              : "Session inspector"
         }
         className="inspector"
         id="session-inspector"
       >
         <header>
           <span>
-            {paciumQueueInspection.selection === null ? "Session" : "Queue"}
+            {paciumQueueInspection.selection !== null
+              ? "Queue"
+              : paciumContextOpen
+                ? "Context"
+                : "Session"}
           </span>
           <span>
             <span className="panel-label">
-              {paciumQueueInspection.selection === null ? "Details" : "Item"}
+              {paciumQueueInspection.selection !== null
+                ? "Item"
+                : paciumContextOpen
+                  ? "Control"
+                  : "Details"}
             </span>
             <button
               aria-label="Close inspector"
@@ -3092,10 +3501,18 @@ export function App() {
         {paciumQueueInspection.selection !== null ? (
           <PaciumQueueInspector
             onBack={closePaciumQueueInspector}
+            onDeliver={deliverQueueDecision}
             onRecordApproval={recordQueueApprovalDecision}
             onRecordQuestion={recordQueueQuestionAnswer}
+            onResolve={resolveQueueDecision}
             requestingSessionLabel={queueRequestingSessionLabel}
             state={paciumQueueInspection}
+          />
+        ) : paciumContextOpen ? (
+          <PaciumContextInspector
+            onBack={closePaciumContextInspector}
+            onRefresh={inspectPaciumContext}
+            state={paciumContext}
           />
         ) : (
           <>
@@ -3728,15 +4145,6 @@ function StatusDot({ state }: { state: string }) {
   return <span aria-hidden="true" className={`status-dot state-${state}`} />;
 }
 
-function ConnectionBadge({ state }: { state: ConnectionState }) {
-  return (
-    <span className={`connection-badge connection-${state}`}>
-      <StatusDot state={state === "connected" ? "live" : "waiting"} />
-      {state}
-    </span>
-  );
-}
-
 function Metadata({
   label,
   children,
@@ -3758,6 +4166,21 @@ function compactPath(path: string): string {
     return path;
   }
   return `…/${parts.slice(-2).join("/")}`;
+}
+
+function queueDeliveryNotice(result: QueueDeliveryResult): string {
+  if (result.status === "delivered") {
+    return result.state.target?.type === "role_prompt"
+      ? "Terminal input accepted for the configured role. Agent handling is not confirmed."
+      : "The private answer file was created at the configured target.";
+  }
+  if (result.status === "existing") {
+    return "The existing immutable delivery attempt was recovered. Pacium did not invoke the transport again.";
+  }
+  if (result.status === "unknown") {
+    return "Delivery outcome is unknown. The side effect may have occurred, and Pacium will not retry it.";
+  }
+  return `${result.state.error?.message ?? "Delivery did not complete."} Pacium did not retry or choose another target.`;
 }
 
 function formatTime(iso: string): string {

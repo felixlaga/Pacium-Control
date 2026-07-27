@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildSecurityHeaders,
   canReadBootstrap,
   isAllowedOrigin,
   isLoopbackHostHeader,
@@ -41,5 +42,19 @@ describe("local transport security", () => {
         origins,
       ),
     ).toBe(false);
+  });
+
+  it("allows only the configured Serve WebSocket in remote CSP", () => {
+    const local = buildSecurityHeaders(null)["content-security-policy"];
+    expect(local).not.toContain("wss://");
+
+    const remote = buildSecurityHeaders({
+      origin: "https://pacium-host.example-tailnet.ts.net",
+      hostname: "pacium-host.example-tailnet.ts.net",
+      operatorLogins: new Set(["owner@example.com"]),
+    })["content-security-policy"];
+    expect(remote).toContain("wss://pacium-host.example-tailnet.ts.net");
+    expect(remote).not.toContain(" wss:;");
+    expect(remote).not.toContain("https://hostile.example");
   });
 });

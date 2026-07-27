@@ -5,9 +5,22 @@ Pacium configuration, the General/Pacium toggle, and pinned Meta/Orchestrator
 roles plus explicit terminal prompt targeting and conservative queue-file
 observation, whole-source queue classification, and a read-only queue
 list/original-text inspector plus immutable local question/approval decisions
-are complete enough for continued slicing; compatible delivery is next.
+and explicit compatible answer-file/role-prompt delivery, reconciliation,
+human-labelled lifecycle evidence, one bounded recovery retry, exact configured
+worker summaries, and read-only objective/plan plus recent-decision context are
+complete enough for continued slicing. Optional Tailscale Serve access is
+implemented at the application boundary, and the working-directory picker
+refresh is complete. The bounded provider observation contract is complete;
+the narrow Pacium-launched Claude Code observer is complete, and Codex native
+observation is next.
 
-Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
+Pacium Control now has an executable React application, loopback local server,
+direct-PTY session manager, typed WebSocket protocol, and automated terminal,
+Git, queue, and Pacium-context tests. This proves the bounded local
+compatibility workflow described below; it does not prove live provider-native
+Codex observation or management, a manual real-provider Claude canary, a real
+deployed tailnet/grants/public boundary, durable PTYs, packaging, or release
+readiness.
 
 ## Product direction
 
@@ -39,9 +52,19 @@ The secondary product is **Pacium mode**:
 - A three-panel React/Vite shell with xterm as the dominant workspace surface.
 - An in-memory direct-PTY session registry supporting create, list, input, resize, interrupt, exit, attach, snapshot, and deliberate close.
 - A loopback-only HTTP/WebSocket server with Host, Origin, ephemeral-token, path, schema, and payload-size checks.
+- Optional all-or-nothing Tailscale Serve startup configuration with one
+  canonical `*.ts.net` HTTPS Origin, bounded exact operator-login allowlist,
+  canonical local-Origin isolation, exact remote Host/Origin/login checks,
+  Funnel denial, and the unchanged ephemeral token for protected transport.
+- Protocol-20 per-socket Local or Tailscale/login evidence, plus one strict
+  nullable provider-observation snapshot per session, and a compact accessible
+  connection badge that clears stale identity on disconnect.
 - Bounded xterm headless snapshots that let a new browser transport attach to a still-live PTY.
 - A fixed server-owned Shell, Codex, and Claude Code launch catalog with honest executable availability.
-- A token-protected, read-only host directory browser with canonical paths, repository markers, filtering, hidden-folder control, breadcrumbs, and browser-local recent choices.
+- A token-protected, read-only host directory browser with canonical paths,
+  direct absolute-path navigation, repository markers, filtering,
+  hidden-folder control, breadcrumbs, failure-safe browser-local recent
+  choices, deterministic keyboard traversal, and honest recovery.
 - Canonical repository-root discovery and repository-grouped session navigation.
 - Protocol-9, Git-derived repository evidence for canonical root, branch or
   detached/unborn HEAD, full commit, main/linked worktree, observation time,
@@ -69,16 +92,28 @@ The secondary product is **Pacium mode**:
   Run/Cancel, pass/fail/timeout/cancel/error evidence, truncation and
   changed-HEAD warnings, browser-refresh recovery, and five-tab keyboard
   navigation.
-- A lazy fifth Activity inspector that projects current attention, direct-PTY
-  lifecycle, changed-file totals, three recent local commits, and the
-  current/latest verification run into at most seven deterministic facts with
-  explicit observed/occurred timestamps, source availability, partial errors,
-  Refresh, reconnect recovery, and no terminal/provider narrative.
-- Protocol-14 strict Pacium workspace configuration for explicit Meta,
+- A lazy fifth Activity inspector that projects current attention, validated
+  provider facts, provider observer health/freshness, direct-PTY lifecycle,
+  changed-file totals, three recent local commits, and the current/latest
+  verification run into at most seven deterministic facts with explicit
+  observed/occurred timestamps, source availability, partial errors, Refresh,
+  reconnect recovery, and no terminal/provider narrative.
+- A version-1 provider observation contract with fixed capability/activity/
+  diagnostic bounds, typed Claude/Codex extensions, distinct questions and
+  approvals, source/confidence/freshness evidence, secret-like diagnostic-key
+  rejection, launch-preset matching, and honest unavailable defaults.
+- A process-local Claude Code observer for Pacium-launched Claude PTYs with
+  fixed observation-only HTTP hooks, an independent random per-session token,
+  exact loopback-only authenticated ingress, installed-version detection,
+  bounded deduplication, typed lifecycle/tool/question/approval/completion/
+  failure evidence, optional strict status usage scalars, and no provider
+  decisions, settings-file edits, raw payload retention, or terminal coupling.
+- Protocol-17 strict Pacium workspace configuration for explicit Meta,
   Orchestrator, and worker session/preset bindings; canonical repositories;
   verification references; and queue, future-delivery, objective, and plan path
-  metadata without execution authority, plus content-free queue-source
-  observation.
+  metadata without generic execution authority, plus content-free queue-source
+  observation plus identity-only explicit decision-delivery and lifecycle
+  resolution requests.
 - One private server-owned version-1 `pacium.json` with a 96 KiB ceiling,
   complete graph/path/catalog validation, optimistic revisions,
   same-directory atomic replacement, corruption preservation, read-time drift
@@ -139,15 +174,53 @@ The secondary product is **Pacium mode**:
   exact current workspace/source/observation/hash/item identity and classified
   type, with UTF-8 byte bounds and rejection of browser-supplied actor,
   timestamp, decision ID/hash, delivery, command, or authority fields.
-- A private version-1 `queue-state.json` with a 4 MiB/4,096-record ceiling,
+- A private version-3 `queue-state.json` with a 4 MiB/4,096-record ceiling,
   strict schema/uniqueness/hash validation, serialized same-directory atomic
-  append, identical-replay detection, competing-decision rejection,
+  mutation, compatible version-1/2 reads and first-mutation migration,
+  identical-replay detection, competing-decision rejection, bounded immutable
+  lifecycle resolutions, at most two delivery attempts per decision,
   corruption preservation, and explicit unknown-durability recovery.
 - Question answer and optional-note controls plus distinct approval/denial
   controls with inline confirmation, pending and failure states, stale-evidence
   clearing, and immutable local record presentation after reload or server
   restart. Recording does not deliver, acknowledge, execute, or send terminal
   input.
+- A separate decided-item Delivery section that resolves only the exact
+  accepted source method and target, shows ready/unconfigured/unavailable/
+  delivering/delivered/failed/unknown truth, and requires explicit
+  Review/Cancel/Confirm before invoking one transport.
+- Deterministic private mode-`0600` answer-file delivery with atomic no-clobber
+  publication, plus one bounded JSON-escaped comment line to an exact
+  configured live Meta or Orchestrator PTY. Terminal acceptance does not claim
+  provider receipt, handling, acknowledgement, application, or completion.
+- Durable intent-before-effect ordering, immutable attempt records, duplicate
+  suppression, and restart recovery. Failed or unknown first attempts remain
+  locked until an explicit human `confirmed_not_delivered` resolution; one
+  separately confirmed second attempt is the absolute limit.
+- Content-free source-rewrite, source-degradation, and exact-hash duplicate
+  conflicts joined to immutable decisions without exposing or modifying queue
+  text.
+- On-demand, no-follow answer-target inspection that separates exact transport
+  artifacts from unavailable provider acknowledgement and reports changed,
+  unsafe, oversized, or unreadable targets as conflicts.
+- Explicit Review/Cancel/Confirm lifecycle labels for acknowledged, applied,
+  unable-to-apply, confirmed-not-delivered, and superseded evidence. These are
+  server-authored, immutable, hash-verified, and visibly human-labelled.
+- A compact configured Worker group that preserves accepted order, resolves
+  only exact session UUIDs, capability-labels preset-only workers as not
+  started, opens only an existing exact PTY, and projects source-labelled
+  process, command, repository, attention, freshness, and already-loaded
+  selected-session change evidence without task or authorship claims.
+- An explicit Control-context inspector backed by one identity-free protocol
+  request. It reads only accepted objective and plan paths with stable bounded
+  no-follow regular-file/strict-UTF-8 checks, renders inert current text and
+  provenance, and reconstructs at most twelve newest immutable decisions with
+  local response, latest transport attempt, and latest human-labelled
+  lifecycle evidence kept separate.
+- Request/workspace-revision correlation plus config, disconnect, mode, Back,
+  and route invalidation that prevents stale context text from crossing an
+  accepted definition. Context projections are disposable and neither read
+  trigger writes files, queue state, configuration, Git, or terminal input.
 - Mode changes and reload preserve selected PTY, terminal tabs/splits,
   inspector context, panel state, terminal sync/input ownership, and existing
   Git/check evidence.
@@ -173,35 +246,71 @@ The secondary product is **Pacium mode**:
 - No general browser editor for workspace identity, repositories, workers,
   queue sources, delivery methods, context sources, or verification references,
   and no shortcut customization.
-- No Claude or Codex observer.
-- No multi-item parsing, compatible decision delivery,
-  acknowledgement/conflicts/supersession, worker role surface, or
-  objective/plan content presentation.
+- No live Codex observer, externally launched Claude attachment, packaged
+  Claude status-line companion, or provider decision/control actions. The
+  Claude hook transport is fixture/integration verified but has not completed a
+  manual real-provider canary on this machine.
+- No multi-item parsing, provider-native acknowledgement/activity, worker
+  launching/reconfiguration, task state, or causal decision-to-Git/terminal
+  correlation.
 - No tmux adapter.
 
 Do not extrapolate from the working terminal slice to any capability in this list.
 
 ## Current evidence
 
-Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
+Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 91 test files and 546 tests,
-  plus the 834.31 kB web and 227.62 kB local-server production builds passed.
-- `pnpm test:e2e`: ten Chromium workflows passed for skip navigation, panel
+- `pnpm verify`: formatting, lint, type checking, 118 test files and 743 tests,
+  plus the 913.94 kB web JavaScript, 109.81 kB stylesheet, and 368.49 kB
+  local-server production builds passed.
+- `pnpm test:e2e`: fourteen Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
   changed-file/diff/history/Activity inspection, and configured verification
   run/reload/cancel without terminal reselection. General/Pacium coverage
   proved pointer, chord, palette, reload persistence, unchanged selected PTY
   and inspector context, configured-state presentation, and narrow layouts.
+- PC-077 browser evidence kept the exact current connection authority visible
+  as Local through ordinary operation, reload, narrow layout, forced colors,
+  and reduced motion without promoting terminal or provider output to identity.
+- PC-078 browser evidence recovered from an invalid first path through the
+  server-owned default, navigated an exact host path with `Cmd/Ctrl+L`, moved
+  filter/result focus by keyboard, returned one canonical folder without
+  launching a PTY, survived browser-storage denial, restored a recent choice
+  and invoking focus, and fit 320 CSS px plus 200% zoom with forced colors and
+  reduced motion.
+- PC-061 focused evidence passed 139 contract, Claude normalizer, PTY
+  environment, session lifecycle, HTTP/WebSocket boundary, attention, and
+  Activity tests. It covers exact Host/Origin/token/path/content-type/body
+  enforcement, empty no-decision responses, duplicate and provider-session
+  rejection, release-token invalidation, browser reconnect state, bounded
+  usage presentation, and exclusion of prompt/transcript/tool/status secrets.
+- PC-050 browser evidence projected one exact live worker and one preset-only
+  worker without launching or inferring either, selected only the existing
+  worker PTY, opened/refreshed/closed Control context with focus return,
+  preserved terminal selection across browser refresh and mode exit, rendered
+  accepted objective/plan text plus honest empty decision evidence, and fit
+  the 320 CSS px forced-colors/reduced-motion drawer. Authenticated integration
+  coverage proves exact source reads without mutation, bounded decision
+  summaries without notes/targets/queue text/PTY input, and reconstruction
+  after local-server restart.
 - PC-047 browser evidence recorded a bounded question answer, kept Escape in
   the answer field, recovered the immutable record after reload, invalidated
   exact text after a source rewrite, kept approval controls separate, cancelled
   and then confirmed an approval, preserved source/config/terminal state, and
   covered 320 CSS px, forced colors, and reduced motion. Store reconstruction
   separately proves local-server restart recovery.
+- PC-049 browser evidence separated exact answer-artifact presence from
+  provider acknowledgement, cancelled and confirmed explicit human lifecycle
+  labels, reconstructed the lifecycle after reload, and surfaced a stable
+  source rewrite as content-free conflict evidence. Authenticated integration
+  coverage proves schema-1/2 compatibility, local-server restart
+  reconstruction, exact answer-target states, monotonic lifecycle transitions,
+  a failed first role transport, its locked retry, one human-unlocked second
+  attempt, and rejection of a third attempt.
 - PC-042 browser evidence assigned an existing PTY to Meta, opened it without
   duplication, configured an Orchestrator fixed preset, launched one direct
   PTY, bound its exact created session ID, and restored both bindings after
@@ -235,12 +344,16 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
   keyboard-accessible at 200% zoom.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
-- The protocol-version-13 boundary passed strict contract, atomic-store,
+- The protocol-version-20 boundary passed strict contract, atomic-store,
   canonical path/reference, authenticated WebSocket revision/conflict, PTY
   survival, bounded queue reader/observer/classifier, content-free bulk item
   evidence, exact-current base64 text inspection, stale/config/disconnect
-  clearing, approval separation, and browser request-state tests on this
-  machine.
+  clearing, approval separation, source-conflict derivation, no-follow target
+  reconciliation, human-labelled lifecycle, one-retry gating, bounded context
+  file/decision projection, stale-revision rejection, exact configured-worker
+  projection, browser request-state, optional Serve startup/request
+  classification, exact remote WSS, per-socket connection evidence, and
+  stale-identity tests on this machine.
 - Built server startup: served the application and health endpoint on `127.0.0.1:4174`.
 - Hostile bootstrap Origin: returned HTTP 403.
 
@@ -255,9 +368,12 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 819.07 kB before gzip and emits Vite's chunk-size
+- The current web bundle is 913.94 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
-- Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
+- Proxy-shaped Serve application tests do not prove the owner's real Tailscale
+  installation, DNS/certificate, deployed grants, Funnel/public/LAN state, or
+  revocation propagation. The active runbook keeps those as an explicit
+  release gate.
 
 ## Active decisions
 
@@ -285,7 +401,9 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Begin PC-048 with explicit compatible decision delivery, idempotency, and
-honest delivered/unknown/failed state without blind retry. Complete the pinned
-Node.js 24 clean-install, CI, broader browser/security, manual accessibility,
-and sustained-output gates before release.
+Implement the Codex observer in PC-062, then explicit capability degradation
+in PC-064 before durability and packaging.
+Complete the real Tailscale
+Serve/grants/Funnel/public canary, pinned Node.js 24 clean-install, CI, broader
+browser/security, manual accessibility, and sustained-output gates before
+release.

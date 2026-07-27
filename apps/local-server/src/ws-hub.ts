@@ -3,6 +3,7 @@ import {
   MAX_APPLICATION_MESSAGE_BYTES,
   PROTOCOL_VERSION,
   encodeTerminalDataFrame,
+  queueDecisionError,
   type ClientMessage,
   type QueueDecisionRequestIdentity,
   type ServerMessage,
@@ -14,13 +15,18 @@ import {
   PaciumConfigStoreError,
   type PaciumConfigStore,
 } from "./pacium-config-store.js";
+import { PaciumContextService } from "./pacium-context-service.js";
 import { presetCapabilities } from "./launch-presets.js";
+import { classifyRequestAccess, type RequestAccess } from "./remote-access.js";
 import {
   createQueueDecisionService,
   type QueueDecisionService,
 } from "./queue-decision-service.js";
+import { QueueDeliveryService } from "./queue-delivery-service.js";
 import { QueueDecisionStore } from "./queue-decision-store.js";
+import { withQueueSourceConflicts } from "./queue-conflict-model.js";
 import { QueueObserver } from "./queue-observer.js";
+import { QueueReconciliationService } from "./queue-reconciliation-service.js";
 import { SessionError, type SessionManager } from "./session-manager.js";
 
 interface ConnectedClient {
@@ -50,13 +56,40 @@ export class WebSocketHub {
     private readonly sessions: SessionManager,
     private readonly paciumConfig: PaciumConfigStore,
     private readonly queueObserver: QueueObserver = new QueueObserver(),
+    private readonly queueState: QueueDecisionStore = new QueueDecisionStore(
+      config.dataDirectory,
+    ),
     private readonly queueDecisions: QueueDecisionService = createQueueDecisionService(
       queueObserver,
-      new QueueDecisionStore(config.dataDirectory),
+      queueState,
+    ),
+    private readonly queueDeliveries: QueueDeliveryService = new QueueDeliveryService(
+      paciumConfig,
+      queueObserver,
+      queueState,
+      sessions,
+    ),
+    private readonly queueReconciliation: QueueReconciliationService = new QueueReconciliationService(
+      queueState,
+      {
+        isDeliveryActive: (deliveryId) => queueDeliveries.isActive(deliveryId),
+      },
+    ),
+    private readonly paciumContext: PaciumContextService = new PaciumContextService(
+      paciumConfig,
+      queueState,
+      {
+        isDeliveryActive: (deliveryId) => queueDeliveries.isActive(deliveryId),
+      },
     ),
   ) {
-    this.server.on("connection", (socket) => {
-      this.handleConnection(socket);
+    this.server.on("connection", (socket, request) => {
+      const access = classifyRequestAccess(request, this.config, "websocket");
+      if (access === null) {
+        socket.close(1008, "Connection authority is unavailable");
+        return;
+      }
+      this.handleConnection(socket, access);
     });
 
     this.unsubscribeData = sessions.onTerminalData((event) => {
@@ -108,9 +141,13 @@ export class WebSocketHub {
     });
 
     this.unsubscribeQueue = queueObserver.subscribe((observation) => {
-      this.broadcast({
-        type: "pacium.queue.sources.updated",
-        observation,
+      void this.enrichQueueObservation(observation).then((enriched) => {
+        if (this.queueObserver.snapshot() === observation) {
+          this.broadcast({
+            type: "pacium.queue.sources.updated",
+            observation: enriched,
+          });
+        }
       });
     });
   }
@@ -127,7 +164,7 @@ export class WebSocketHub {
     this.server.close();
   }
 
-  private handleConnection(socket: WebSocket): void {
+  private handleConnection(socket: WebSocket, access: RequestAccess): void {
     const client: ConnectedClient = {
       socket,
       subscriptions: new Set(),
@@ -140,6 +177,7 @@ export class WebSocketHub {
       serverId: this.config.serverId,
       platform: process.platform,
       defaultCwd: this.config.defaultCwd,
+      connection: access,
       capabilities: {
         directPty: true,
         reconnectSnapshot: true,
@@ -425,13 +463,20 @@ export class WebSocketHub {
         await this.queueObserver.syncConfig(observation);
         return;
       }
+      case "pacium.context.inspect":
+        this.send(client.socket, {
+          type: "pacium.context",
+          requestId: message.requestId,
+          observation: await this.paciumContext.inspect(),
+        });
+        return;
       case "pacium.queue.observe": {
         const config = await this.paciumConfig.inspect();
         const observation = await this.queueObserver.syncConfig(config);
         this.send(client.socket, {
           type: "pacium.queue.sources",
           requestId: message.requestId,
-          observation,
+          observation: await this.enrichQueueObservation(observation),
         });
         return;
       }
@@ -442,12 +487,53 @@ export class WebSocketHub {
           inspection.status === "ready"
             ? await this.queueDecisions.inspect(identity)
             : null;
+        const deliveryState =
+          decisionState?.status === "decided"
+            ? await this.queueDeliveries.inspect(
+                decisionState.decision.decisionId,
+                decisionState.decision.decisionHash,
+              )
+            : null;
+        const enriched = await this.enrichQueueObservation(
+          this.queueObserver.snapshot(),
+        );
+        const conflicts =
+          enriched.status === "ready"
+            ? (enriched.sources.find(
+                (source) => source.sourceId === identity.sourceId,
+              )?.conflicts ?? [])
+            : [];
+        const reconciliation =
+          decisionState?.status === "decided"
+            ? await this.queueReconciliation.inspectItem(
+                decisionState.decision.decisionId,
+                decisionState.decision.decisionHash,
+                conflicts,
+              )
+            : null;
         inspection = this.queueObserver.inspectItem(identity);
+        const completeDecidedEvidence =
+          decisionState?.status !== "decided" ||
+          (deliveryState !== null && reconciliation !== null);
+        const responseDecisionState =
+          inspection.status !== "ready"
+            ? null
+            : completeDecidedEvidence
+              ? decisionState
+              : {
+                  status: "unavailable" as const,
+                  decision: null,
+                  error: queueDecisionError("DECISION_STATE_UNAVAILABLE"),
+                };
         this.send(client.socket, {
           type: "pacium.queue.item",
           requestId: message.requestId,
           inspection,
-          decisionState: inspection.status === "ready" ? decisionState : null,
+          decisionState: responseDecisionState,
+          deliveryState:
+            responseDecisionState?.status === "decided" ? deliveryState : null,
+          reconciliation:
+            responseDecisionState?.status === "decided" ? reconciliation : null,
         });
         return;
       }
@@ -477,6 +563,30 @@ export class WebSocketHub {
           });
         }
         return;
+      case "pacium.queue.decision.deliver":
+        this.send(client.socket, {
+          type: "pacium.queue.delivery",
+          requestId: message.requestId,
+          result: await this.queueDeliveries.deliver(
+            message.decisionId,
+            message.decisionHash,
+          ),
+        });
+        return;
+      case "pacium.queue.decision.resolve":
+        this.send(client.socket, {
+          type: "pacium.queue.resolution",
+          requestId: message.requestId,
+          result: await this.queueReconciliation.resolve({
+            decisionId: message.decisionId,
+            decisionHash: message.decisionHash,
+            action: message.action,
+            delivery: message.delivery,
+            relatedDecision: message.relatedDecision,
+            note: message.note,
+          }),
+        });
+        return;
       case "session.close":
         this.sessions.close(
           message.sessionId,
@@ -488,6 +598,31 @@ export class WebSocketHub {
 
   private sendResult(socket: WebSocket, requestId: string): void {
     this.send(socket, { type: "command.result", requestId, ok: true });
+  }
+
+  private async enrichQueueObservation(
+    observation: ReturnType<QueueObserver["snapshot"]>,
+  ): Promise<ReturnType<QueueObserver["snapshot"]>> {
+    if (observation.status !== "ready") {
+      return observation;
+    }
+    const [config, state] = await Promise.all([
+      this.paciumConfig.inspect(),
+      this.queueState.inspect(),
+    ]);
+    if (
+      config.status !== "ready" ||
+      config.workspace === null ||
+      config.revision !== observation.workspaceRevision ||
+      state.status === "error"
+    ) {
+      return observation;
+    }
+    return withQueueSourceConflicts(
+      observation,
+      config.workspace.id,
+      state.decisions,
+    );
   }
 
   private sendError(

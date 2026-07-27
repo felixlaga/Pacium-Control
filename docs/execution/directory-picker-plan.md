@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `aef86931a180a4a66aa08c9a6f8575a3b422f2c5`
 - Target milestone: Milestone 1
-- Status: Implemented; rendered validation pending
+- Status: Implemented and browser-validated through PC-078
 
 ## Objective
 
@@ -120,4 +120,6 @@ The browser uses the bootstrap token to request bounded directory summaries from
 - `pnpm verify` passed on 2026-07-27 with 13 test files and 45 tests.
 - The resolver, shared schema, protected HTTP route, browser transport, and picker-state boundaries are covered by deterministic tests.
 - The development UI and direct `/api/health` endpoint returned HTTP 200.
-- Rendered browser and accessibility validation could not run because no browser backend was available; that evidence remains explicitly open.
+- PC-078 subsequently passed three dedicated Chromium workflows for the
+  rendered navigation, recovery, storage-denial, focus, responsive, zoom,
+  forced-colors, and reduced-motion boundary.

@@ -2,8 +2,8 @@
 
 PC-040 introduced one server-owned configuration document for Pacium mode
 consumers. Later slices added the Pacium toggle, role binding, prompt
-targeting, and bounded queue-source observation. File delivery and
-objective/plan reads remain absent.
+targeting, bounded queue-source observation, immutable decisions, and explicit
+compatible delivery. Objective/plan reads remain absent.
 
 ## Location
 
@@ -175,7 +175,7 @@ command, prompt, delivery, or shell authority.
 The 96 KiB file ceiling leaves deterministic room inside the 128 KiB
 application-message envelope.
 
-## Protocol 14
+## Protocol 17
 
 The authenticated WebSocket protocol retains the protocol-10 configuration
 operations:
@@ -307,9 +307,125 @@ fresh exact inspection.
 A ready exact item carries a separate `open | decided | unavailable` decision
 state. `decided` includes the stored record; `unavailable` uses a fixed safe
 diagnostic and exposes no mutation control. Source/config drift, a type
-mismatch, unsafe state, or disconnect fails closed. Decision recording grants
-no delivery, acknowledgement, provider callback, terminal input, shell, or
-execution authority. PC-048 owns compatible delivery.
+mismatch, unsafe state, or disconnect fails closed. Decision recording itself
+grants no delivery, acknowledgement, provider callback, terminal input, shell,
+or execution authority.
+
+Protocol 16 retains the separate identity-only delivery mutation:
+
+```text
+pacium.queue.decision.deliver(requestId, decisionId, decisionHash)
+pacium.queue.delivery(requestId, result)
+```
+
+The browser cannot submit a method, path, role, session, payload, terminal
+bytes, command, or retry flag. The server resolves and revalidates the exact
+decision, current source identity, workspace revision, configured method, and
+accepted target. It persists one hashed intent before creating an answer file
+or sending one role-prompt line. A duplicate joins the existing attempt;
+completed or uncertain attempts are not replayed automatically.
+
+Valid queue-state schemas 1 and 2 remain readable. The first later mutation
+writes schema 3 with unchanged prior decisions and attempts plus bounded,
+immutable, hash-verified lifecycle resolutions. Answer files contain
+deterministic `pacium_decision_v1` JSON and use private no-clobber creation.
+Role prompts are one bounded JSON-escaped comment line plus one carriage return
+to the exact configured live role session. PTY acceptance proves only terminal
+transport, not provider handling, acknowledgement, application, or completion.
+
+Protocol 16 also adds one identity-only lifecycle mutation:
+
+```text
+pacium.queue.decision.resolve(
+  requestId,
+  decisionId,
+  decisionHash,
+  action,
+  deliveryId?,
+  deliveryHash?,
+  relatedDecisionId?,
+  relatedDecisionHash?,
+  note?
+)
+pacium.queue.resolution(requestId, result)
+```
+
+The server authors the lifecycle source, operator label, timestamp, identifier,
+and canonical hash. `acknowledged`, `applied`, `unable_to_apply`,
+`confirmed_not_delivered`, and `superseded` remain explicitly human-labelled;
+they are never inferred from terminal activity, source rewrites, or answer-file
+presence. Supersession requires another existing decision for the same
+accepted source and a distinct exact item identity.
+
+An exact item inspection recomputes bounded source-conflict and answer-artifact
+evidence without polling. It follows no links and reads only the accepted
+answer target. Exact bytes mean `transport_artifact_present`, not
+acknowledgement. A failed or unknown first attempt can unlock one explicit
+second attempt only after its `confirmed_not_delivered` resolution; the server
+revalidates the full boundary, and no third attempt is valid.
+
+Protocol 17 adds one separate read-only Control-context request:
+
+```text
+pacium.context.inspect(requestId)
+pacium.context(requestId, observation)
+```
+
+The request contains no workspace ID/revision, path, source kind, queue
+identity, count, filter, target, session, command, or content. The server
+snapshots the current accepted workspace, reads only its configured objective
+and plan paths, inspects validated queue state, then rechecks the same workspace
+ID and revision before returning evidence.
+
+Each context source independently reports `unconfigured`, `ready`, `empty`,
+`missing`, `changing`, `oversized`, `invalid_utf8`, `unsafe_type`, or
+`unreadable`. Ready content is capped at 32 KiB, transported as strict base64,
+and includes path, byte length, modification/observation time, and SHA-256
+provenance. Reads use no-follow regular-file semantics, stable metadata, and
+strict UTF-8. They never create, watch, poll, repair, truncate, or write a
+source.
+
+Recent decision evidence is derived only from validated `queue-state.json`,
+sorted newest first with deterministic ties, and capped at twelve. A question
+answer exposes only a 320-UTF-8-byte preview; an approval exposes only its exact
+approved/denied outcome. Each summary keeps the local record, latest durable
+transport attempt, and latest explicitly human-labelled lifecycle result
+separate. Notes, delivery target paths, queue text, terminal bytes, commands,
+environments, and provider content are excluded.
+
+The browser accepts a response only for its current pending request and
+accepted workspace revision. Disconnect, configuration drift, mode exit, Back,
+or another inspector route clears decoded content. Context observations and
+worker rows are disposable projections; protocol 17 changes neither
+`pacium.json` schema 1 nor `queue-state.json` schema 3.
+
+## Protocol 18 connection authority
+
+Protocol 18 retains every protocol-17 configuration, queue, decision,
+reconciliation, and Control-context message. It adds one strict disposable
+field to `server.welcome`:
+
+```text
+connection = { kind: "local" }
+           | { kind: "tailscale", login: "<exact verified login>" }
+```
+
+The browser cannot submit, restore, or relabel this evidence. The HTTP upgrade
+classifies the current request from the accepted startup configuration, exact
+Host/Origin, verified Serve login, fetch metadata, and token before accepting
+the socket. The hub independently projects that accepted request authority into
+the welcome message.
+
+The schema excludes display name, profile picture, source/forwarded IP, device,
+tag, grant, allowlist, Origin, Host, and token. Browser disconnect clears the
+current value. No identity enters `pacium.json`, `queue-state.json`, terminal
+metadata, or browser preference storage.
+
+Remote mode changes no workspace configuration authority. The same exact
+authenticated messages operate the same-host PTYs and files after
+connection establishment. See the
+[Serve operations runbook](../operations/tailscale-serve.md) for the startup
+environment and external network boundary.
 
 ## Atomicity and recovery
 
@@ -342,15 +458,25 @@ repairs, renames, deletes, or overwrites invalid state.
 Existing exact Origin and ephemeral-token checks protect all operations. The
 browser cannot choose either state-file location or submit commands,
 arguments, executables, environments, signals, terminal bytes, queue source
-content, objective/plan content, actor identity, timestamps, decision
+content, browser-selected objective/plan paths, actor identity, timestamps, decision
 identifiers or hashes, verification definitions, or generic write targets.
 The only accepted decision content is a protocol-14 bounded question answer or
-approval outcome plus an optional bounded note for the exact current item.
+approval outcome plus an optional bounded note for the exact current item. A
+protocol-16 delivery request contains only its immutable decision identity; a
+resolution request contains only exact immutable references, one fixed action,
+and an optional bounded note.
+
+A protocol-17 context request contains only a server-correlated request ID.
+The server alone resolves the accepted objective/plan paths and decision state;
+the request grants no generic file-read, queue-read, terminal, Git, shell, or
+provider authority.
 
 Configured paths are metadata candidates until the local server canonicalizes
 them. Queue observation can read only the accepted queue-source subset after
 canonicalization; classification derives only bounded data-only metadata and
 does not expose, render, execute, or log contents in bulk. Pacium persists only
-application-owned decision answer/outcome/note content, never the queue source
-text. It does not persist provider tokens, passwords, full environments,
-classifications, terminal transcripts, delivery attempts, or acknowledgements.
+application-owned decision answer/outcome/note content, bounded delivery
+intent/outcome evidence, and explicitly human-labelled lifecycle resolutions,
+never the queue source text. It does not persist provider tokens, passwords,
+full environments, classifications, terminal transcripts, or provider-native
+acknowledgements.

@@ -4,6 +4,20 @@
 
 Operate the existing Meta, Orchestrator, worker, and queue workflow from the terminal workspace.
 
+## Current status
+
+PC-040 through PC-050 are implemented as a bounded localhost compatibility
+loop. Pacium mode preserves the General terminal workspace, pins exact Meta and
+Orchestrator bindings, targets one exact live PTY, observes and classifies one
+whole-source queue item, records immutable question/approval decisions,
+delivers through explicit configured compatibility methods, reconciles
+transport artifacts and human lifecycle labels, and presents exact configured
+workers plus current objective/plan and recent decision evidence.
+
+This does not create generalized runs/tasks, infer agent work, parse multiple
+items, or prove that a decision caused later Git or terminal activity.
+Provider-native events and any stronger correlation belong to PC-060 onward.
+
 ## Scope
 
 ### Workspace mode
@@ -54,8 +68,15 @@ Operate the existing Meta, Orchestrator, worker, and queue workflow from the ter
 6. Questions cannot authorize approval actions.
 7. Original queue text remains inspectable.
 8. Queue parse and delivery failures leave source files and terminals intact.
-9. Resulting terminal or Git activity can be linked when observable.
+9. Resulting terminal or Git activity is linked only when a future accepted
+   source supplies explicit correlation; PC-050 deliberately makes no causal
+   link from process, transport, or Git proximity.
 
 ## Demo
 
-Meta or Orchestrator creates a real queue item. The operator opens Pacium mode, inspects it, answers, observes delivery and acknowledgement, and sees the resulting activity without manually editing queue files.
+Meta or Orchestrator creates a real queue item. The operator opens Pacium mode,
+inspects it, records a separate answer or approval outcome, deliberately
+delivers it, and reviews transport plus explicit human-labelled lifecycle
+evidence without manually editing queue files. The Control-context inspector
+then reconstructs the current objective, plan, and recent decisions without
+claiming provider acknowledgement or resulting work.

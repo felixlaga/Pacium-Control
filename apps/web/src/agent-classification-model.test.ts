@@ -22,6 +22,7 @@ const session: SessionSummary = {
     confidence: "confirmed",
     observedAt: "2026-07-27T10:00:00.000Z",
   },
+  providerObservation: null,
   repository: {
     status: "ready",
     root: "/work/pacium",

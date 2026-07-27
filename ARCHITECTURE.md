@@ -131,21 +131,34 @@ Pacium mode is a configuration and presentation layer:
 PaciumWorkspace
 ├── Meta session reference or launch preset
 ├── Orchestrator session reference or launch preset
+├── Ordered exact worker session or launch-preset bindings
 ├── Queue source definitions
-├── Optional worker session classifications
 ├── Repository roots
+├── Objective and optional plan source
 └── Verification presets
 ```
 
-The first queue adapter observes existing files, tracks provenance, presents questions and approvals separately, and delivers answers through an explicit compatibility path.
+The first queue adapter observes existing files, tracks provenance, presents
+questions and approvals separately, and delivers answers through an explicit
+compatibility path. Worker rows are disposable projections of accepted exact
+bindings plus existing PTY, attention, repository, and selected-session Git
+evidence. They do not create task, assignment, ownership, or progress state.
+
+The read-only Control-context service snapshots the accepted workspace, reads
+only its objective and plan paths with bounded no-follow regular-file reads,
+joins at most twelve newest validated queue decisions, then rechecks the same
+workspace revision. Browser state is request/revision correlated and
+disposable; opening or explicitly refreshing the inspector is the only read
+trigger.
 
 ## State
 
-The current server-owned durable state is intentionally limited to one
-versioned file in a configurable local data directory:
+The current server-owned durable state is intentionally limited to two
+versioned files in a configurable local data directory:
 
 ```text
 pacium.json
+queue-state.json
 ```
 
 `pacium.json` owns only the future Pacium-mode workspace definition: explicit
@@ -153,13 +166,44 @@ role/preset bindings, repositories, worker slots, and path metadata for queue,
 delivery, objective, and plan consumers. It owns no live process, terminal,
 Git, provider, verification-command, or file-content truth.
 
+`queue-state.json` owns only bounded immutable local question/approval
+decisions, compatible delivery attempts, and explicit human-labelled lifecycle
+resolutions. Schema 3 references every attempt and resolution to an exact
+decision/hash, validates recomputable hashes, and records target snapshots,
+payload hashes, intent/outcome evidence, and monotonic lifecycle transitions.
+Valid schema-1 decision-only and schema-2 delivery state remains readable and
+migrates atomically on the first later mutation. It contains no queue source
+text, provider token, environment, terminal transcript, or generic command.
+
+Delivery intent is persisted before each configured answer-file or role-prompt
+side effect. The answer-file adapter creates one private no-clobber file; the
+role adapter writes one fixed-shape comment line to one exact live configured
+PTY. A completed or uncertain attempt is never replayed automatically. One
+second attempt is possible only after a failed or unknown first attempt is
+explicitly labelled `confirmed_not_delivered`; a third attempt is invalid.
+
+Queue-source conflicts and current answer-artifact observations are disposable
+server projections. They are recomputed from accepted configuration, bounded
+no-follow reads, current queue evidence, and immutable state only when sources
+or an exact item are observed. Exact answer bytes prove a transport artifact,
+not provider acknowledgement or application. Those states remain unavailable
+unless a future provider observer supplies native evidence or the operator
+records an explicitly human-labelled resolution.
+
+Objective/plan observations and recent-decision summaries are also disposable
+server projections. Context bytes remain owned by their configured files and
+are never copied to application state. Recent summaries exclude notes,
+delivery target paths, terminal bytes, queue source text, commands, and
+provider data. They distinguish local recording, transport evidence, and
+human-labelled lifecycle state without attributing later Git or terminal work.
+
 Writes use complete schema/reference validation, optimistic revisions, a
 private same-directory temporary file, atomic rename, and directory sync.
 Invalid state is preserved and degrades Pacium configuration only. Browser
 tabs, splits, settings, and attention cursors remain browser-owned; terminal
-history is bounded and ephemeral. Queue provenance state and caches remain
-future slices, not current files. Provider credentials and complete environment
-data are excluded.
+history is bounded and ephemeral. Queue observation/classification caches
+remain process-local and disposable. Provider credentials and complete
+environment data are excluded.
 
 ## Security boundary
 
@@ -171,7 +215,27 @@ data are excluded.
 - Repository paths are canonicalized against configured roots.
 - The process runs with the invoking user’s privileges; no privilege escalation is introduced.
 
-Optional remote access follows ADR-0016: Tailscale Serve terminates tailnet-only HTTPS and proxies to this same loopback process. Remote bootstrap requires an exact HTTPS Origin, verified Tailscale user identity, an explicit operator allowlist, and the existing ephemeral token.
+Optional remote access follows ADR-0016 and is implemented without another
+application process. `PACIUM_TAILSCALE_ORIGIN` and
+`PACIUM_TAILSCALE_OPERATOR_LOGINS` form one fail-closed startup configuration.
+Tailscale Serve terminates tailnet-only HTTPS and preserves the exact incoming
+Host while proxying to this same loopback process. Pacium classifies each
+request independently:
+
+- Local requires a loopback Host and canonical configured loopback HTTP Origin
+  or same-origin navigation evidence.
+- Tailscale requires the exact configured `*.ts.net` Host and HTTPS Origin, one
+  bounded `Tailscale-User-Login` in the exact application allowlist, no Funnel
+  marker, and the existing token for protected HTTP/WebSocket transport.
+- Assets and health require valid navigation authority before revealing the
+  application boundary.
+- Protocol 18 reports only `local`, or `tailscale` plus the current exact
+  verified login in `server.welcome`.
+
+Connection authority is disposable per socket. It is never persisted, inferred
+from IP, display name, profile, device, tag, or browser messages. Grants and
+Serve remain Tailscale-owned outer controls; the local server never invokes or
+configures the daemon.
 
 Pacium remains on the same host as the PTYs and files it controls. Multi-user roles, another ingress mechanism, cross-host aggregation, or a separate privilege broker require a future ADR.
 

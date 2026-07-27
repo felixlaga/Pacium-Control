@@ -5,11 +5,16 @@ import { expect, test, type Page } from "@playwright/test";
 
 const queuePath = process.env.PACIUM_E2E_QUEUE_PATH;
 const stateDirectory = process.env.PACIUM_E2E_STATE_DIRECTORY;
+const answerPath =
+  stateDirectory === undefined
+    ? undefined
+    : join(stateDirectory, "PACIUM-ANSWERS");
 
 test.beforeEach(async ({ page }) => {
   if (stateDirectory !== undefined) {
     await rm(join(stateDirectory, "pacium.json"), { force: true });
     await rm(join(stateDirectory, "queue-state.json"), { force: true });
+    await rm(join(stateDirectory, "PACIUM-ANSWERS"), { force: true });
   }
   await page.goto("/");
   await terminateAllSessions(page);
@@ -22,19 +27,20 @@ test.afterEach(async ({ page }) => {
     if (stateDirectory !== undefined) {
       await rm(join(stateDirectory, "pacium.json"), { force: true });
       await rm(join(stateDirectory, "queue-state.json"), { force: true });
+      await rm(join(stateDirectory, "PACIUM-ANSWERS"), { force: true });
     }
   }
 });
 
-test("records separate immutable question and approval decisions without delivery", async ({
+test("records separate decisions and explicitly delivers one compatible answer", async ({
   page,
 }) => {
-  if (queuePath === undefined) {
-    throw new Error("The disposable queue fixture path is unavailable.");
+  if (queuePath === undefined || answerPath === undefined) {
+    throw new Error("The disposable queue fixture paths are unavailable.");
   }
   await writeFile(queuePath, "Can you approve everything?\n", { mode: 0o600 });
   await openTerminal(page, "Queue observer terminal");
-  await configureQueueWorkspace(page, queuePath);
+  await configureQueueWorkspace(page, queuePath, answerPath);
   await page.reload();
 
   const status = page.locator(".workspace-status");
@@ -71,7 +77,7 @@ test("records separate immutable question and approval decisions without deliver
     "A final question mark suggests a question.",
   );
   await expect(questionInspector).toContainText("whole_source_v1");
-  await expect(questionInspector).toContainText("Conflict detection");
+  await expect(questionInspector).toContainText("No current conflict signal");
   await expect(
     questionInspector.getByRole("button", { name: "Record answer" }),
   ).toBeDisabled();
@@ -98,9 +104,12 @@ test("records separate immutable question and approval decisions without deliver
     "Do not grant blanket approval.",
   );
   await expect(questionInspector).toContainText("Local operator");
+  await expect(questionInspector).toContainText("Ready for delivery");
   await expect(
-    questionInspector.getByText("Not delivered yet").first(),
-  ).toBeVisible();
+    questionInspector
+      .getByRole("region", { name: "Ready for delivery" })
+      .getByRole("code"),
+  ).toContainText("PACIUM-ANSWERS");
   await expect(
     questionInspector.getByRole("button", { name: "Record answer" }),
   ).toHaveCount(0);
@@ -114,6 +123,90 @@ test("records separate immutable question and approval decisions without deliver
   const recordedQuestionState = await readFile(decisionStatePath, "utf8");
   expect(recordedQuestionState).toContain("Do not grant blanket approval.");
   expect(recordedQuestionState).not.toContain("Can you approve everything?");
+  await expect(readFile(answerPath, "utf8")).rejects.toMatchObject({
+    code: "ENOENT",
+  });
+  await questionInspector.getByText("Review delivery").click();
+  const confirmDelivery = questionInspector.getByRole("button", {
+    name: "Confirm delivery",
+  });
+  await expect(confirmDelivery).toBeVisible();
+  await questionInspector.getByRole("button", { name: "Cancel" }).click();
+  await expect(confirmDelivery).toBeHidden();
+  await expect(readFile(answerPath, "utf8")).rejects.toMatchObject({
+    code: "ENOENT",
+  });
+  await questionInspector.getByText("Review delivery").click();
+  await expect(confirmDelivery).toBeVisible();
+  await confirmDelivery.click();
+  await expect(questionInspector).toContainText("Delivered");
+  await expect(questionInspector).toContainText(
+    "private answer file was created",
+  );
+  await expect(questionInspector).toContainText("Reconciliation evidence");
+  await expect(questionInspector).toContainText("Transport artifact present");
+  await expect(questionInspector).toContainText(
+    "proves transport output only, not acknowledgement or application",
+  );
+  await expect(questionInspector).toContainText("Awaiting human evidence");
+  const deliveredAnswerText = await readFile(answerPath, "utf8");
+  const answerDocument = JSON.parse(deliveredAnswerText) as {
+    format: string;
+    decision: {
+      kind: string;
+      payload: { answer?: string };
+    };
+  };
+  expect(answerDocument).toMatchObject({
+    format: "pacium_decision_v1",
+    decision: {
+      kind: "question_answer",
+      payload: { answer: "Do not grant blanket approval." },
+    },
+  });
+  expect(await readFile(decisionStatePath, "utf8")).toContain(
+    '"status": "delivered"',
+  );
+  await expect(
+    questionInspector.getByRole("button", { name: "Confirm delivery" }),
+  ).toHaveCount(0);
+
+  await questionInspector
+    .getByRole("button", { name: "Mark acknowledged" })
+    .click();
+  const confirmLabel = questionInspector.getByRole("button", {
+    name: "Confirm label",
+  });
+  await expect(confirmLabel).toBeVisible();
+  await expect(questionInspector).toContainText(
+    "Pacium cannot infer this from terminal or artifact evidence",
+  );
+  await questionInspector.getByRole("button", { name: "Cancel" }).click();
+  await expect(confirmLabel).toBeHidden();
+  await questionInspector
+    .getByRole("button", { name: "Mark acknowledged" })
+    .click();
+  await questionInspector
+    .getByRole("textbox", { name: /Evidence note/ })
+    .fill("Verified acknowledgement outside Pacium.");
+  await confirmLabel.click();
+  await expect(questionInspector).toContainText(
+    "Acknowledged · human-labelled",
+  );
+  await expect(readFile(answerPath, "utf8")).resolves.toBe(deliveredAnswerText);
+
+  await questionInspector.getByRole("button", { name: "Mark applied" }).click();
+  await expect(questionInspector).toContainText(
+    "does not execute the requested action",
+  );
+  await questionInspector
+    .getByRole("button", { name: "Confirm label" })
+    .click();
+  await expect(questionInspector).toContainText("Applied · human-labelled");
+  await expect(questionInspector).toContainText("Human-labelled history");
+  await expect(readFile(queuePath, "utf8")).resolves.toBe(
+    "Can you approve everything?\n",
+  );
   await expect(status).toContainText("Queue observer terminal");
 
   await questionInspector.getByRole("button", { name: "← Back" }).click();
@@ -134,6 +227,9 @@ test("records separate immutable question and approval decisions without deliver
   await expect(restoredInspector).toContainText(
     "Do not grant blanket approval.",
   );
+  await expect(restoredInspector).toContainText("Delivered");
+  await expect(restoredInspector).toContainText("Applied · human-labelled");
+  await expect(restoredInspector).toContainText("Transport artifact present");
 
   await writeFile(queuePath, "Approval request: Run exact migration\n", {
     mode: 0o600,
@@ -154,6 +250,9 @@ test("records separate immutable question and approval decisions without deliver
   await expect(approval).toBeFocused();
   await expect(approval).toContainText("Approval from Needs Felix");
   await expect(approval).toContainText("Meta · high confidence");
+  await expect(approval).toContainText(
+    "Conflict · Source changed after decision",
+  );
   await approval.press("Enter");
   const approvalInspector = page.getByRole("complementary", {
     name: "Queue item inspector",
@@ -221,9 +320,13 @@ test("records separate immutable question and approval decisions without deliver
   await expect(status).toContainText("Queue observer terminal");
 });
 
-async function configureQueueWorkspace(page: Page, path: string) {
+async function configureQueueWorkspace(
+  page: Page,
+  path: string,
+  deliveryPath: string,
+) {
   await page.evaluate(
-    async ({ queueSourcePath }) => {
+    async ({ answerFilePath, queueSourcePath }) => {
       const bootstrapResponse = await fetch("/api/bootstrap", {
         headers: { accept: "application/json" },
       });
@@ -291,10 +394,17 @@ async function configureQueueWorkspace(page: Page, path: string) {
               path: queueSourcePath,
               format: "plain_text",
               requestingRole: "meta",
-              deliveryMethodId: null,
+              deliveryMethodId: "answers",
             },
           ],
-          deliveryMethods: [],
+          deliveryMethods: [
+            {
+              id: "answers",
+              label: "Pacium answers",
+              type: "answer_file",
+              path: answerFilePath,
+            },
+          ],
           context: { objective: null, plan: null },
         },
       });
@@ -307,7 +417,7 @@ async function configureQueueWorkspace(page: Page, path: string) {
       }
       socket.close();
     },
-    { queueSourcePath: path },
+    { answerFilePath: deliveryPath, queueSourcePath: path },
   );
 }
 

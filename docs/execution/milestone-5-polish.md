@@ -32,6 +32,27 @@ Make Pacium dependable and comfortable for sustained personal use.
 8. Release limitations are documented.
 9. Remote mode remains tailnet-only and the Pacium server remains loopback-bound.
 
+## Implemented remote slice
+
+PC-077 completes the application half of criterion 9:
+
+- Pacium still accepts only `127.0.0.1` as its listener.
+- Optional remote startup requires one canonical `*.ts.net` HTTPS Origin and a
+  bounded non-empty exact-login allowlist.
+- Assets, health, bootstrap, protected HTTP, and WebSocket upgrades distinguish
+  Local and Tailscale authority without trusting IP, display name, device, or
+  browser identity claims.
+- Funnel is explicitly rejected; the existing ephemeral token still protects
+  control transports.
+- Protocol 18 and the compact header label expose current per-socket authority
+  and clear it on disconnect.
+- The active operations runbook covers grants, Serve status/off, revocation,
+  local-only rollback, and manual public/LAN denial checks.
+
+Deterministic repository tests prove the loopback and proxy-shaped application
+boundary. A real owner tailnet canary, supported-runtime clean install, and
+public/Funnel/grant/revocation exercise remain Milestone-5 release evidence.
+
 ## Demo
 
 Install the packaged application on a clean account, run a sustained multi-session workflow, restart the browser and local server, reconnect optional tmux-backed sessions, operate Pacium mode, and remove the application without deleting repositories or provider credentials.

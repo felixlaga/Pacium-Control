@@ -485,6 +485,161 @@ kbd {
   border-color: color-mix(in srgb, var(--green) 32%, var(--border));
 }
 
+.pacium-workers {
+  margin-bottom: 13px;
+}
+
+.pacium-workers > .section-heading {
+  padding-bottom: 6px;
+}
+
+.pacium-workers-boundary,
+.pacium-workers-empty {
+  margin: 0 8px 6px;
+  color: var(--text-faint);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.pacium-workers-empty {
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+}
+
+.pacium-workers-empty.status-error {
+  border-color: color-mix(in srgb, var(--red) 38%, var(--border));
+  color: var(--red);
+}
+
+.pacium-worker-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  list-style: none;
+}
+
+.pacium-worker-row {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-raised);
+}
+
+.pacium-worker-row > header {
+  display: grid;
+  min-width: 0;
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 7px;
+}
+
+.pacium-worker-row > header > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.pacium-worker-row strong,
+.pacium-worker-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pacium-worker-row strong {
+  color: var(--text);
+  font-size: 9px;
+  font-weight: 620;
+}
+
+.pacium-worker-row small {
+  color: var(--text-faint);
+  font-size: 7px;
+}
+
+.pacium-worker-row > header button {
+  min-height: 23px;
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--bg);
+  cursor: pointer;
+  font-size: 8px;
+}
+
+.pacium-worker-row > header button:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.pacium-worker-glyph {
+  display: grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--bg);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.pacium-worker-row.status-live .pacium-worker-glyph {
+  border-color: color-mix(in srgb, var(--green) 65%, var(--border));
+  color: var(--green);
+}
+
+.pacium-worker-row.status-failed .pacium-worker-glyph {
+  border-color: color-mix(in srgb, var(--red) 65%, var(--border));
+  color: var(--red);
+}
+
+.pacium-worker-row.status-missing .pacium-worker-glyph,
+.pacium-worker-row.status-ending .pacium-worker-glyph,
+.pacium-worker-row.status-ended .pacium-worker-glyph,
+.pacium-worker-row.status-preset_unavailable .pacium-worker-glyph {
+  border-color: color-mix(in srgb, var(--amber) 58%, var(--border));
+  color: var(--amber);
+}
+
+.pacium-worker-row dl {
+  display: grid;
+  gap: 3px;
+  margin: 7px 0 0 28px;
+}
+
+.pacium-worker-row dl > div {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 5px;
+  font-size: 7px;
+}
+
+.pacium-worker-row dt {
+  color: var(--text-faint);
+}
+
+.pacium-worker-row dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pacium-worker-row > time {
+  display: block;
+  margin: 5px 0 0 28px;
+  color: var(--text-faint);
+  font-size: 7px;
+}
+
 .pacium-queue-sources {
   margin-bottom: 13px;
 }
@@ -627,6 +782,12 @@ kbd {
 .pacium-queue-source small.pacium-queue-diagnostic {
   line-height: 1.25;
   white-space: normal;
+}
+
+.pacium-queue-source small.pacium-queue-conflict {
+  color: var(--amber);
+  font-family: inherit;
+  font-weight: 600;
 }
 
 .pacium-queue-source.status-stable .pacium-queue-source-indicator,
@@ -1050,16 +1211,27 @@ kbd {
 
 .connection-badge {
   display: flex;
+  min-width: 0;
+  max-width: min(320px, 36vw);
   align-items: center;
   gap: 7px;
   margin-right: 4px;
   color: var(--text-faint);
   font-size: 10px;
   text-transform: capitalize;
+  white-space: nowrap;
 }
 
 .connection-badge .status-dot {
+  flex: 0 0 auto;
   margin: 0;
+}
+
+.connection-login {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: none;
 }
 
 .pacium-prompt-composer {
@@ -1943,6 +2115,241 @@ kbd {
   padding-bottom: 16px;
 }
 
+.pacium-context-inspector {
+  min-width: 0;
+  padding-bottom: 16px;
+}
+
+.pacium-context-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-raised);
+}
+
+.pacium-context-toolbar button {
+  min-height: 27px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--bg);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.pacium-context-toolbar button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.pacium-context-toolbar button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.pacium-context-heading {
+  display: grid;
+  gap: 5px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pacium-context-heading > span {
+  color: var(--accent-strong);
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.pacium-context-heading h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.pacium-context-heading h2:focus {
+  outline: none;
+}
+
+.pacium-context-heading p,
+.pacium-context-error p,
+.pacium-context-source > p,
+.pacium-recent-decisions > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.pacium-context-error,
+.pacium-context-source,
+.pacium-recent-decisions {
+  display: grid;
+  gap: 9px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pacium-context-error {
+  margin: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--red) 44%, var(--border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--red) 4%, var(--panel-raised));
+}
+
+.pacium-context-error h3 {
+  margin: 0;
+  color: var(--red);
+  font-size: 10px;
+}
+
+.pacium-context-refreshing {
+  margin: 0;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  font-size: 8px;
+}
+
+.pacium-context-source .inspector-section-heading,
+.pacium-recent-decisions .inspector-section-heading {
+  margin: 0;
+}
+
+.pacium-context-source .inspector-section-heading h3,
+.pacium-recent-decisions .inspector-section-heading h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 9px;
+}
+
+.pacium-context-source .inspector-section-heading > span,
+.pacium-recent-decisions .inspector-section-heading > span {
+  color: var(--text-faint);
+  font-size: 8px;
+}
+
+.pacium-context-source.status-missing .inspector-section-heading > span,
+.pacium-context-source.status-changing .inspector-section-heading > span,
+.pacium-context-source.status-oversized .inspector-section-heading > span,
+.pacium-context-source.status-unreadable .inspector-section-heading > span,
+.pacium-context-source.status-invalid_utf8 .inspector-section-heading > span,
+.pacium-context-source.status-unsafe_type .inspector-section-heading > span,
+.pacium-recent-decisions.status-unavailable .inspector-section-heading > span {
+  color: var(--amber);
+}
+
+.pacium-context-source dl,
+.pacium-recent-decision dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.pacium-context-source dl > div,
+.pacium-recent-decision dl > div {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 7px;
+  font-size: 8px;
+}
+
+.pacium-context-source dt,
+.pacium-recent-decision dt {
+  color: var(--text-faint);
+}
+
+.pacium-context-source dd,
+.pacium-recent-decision dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pacium-context-text {
+  max-height: 340px;
+  margin: 0;
+  overflow: auto;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: var(--bg);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 8px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.pacium-recent-decisions ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pacium-recent-decision {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-raised);
+}
+
+.pacium-recent-decision > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+  font-size: 8px;
+  font-weight: 620;
+}
+
+.pacium-recent-decision time {
+  color: var(--text-faint);
+  font-size: 7px;
+  font-weight: 400;
+}
+
+.pacium-recent-decision blockquote {
+  margin: 0;
+  padding-left: 8px;
+  border-left: 2px solid var(--accent);
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.pacium-context-freshness {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px 0;
+  color: var(--text-faint);
+  font-size: 7px;
+}
+
+.pacium-context-freshness strong {
+  color: var(--amber);
+  font-size: 7px;
+  font-weight: 600;
+}
+
 .pacium-queue-inspector-heading {
   display: grid;
   align-items: center;
@@ -2016,6 +2423,8 @@ kbd {
 .queue-original-text,
 .queue-meaning,
 .queue-decision-panel,
+.queue-delivery-panel,
+.queue-reconciliation-panel,
 .queue-provenance {
   padding: 14px;
   border-bottom: 1px solid var(--border);
@@ -2024,6 +2433,7 @@ kbd {
 .queue-original-text h3,
 .queue-meaning h3,
 .queue-decision-panel h3,
+.queue-delivery-panel h3,
 .queue-provenance h3 {
   margin: 0 0 10px;
   color: var(--text-faint);
@@ -2214,6 +2624,316 @@ kbd {
   line-height: 1.5;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.queue-delivery-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  border-left: 2px solid var(--border-strong);
+  background: color-mix(in srgb, var(--panel-soft) 35%, transparent);
+}
+
+.queue-reconciliation-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--panel-soft) 35%, transparent);
+}
+
+.queue-reconciliation-panel .inspector-section-heading {
+  margin: 0;
+}
+
+.queue-reconciliation-panel > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.queue-reconciliation-summary {
+  padding: 0;
+}
+
+.queue-reconciliation-evidence {
+  display: grid;
+  gap: 5px;
+}
+
+.queue-reconciliation-evidence h4 {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.queue-reconciliation-evidence ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.queue-reconciliation-evidence li {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--panel-raised);
+  font-size: 8px;
+}
+
+.queue-reconciliation-evidence li strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.queue-reconciliation-evidence li span {
+  overflow-wrap: anywhere;
+  color: var(--text-faint);
+  line-height: 1.4;
+}
+
+.queue-resolution-actions,
+.queue-resolution-confirmation {
+  display: grid;
+  gap: 7px;
+}
+
+.queue-resolution-actions h4 {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.queue-resolution-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.queue-resolution-actions button,
+.queue-resolution-confirmation button {
+  min-height: 26px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--panel-raised);
+  cursor: pointer;
+  font: inherit;
+  font-size: 8px;
+}
+
+.queue-resolution-confirmation {
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--amber) 4%, var(--panel-raised));
+}
+
+.queue-resolution-confirmation > strong {
+  color: var(--text);
+  font-size: 9px;
+}
+
+.queue-resolution-confirmation > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.queue-resolution-confirmation label {
+  display: grid;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.queue-resolution-confirmation label > span,
+.queue-resolution-confirmation > small {
+  color: var(--text-faint);
+}
+
+.queue-resolution-confirmation textarea,
+.queue-resolution-confirmation select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  background: var(--bg);
+  font: inherit;
+  font-size: 9px;
+}
+
+.queue-resolution-confirmation textarea {
+  resize: vertical;
+}
+
+.queue-resolution-confirmation > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.queue-resolution-confirmation > div button:last-child {
+  border-color: var(--accent-strong);
+  color: var(--bg);
+  background: var(--accent-strong);
+}
+
+.queue-resolution-actions button:disabled,
+.queue-resolution-confirmation button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.queue-resolution-error {
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--red) 40%, var(--border));
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--red) 4%, transparent);
+  font-size: 8px;
+}
+
+.queue-resolution-error p {
+  margin: 4px 0 0;
+  line-height: 1.45;
+}
+
+.queue-delivery-panel .inspector-section-heading {
+  margin: 0;
+}
+
+.queue-delivery-panel .inspector-section-heading h3 {
+  margin: 0;
+}
+
+.queue-delivery-panel .inspector-section-heading > span {
+  color: var(--text-faint);
+  font-size: 8px;
+}
+
+.queue-delivery-panel > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.queue-delivery-panel.state-ready,
+.queue-delivery-panel.state-ready-retry,
+.queue-delivery-panel.state-delivering {
+  border-left-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 4%, transparent);
+}
+
+.queue-delivery-panel.state-delivered {
+  border-left-color: var(--green);
+  background: color-mix(in srgb, var(--green) 4%, transparent);
+}
+
+.queue-delivery-panel.state-failed,
+.queue-delivery-panel.state-unavailable {
+  border-left-color: var(--red);
+  background: color-mix(in srgb, var(--red) 4%, transparent);
+}
+
+.queue-delivery-panel.state-unknown {
+  border-left-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 6%, transparent);
+}
+
+.queue-delivery-target,
+.queue-delivery-evidence {
+  margin: 0;
+}
+
+.queue-delivery-target code,
+.queue-delivery-evidence code {
+  overflow-wrap: anywhere;
+}
+
+.queue-delivery-confirmation {
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.queue-delivery-confirmation summary {
+  color: var(--text);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 620;
+}
+
+.queue-delivery-confirmation > p {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.queue-delivery-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.queue-delivery-confirmation button {
+  min-height: 30px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--accent-soft);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 620;
+}
+
+.queue-delivery-confirmation button:first-child {
+  border-color: var(--border);
+  color: var(--text-muted);
+  background: var(--panel-raised);
+}
+
+.queue-delivery-confirmation button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.queue-delivery-error {
+  display: grid;
+  gap: 4px;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--amber) 42%, var(--border));
+  border-radius: 6px;
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 5%, transparent);
+}
+
+.queue-delivery-error strong {
+  font-size: 9px;
+}
+
+.queue-delivery-error p {
+  margin: 0;
+  font-size: 8px;
+  line-height: 1.45;
 }
 
 .queue-original-text .inspector-section-heading {
@@ -3477,6 +4197,11 @@ kbd {
   color: var(--amber);
 }
 
+.activity-sources > ul > li.is-degraded > span:last-child,
+.activity-sources > ul > li.is-stale > span:last-child {
+  color: var(--amber);
+}
+
 .activity-empty,
 .activity-partial-note,
 .activity-boundary-note {
@@ -3800,6 +4525,8 @@ kbd {
   z-index: 20;
   inset: 0;
   display: grid;
+  overflow-y: auto;
+  padding: 16px;
   place-items: center;
   background: #070708a8;
   backdrop-filter: blur(5px);
@@ -3807,6 +4534,8 @@ kbd {
 
 .dialog-card {
   width: min(440px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
   padding: 17px;
   border: 1px solid var(--border-strong);
   border-radius: 10px;
@@ -5001,9 +5730,90 @@ kbd {
   opacity: 0.35;
 }
 
+.directory-toolbar > .directory-edit-path {
+  width: auto;
+  min-width: 42px;
+  padding: 0 7px;
+  color: var(--text-faint);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 8px;
+}
+
+.directory-toolbar > .directory-edit-path:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.directory-toolbar > .directory-edit-path:focus {
+  color: var(--text);
+  border-color: var(--border-strong);
+  outline: 2px solid #7566dc99;
+  outline-offset: 1px;
+}
+
+.directory-path-editor {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.directory-path-editor input {
+  height: 29px;
+  min-width: 0;
+  flex: 1;
+  padding: 0 9px;
+  border: 1px solid #7566dc99;
+  border-radius: 5px;
+  outline: 0;
+  color: var(--text);
+  background: #101113;
+  box-shadow: 0 0 0 2px #7566dc1c;
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 9px;
+}
+
+.directory-path-editor button {
+  height: 29px;
+  flex: 0 0 auto;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--panel);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.directory-path-editor button:last-child {
+  width: 29px;
+  padding: 0;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+
+.directory-path-editor button:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.directory-path-editor button:focus {
+  color: var(--text);
+  border-color: var(--border-strong);
+  outline: 2px solid #7566dc99;
+  outline-offset: 1px;
+}
+
+.directory-path-editor button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
 .breadcrumbs {
   display: flex;
   min-width: 0;
+  flex: 1;
   align-items: center;
   overflow-x: auto;
   scrollbar-width: none;
@@ -5112,7 +5922,11 @@ kbd {
   border-radius: 6px;
   color: var(--text);
   background: #ffffff08;
-  outline: none;
+}
+
+.directory-row:focus-visible {
+  outline: 2px solid #7566dc99;
+  outline-offset: -2px;
 }
 
 .directory-icon {
@@ -5342,6 +6156,19 @@ html[data-theme="light"] .directory-picker-footer {
   background: var(--panel);
 }
 
+html[data-theme="light"] .directory-locations {
+  background: #f6f6f8;
+}
+
+html[data-theme="light"] .directory-search,
+html[data-theme="light"] .directory-path-editor input {
+  background: #ffffff;
+}
+
+html[data-theme="light"] .directory-row {
+  border-bottom-color: #dedfe4;
+}
+
 html[data-theme="light"] .command-result:hover:not(:disabled),
 html[data-theme="light"] .command-result.is-active:not(:disabled),
 html[data-theme="light"] .terminal-tab-action:hover,
@@ -5465,6 +6292,39 @@ html[data-density="comfortable"] .terminal-panel {
     margin-bottom: 9px;
   }
 
+  .pacium-workers {
+    margin-bottom: 9px;
+  }
+
+  .pacium-workers-boundary,
+  .pacium-workers-empty,
+  .pacium-worker-row > header > span:nth-child(2),
+  .pacium-worker-row > header button,
+  .pacium-worker-row dl,
+  .pacium-worker-row > time {
+    display: none;
+  }
+
+  .pacium-worker-list {
+    padding: 0 8px;
+  }
+
+  .pacium-worker-row {
+    display: grid;
+    min-height: 40px;
+    padding: 8px;
+    place-items: center;
+  }
+
+  .pacium-worker-row > header {
+    display: block;
+  }
+
+  .pacium-worker-glyph {
+    width: 20px;
+    height: 20px;
+  }
+
   .pacium-queue-source-list {
     padding: 0 8px;
   }
@@ -5538,9 +6398,15 @@ html[data-density="comfortable"] .terminal-panel {
     justify-content: center;
   }
 
-  .header-actions .connection-badge,
   .header-actions button:not(.danger-ghost) {
     display: none;
+  }
+
+  .header-actions .connection-badge {
+    max-width: 124px;
+    gap: 4px;
+    margin-right: 0;
+    font-size: 8.5px;
   }
 
   #command-palette-trigger {
@@ -5750,6 +6616,14 @@ html[data-density="comfortable"] .terminal-panel {
     justify-content: flex-end;
   }
 
+  .directory-toolbar > .directory-edit-path {
+    min-width: 38px;
+  }
+
+  .directory-path-editor input {
+    font-size: 8px;
+  }
+
   .pacium-role-binding-dialog {
     width: calc(100vw - 16px);
     max-height: calc(100vh - 16px);
@@ -5893,19 +6767,36 @@ html[data-density="comfortable"] .terminal-panel {
     box-shadow: none;
   }
 
+  .directory-toolbar > .directory-edit-path:focus,
+  .directory-path-editor button:focus,
+  .directory-row:focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 1px;
+  }
+
   .status-dot,
   .focused-label,
   .pacium-role-glyph,
+  .pacium-worker-glyph,
   .pacium-queue-source-indicator {
     border: 1px solid CanvasText;
   }
 
   .pacium-role-card,
+  .pacium-worker-row,
   .pacium-prompt-composer,
   .pacium-queue-source,
   .pacium-queue-inspector-heading,
+  .pacium-context-toolbar,
+  .pacium-context-error,
+  .pacium-context-source,
+  .pacium-context-text,
+  .pacium-recent-decision,
   .queue-original-text pre,
   .queue-decision-panel,
+  .queue-delivery-panel,
+  .queue-delivery-confirmation,
+  .queue-delivery-error,
   .queue-approval-confirmation,
   .queue-decision-error,
   .queue-inspector-message,

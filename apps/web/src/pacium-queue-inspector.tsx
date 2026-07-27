@@ -2,6 +2,7 @@ import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import type {
   QueueApprovalDecisionPayload,
   QueueQuestionAnswerPayload,
+  QueueResolutionRequest,
 } from "@pacium/contracts";
 
 import { PaciumQueueDecisionPanel } from "./pacium-queue-decision-panel.js";
@@ -15,14 +16,18 @@ import {
 
 export function PaciumQueueInspector({
   onBack,
+  onDeliver,
   onRecordApproval,
   onRecordQuestion,
+  onResolve,
   requestingSessionLabel,
   state,
 }: {
   onBack: () => void;
+  onDeliver: () => void;
   onRecordApproval: (payload: QueueApprovalDecisionPayload) => void;
   onRecordQuestion: (payload: QueueQuestionAnswerPayload) => void;
+  onResolve: (request: QueueResolutionRequest) => void;
   requestingSessionLabel: string | null;
   state: PaciumQueueInspectionState;
 }) {
@@ -101,8 +106,10 @@ export function PaciumQueueInspector({
             state={state}
           />
           <PaciumQueueDecisionPanel
+            onDeliver={onDeliver}
             onRecordApproval={onRecordApproval}
             onRecordQuestion={onRecordQuestion}
+            onResolve={onResolve}
             state={state}
           />
         </>
@@ -204,7 +211,14 @@ function QueueMeaning({
           No terminal or Git evidence is linked yet
         </QueueMetadata>
         <QueueMetadata label="Conflict state">
-          Conflict detection is not implemented yet
+          {state.reconciliation === null ||
+          state.reconciliation.conflicts.length === 0
+            ? "No current conflict signal"
+            : `${state.reconciliation.conflicts.length} current conflict ${
+                state.reconciliation.conflicts.length === 1
+                  ? "signal"
+                  : "signals"
+              }`}
         </QueueMetadata>
       </dl>
     </section>

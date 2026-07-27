@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildChildEnvironment,
+  loadLocalAllowedOrigins,
   loadServerConfig,
+  loadTailscaleServeConfig,
   resolvePaciumDataDirectory,
 } from "./config.js";
 
@@ -27,6 +29,119 @@ describe("local server configuration", () => {
       configured: false,
       repositories: [],
     });
+  });
+
+  it("keeps Tailscale Serve disabled when both remote values are absent", () => {
+    expect(loadTailscaleServeConfig({})).toBeNull();
+  });
+
+  it("accepts only canonical loopback browser origins", () => {
+    expect(
+      loadLocalAllowedOrigins(
+        "http://127.0.0.1:4173,http://localhost:4173",
+        [],
+      ),
+    ).toEqual(new Set(["http://127.0.0.1:4173", "http://localhost:4173"]));
+
+    for (const origins of [
+      "",
+      "http://127.0.0.1:4173,http://127.0.0.1:4173",
+      "https://127.0.0.1:4173",
+      "http://192.168.1.20:4173",
+      "http://100.64.0.10:4173",
+      "https://pacium-host.example-tailnet.ts.net",
+      "http://localhost:4173/path",
+      "http://user@localhost:4173",
+    ]) {
+      expect(() => loadLocalAllowedOrigins(origins, [])).toThrow(
+        "canonical loopback HTTP origins",
+      );
+    }
+  });
+
+  it("accepts one canonical Serve origin and exact login allowlist", () => {
+    expect(
+      loadTailscaleServeConfig({
+        PACIUM_TAILSCALE_ORIGIN: "https://pacium-host.example-tailnet.ts.net",
+        PACIUM_TAILSCALE_OPERATOR_LOGINS: "owner@example.com,operator@github",
+      }),
+    ).toEqual({
+      origin: "https://pacium-host.example-tailnet.ts.net",
+      hostname: "pacium-host.example-tailnet.ts.net",
+      operatorLogins: new Set(["owner@example.com", "operator@github"]),
+    });
+  });
+
+  it("keeps the Serve origin separate from local browser origins", () => {
+    const config = loadServerConfig({
+      HOME: process.env.HOME,
+      SHELL: "/bin/zsh",
+      PACIUM_TAILSCALE_ORIGIN: "https://pacium-host.example-tailnet.ts.net",
+      PACIUM_TAILSCALE_OPERATOR_LOGINS: "owner@example.com",
+    });
+
+    expect(config.host).toBe("127.0.0.1");
+    expect(config.allowedOrigins).not.toContain(
+      "https://pacium-host.example-tailnet.ts.net",
+    );
+    expect(config.tailscaleServe?.operatorLogins).toEqual(
+      new Set(["owner@example.com"]),
+    );
+  });
+
+  it("rejects partial, non-HTTPS, non-tailnet, and non-origin remote config", () => {
+    expect(() =>
+      loadTailscaleServeConfig({
+        PACIUM_TAILSCALE_ORIGIN: "https://pacium-host.example-tailnet.ts.net",
+      }),
+    ).toThrow("configured together");
+    expect(() =>
+      loadTailscaleServeConfig({
+        PACIUM_TAILSCALE_OPERATOR_LOGINS: "owner@example.com",
+      }),
+    ).toThrow("configured together");
+
+    for (const origin of [
+      "http://pacium-host.example-tailnet.ts.net",
+      "https://pacium-host.example.com",
+      "https://pacium-host.example-tailnet.ts.net/",
+      "https://pacium-host.example-tailnet.ts.net:8443",
+      "https://pacium-host.example-tailnet.ts.net/path",
+      "https://pacium-host.example-tailnet.ts.net?query=1",
+      "https://pacium-host.example-tailnet.ts.net#fragment",
+    ]) {
+      expect(() =>
+        loadTailscaleServeConfig({
+          PACIUM_TAILSCALE_ORIGIN: origin,
+          PACIUM_TAILSCALE_OPERATOR_LOGINS: "owner@example.com",
+        }),
+      ).toThrow("canonical");
+    }
+  });
+
+  it("rejects empty, duplicate, unsafe, and unbounded operator logins", () => {
+    const origin = "https://pacium-host.example-tailnet.ts.net";
+    for (const logins of [
+      "",
+      "owner@example.com,owner@example.com",
+      "owner",
+      "owner@@example.com",
+      "owner example@example.com",
+      "owner,alias@example.com",
+      "owñer@example.com",
+      `${"a".repeat(245)}@example.com`,
+      Array.from(
+        { length: 33 },
+        (_, index) => `owner${index}@example.com`,
+      ).join(","),
+    ]) {
+      expect(() =>
+        loadTailscaleServeConfig({
+          PACIUM_TAILSCALE_ORIGIN: origin,
+          PACIUM_TAILSCALE_OPERATOR_LOGINS: logins,
+        }),
+      ).toThrow("unique bounded exact ASCII logins");
+    }
   });
 
   it("uses a dedicated macOS-first data directory without creating it", () => {

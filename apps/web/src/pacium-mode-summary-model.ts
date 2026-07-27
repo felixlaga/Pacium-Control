@@ -82,7 +82,7 @@ export function buildPaciumModeSummary(
     status: "ready",
     title: workspace.label,
     detail:
-      "Primary roles, queue items, and immutable local decisions resolve below. Delivery is not active yet.",
+      "Primary roles, queue items, immutable local decisions, and explicit compatible delivery resolve below. Nothing is delivered automatically.",
     freshness,
     canRetry: connection === "connected",
     stats: [

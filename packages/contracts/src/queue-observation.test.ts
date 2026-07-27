@@ -154,6 +154,39 @@ describe("queue source observation contract", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("accepts only bounded content-free conflict evidence", () => {
+    expect(
+      QueueSourceObservationSchema.safeParse(
+        source({
+          conflicts: [
+            {
+              conflictId: "c".repeat(64),
+              kind: "duplicate_current_item",
+              decisionCount: 1,
+              relatedSourceIds: ["other-source"],
+              observedAt,
+            },
+          ],
+        }),
+      ).success,
+    ).toBe(true);
+    expect(
+      QueueSourceObservationSchema.safeParse({
+        ...source(),
+        conflicts: [
+          {
+            conflictId: "c".repeat(64),
+            kind: "source_changed_after_decision",
+            decisionCount: 1,
+            relatedSourceIds: [],
+            observedAt,
+            originalText: "private queue text",
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe("queue aggregate observation contract", () => {
@@ -237,6 +270,16 @@ function source(
     contentHash: string | null;
     classification: QueueSourceClassification | null;
     candidateFirstObservedAt: string | null;
+    conflicts: Array<{
+      conflictId: string;
+      kind:
+        | "source_changed_after_decision"
+        | "source_unavailable_after_decision"
+        | "duplicate_current_item";
+      decisionCount: number;
+      relatedSourceIds: string[];
+      observedAt: string;
+    }>;
     error: { code: string; message: string } | null;
   }> = {},
 ) {
@@ -250,6 +293,7 @@ function source(
     contentHash: null,
     classification: null,
     candidateFirstObservedAt: null,
+    conflicts: [],
     error: null,
     ...overrides,
   };

@@ -14,11 +14,15 @@ import { join } from "node:path";
 
 import {
   QUEUE_STATE_SCHEMA_VERSION,
+  type QueueDeliveryRecord,
   type QueueDecisionRecord,
+  type QueueResolutionRecord,
 } from "@pacium/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { computeQueueDecisionHash } from "./queue-decision-hash.js";
+import { computeQueueDeliveryHash } from "./queue-delivery-hash.js";
+import { computeQueueResolutionHash } from "./queue-resolution-hash.js";
 import { QueueDecisionStore } from "./queue-decision-store.js";
 import type { QueueDecisionStoreWriteError } from "./queue-decision-store.js";
 
@@ -41,6 +45,8 @@ describe("queue decision store inspection", () => {
       status: "empty",
       revision: 0,
       decisions: [],
+      deliveries: [],
+      resolutions: [],
       error: null,
     });
     await expect(lstat(dataDirectory)).rejects.toMatchObject({
@@ -55,12 +61,16 @@ describe("queue decision store inspection", () => {
       schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
       revision: 1,
       decisions: [decision],
+      deliveries: [],
+      resolutions: [],
     });
 
     await expect(fixture.store.inspect()).resolves.toEqual({
       status: "ready",
       revision: 1,
       decisions: [decision],
+      deliveries: [],
+      resolutions: [],
       error: null,
     });
     expect((await lstat(fixture.statePath)).mode & 0o777).toBe(0o600);
@@ -77,7 +87,7 @@ describe("queue decision store inspection", () => {
 
     const unsupported = await stateFixture();
     await writeState(unsupported.statePath, {
-      schemaVersion: 2,
+      schemaVersion: 4,
       revision: 1,
       decisions: [],
     });
@@ -100,6 +110,8 @@ describe("queue decision store inspection", () => {
           },
         },
       ],
+      deliveries: [],
+      resolutions: [],
     });
     await expect(tampered.store.inspect()).resolves.toMatchObject({
       status: "error",
@@ -113,6 +125,8 @@ describe("queue decision store inspection", () => {
       schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
       revision: 1,
       decisions: [sampleDecision()],
+      deliveries: [],
+      resolutions: [],
     });
     await chmod(publicState.statePath, 0o644);
     await expect(publicState.store.inspect()).resolves.toMatchObject({
@@ -126,6 +140,8 @@ describe("queue decision store inspection", () => {
       schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
       revision: 1,
       decisions: [sampleDecision()],
+      deliveries: [],
+      resolutions: [],
     });
     await symlink(outside, symlinked.statePath);
     await expect(symlinked.store.inspect()).resolves.toMatchObject({
@@ -136,6 +152,84 @@ describe("queue decision store inspection", () => {
 });
 
 describe("queue decision store append", () => {
+  it("reads version-1 state and migrates only on a later mutation", async () => {
+    const fixture = await stateFixture();
+    const first = sampleDecision();
+    await writeState(fixture.statePath, {
+      schemaVersion: 1,
+      revision: 1,
+      decisions: [first],
+    });
+    const before = await readFile(fixture.statePath);
+
+    await expect(fixture.store.inspect()).resolves.toMatchObject({
+      status: "ready",
+      revision: 1,
+      decisions: [first],
+      deliveries: [],
+      resolutions: [],
+    });
+    expect(await readFile(fixture.statePath)).toEqual(before);
+
+    const second = sampleDecision({
+      sourceId: "orchestrator-queue",
+      itemId: "d".repeat(64),
+      contentHash: "e".repeat(64),
+      decisionId: "4699b11f-94d3-430a-960e-1c574a03db41",
+    });
+    await fixture.store.append(second);
+    const migrated = JSON.parse(
+      await readFile(fixture.statePath, "utf8"),
+    ) as Record<string, unknown>;
+    expect(migrated).toMatchObject({
+      schemaVersion: 3,
+      revision: 2,
+      decisions: [first, second],
+      deliveries: [],
+      resolutions: [],
+    });
+  });
+
+  it("reads version-2 delivery state and preserves it during migration", async () => {
+    const fixture = await stateFixture();
+    const first = sampleDecision();
+    const delivery = sampleDelivery(first);
+    await writeState(fixture.statePath, {
+      schemaVersion: 2,
+      revision: 2,
+      decisions: [first],
+      deliveries: [delivery],
+    });
+    const before = await readFile(fixture.statePath);
+
+    await expect(fixture.store.inspect()).resolves.toMatchObject({
+      status: "ready",
+      revision: 2,
+      decisions: [first],
+      deliveries: [delivery],
+      resolutions: [],
+    });
+    expect(await readFile(fixture.statePath)).toEqual(before);
+
+    const second = sampleDecision({
+      sourceId: "orchestrator-queue",
+      itemId: "d".repeat(64),
+      contentHash: "e".repeat(64),
+      decisionId: "bd88be3b-56f5-4a38-ab4c-c8321dfb60c3",
+    });
+    await fixture.store.append(second);
+    const migrated = JSON.parse(
+      await readFile(fixture.statePath, "utf8"),
+    ) as Record<string, unknown>;
+    expect(migrated).toMatchObject({
+      schemaVersion: 3,
+      revision: 3,
+      decisions: [first, second],
+      deliveries: [delivery],
+      resolutions: [],
+    });
+  });
+
   it("creates private state and appends one validated immutable record", async () => {
     const root = await temporaryRoot();
     const dataDirectory = join(root, "data");
@@ -281,6 +375,235 @@ describe("queue decision store append", () => {
   });
 });
 
+describe("queue delivery store mutations", () => {
+  it("records one intent, one immutable outcome, and recovers both", async () => {
+    const fixture = await stateFixture();
+    const decision = sampleDecision();
+    const delivery = sampleDelivery(decision);
+    await fixture.store.append(decision);
+
+    await expect(fixture.store.beginDelivery(delivery)).resolves.toEqual({
+      status: "recorded",
+      revision: 2,
+      delivery,
+    });
+    await expect(fixture.store.beginDelivery(delivery)).resolves.toEqual({
+      status: "existing",
+      revision: 2,
+      delivery,
+    });
+
+    const outcome = {
+      status: "delivered" as const,
+      recordedAt: "2026-07-27T15:00:01.000Z",
+      evidence: {
+        kind: "answer_file_created" as const,
+        byteLength: delivery.payloadByteLength,
+        contentHash: delivery.payloadHash,
+      },
+      error: null,
+    };
+    const finished = await fixture.store.finishDelivery(
+      delivery.deliveryId,
+      outcome,
+    );
+    expect(finished).toMatchObject({
+      status: "recorded",
+      revision: 3,
+      delivery: {
+        deliveryId: delivery.deliveryId,
+        decisionId: delivery.decisionId,
+        outcome,
+      },
+    });
+    await expect(
+      fixture.store.finishDelivery(delivery.deliveryId, outcome),
+    ).resolves.toMatchObject({
+      status: "existing",
+      revision: 3,
+    });
+
+    const restarted = new QueueDecisionStore(fixture.dataDirectory);
+    await expect(restarted.inspect()).resolves.toMatchObject({
+      status: "ready",
+      revision: 3,
+      decisions: [decision],
+      deliveries: [finished.delivery],
+    });
+  });
+
+  it("serializes concurrent duplicate intents without duplicate delivery", async () => {
+    const fixture = await stateFixture();
+    const decision = sampleDecision();
+    const delivery = sampleDelivery(decision);
+    await fixture.store.append(decision);
+
+    const [first, second] = await Promise.all([
+      fixture.store.beginDelivery(delivery),
+      fixture.store.beginDelivery(delivery),
+    ]);
+    expect(first).toMatchObject({ status: "recorded", revision: 2 });
+    expect(second).toMatchObject({ status: "existing", revision: 2 });
+    await expect(fixture.store.inspect()).resolves.toMatchObject({
+      status: "ready",
+      deliveries: [delivery],
+    });
+  });
+
+  it("rejects unknown decisions and a different second outcome", async () => {
+    const fixture = await stateFixture();
+    const decision = sampleDecision();
+    const delivery = sampleDelivery(decision);
+    await expect(fixture.store.beginDelivery(delivery)).rejects.toMatchObject({
+      code: "invalid_state",
+    });
+
+    await fixture.store.append(decision);
+    await fixture.store.beginDelivery(delivery);
+    await fixture.store.finishDelivery(delivery.deliveryId, {
+      status: "failed",
+      recordedAt: "2026-07-27T15:00:01.000Z",
+      evidence: null,
+      error: {
+        code: "DELIVERY_WRITE_FAILED",
+        message:
+          "The configured transport failed before delivery could be confirmed.",
+      },
+    });
+    await expect(
+      fixture.store.finishDelivery(delivery.deliveryId, {
+        status: "unknown",
+        recordedAt: "2026-07-27T15:00:02.000Z",
+        evidence: null,
+        error: {
+          code: "DELIVERY_OUTCOME_UNKNOWN",
+          message:
+            "The delivery side effect may have occurred, but its durable outcome is unknown. Pacium will not retry it.",
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "invalid_state",
+    });
+  });
+
+  it("permits exactly one retry after confirmed-not-delivered", async () => {
+    const fixture = await stateFixture();
+    const decision = sampleDecision();
+    const first = sampleDelivery(decision);
+    await fixture.store.append(decision);
+    await fixture.store.beginDelivery(first);
+    const failed = await fixture.store.finishDelivery(first.deliveryId, {
+      status: "failed",
+      recordedAt: "2026-07-27T15:00:01.000Z",
+      evidence: null,
+      error: {
+        code: "DELIVERY_WRITE_FAILED",
+        message:
+          "The configured transport failed before delivery could be confirmed.",
+      },
+    });
+    const retry = sampleDelivery(decision, {
+      deliveryId: "bb3d98ca-8308-46d7-9fe3-cf8a131e8dad",
+      requestedAt: "2026-07-27T15:02:00.000Z",
+    });
+
+    await expect(fixture.store.beginDelivery(retry)).resolves.toMatchObject({
+      status: "existing",
+      delivery: { deliveryId: first.deliveryId },
+    });
+    await fixture.store.appendResolution(
+      sampleResolution(decision, failed.delivery, "confirmed_not_delivered"),
+    );
+    await expect(fixture.store.beginDelivery(retry)).resolves.toEqual({
+      status: "recorded",
+      revision: 5,
+      delivery: retry,
+    });
+    await expect(
+      fixture.store.beginDelivery(
+        sampleDelivery(decision, {
+          deliveryId: "27adb772-f575-459b-a74e-993437a706d8",
+          requestedAt: "2026-07-27T15:03:00.000Z",
+        }),
+      ),
+    ).resolves.toEqual({
+      status: "existing",
+      revision: 5,
+      delivery: retry,
+    });
+    await expect(fixture.store.inspect()).resolves.toMatchObject({
+      status: "ready",
+      deliveries: [failed.delivery, retry],
+    });
+  });
+});
+
+describe("queue lifecycle resolution mutations", () => {
+  it("appends one hash-verified human label and recovers it", async () => {
+    const fixture = await stateFixture();
+    const decision = sampleDecision();
+    const delivery = sampleDelivery(decision);
+    await fixture.store.append(decision);
+    await fixture.store.beginDelivery(delivery);
+    const resolution = sampleResolution(decision, delivery, "acknowledged");
+
+    await expect(fixture.store.appendResolution(resolution)).resolves.toEqual({
+      status: "recorded",
+      revision: 3,
+      resolution,
+    });
+    await expect(
+      fixture.store.appendResolution(
+        sampleResolution(decision, delivery, "acknowledged", {
+          resolutionId: "27adb772-f575-459b-a74e-993437a706d8",
+        }),
+      ),
+    ).resolves.toEqual({
+      status: "existing",
+      revision: 3,
+      resolution,
+    });
+
+    const restarted = new QueueDecisionStore(fixture.dataDirectory);
+    await expect(restarted.inspect()).resolves.toMatchObject({
+      status: "ready",
+      revision: 3,
+      resolutions: [resolution],
+    });
+  });
+
+  it("rejects tampering, conflicting labels, and terminal transitions", async () => {
+    const fixture = await stateFixture();
+    const decision = sampleDecision();
+    const delivery = sampleDelivery(decision);
+    await fixture.store.append(decision);
+    await fixture.store.beginDelivery(delivery);
+    const applied = sampleResolution(decision, delivery, "applied");
+
+    await expect(
+      fixture.store.appendResolution({
+        ...applied,
+        note: "tampered",
+      }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+    await fixture.store.appendResolution(applied);
+    await expect(
+      fixture.store.appendResolution(
+        sampleResolution(decision, delivery, "acknowledged", {
+          resolutionId: "27adb772-f575-459b-a74e-993437a706d8",
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+    await expect(
+      fixture.store.appendResolution(
+        sampleResolution(decision, delivery, "applied", {
+          note: "different",
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+  });
+});
+
 function sampleDecision(
   overrides: {
     answer?: string;
@@ -317,6 +640,62 @@ function sampleDecision(
   return {
     ...unhashed,
     decisionHash: computeQueueDecisionHash(unhashed),
+  };
+}
+
+function sampleDelivery(
+  decision: QueueDecisionRecord,
+  overrides: { deliveryId?: string; requestedAt?: string } = {},
+): QueueDeliveryRecord {
+  const unhashed = {
+    deliveryId: overrides.deliveryId ?? "4699b11f-94d3-430a-960e-1c574a03db41",
+    decisionId: decision.decisionId,
+    decisionHash: decision.decisionHash,
+    target: {
+      type: "answer_file" as const,
+      methodId: "answers",
+      methodLabel: "Pacium answers",
+      path: "/private/tmp/PACIUM-ANSWERS",
+    },
+    payloadHash: "d".repeat(64),
+    payloadByteLength: 512,
+    requestedAt: overrides.requestedAt ?? "2026-07-27T15:00:00.000Z",
+    outcome: null,
+  };
+  return {
+    ...unhashed,
+    deliveryHash: computeQueueDeliveryHash(unhashed),
+  };
+}
+
+function sampleResolution(
+  decision: QueueDecisionRecord,
+  delivery: QueueDeliveryRecord,
+  action: Exclude<QueueResolutionRecord["action"], "superseded">,
+  overrides: { resolutionId?: string; note?: string | null } = {},
+): QueueResolutionRecord {
+  const unhashed = {
+    resolutionId:
+      overrides.resolutionId ?? "253a4e0e-d606-4438-9e7e-c27b0021994c",
+    decisionId: decision.decisionId,
+    decisionHash: decision.decisionHash,
+    action,
+    delivery: {
+      deliveryId: delivery.deliveryId,
+      deliveryHash: delivery.deliveryHash,
+    },
+    relatedDecision: null,
+    actor: {
+      kind: "local_operator" as const,
+      label: "Local operator" as const,
+    },
+    source: "human_labelled" as const,
+    recordedAt: "2026-07-27T15:01:00.000Z",
+    note: overrides.note ?? null,
+  };
+  return {
+    ...unhashed,
+    resolutionHash: computeQueueResolutionHash(unhashed),
   };
 }
 

@@ -3,6 +3,7 @@ import type { QueueSourceObservationStatus } from "@pacium/contracts";
 import {
   queueClassificationPresentation,
   queueItemTypeLabel,
+  queueSourceConflictLabel,
   queueWaitingLabel,
   requestingRoleLabel,
   type PaciumQueueProjection,
@@ -38,6 +39,7 @@ export function PaciumQueueSources({
             const status = observation?.status ?? "pending";
             const label = queueStatusLabel(status);
             const classification = queueClassificationPresentation(observation);
+            const conflicts = observation?.conflicts ?? [];
             const selection = queueItemSelection(
               source,
               observation,
@@ -83,6 +85,14 @@ export function PaciumQueueSources({
                       {classification.diagnostic}
                     </small>
                   ) : null}
+                  {conflicts.length > 0 ? (
+                    <small className="pacium-queue-conflict">
+                      Conflict · {queueSourceConflictLabel(conflicts[0]!.kind)}
+                      {conflicts.length > 1
+                        ? ` · +${conflicts.length - 1} more`
+                        : ""}
+                    </small>
+                  ) : null}
                   <small title={source.path}>
                     {selection === null
                       ? sourceEvidenceDetail(observation)
@@ -112,7 +122,13 @@ export function PaciumQueueSources({
                   source.label
                 }, ${requestingRoleLabel(source.requestingRole)}, ${
                   selection.confidence
-                } confidence, ${queueWaitingLabel(selection.firstObservedAt)}`}
+                } confidence, ${queueWaitingLabel(selection.firstObservedAt)}${
+                  conflicts.length === 0
+                    ? ""
+                    : `, ${conflicts.length} conflict ${
+                        conflicts.length === 1 ? "signal" : "signals"
+                      }`
+                }`}
                 className={`${className} pacium-queue-item`}
                 disabled={projection.disconnected}
                 id={`queue-item-${source.id}`}

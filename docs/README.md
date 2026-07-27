@@ -56,6 +56,10 @@ This directory specifies the local-first Pacium Control product.
 - [Definition of done](execution/definition-of-done.md)
 - [Risk register](execution/risk-register.md)
 
+## Operations
+
+- [Optional Tailscale Serve access](operations/tailscale-serve.md)
+
 ## Decisions
 
 See the [ADR index](decisions/README.md). ADR-0013 through ADR-0015 record the local-first reset. ADR-0016 adds a narrow Tailscale Serve path without restoring the old broker, membership, or multi-host architecture.

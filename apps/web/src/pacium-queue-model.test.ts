@@ -273,6 +273,7 @@ function observation(workspaceRevision: number) {
           ],
         },
         candidateFirstObservedAt: observedAt,
+        conflicts: [],
         error: null,
       },
     ],

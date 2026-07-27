@@ -35,6 +35,7 @@ describe("Pacium queue list semantics", () => {
       contentHash: null,
       classification: null,
       candidateFirstObservedAt: null,
+      conflicts: [],
       error: {
         code: "WATCH_FAILED",
         message: "The source parent could not be watched.",
@@ -67,6 +68,7 @@ describe("Pacium queue list semantics", () => {
       contentHash: null,
       classification: null,
       candidateFirstObservedAt: null,
+      conflicts: [],
       error: {
         code: "READ_FAILED",
         message: "</small><script>read()</script>",
@@ -93,6 +95,24 @@ describe("Pacium queue list semantics", () => {
     });
     expect(markup).toContain("No Pacium queue sources are configured.");
     expect(markup).toContain(">Refresh</button>");
+  });
+
+  it("shows content-free conflict evidence on the affected row", () => {
+    const projection = ready();
+    projection.sources[0]!.observation!.conflicts = [
+      {
+        conflictId: "f".repeat(64),
+        kind: "source_changed_after_decision",
+        decisionCount: 1,
+        relatedSourceIds: [],
+        observedAt: "2026-07-27T12:01:00.000Z",
+      },
+    ];
+    const markup = render(projection);
+
+    expect(markup).toContain("Conflict · Source changed after decision");
+    expect(markup).toContain("1 conflict signal");
+    expect(markup).not.toContain("ffffffff");
   });
 });
 
@@ -149,6 +169,7 @@ function ready(): PaciumQueueProjection {
             ],
           },
           candidateFirstObservedAt: "2026-07-27T11:58:00.000Z",
+          conflicts: [],
           error: null,
         },
       },

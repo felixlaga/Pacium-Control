@@ -1,4 +1,5 @@
 import { buildChildEnvironment, loadServerConfig } from "./config.js";
+import { ClaudeObserver, detectClaudeVersion } from "./claude-observer.js";
 import { createPaciumHttpServer } from "./http-server.js";
 import { createHostActions } from "./host-actions.js";
 import { createPaciumConfigStore } from "./pacium-config-service.js";
@@ -8,8 +9,18 @@ import { SessionManager } from "./session-manager.js";
 import { VerificationRunner } from "./verification-runner.js";
 
 const config = loadServerConfig();
+const childEnvironment = buildChildEnvironment(config.environmentKeys);
+const claudeExecutable =
+  config.launchPresets.find(({ id }) => id === "claude")?.executable ?? null;
+const claudeObserver = new ClaudeObserver({
+  baseUrl: `http://${config.host}:${config.port}`,
+  providerVersion:
+    claudeExecutable === null
+      ? null
+      : detectClaudeVersion(claudeExecutable, childEnvironment),
+});
 const verificationRunner = new VerificationRunner({
-  environment: buildChildEnvironment(config.environmentKeys),
+  environment: childEnvironment,
 });
 const sessions = new SessionManager(
   new NodePtyFactory(config),
@@ -21,6 +32,7 @@ const sessions = new SessionManager(
   undefined,
   config.verificationCatalog,
   verificationRunner,
+  claudeObserver,
 );
 const paciumConfig = createPaciumConfigStore(config, sessions);
 const queueObserver = new QueueObserver();
@@ -30,6 +42,7 @@ const application = createPaciumHttpServer(
   sessions,
   paciumConfig,
   queueObserver,
+  claudeObserver,
 );
 
 application.server.listen(config.port, config.host, () => {

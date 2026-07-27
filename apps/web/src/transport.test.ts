@@ -1,10 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  browserReadMethod,
   fetchDirectoryListing,
   paciumConfigGetMessage,
   paciumConfigReplaceMessage,
+  paciumContextInspectMessage,
   queueApprovalDecisionMessage,
+  queueDecisionDeliveryMessage,
+  queueDecisionResolutionMessage,
   queueItemInspectMessage,
   queueObserveMessage,
   queueQuestionAnswerMessage,
@@ -115,6 +119,20 @@ describe("Pacium config transport", () => {
     });
   });
 
+  it("requests control context without path, revision, or query authority", () => {
+    const message = paciumContextInspectMessage(
+      "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+    );
+    expect(message).toEqual({
+      type: "pacium.context.inspect",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+    });
+    expect(message).not.toHaveProperty("path");
+    expect(message).not.toHaveProperty("workspaceRevision");
+    expect(message).not.toHaveProperty("count");
+    expect(message).not.toHaveProperty("command");
+  });
+
   it("sends one complete revisioned workspace replacement", () => {
     const workspace = {
       id: "primary",
@@ -218,6 +236,48 @@ describe("queue observation transport", () => {
       },
     });
   });
+
+  it("delivers only one immutable decision identity", () => {
+    const message = queueDecisionDeliveryMessage(
+      "28c9142a-8986-43c7-9451-445fd8c13c3e",
+      "c".repeat(64),
+      "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+    );
+    expect(message).toEqual({
+      type: "pacium.queue.decision.deliver",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      decisionId: "28c9142a-8986-43c7-9451-445fd8c13c3e",
+      decisionHash: "c".repeat(64),
+    });
+    expect(message).not.toHaveProperty("path");
+    expect(message).not.toHaveProperty("role");
+    expect(message).not.toHaveProperty("payload");
+    expect(message).not.toHaveProperty("retry");
+  });
+
+  it("sends one exact human-labelled lifecycle request", () => {
+    const request = {
+      decisionId: "28c9142a-8986-43c7-9451-445fd8c13c3e",
+      decisionHash: "c".repeat(64),
+      action: "confirmed_not_delivered" as const,
+      delivery: {
+        deliveryId: "4699b11f-94d3-430a-960e-1c574a03db41",
+        deliveryHash: "e".repeat(64),
+      },
+      relatedDecision: null,
+      note: "Verified outside Pacium.",
+    };
+    expect(
+      queueDecisionResolutionMessage(
+        request,
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ),
+    ).toEqual({
+      type: "pacium.queue.decision.resolve",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ...request,
+    });
+  });
 });
 
 describe("session create correlation", () => {
@@ -313,9 +373,39 @@ describe("directory transport", () => {
     const call = fetcher.mock.calls[0];
     expect(call?.[0]).toBe("/api/directories?path=%2Fwork");
     expect(call?.[1]?.credentials).toBe("same-origin");
+    expect(call?.[1]?.method).toBe("GET");
     expect(new Headers(call?.[1]?.headers).get("authorization")).toBe(
       "Bearer secret",
     );
+  });
+
+  it("uses same-origin POST through HTTPS so the browser supplies Origin", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          currentPath: "/work",
+          parentPath: "/",
+          homePath: "/Users/operator",
+          defaultPath: "/work",
+          entries: [],
+          truncated: false,
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+
+    await fetchDirectoryListing({
+      accessToken: "secret",
+      secure: true,
+      fetcher,
+    });
+
+    expect(fetcher.mock.calls[0]?.[1]?.method).toBe("POST");
+    expect(browserReadMethod("https:")).toBe("POST");
+    expect(browserReadMethod("http:")).toBe("GET");
   });
 
   it("surfaces a bounded server error", async () => {
