@@ -45,6 +45,108 @@ export interface PaletteCatalogInput {
   sessions: SessionSummary[];
 }
 
+export interface ShortcutReference {
+  id: string;
+  detail: string;
+  keywords: string[];
+  label: string;
+  shortcut: string;
+}
+
+export const SHORTCUT_REFERENCE: ShortcutReference[] = [
+  {
+    id: "palette",
+    label: "Open command palette",
+    detail: "Available while application focus owns the keyboard",
+    shortcut: "⌘K",
+    keywords: ["command", "search"],
+  },
+  {
+    id: "shortcut-reference",
+    label: "Open shortcut reference",
+    detail: "Available outside terminal capture and text fields",
+    shortcut: "?",
+    keywords: ["help", "keys"],
+  },
+  {
+    id: "new-terminal",
+    label: "New terminal",
+    detail: "Open the launch preset and host-folder flow",
+    shortcut: "⌘⇧T",
+    keywords: ["create", "launch"],
+  },
+  {
+    id: "select-tab",
+    label: "Select terminal tab 1–9",
+    detail: "Open the numbered browser-owned terminal view",
+    shortcut: "⌘1…9",
+    keywords: ["session", "switch", "number"],
+  },
+  {
+    id: "adjacent-tab",
+    label: "Select previous or next tab",
+    detail: "Move through open terminal views",
+    shortcut: "⌘⇧[ / ]",
+    keywords: ["session", "switch"],
+  },
+  {
+    id: "reorder-tab",
+    label: "Reorder focused tab",
+    detail: "Move within the current pinned or unpinned group",
+    shortcut: "⌥⇧← / →",
+    keywords: ["move", "order", "pin"],
+  },
+  {
+    id: "split-right",
+    label: "Split focused pane right",
+    detail: "Create an empty pane beside the focused pane",
+    shortcut: "⌘\\",
+    keywords: ["horizontal", "pane"],
+  },
+  {
+    id: "split-down",
+    label: "Split focused pane down",
+    detail: "Create an empty pane below the focused pane",
+    shortcut: "⌘⇧\\",
+    keywords: ["vertical", "pane"],
+  },
+  {
+    id: "focus-pane",
+    label: "Focus previous or next pane",
+    detail: "Move application focus without entering terminal capture",
+    shortcut: "⌥[ / ]",
+    keywords: ["split", "left", "right"],
+  },
+  {
+    id: "leave-terminal",
+    label: "Leave terminal capture",
+    detail: "Return keyboard ownership to the application",
+    shortcut: "⌃⇧.",
+    keywords: ["escape", "focus", "pty"],
+  },
+  {
+    id: "palette-navigation",
+    label: "Move through palette results",
+    detail: "Changes the active result without closing search",
+    shortcut: "↑ / ↓",
+    keywords: ["navigate", "result"],
+  },
+  {
+    id: "palette-execute",
+    label: "Run active palette command",
+    detail: "Unavailable rows cannot run; destructive actions open review",
+    shortcut: "↵",
+    keywords: ["enter", "execute", "review"],
+  },
+  {
+    id: "palette-close",
+    label: "Close palette or dialog",
+    detail: "Returns focus to the invoking control when possible",
+    shortcut: "Esc",
+    keywords: ["cancel", "dismiss"],
+  },
+];
+
 export function buildPaletteCatalog(
   input: PaletteCatalogInput,
 ): PaletteCommand[] {
@@ -265,6 +367,20 @@ export function movePaletteSelection(
   const nextIndex =
     (currentIndex + direction + enabled.length) % enabled.length;
   return enabled[nextIndex]?.id ?? null;
+}
+
+export function searchShortcutReference(rawQuery: string): ShortcutReference[] {
+  const query = normalizeSearchText(rawQuery.slice(0, MAX_PALETTE_QUERY_CHARS));
+  if (query.length === 0) {
+    return SHORTCUT_REFERENCE;
+  }
+  const tokens = query.split(" ").filter(Boolean).slice(0, 12);
+  return SHORTCUT_REFERENCE.filter((entry) => {
+    const haystack = normalizeSearchText(
+      [entry.label, entry.detail, entry.shortcut, ...entry.keywords].join(" "),
+    );
+    return tokens.every((token) => haystack.includes(token));
+  });
 }
 
 function selectedSessionCommands(session: SessionSummary): PaletteCommand[] {

@@ -5,9 +5,11 @@ import {
   MAX_PALETTE_QUERY_CHARS,
   MAX_PALETTE_RESULTS,
   MAX_PALETTE_SESSION_ENTRIES,
+  SHORTCUT_REFERENCE,
   buildPaletteCatalog,
   movePaletteSelection,
   searchPaletteCommands,
+  searchShortcutReference,
 } from "./command-palette-model.js";
 
 const session: SessionSummary = {
@@ -220,5 +222,13 @@ describe("command palette catalog", () => {
     expect(movePaletteSelection(visible, "workspace.new-terminal", 1)).toBe(
       "workspace.focus-previous-pane",
     );
+  });
+
+  it("provides a searchable reference only for implemented shortcuts", () => {
+    expect(SHORTCUT_REFERENCE.map(({ id }) => id)).toContain("palette");
+    expect(
+      searchShortcutReference("terminal capture").map(({ id }) => id),
+    ).toEqual(["shortcut-reference", "focus-pane", "leave-terminal"]);
+    expect(searchShortcutReference("settings")).toEqual([]);
   });
 });
