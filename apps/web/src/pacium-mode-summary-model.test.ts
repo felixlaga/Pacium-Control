@@ -120,7 +120,6 @@ describe("Pacium mode configuration summary", () => {
     expect(summary).toMatchObject({
       status: "ready",
       title: "Agent oversight",
-      detail: expect.stringContaining("Configured references only"),
       stats: [
         { label: "Roles", value: "1/2" },
         { label: "Workers", value: "1" },
@@ -128,6 +127,7 @@ describe("Pacium mode configuration summary", () => {
         { label: "Queues", value: "1" },
       ],
     });
+    expect(summary.detail).toContain("Configured references only");
   });
 });
 

@@ -5,7 +5,7 @@ export function PaciumModeSummaryCard({
   onRetry,
 }: {
   summary: PaciumModeSummary;
-  onRetry(): void;
+  onRetry: () => void;
 }) {
   return (
     <section
