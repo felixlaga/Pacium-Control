@@ -372,6 +372,19 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-050 Implement worker and objective context
 
 - Compact worker list, current objective/plan text from configured sources, recent decisions, and resulting activity.
+- Current status: protocol 17 exposes one identity-free read-only Control
+  context request. The server performs bounded stable no-follow reads of only
+  the accepted objective/plan paths and projects at most twelve newest
+  validated immutable decisions with recording, latest transport attempt, and
+  latest human-labelled lifecycle evidence kept distinct. Pacium mode renders
+  every accepted worker once in configured order from exact session or
+  capability-labelled preset bindings; Open selects only an existing exact
+  PTY, and Git changes appear only when already loaded for that selected
+  worker. Browser correlation, config/mode/disconnect invalidation, restart
+  reconstruction, inert text, responsive/forced-color UI, and unchanged
+  terminal/source/config evidence are covered. Multi-item parsing,
+  provider-native status, causal resulting-work links, task state, worker
+  launch, and background Git fan-out remain absent.
 
 ## Epic 5 — Native agent enrichment
 
