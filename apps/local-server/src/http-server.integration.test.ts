@@ -26,6 +26,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket, type RawData } from "ws";
 
+import { ClaudeObserver } from "./claude-observer.js";
 import type { ServerConfig, TailscaleServeConfig } from "./config.js";
 import type { HostActions } from "./host-actions.js";
 import {
@@ -167,6 +168,197 @@ describe("localhost HTTP and WebSocket boundary", () => {
 
     second.socket.close();
     await once(second.socket, "close");
+  });
+
+  it("accepts only exact authenticated loopback Claude observations without decisions", async () => {
+    const token = "t".repeat(43);
+    const observer = new ClaudeObserver({
+      baseUrl: "http://127.0.0.1:4174",
+      providerVersion: "2.1.206",
+      tokenFactory: () => token,
+    });
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      null,
+      observer,
+    );
+    application = setup.application;
+    manager = setup.manager;
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    client.socket.send(
+      JSON.stringify({
+        type: "session.create",
+        requestId: "57c47714-3fed-4cb8-8897-4b8e3d2f9138",
+        payload: {
+          cwd: process.cwd(),
+          launchPreset: "claude",
+          cols: 90,
+          rows: 28,
+        },
+      }),
+    );
+    const created = await nextMessage(
+      client,
+      (message) => message.type === "session.created",
+    );
+    if (created.type !== "session.created") {
+      throw new Error("Expected a created Claude session");
+    }
+    expect(created.session.providerObservation).toMatchObject({
+      provider: "claude",
+      providerVersion: "2.1.206",
+      health: { state: "unavailable" },
+    });
+    expect(factory.createCalls[0]).toMatchObject({
+      executable: "/opt/test/bin/claude",
+      environment: { PACIUM_CLAUDE_HOOK_TOKEN: token },
+    });
+    expect(factory.createCalls[0]?.args[1]).not.toContain(token);
+
+    const httpBase = setup.url.replace("ws://", "http://");
+    const hookUrl = `${httpBase}/api/provider/claude/${created.session.id}/hook`;
+    const statusUrl = `${httpBase}/api/provider/claude/${created.session.id}/status`;
+    const headers = {
+      host: "127.0.0.1:4174",
+      "content-type": "application/json",
+      authorization: `Bearer ${token}`,
+    };
+    const hookBody = JSON.stringify({
+      session_id: "claude-session-1",
+      prompt_id: "prompt-1",
+      transcript_path: "/private/transcript.jsonl",
+      cwd: "/work/private",
+      hook_event_name: "PermissionRequest",
+      tool_name: "Bash",
+      tool_use_id: "tool-1",
+      tool_input: { command: "private command" },
+    });
+    expect(
+      await requestHttp(hookUrl, {
+        method: "POST",
+        headers,
+        body: hookBody,
+      }),
+    ).toEqual({ status: 204, json: null });
+    const updated = await nextMessage(
+      client,
+      (message) =>
+        message.type === "session.updated" &&
+        message.session.id === created.session.id,
+    );
+    expect(updated).toMatchObject({
+      type: "session.updated",
+      session: {
+        providerObservation: {
+          health: { state: "ready", source: "hook" },
+          attention: { state: "needs_input", source: "hook" },
+          activities: [{ kind: "approval_requested" }],
+        },
+      },
+    });
+    expect(JSON.stringify(updated)).not.toContain("private command");
+    expect(JSON.stringify(updated)).not.toContain("transcript.jsonl");
+
+    expect(
+      await requestHttp(statusUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          session_id: "claude-session-1",
+          session_name: "private title",
+          version: "2.1.207",
+          model: { id: "claude-opus-5" },
+          cost: { total_cost_usd: 0.5 },
+          context_window: {
+            total_input_tokens: 1_000,
+            total_output_tokens: 100,
+            used_percentage: 12.5,
+          },
+        }),
+      }),
+    ).toEqual({ status: 204, json: null });
+    const statusUpdated = await nextMessage(
+      client,
+      (message) =>
+        message.type === "session.updated" &&
+        message.session.providerObservation?.activities[0]?.kind ===
+          "usage_updated",
+    );
+    expect(statusUpdated).toMatchObject({
+      session: {
+        providerObservation: {
+          providerVersion: "2.1.207",
+        },
+      },
+    });
+    if (statusUpdated.type !== "session.updated") {
+      throw new Error(
+        "Expected the Claude status observation to update the session.",
+      );
+    }
+    expect(
+      statusUpdated.session.providerObservation?.activities[0],
+    ).toMatchObject({
+      kind: "usage_updated",
+      extension: {
+        contextUsedPercent: 12.5,
+        totalInputTokens: 1_000,
+      },
+    });
+    expect(JSON.stringify(statusUpdated)).not.toContain("private title");
+
+    for (const attempt of [
+      requestHttp(hookUrl, { method: "GET", headers }),
+      requestHttp(hookUrl, {
+        method: "POST",
+        headers: { ...headers, host: "pacium.tailnet.ts.net" },
+        body: hookBody,
+      }),
+      requestHttp(hookUrl, {
+        method: "POST",
+        headers: {
+          ...headers,
+          origin: "http://127.0.0.1:4173",
+        },
+        body: hookBody,
+      }),
+      requestHttp(hookUrl, {
+        method: "POST",
+        headers: {
+          ...headers,
+          authorization: `Bearer ${"x".repeat(43)}`,
+        },
+        body: hookBody,
+      }),
+      requestHttp(hookUrl, {
+        method: "POST",
+        headers: { ...headers, "content-type": "text/plain" },
+        body: hookBody,
+      }),
+      requestHttp(hookUrl, {
+        method: "POST",
+        headers,
+        body: "{not-json",
+      }),
+      requestHttp(hookUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ padding: "x".repeat(65_536) }),
+      }),
+    ]) {
+      const response = await attempt;
+      expect(response.status).not.toBe(204);
+      expect(response.json).not.toHaveProperty("decision");
+      expect(response.json).not.toHaveProperty("hookSpecificOutput");
+    }
+
+    client.socket.close();
+    await once(client.socket, "close");
   });
 
   it("gets, replaces, conflicts, and preserves Pacium config over the socket", async () => {
@@ -2637,6 +2829,7 @@ async function startTestServer(
   },
   dataDirectory?: string,
   tailscaleServe: TailscaleServeConfig | null = null,
+  claudeObserver?: ClaudeObserver,
 ): Promise<{
   application: PaciumHttpServer;
   manager: SessionManager;
@@ -2693,9 +2886,13 @@ async function startTestServer(
       {
         id: "claude",
         label: "Claude Code",
-        available: false,
-        unavailableReason: "Claude Code is not installed or not on PATH.",
-        executable: null,
+        available: claudeObserver !== undefined,
+        unavailableReason:
+          claudeObserver === undefined
+            ? "Claude Code is not installed or not on PATH."
+            : null,
+        executable:
+          claudeObserver === undefined ? null : "/opt/test/bin/claude",
         args: [],
         classification: {
           type: "claude",
@@ -2794,11 +2991,14 @@ async function startTestServer(
       }),
     config.verificationCatalog,
     verification?.runner,
+    claudeObserver,
   );
   const application = createPaciumHttpServer(
     config,
     manager,
     createPaciumConfigStore(config, manager),
+    undefined,
+    claudeObserver,
   );
   application.server.listen(0, config.host);
   await once(application.server, "listening");

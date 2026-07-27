@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 
 import { PROTOCOL_VERSION } from "@pacium/contracts";
 
+import type { ClaudeObserver } from "./claude-observer.js";
 import type { ServerConfig } from "./config.js";
 import {
   browseHostDirectories,
@@ -33,11 +34,12 @@ export function createPaciumHttpServer(
   sessions: SessionManager,
   paciumConfig: PaciumConfigStore,
   queueObserver: QueueObserver = new QueueObserver(),
+  claudeObserver?: ClaudeObserver,
 ): PaciumHttpServer {
   const webRoot = fileURLToPath(new URL("../../web/dist/", import.meta.url));
   const hub = new WebSocketHub(config, sessions, paciumConfig, queueObserver);
   const server = createServer((request, response) => {
-    void routeRequest(request, response, config, webRoot);
+    void routeRequest(request, response, config, webRoot, claudeObserver);
   });
 
   server.on("upgrade", (request, socket, head) => {
@@ -86,6 +88,7 @@ async function routeRequest(
   response: ServerResponse,
   config: ServerConfig,
   webRoot: string,
+  claudeObserver: ClaudeObserver | undefined,
 ): Promise<void> {
   applySecurityHeaders(response, config);
 
@@ -173,6 +176,18 @@ async function routeRequest(
     return;
   }
 
+  const claudeIngress = parseClaudeIngressPath(pathname);
+  if (claudeIngress !== null) {
+    await receiveClaudeObservation(
+      request,
+      response,
+      config,
+      claudeObserver,
+      claudeIngress,
+    );
+    return;
+  }
+
   if (pathname.startsWith("/api/")) {
     if (!isReadMethod(request.method)) {
       sendJson(response, 405, { error: "Method not allowed" });
@@ -191,6 +206,137 @@ async function routeRequest(
     return;
   }
   await serveWebAsset(request, response, pathname, webRoot);
+}
+
+const MAX_CLAUDE_INGRESS_BYTES = 64 * 1024;
+const CLAUDE_INGRESS_PATH =
+  /^\/api\/provider\/claude\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(hook|status)$/;
+
+interface ClaudeIngressTarget {
+  sessionId: string;
+  kind: "hook" | "status";
+}
+
+function parseClaudeIngressPath(pathname: string): ClaudeIngressTarget | null {
+  const match = CLAUDE_INGRESS_PATH.exec(pathname);
+  if (match === null) {
+    return null;
+  }
+  const sessionId = match[1];
+  const kind = match[2];
+  return sessionId !== undefined && (kind === "hook" || kind === "status")
+    ? { sessionId, kind }
+    : null;
+}
+
+async function receiveClaudeObservation(
+  request: IncomingMessage,
+  response: ServerResponse,
+  config: ServerConfig,
+  observer: ClaudeObserver | undefined,
+  target: ClaudeIngressTarget,
+): Promise<void> {
+  response.setHeader("cache-control", "no-store");
+  if (request.method !== "POST") {
+    request.resume();
+    sendJson(response, 405, { error: "Method not allowed" });
+    return;
+  }
+  if (
+    request.headers.host !== `127.0.0.1:${config.port}` ||
+    request.headers.origin !== undefined
+  ) {
+    request.resume();
+    sendJson(response, 403, { error: "Forbidden" });
+    return;
+  }
+  if (request.headers["content-type"] !== "application/json") {
+    request.resume();
+    sendJson(response, 415, { error: "JSON content type required" });
+    return;
+  }
+  const token = readProviderBearerToken(request);
+  if (token === null || observer === undefined) {
+    request.resume();
+    sendJson(response, 403, { error: "Forbidden" });
+    return;
+  }
+  const body = await readBoundedJson(request, MAX_CLAUDE_INGRESS_BYTES);
+  if (body.status !== "ready") {
+    sendJson(response, body.status === "too_large" ? 413 : 400, {
+      error:
+        body.status === "too_large"
+          ? "Provider payload too large"
+          : "Invalid provider payload",
+    });
+    return;
+  }
+  const result =
+    target.kind === "hook"
+      ? observer.ingestHook(target.sessionId, token, body.value)
+      : observer.ingestStatus(target.sessionId, token, body.value);
+  if (result.status === "accepted" || result.status === "duplicate") {
+    response.statusCode = 204;
+    response.end();
+    return;
+  }
+  if (result.code === "unknown_session" || result.code === "invalid_token") {
+    sendJson(response, 403, { error: "Forbidden" });
+    return;
+  }
+  sendJson(response, 400, { error: "Invalid provider observation" });
+}
+
+function readProviderBearerToken(request: IncomingMessage): string | null {
+  const authorization = request.headers.authorization;
+  if (
+    authorization === undefined ||
+    Array.isArray(authorization) ||
+    !authorization.startsWith("Bearer ")
+  ) {
+    return null;
+  }
+  const token = authorization.slice("Bearer ".length);
+  return token.length >= 32 &&
+    token.length <= 256 &&
+    /^[A-Za-z0-9_-]+$/.test(token)
+    ? token
+    : null;
+}
+
+async function readBoundedJson(
+  request: IncomingMessage,
+  maxBytes: number,
+): Promise<
+  { status: "ready"; value: unknown } | { status: "too_large" | "invalid" }
+> {
+  const declaredLength = request.headers["content-length"];
+  if (
+    declaredLength !== undefined &&
+    (!/^\d+$/.test(declaredLength) || Number(declaredLength) > maxBytes)
+  ) {
+    request.resume();
+    return { status: "too_large" };
+  }
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += bytes.length;
+    if (size > maxBytes) {
+      request.resume();
+      return { status: "too_large" };
+    }
+    chunks.push(bytes);
+  }
+  try {
+    return {
+      status: "ready",
+      value: JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown,
+    };
+  } catch {
+    return { status: "invalid" };
+  }
 }
 
 async function serveWebAsset(
