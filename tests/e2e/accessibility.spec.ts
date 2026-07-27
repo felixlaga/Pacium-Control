@@ -103,6 +103,13 @@ test("narrow shell exposes panels as dismissible drawers at 320 CSS pixels", asy
   ).toBeVisible();
   await page.getByRole("button", { name: "Close session sidebar" }).click();
   await expect(sidebar).toBeHidden();
+  const composer = page.getByRole("region", {
+    name: "Send to one exact terminal",
+  });
+  await expect(composer).toBeVisible();
+  await expect(composer.getByLabel("Target")).toBeVisible();
+  await expect(composer.getByLabel("Prompt")).toBeVisible();
+  await expect(composer.getByRole("button", { name: "Send" })).toBeVisible();
 
   await page.getByRole("button", { name: "Show inspector" }).click();
   await expect(inspector).toBeVisible();
@@ -168,6 +175,24 @@ test("two-times zoom and system accessibility preferences keep controls usable",
   await page.keyboard.press("Escape");
   await expect(roleDialog).toBeHidden();
   await expect(assignMeta).toBeFocused();
+  await page.getByRole("button", { name: "Close session sidebar" }).click();
+
+  const composer = page.getByRole("region", {
+    name: "Send to one exact terminal",
+  });
+  const prompt = composer.getByLabel("Prompt");
+  await expect(composer).toBeVisible();
+  await prompt.focus();
+  await expect(prompt).toBeFocused();
+  const promptStyles = await prompt.evaluate((element) => {
+    const styles = getComputedStyle(element);
+    return {
+      outlineStyle: styles.outlineStyle,
+      forcedColorAdjust: styles.forcedColorAdjust,
+    };
+  });
+  expect(promptStyles.outlineStyle).not.toBe("none");
+  expect(promptStyles.forcedColorAdjust).not.toBe("none");
 
   const scrollWidth = await page.evaluate(
     () => document.documentElement.scrollWidth,
