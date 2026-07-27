@@ -1345,7 +1345,7 @@ async function nextMessageWithin(
       },
       (error: unknown) => {
         clearTimeout(deadline);
-        reject(error);
+        reject(error instanceof Error ? error : new Error("Message failed."));
       },
     );
   });
