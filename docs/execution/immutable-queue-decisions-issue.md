@@ -52,33 +52,33 @@ different protocol payloads, controls, and confirmation behavior.
 
 ## Acceptance criteria
 
-- [ ] A current `question` accepts only the question-answer request schema and
+- [x] A current `question` accepts only the question-answer request schema and
       records a nonblank bounded answer.
-- [ ] A current `approval` accepts only the approval-decision request schema
+- [x] A current `approval` accepts only the approval-decision request schema
       and records exactly `approved` or `denied`.
-- [ ] A question answer cannot produce approval permission, and an approval
+- [x] A question answer cannot produce approval permission, and an approval
       endpoint cannot decide a question.
-- [ ] Approve and Deny are labelled separately and require a deliberate second
+- [x] Approve and Deny are labelled separately and require a deliberate second
       confirmation while the exact request remains visible.
-- [ ] The server revalidates the complete current item identity and type
+- [x] The server revalidates the complete current item identity and type
       immediately before persistence.
-- [ ] Each record includes exact source identity, server-owned
+- [x] Each record includes exact source identity, server-owned
       `Local operator` attribution, server timestamp, optional bounded note,
       and a recomputable SHA-256 decision hash.
-- [ ] `queue-state.json` is private, bounded, versioned, schema-validated,
+- [x] `queue-state.json` is private, bounded, versioned, schema-validated,
       hash-validated, and replaced atomically without modifying prior records.
-- [ ] Repeating the same exact payload returns the existing record without a
+- [x] Repeating the same exact payload returns the existing record without a
       second write; a different decision for the same item is rejected and
       preserves the first record.
-- [ ] Reload and local-server restart expose the existing decision and no
+- [x] Reload and local-server restart expose the existing decision and no
       longer offer active decision controls for that item.
-- [ ] Missing decision state starts safely; corrupt, unsafe, unsupported, full,
+- [x] Missing decision state starts safely; corrupt, unsafe, unsupported, full,
       or durability-unknown state is visible and never overwritten blindly.
-- [ ] Source rewrites, config drift, disconnects, late responses, or
+- [x] Source rewrites, config drift, disconnects, late responses, or
       classification mismatch cannot create a decision.
-- [ ] No queue source, answer target, terminal, provider, Git repository, or
+- [x] No queue source, answer target, terminal, provider, Git repository, or
       `pacium.json` content is changed.
-- [ ] Focused, contract, integration, browser, security, full verification, and
+- [x] Focused, contract, integration, browser, security, full verification, and
       production-build evidence pass.
 
 ## User experience
