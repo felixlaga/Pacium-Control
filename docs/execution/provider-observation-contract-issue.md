@@ -40,21 +40,21 @@ evidence.
 
 ## Acceptance criteria
 
-- [ ] The contract validates provider, contract/adapter/provider version,
+- [x] The contract validates provider, contract/adapter/provider version,
       capability availability, health, source, confidence, and freshness.
-- [ ] Activity kinds include distinct question and approval observations.
-- [ ] Claude and Codex extensions are discriminated and cannot be attached to
+- [x] Activity kinds include distinct question and approval observations.
+- [x] Claude and Codex extensions are discriminated and cannot be attached to
       the wrong provider.
-- [ ] Diagnostics are count/size bounded, scalar-only, and reject
+- [x] Diagnostics are count/size bounded, scalar-only, and reject
       secret-bearing field names.
-- [ ] Invalid timestamps, duplicate capabilities/activity IDs, oversized
+- [x] Invalid timestamps, duplicate capabilities/activity IDs, oversized
       payloads, and cross-provider data are rejected.
-- [ ] Shell sessions contain no provider snapshot.
-- [ ] Claude and Codex sessions begin with an honest observer-unavailable
+- [x] Shell sessions contain no provider snapshot.
+- [x] Claude and Codex sessions begin with an honest observer-unavailable
       snapshot and continue operating as direct PTYs.
-- [ ] The Activity inspector labels provider observer health without turning an
+- [x] The Activity inspector labels provider observer health without turning an
       unavailable observer into task or attention evidence.
-- [ ] Existing terminal creation, reconnect, input, resize, and close behavior
+- [x] Existing terminal creation, reconnect, input, resize, and close behavior
       remains unchanged.
 
 ## User experience
