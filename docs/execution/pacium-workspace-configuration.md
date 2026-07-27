@@ -1,8 +1,9 @@
 # Pacium workspace configuration
 
-PC-040 introduces one server-owned configuration document for future Pacium
-mode consumers. It does not add the Pacium toggle, queue observation, file
-delivery, prompt delivery, objective/plan reads, or role-launch UI.
+PC-040 introduced one server-owned configuration document for Pacium mode
+consumers. Later slices added the Pacium toggle, role binding, prompt
+targeting, and bounded queue-source observation. File delivery and
+objective/plan reads remain absent.
 
 ## Location
 
@@ -132,7 +133,7 @@ and a canonical path. Answer-file delivery contains only a canonical target
 path. Role-prompt delivery contains only an explicit Meta or Orchestrator
 target.
 
-For this slice:
+The configuration contract itself:
 
 - existing path leaves must be regular non-symlink files;
 - a missing leaf is accepted only beneath an existing canonical directory;
@@ -140,12 +141,19 @@ For this slice:
   their roles require it;
 - a queue source cannot also be an answer target;
 - delivery and repository references must resolve;
-- no configured file is opened for content, watched, created, appended, or
-  delivered;
+- does not by itself open, watch, create, append, or deliver a configured file;
 - no role prompt is sent and no terminal input is generated.
 
-Queue text remains untrusted data. Configuration never grants command or shell
-authority.
+Protocol 11 gives the queue observer separate read-only authority for accepted
+queue-source paths only. It watches canonical parent directories and performs
+bounded no-follow stable reads of at most 64 KiB. Complete UTF-8 text is kept
+only in process memory for later queue parsing; browser messages contain only
+status, byte length, modification time, SHA-256 provenance, and bounded error
+evidence. Objective, plan, and answer-file paths are still never opened by this
+slice.
+
+Queue text remains untrusted data. Configuration and observation never grant
+command, prompt, delivery, or shell authority.
 
 ## Bounds
 
@@ -165,9 +173,10 @@ authority.
 The 96 KiB file ceiling leaves deterministic room inside the 128 KiB
 application-message envelope.
 
-## Protocol 10
+## Protocol 11
 
-The authenticated WebSocket protocol adds:
+The authenticated WebSocket protocol retains the protocol-10 configuration
+operations:
 
 ```text
 pacium.config.get(requestId)
@@ -189,6 +198,27 @@ Browser disconnect drops pending request intent but retains the last accepted
 observation. Reconnect performs a fresh get. A lost replacement response must
 be resolved by get; the browser never assumes that request intent became
 durable state.
+
+Protocol 11 adds content-free queue-source observation:
+
+```text
+pacium.queue.observe(requestId)
+pacium.queue.sources(requestId, observation)
+pacium.queue.sources.updated(observation)
+```
+
+Queue observation is `unconfigured`, `config_error`, or `ready`. Ready evidence
+names the exact workspace revision and carries at most 32 source records in
+accepted config order. Each source has a process-local positive observation
+revision, state, observation time, and nullable byte, modification, hash, or
+bounded error evidence as appropriate.
+
+Source states are `pending`, `stable`, `empty`, `missing`, `changing`,
+`oversized`, `invalid_utf8`, `unsafe_type`, `read_error`, and `watch_error`.
+Only `stable` and `empty` contain a complete SHA-256 hash. No queue path, label,
+requesting role, original text, parsed text, command, decision, or delivery
+payload crosses this protocol boundary; the browser joins metadata to the
+matching accepted config revision and source ID.
 
 ## Atomicity and recovery
 
@@ -218,12 +248,14 @@ repairs, renames, deletes, or overwrites invalid state.
 
 ## Security boundary
 
-Existing exact Origin and ephemeral-token checks protect both operations. The
+Existing exact Origin and ephemeral-token checks protect all operations. The
 browser cannot choose the state-file location or submit commands, arguments,
 executables, environments, signals, terminal bytes, queue content,
 objective/plan content, answer content, verification definitions, or generic
 write targets.
 
 Configured paths are metadata candidates until the local server canonicalizes
-them. PC-040 does not log their contents and does not persist provider tokens,
-passwords, full environments, or terminal transcripts.
+them. Queue observation can read only the accepted queue-source subset after
+canonicalization; it does not expose or log their contents. Pacium does not
+persist provider tokens, passwords, full environments, queue text, or terminal
+transcripts.
