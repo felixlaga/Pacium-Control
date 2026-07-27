@@ -114,7 +114,7 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-026 Implement keyboard and command palette
 
 - Global navigation, session switching, split focus, create, actions, shortcut help, and terminal escape chord.
-- Current status: create, numbered selection, previous/next selection, split creation and focus, session action menus, and the terminal escape chord are implemented. The searchable command palette, complete terminal-aware routing, and shortcut-help surface remain.
+- Current status: a bounded contextual palette searches open sessions, workspace/split commands, and selected-session actions; ranks focused context; routes destructive choices to review; and includes a searchable reference for implemented shortcuts. Global routing suppresses application commands during terminal capture, editable input, and modal ownership. Rendered keyboard, focus, responsive, and international-layout validation remain pending because no browser backend was available.
 
 ### PC-027 Implement preferences
 
