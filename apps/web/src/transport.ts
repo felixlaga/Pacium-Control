@@ -152,6 +152,30 @@ export class PaciumTransport {
     return requestId;
   }
 
+  public requestRepositoryVerification(sessionId: string): string {
+    const requestId = crypto.randomUUID();
+    this.send(repositoryVerificationInspectMessage(sessionId, requestId));
+    return requestId;
+  }
+
+  public runRepositoryVerification(
+    sessionId: string,
+    presetId: string,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(repositoryVerificationRunMessage(sessionId, presetId, requestId));
+    return requestId;
+  }
+
+  public cancelRepositoryVerification(
+    sessionId: string,
+    runId: string,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(repositoryVerificationCancelMessage(sessionId, runId, requestId));
+    return requestId;
+  }
+
   public closeSession(sessionId: string, force: boolean): void {
     this.send({
       type: "session.close",
@@ -355,6 +379,43 @@ export function repositoryHistoryMessage(
     type: "repository.history",
     requestId,
     sessionId,
+  };
+}
+
+export function repositoryVerificationInspectMessage(
+  sessionId: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "repository.verification.inspect" }> {
+  return {
+    type: "repository.verification.inspect",
+    requestId,
+    sessionId,
+  };
+}
+
+export function repositoryVerificationRunMessage(
+  sessionId: string,
+  presetId: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "repository.verification.run" }> {
+  return {
+    type: "repository.verification.run",
+    requestId,
+    sessionId,
+    presetId,
+  };
+}
+
+export function repositoryVerificationCancelMessage(
+  sessionId: string,
+  runId: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "repository.verification.cancel" }> {
+  return {
+    type: "repository.verification.cancel",
+    requestId,
+    sessionId,
+    runId,
   };
 }
 
