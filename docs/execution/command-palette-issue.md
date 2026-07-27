@@ -33,19 +33,19 @@ Pacium has visible controls and several stable shortcuts, but operators still ne
 
 ## Acceptance criteria
 
-- [ ] A visible control and `Cmd/Ctrl K` open the palette when application focus owns the keyboard.
-- [ ] The palette never opens from ordinary keys while a terminal is captured or a text field is active.
-- [ ] Search is case-insensitive, token-based, deterministic, and bounded.
-- [ ] The selected session and focused-pane commands rank before other applicable commands.
-- [ ] Open sessions are searchable by display name, repository, preset, and cwd.
-- [ ] Results state the target and consequence or context rather than exposing ambiguous verbs.
-- [ ] Disabled or inapplicable commands do not execute and explain why when shown.
-- [ ] Arrow keys, Enter, Escape, pointer selection, and visible focus work without a keyboard trap.
-- [ ] Session switching, new terminal, split, pane focus, maximize/restore, and the existing action menu are reachable.
-- [ ] Destructive choices open consequence-aware review and do not mutate process state directly.
-- [ ] Search and shortcut resolution have deterministic tests.
-- [ ] Server-rendered component tests cover empty, results, selected-result, and shortcut-reference states.
-- [ ] The full repository verification gate passes.
+- [x] A visible control and `Cmd/Ctrl K` open the palette when application focus owns the keyboard.
+- [x] The palette never opens from ordinary keys while a terminal is captured or a text field is active.
+- [x] Search is case-insensitive, token-based, deterministic, and bounded.
+- [x] The selected session and focused-pane commands rank before other applicable commands.
+- [x] Open sessions are searchable by display name, repository, preset, and cwd.
+- [x] Results state the target and consequence or context rather than exposing ambiguous verbs.
+- [x] Disabled or inapplicable commands do not execute and explain why when shown.
+- [x] Arrow keys, Enter, Escape, pointer selection, and visible focus work without a keyboard trap.
+- [x] Session switching, new terminal, split, pane focus, maximize/restore, and the existing action menu are reachable.
+- [x] Destructive choices open consequence-aware review and do not mutate process state directly.
+- [x] Search and shortcut resolution have deterministic tests.
+- [x] Server-rendered component tests cover empty, results, selected-result, and shortcut-reference states.
+- [x] The full repository verification gate passes.
 
 ## User experience
 
@@ -103,3 +103,14 @@ Selecting a safe command closes the palette and performs it. Selecting “Review
 ## Open questions
 
 - Final international-layout key mappings require rendered hands-on validation.
+
+## Completion evidence
+
+- Pure catalog tests cover selected-context ordering, current-state availability, session bounds, and dynamic relaunch/maximize labels.
+- Search tests cover case-insensitive multi-field tokens, diacritic normalization, stable ranking, 160-character query bounds, 40-result bounds, and disabled-row keyboard skipping.
+- Shortcut tests prove `Cmd/Ctrl K` and `?` are suppressed during terminal capture, editable input, and modal ownership while the dedicated terminal escape chord remains available.
+- Server-rendered component tests cover selected contextual results, explicit consequences, disabled reasons, no-match guidance, and filtered shortcut-reference markup.
+- Palette dispatch reuses typed session, tab, and split actions; the termination result opens the existing confirmation before any process mutation.
+- `pnpm verify` passed on 2026-07-27: format, lint, type checking, 20 test files with 82 tests, and both production builds.
+- Development runtime smoke passed on loopback: `/api/health` and the Vite application returned HTTP 200.
+- Rendered pointer, keyboard, modal-focus, responsive, and international-layout validation remains pending because the browser runtime reported no available backend.
