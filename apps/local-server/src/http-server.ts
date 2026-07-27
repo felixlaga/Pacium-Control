@@ -16,13 +16,8 @@ import {
   browseHostDirectories,
   DirectoryBrowserError,
 } from "./directory-browser.js";
-import {
-  SECURITY_HEADERS,
-  canReadBootstrap,
-  isAllowedOrigin,
-  isLoopbackHostHeader,
-  isValidAccessToken,
-} from "./security.js";
+import { SECURITY_HEADERS, isValidAccessToken } from "./security.js";
+import { classifyRequestAccess, type RequestAccess } from "./remote-access.js";
 import type { PaciumConfigStore } from "./pacium-config-store.js";
 import { QueueObserver } from "./queue-observer.js";
 import type { SessionManager } from "./session-manager.js";
@@ -48,10 +43,10 @@ export function createPaciumHttpServer(
   server.on("upgrade", (request, socket, head) => {
     const pathname = parsePathname(request);
     const token = readWebSocketToken(request);
+    const access = classifyRequestAccess(request, config, "websocket");
     const allowed =
       pathname === "/ws" &&
-      isLoopbackHostHeader(request.headers.host) &&
-      isAllowedOrigin(request.headers.origin, config.allowedOrigins) &&
+      access !== null &&
       isValidAccessToken(token, config.accessToken) &&
       hasProtocol(request, "pacium.v1");
 
@@ -94,11 +89,6 @@ async function routeRequest(
 ): Promise<void> {
   applySecurityHeaders(response);
 
-  if (request.method !== "GET" && request.method !== "HEAD") {
-    sendJson(response, 405, { error: "Method not allowed" });
-    return;
-  }
-
   const requestUrl = parseRequestUrl(request);
   if (requestUrl === undefined) {
     sendJson(response, 400, { error: "Invalid request URL" });
@@ -107,13 +97,30 @@ async function routeRequest(
   const { pathname } = requestUrl;
 
   if (pathname === "/api/health") {
+    if (!isReadMethod(request.method)) {
+      sendJson(response, 405, { error: "Method not allowed" });
+      return;
+    }
+    if (classifyRequestAccess(request, config, "navigation") === null) {
+      sendJson(response, 403, { error: "Forbidden" });
+      return;
+    }
     sendJson(response, 200, { status: "ok" }, request.method === "HEAD");
     return;
   }
 
   if (pathname === "/api/bootstrap") {
-    if (!canReadBootstrap(request, config.allowedOrigins)) {
+    const access = classifyRequestAccess(request, config, "bootstrap");
+    if (access === null) {
       sendJson(response, 403, { error: "Forbidden" });
+      return;
+    }
+    if (!isAllowedBootstrapMethod(request.method, access)) {
+      sendJson(response, 405, { error: "Method not allowed" });
+      return;
+    }
+    if (request.method === "POST" && !hasEmptyRequestBody(request)) {
+      sendJson(response, 400, { error: "Bootstrap body is not allowed" });
       return;
     }
     sendJson(
@@ -130,8 +137,17 @@ async function routeRequest(
   }
 
   if (pathname === "/api/directories") {
-    if (!canReadProtectedApi(request, config)) {
+    const access = authorizeProtectedApi(request, config);
+    if (access === null) {
       sendJson(response, 403, { error: "Forbidden" });
+      return;
+    }
+    if (!isAllowedProtectedReadMethod(request.method, access)) {
+      sendJson(response, 405, { error: "Method not allowed" });
+      return;
+    }
+    if (request.method === "POST" && !hasEmptyRequestBody(request)) {
+      sendJson(response, 400, { error: "Request body is not allowed" });
       return;
     }
     try {
@@ -158,10 +174,22 @@ async function routeRequest(
   }
 
   if (pathname.startsWith("/api/")) {
+    if (!isReadMethod(request.method)) {
+      sendJson(response, 405, { error: "Method not allowed" });
+      return;
+    }
     sendJson(response, 404, { error: "API route not found" });
     return;
   }
 
+  if (!isReadMethod(request.method)) {
+    sendJson(response, 405, { error: "Method not allowed" });
+    return;
+  }
+  if (classifyRequestAccess(request, config, "navigation") === null) {
+    sendJson(response, 403, { error: "Forbidden" });
+    return;
+  }
   await serveWebAsset(request, response, pathname, webRoot);
 }
 
@@ -235,29 +263,21 @@ function parseRequestUrl(request: IncomingMessage): URL | undefined {
   }
 }
 
-function canReadProtectedApi(
+function authorizeProtectedApi(
   request: IncomingMessage,
   config: ServerConfig,
-): boolean {
-  if (!isLoopbackHostHeader(request.headers.host)) {
-    return false;
-  }
-  const origin = request.headers.origin;
-  if (origin !== undefined && !isAllowedOrigin(origin, config.allowedOrigins)) {
-    return false;
-  }
-  const fetchSite = request.headers["sec-fetch-site"];
+): RequestAccess | null {
+  const access = classifyRequestAccess(request, config, "protected");
   if (
-    origin === undefined &&
-    fetchSite !== undefined &&
-    fetchSite !== "same-origin"
+    access === null ||
+    !isValidAccessToken(
+      readBearerToken(request.headers.authorization),
+      config.accessToken,
+    )
   ) {
-    return false;
+    return null;
   }
-  return isValidAccessToken(
-    readBearerToken(request.headers.authorization),
-    config.accessToken,
-  );
+  return access;
 }
 
 function readBearerToken(value: string | undefined): string | undefined {
@@ -286,6 +306,32 @@ function readProtocols(request: IncomingMessage): string[] {
     .split(",")
     .map((protocol) => protocol.trim())
     .filter(Boolean);
+}
+
+function isReadMethod(method: string | undefined): boolean {
+  return method === "GET" || method === "HEAD";
+}
+
+function isAllowedBootstrapMethod(
+  method: string | undefined,
+  access: RequestAccess,
+): boolean {
+  return access.kind === "local" ? isReadMethod(method) : method === "POST";
+}
+
+function isAllowedProtectedReadMethod(
+  method: string | undefined,
+  access: RequestAccess,
+): boolean {
+  return access.kind === "local" ? isReadMethod(method) : method === "POST";
+}
+
+function hasEmptyRequestBody(request: IncomingMessage): boolean {
+  const contentLength = request.headers["content-length"];
+  return (
+    (contentLength === undefined || contentLength === "0") &&
+    request.headers["transfer-encoding"] === undefined
+  );
 }
 
 function applySecurityHeaders(response: ServerResponse): void {
