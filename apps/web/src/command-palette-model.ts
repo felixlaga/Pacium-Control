@@ -3,6 +3,8 @@ import type { SessionSummary } from "@pacium/contracts";
 import { sessionActionAvailability } from "./session-actions-model.js";
 
 export const MAX_PALETTE_SESSION_ENTRIES = 100;
+export const MAX_PALETTE_RESULTS = 40;
+export const MAX_PALETTE_QUERY_CHARS = 160;
 
 export type PaletteCommandAction =
   | { type: "new-terminal" }
@@ -196,6 +198,75 @@ export function buildPaletteCatalog(
   return commands;
 }
 
+export function searchPaletteCommands(
+  commands: PaletteCommand[],
+  rawQuery: string,
+): PaletteCommand[] {
+  const query = normalizeSearchText(rawQuery.slice(0, MAX_PALETTE_QUERY_CHARS));
+  if (query.length === 0) {
+    return [...commands]
+      .sort(compareRankThenLabel)
+      .slice(0, MAX_PALETTE_RESULTS);
+  }
+
+  const tokens = query.split(" ").filter(Boolean).slice(0, 12);
+  return commands
+    .flatMap((candidate) => {
+      const label = normalizeSearchText(candidate.label);
+      const detail = normalizeSearchText(candidate.detail);
+      const keywords = normalizeSearchText(candidate.keywords.join(" "));
+      if (
+        !tokens.every(
+          (token) =>
+            label.includes(token) ||
+            detail.includes(token) ||
+            keywords.includes(token),
+        )
+      ) {
+        return [];
+      }
+      return [
+        {
+          candidate,
+          score:
+            contextScore(candidate.rank) +
+            tokens.reduce(
+              (total, token) =>
+                total + tokenScore(token, label, detail, keywords),
+              0,
+            ),
+        },
+      ];
+    })
+    .sort(
+      (left, right) =>
+        left.score - right.score ||
+        compareRankThenLabel(left.candidate, right.candidate),
+    )
+    .slice(0, MAX_PALETTE_RESULTS)
+    .map(({ candidate }) => candidate);
+}
+
+export function movePaletteSelection(
+  commands: PaletteCommand[],
+  currentId: string | null,
+  direction: -1 | 1,
+): string | null {
+  const enabled = commands.filter(({ enabled }) => enabled);
+  if (enabled.length === 0) {
+    return null;
+  }
+  const currentIndex = enabled.findIndex(({ id }) => id === currentId);
+  if (currentIndex === -1) {
+    return direction === 1
+      ? (enabled[0]?.id ?? null)
+      : (enabled.at(-1)?.id ?? null);
+  }
+  const nextIndex =
+    (currentIndex + direction + enabled.length) % enabled.length;
+  return enabled[nextIndex]?.id ?? null;
+}
+
 function selectedSessionCommands(session: SessionSummary): PaletteCommand[] {
   const availability = sessionActionAvailability(session);
   const target = `“${session.displayName}”`;
@@ -323,4 +394,61 @@ function command(
 function sessionDetail(session: SessionSummary): string {
   const repository = session.repositoryName ?? session.cwd;
   return `${session.commandLabel} · ${repository} · ${session.processState}`;
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function contextScore(rank: number): number {
+  if (rank < 20) {
+    return 0;
+  }
+  if (rank < 40) {
+    return 20;
+  }
+  return 40;
+}
+
+function tokenScore(
+  token: string,
+  label: string,
+  detail: string,
+  keywords: string,
+): number {
+  if (label === token) {
+    return 0;
+  }
+  if (label.startsWith(token)) {
+    return 1;
+  }
+  if (label.split(" ").some((word) => word.startsWith(token))) {
+    return 2;
+  }
+  if (label.includes(token)) {
+    return 3;
+  }
+  if (detail.includes(token)) {
+    return 4;
+  }
+  if (keywords.includes(token)) {
+    return 5;
+  }
+  return 100;
+}
+
+function compareRankThenLabel(
+  left: PaletteCommand,
+  right: PaletteCommand,
+): number {
+  return (
+    left.rank - right.rank ||
+    left.label.localeCompare(right.label) ||
+    left.id.localeCompare(right.id)
+  );
 }

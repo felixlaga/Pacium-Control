@@ -2,8 +2,12 @@ import type { SessionSummary } from "@pacium/contracts";
 import { describe, expect, it } from "vitest";
 
 import {
+  MAX_PALETTE_QUERY_CHARS,
+  MAX_PALETTE_RESULTS,
   MAX_PALETTE_SESSION_ENTRIES,
   buildPaletteCatalog,
+  movePaletteSelection,
+  searchPaletteCommands,
 } from "./command-palette-model.js";
 
 const session: SessionSummary = {
@@ -127,5 +131,94 @@ describe("command palette catalog", () => {
     expect(
       commands.filter(({ action }) => action.type === "select-session"),
     ).toHaveLength(MAX_PALETTE_SESSION_ENTRIES);
+  });
+
+  it("searches case-insensitive tokens across target context", () => {
+    const second = {
+      ...session,
+      id: "e4a7e71b-e74a-4aef-850f-b5092f89912d",
+      displayName: "Checkout Worker",
+      cwd: "/work/checkout-api",
+      repositoryName: "checkout-api",
+    };
+    const catalog = buildPaletteCatalog({
+      focusedPaneId: "pane-1",
+      maximizedPaneId: null,
+      paneCount: 2,
+      selectedSessionId: session.id,
+      sessions: [session, second],
+    });
+
+    expect(
+      searchPaletteCommands(catalog, "CHECKOUT codex").map(
+        ({ action }) => action,
+      ),
+    ).toEqual([{ type: "select-session", sessionId: second.id }]);
+    expect(searchPaletteCommands(catalog, "rélaunch")[0]?.action).toEqual({
+      type: "relaunch-session",
+      sessionId: session.id,
+    });
+  });
+
+  it("ranks selected context before general commands and keeps stable ties", () => {
+    const catalog = buildPaletteCatalog({
+      focusedPaneId: "pane-1",
+      maximizedPaneId: null,
+      paneCount: 2,
+      selectedSessionId: session.id,
+      sessions: [session],
+    });
+    const sessionResults = searchPaletteCommands(catalog, "meta");
+
+    expect(sessionResults[0]?.group).toBe("Suggested");
+    expect(searchPaletteCommands(catalog, "")[0]?.id).toBe(
+      `session.rename.${session.id}`,
+    );
+  });
+
+  it("bounds long queries and result sets", () => {
+    const many = Array.from({ length: 80 }, (_, index) => ({
+      ...session,
+      id: crypto.randomUUID(),
+      displayName: `Worker ${index}`,
+    }));
+    const catalog = buildPaletteCatalog({
+      focusedPaneId: "pane-1",
+      maximizedPaneId: null,
+      paneCount: 1,
+      selectedSessionId: null,
+      sessions: many,
+    });
+
+    expect(searchPaletteCommands(catalog, "")).toHaveLength(
+      MAX_PALETTE_RESULTS,
+    );
+    expect(
+      searchPaletteCommands(
+        catalog,
+        `${"x".repeat(MAX_PALETTE_QUERY_CHARS)}worker`,
+      ),
+    ).toEqual([]);
+  });
+
+  it("moves selection through enabled results and skips unavailable rows", () => {
+    const catalog = buildPaletteCatalog({
+      focusedPaneId: "pane-1",
+      maximizedPaneId: null,
+      paneCount: 4,
+      selectedSessionId: null,
+      sessions: [],
+    });
+    const visible = searchPaletteCommands(catalog, "");
+
+    expect(movePaletteSelection(visible, null, 1)).toBe(
+      "workspace.new-terminal",
+    );
+    expect(movePaletteSelection(visible, "workspace.new-terminal", -1)).toBe(
+      "workspace.show-shortcuts",
+    );
+    expect(movePaletteSelection(visible, "workspace.new-terminal", 1)).toBe(
+      "workspace.focus-previous-pane",
+    );
   });
 });
