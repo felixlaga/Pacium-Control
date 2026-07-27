@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `953997ba408bc841cf48822e508ee107d5af3ea8`
 - Target milestone: Milestone 3
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -204,6 +204,22 @@ Target selection never changes the terminal on screen. The composer sits above
   adapters.
 - PC-048 may reuse explicit role identity for configured compatibility
   delivery, but not the browser composer's ephemeral acknowledgement.
+
+## Completion evidence
+
+- Target, prompt-state, semantic composer, and transport tests passed 41 focused
+  assertions before the full gate.
+- `pnpm verify` passed formatting, lint, all workspace type checks, 75 test
+  files and 410 tests, the 794.93 kB web build, and the 166.07 kB local-server
+  build.
+- `pnpm test:e2e` passed all nine Chromium workflows.
+- The PC-043 workflow sent a marker to a bound Meta shell while an ordinary
+  terminal stayed selected, observed the marker only after opening Meta, and
+  proved success, invalid multiline input, mode-exit reset, and refresh reset.
+- Accessibility workflows proved labelled fields, visible focus, 320 CSS px,
+  200% zoom, forced colors, and reduced motion.
+- No protocol, schema, server operation, durable prompt file, queue read/write,
+  provider adapter, or process-lifecycle behavior changed.
 
 ## Approval
 
