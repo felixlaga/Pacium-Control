@@ -12,6 +12,7 @@ export type PaletteCommandAction =
   | { type: "focus-pane"; direction: -1 | 1 }
   | { type: "toggle-maximize"; paneId: string }
   | { type: "show-shortcuts" }
+  | { type: "open-settings" }
   | { type: "select-session"; sessionId: string }
   | { type: "rename-session"; sessionId: string }
   | { type: "duplicate-session"; sessionId: string }
@@ -67,6 +68,13 @@ export const SHORTCUT_REFERENCE: ShortcutReference[] = [
     detail: "Available outside terminal capture and text fields",
     shortcut: "?",
     keywords: ["help", "keys"],
+  },
+  {
+    id: "settings",
+    label: "Open workspace settings",
+    detail: "Theme, density, terminal display, and launch defaults",
+    shortcut: "⌘,",
+    keywords: ["preferences", "appearance"],
   },
   {
     id: "new-terminal",
@@ -271,6 +279,16 @@ export function buildPaletteCatalog(
       rank: 26,
       shortcut: "?",
       keywords: ["help", "keys", "reference"],
+    }),
+    command({
+      id: "workspace.open-settings",
+      action: { type: "open-settings" },
+      label: "Open workspace settings",
+      detail: "Theme, density, terminal display, and launch defaults",
+      group: "Workspace",
+      rank: 27,
+      shortcut: "⌘,",
+      keywords: ["preferences", "appearance", "font", "scrollback"],
     }),
   );
 

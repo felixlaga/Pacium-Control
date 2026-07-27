@@ -25,6 +25,7 @@ interface StoredTerminalTabs {
 export type WorkspaceShortcut =
   | { type: "open-command-palette" }
   | { type: "open-shortcut-reference" }
+  | { type: "open-settings" }
   | { type: "new-terminal" }
   | { type: "previous-session" }
   | { type: "next-session" }
@@ -68,6 +69,14 @@ export function resolveWorkspaceShortcut(input: {
     input.code === "Slash"
   ) {
     return { type: "open-shortcut-reference" };
+  }
+  if (
+    commandModifier &&
+    !input.shiftKey &&
+    !input.altKey &&
+    input.code === "Comma"
+  ) {
+    return { type: "open-settings" };
   }
   if (commandModifier && input.shiftKey && input.code === "KeyT") {
     return { type: "new-terminal" };

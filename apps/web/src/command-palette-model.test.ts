@@ -55,6 +55,12 @@ describe("command palette catalog", () => {
         shortcut: "⌘⇧T",
       }),
     );
+    expect(commands.find(({ id }) => id === "workspace.open-settings")).toEqual(
+      expect.objectContaining({
+        action: { type: "open-settings" },
+        shortcut: "⌘,",
+      }),
+    );
     expect(
       commands.find(({ id }) => id === `session.select.${session.id}`),
     ).toEqual(
@@ -217,7 +223,7 @@ describe("command palette catalog", () => {
       "workspace.new-terminal",
     );
     expect(movePaletteSelection(visible, "workspace.new-terminal", -1)).toBe(
-      "workspace.show-shortcuts",
+      "workspace.open-settings",
     );
     expect(movePaletteSelection(visible, "workspace.new-terminal", 1)).toBe(
       "workspace.focus-previous-pane",
@@ -229,6 +235,8 @@ describe("command palette catalog", () => {
     expect(
       searchShortcutReference("terminal capture").map(({ id }) => id),
     ).toEqual(["shortcut-reference", "focus-pane", "leave-terminal"]);
-    expect(searchShortcutReference("settings")).toEqual([]);
+    expect(searchShortcutReference("settings").map(({ id }) => id)).toEqual([
+      "settings",
+    ]);
   });
 });

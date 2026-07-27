@@ -313,6 +313,8 @@ function commandIcon(command: PaletteCommand): string {
       return "⌗";
     case "show-shortcuts":
       return "?";
+    case "open-settings":
+      return "⚙";
     case "select-session":
       return "›";
     case "rename-session":
