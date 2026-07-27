@@ -95,16 +95,16 @@ overwriting it would be destructive.
 
 ## Failure model
 
-| Failure point | Expected state | Recovery |
-| ------------- | -------------- | -------- |
-| Version command unavailable/invalid | Provider version remains unavailable; launch still works | Hook/status evidence may still connect |
+| Failure point                                   | Expected state                                           | Recovery                               |
+| ----------------------------------------------- | -------------------------------------------------------- | -------------------------------------- |
+| Version command unavailable/invalid             | Provider version remains unavailable; launch still works | Hook/status evidence may still connect |
 | Hook settings blocked by managed/user allowlist | Observer remains unavailable or becomes stale; PTY works | Operator adjusts trusted Claude policy |
-| Hook endpoint unreachable/timeout | Claude continues; no false observation | Next hook retries naturally |
-| Invalid token/session/path | Request rejected without state change | Current registered hook retries |
-| Malformed/oversized payload | Request rejected and bounded diagnostic health | Next valid event restores ready health |
-| Duplicate delivery | No second activity or attention transition | Later unique event proceeds |
-| Observer released/session closed | Token becomes invalid | Relaunch creates a new session/token |
-| Status not configured | Usage capability stays unknown | Optional operator companion later |
+| Hook endpoint unreachable/timeout               | Claude continues; no false observation                   | Next hook retries naturally            |
+| Invalid token/session/path                      | Request rejected without state change                    | Current registered hook retries        |
+| Malformed/oversized payload                     | Request rejected and bounded diagnostic health           | Next valid event restores ready health |
+| Duplicate delivery                              | No second activity or attention transition               | Later unique event proceeds            |
+| Observer released/session closed                | Token becomes invalid                                    | Relaunch creates a new session/token   |
+| Status not configured                           | Usage capability stays unknown                           | Optional operator companion later      |
 
 ## Compatibility
 

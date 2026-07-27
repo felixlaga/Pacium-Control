@@ -226,9 +226,7 @@ export class SessionManager {
     });
     const serializer = new SerializeAddon();
     terminal.loadAddon(serializer);
-    let claudePreparation:
-      | ReturnType<ClaudeObserver["prepare"]>
-      | undefined;
+    let claudePreparation: ReturnType<ClaudeObserver["prepare"]> | undefined;
     if (preset.id === "claude" && this.claudeObserver !== undefined) {
       try {
         claudePreparation = this.claudeObserver.prepare(id, createdAt);
