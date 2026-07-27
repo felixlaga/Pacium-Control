@@ -41,6 +41,7 @@ describe("queue decision store inspection", () => {
       status: "empty",
       revision: 0,
       decisions: [],
+      deliveries: [],
       error: null,
     });
     await expect(lstat(dataDirectory)).rejects.toMatchObject({
@@ -55,12 +56,14 @@ describe("queue decision store inspection", () => {
       schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
       revision: 1,
       decisions: [decision],
+      deliveries: [],
     });
 
     await expect(fixture.store.inspect()).resolves.toEqual({
       status: "ready",
       revision: 1,
       decisions: [decision],
+      deliveries: [],
       error: null,
     });
     expect((await lstat(fixture.statePath)).mode & 0o777).toBe(0o600);
@@ -77,7 +80,7 @@ describe("queue decision store inspection", () => {
 
     const unsupported = await stateFixture();
     await writeState(unsupported.statePath, {
-      schemaVersion: 2,
+      schemaVersion: 3,
       revision: 1,
       decisions: [],
     });
@@ -100,6 +103,7 @@ describe("queue decision store inspection", () => {
           },
         },
       ],
+      deliveries: [],
     });
     await expect(tampered.store.inspect()).resolves.toMatchObject({
       status: "error",
@@ -113,6 +117,7 @@ describe("queue decision store inspection", () => {
       schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
       revision: 1,
       decisions: [sampleDecision()],
+      deliveries: [],
     });
     await chmod(publicState.statePath, 0o644);
     await expect(publicState.store.inspect()).resolves.toMatchObject({
@@ -126,6 +131,7 @@ describe("queue decision store inspection", () => {
       schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
       revision: 1,
       decisions: [sampleDecision()],
+      deliveries: [],
     });
     await symlink(outside, symlinked.statePath);
     await expect(symlinked.store.inspect()).resolves.toMatchObject({
@@ -136,6 +142,42 @@ describe("queue decision store inspection", () => {
 });
 
 describe("queue decision store append", () => {
+  it("reads version-1 state and migrates only on a later mutation", async () => {
+    const fixture = await stateFixture();
+    const first = sampleDecision();
+    await writeState(fixture.statePath, {
+      schemaVersion: 1,
+      revision: 1,
+      decisions: [first],
+    });
+    const before = await readFile(fixture.statePath);
+
+    await expect(fixture.store.inspect()).resolves.toMatchObject({
+      status: "ready",
+      revision: 1,
+      decisions: [first],
+      deliveries: [],
+    });
+    expect(await readFile(fixture.statePath)).toEqual(before);
+
+    const second = sampleDecision({
+      sourceId: "orchestrator-queue",
+      itemId: "d".repeat(64),
+      contentHash: "e".repeat(64),
+      decisionId: "4699b11f-94d3-430a-960e-1c574a03db41",
+    });
+    await fixture.store.append(second);
+    const migrated = JSON.parse(
+      await readFile(fixture.statePath, "utf8"),
+    ) as Record<string, unknown>;
+    expect(migrated).toMatchObject({
+      schemaVersion: 2,
+      revision: 2,
+      decisions: [first, second],
+      deliveries: [],
+    });
+  });
+
   it("creates private state and appends one validated immutable record", async () => {
     const root = await temporaryRoot();
     const dataDirectory = join(root, "data");

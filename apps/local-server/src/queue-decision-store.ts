@@ -6,12 +6,16 @@ import {
   MAX_QUEUE_DECISIONS,
   MAX_QUEUE_STATE_BYTES,
   QUEUE_STATE_SCHEMA_VERSION,
+  QueueDecisionRecordSchema,
   QueueStateDocumentSchema,
+  QueueStateV2DocumentSchema,
+  type QueueDeliveryRecord,
   type QueueDecisionRecord,
   queueDecisionIdentityKey,
 } from "@pacium/contracts";
 
 import { hasValidQueueDecisionHash } from "./queue-decision-hash.js";
+import { hasValidQueueDeliveryHash } from "./queue-delivery-hash.js";
 
 export interface QueueDecisionStoreIO {
   lstat: typeof lstat;
@@ -57,18 +61,21 @@ export type QueueDecisionStoreObservation =
       status: "empty";
       revision: 0;
       decisions: readonly [];
+      deliveries: readonly [];
       error: null;
     }
   | {
       status: "ready";
       revision: number;
       decisions: readonly QueueDecisionRecord[];
+      deliveries: readonly QueueDeliveryRecord[];
       error: null;
     }
   | {
       status: "error";
       revision: null;
       decisions: readonly [];
+      deliveries: readonly [];
       error: {
         code: QueueDecisionStoreErrorCode;
         message: string;
@@ -178,6 +185,7 @@ export class QueueDecisionStore {
       if (
         isRecord(value) &&
         "schemaVersion" in value &&
+        value.schemaVersion !== 1 &&
         value.schemaVersion !== QUEUE_STATE_SCHEMA_VERSION
       ) {
         return stateError(
@@ -203,11 +211,22 @@ export class QueueDecisionStore {
           "Queue decision state contains a decision hash mismatch.",
         );
       }
+      const deliveries =
+        parsed.data.schemaVersion === QUEUE_STATE_SCHEMA_VERSION
+          ? parsed.data.deliveries
+          : [];
+      if (deliveries.some((delivery) => !hasValidQueueDeliveryHash(delivery))) {
+        return stateError(
+          "invalid_file",
+          "Queue decision state contains a delivery hash mismatch.",
+        );
+      }
 
       return {
         status: "ready",
         revision: parsed.data.revision,
         decisions: parsed.data.decisions,
+        deliveries,
         error: null,
       };
     } catch {
@@ -232,8 +251,7 @@ export class QueueDecisionStore {
   private async appendOnce(
     decision: QueueDecisionRecord,
   ): Promise<QueueDecisionStoreAppendResult> {
-    const parsedDecision =
-      QueueStateDocumentSchema.shape.decisions.element.parse(decision);
+    const parsedDecision = QueueDecisionRecordSchema.parse(decision);
     if (!hasValidQueueDecisionHash(parsedDecision)) {
       throw new QueueDecisionStoreWriteError(
         "invalid_state",
@@ -280,10 +298,11 @@ export class QueueDecisionStore {
       );
     }
 
-    const document = QueueStateDocumentSchema.parse({
+    const document = QueueStateV2DocumentSchema.parse({
       schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
       revision: current.revision + 1,
       decisions: [...current.decisions, parsedDecision],
+      deliveries: current.deliveries,
     });
     const serialized = `${JSON.stringify(document, null, 2)}\n`;
     if (Buffer.byteLength(serialized) > MAX_QUEUE_STATE_BYTES) {
@@ -425,6 +444,7 @@ function emptyState(): QueueDecisionStoreObservation {
     status: "empty",
     revision: 0,
     decisions: [],
+    deliveries: [],
     error: null,
   };
 }
@@ -437,6 +457,7 @@ function stateError(
     status: "error",
     revision: null,
     decisions: [],
+    deliveries: [],
     error: { code, message },
   };
 }
