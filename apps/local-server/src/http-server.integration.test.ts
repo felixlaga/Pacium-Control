@@ -1487,20 +1487,18 @@ describe("localhost HTTP and WebSocket boundary", () => {
         decisionHash: recorded.result.decision.decisionHash,
       }),
     );
-    await expect(
-      nextMessageWithin(
-        client,
-        (message) =>
-          message.type === "pacium.queue.delivery" &&
-          message.requestId === "7dc274c2-6d9e-4261-9335-b79a4478553e",
-        "successful role retry response",
-      ),
-    ).resolves.toMatchObject({
+    const retryDelivery = await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.queue.delivery" &&
+        message.requestId === "7dc274c2-6d9e-4261-9335-b79a4478553e",
+      "successful role retry response",
+    );
+    expect(retryDelivery).toMatchObject({
       result: {
         status: "delivered",
         state: {
           delivery: {
-            deliveryId: expect.not.stringMatching(firstAttempt.deliveryId),
             outcome: {
               status: "delivered",
               evidence: {
@@ -1512,6 +1510,15 @@ describe("localhost HTTP and WebSocket boundary", () => {
         },
       },
     });
+    if (
+      retryDelivery.type !== "pacium.queue.delivery" ||
+      retryDelivery.result.state.delivery === null
+    ) {
+      throw new Error("Expected the durable role retry delivery");
+    }
+    expect(retryDelivery.result.state.delivery.deliveryId).not.toBe(
+      firstAttempt.deliveryId,
+    );
     expect(factory.processes[0]?.writes).toHaveLength(1);
     const line = factory.processes[0]?.writes[0];
     expect(line).toMatch(/^# Pacium decision v1 .+\r$/);
