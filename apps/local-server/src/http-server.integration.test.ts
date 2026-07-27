@@ -544,6 +544,10 @@ async function startTestServer(
     homeDirectory: process.env.HOME ?? process.cwd(),
     shell: "/bin/zsh",
     environmentKeys: [],
+    verificationCatalog: {
+      configured: false,
+      repositories: [],
+    },
     launchPresets: [
       {
         id: "shell",

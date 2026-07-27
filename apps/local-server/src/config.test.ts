@@ -12,6 +12,17 @@ describe("local server configuration", () => {
     ).toThrow();
   });
 
+  it("keeps verification unavailable without explicit configuration", () => {
+    expect(
+      loadServerConfig({
+        SHELL: "/bin/zsh",
+      }).verificationCatalog,
+    ).toEqual({
+      configured: false,
+      repositories: [],
+    });
+  });
+
   it("passes only allowlisted environment values to terminals", () => {
     expect(
       buildChildEnvironment(["HOME", "CUSTOM_VALUE"], {

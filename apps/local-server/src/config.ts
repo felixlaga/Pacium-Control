@@ -8,6 +8,10 @@ import {
   buildLaunchPresetDefinitions,
   type LaunchPresetDefinition,
 } from "./launch-presets.js";
+import {
+  loadVerificationCatalog,
+  type VerificationCatalog,
+} from "./verification-config.js";
 
 const LoopbackHostSchema = z.literal("127.0.0.1");
 const PortSchema = z.coerce.number().int().min(1024).max(65_535);
@@ -23,6 +27,7 @@ export interface ServerConfig {
   shell: string;
   environmentKeys: readonly string[];
   launchPresets: readonly LaunchPresetDefinition[];
+  verificationCatalog: VerificationCatalog;
 }
 
 const DEFAULT_ENVIRONMENT_KEYS = [
@@ -86,6 +91,9 @@ export function loadServerConfig(
       ...new Set([...DEFAULT_ENVIRONMENT_KEYS, ...extraEnvironmentKeys]),
     ],
     launchPresets: buildLaunchPresetDefinitions(shell, environment),
+    verificationCatalog: loadVerificationCatalog(
+      environment.PACIUM_VERIFICATION_CONFIG,
+    ),
   };
 }
 
