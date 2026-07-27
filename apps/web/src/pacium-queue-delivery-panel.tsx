@@ -195,11 +195,7 @@ function TargetSummary({ target }: { target: QueueDeliveryTarget | null }) {
   );
 }
 
-function DeliveryEvidence({
-  state,
-}: {
-  state: QueueDeliveryState;
-}) {
+function DeliveryEvidence({ state }: { state: QueueDeliveryState }) {
   if (state.status !== "delivered") {
     return null;
   }

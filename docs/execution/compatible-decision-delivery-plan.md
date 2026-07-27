@@ -271,24 +271,24 @@ pacium.queue.delivery(requestId, result)
 
 ## Failure model
 
-| Failure point | Expected state | Recovery |
-| --- | --- | --- |
-| No method configured | `not_configured`; no intent | Configure explicitly in a later setup slice |
-| Config/source/decision drift | `unavailable` or rejected; no intent | Refresh/reopen exact current item |
-| Role preset-only/missing/ended | `unavailable`; no intent | Bind one exact live role session |
-| State v1 valid | Ready; no rewrite on inspection | First accepted mutation migrates atomically |
-| State invalid/unsafe/full | `unavailable`; no side effect | Repair/move state explicitly |
-| Intent write fails before rename | No side effect; prior state authoritative | Inspect, then deliberate action if still ready |
-| Intent directory sync fails | Unknown; adapter is not invoked | Inspect state; PC049 resolves |
-| Answer target already exists | Persisted `failed`; target unchanged | PC049 conflict/resolution |
-| Temp write/sync/link fails before link | Persisted `failed`; target absent/unchanged | PC049 explicit resolution |
-| Parent sync/cleanup fails after link | Persisted or inferred `unknown`; no retry | Inspect target manually; PC049 resolves |
-| Role exits/rebinds before input | Persisted `failed`; no other PTY touched | PC049 explicit resolution |
-| PTY accepts fixed line | `delivered` with transport evidence | Await PC049/provider evidence |
-| Final outcome write fails | Persisted intent becomes `unknown` | Reload/restart; never resend |
-| Browser disconnect | Server attempt continues; browser assumes unknown | Reconnect and inspect durable state |
-| Server restart with null outcome | `unknown`; no adapter invocation | PC049 explicit resolution |
-| Duplicate/concurrent deliver | Existing attempt returned; no side effect | Inspect existing evidence |
+| Failure point                          | Expected state                                    | Recovery                                       |
+| -------------------------------------- | ------------------------------------------------- | ---------------------------------------------- |
+| No method configured                   | `not_configured`; no intent                       | Configure explicitly in a later setup slice    |
+| Config/source/decision drift           | `unavailable` or rejected; no intent              | Refresh/reopen exact current item              |
+| Role preset-only/missing/ended         | `unavailable`; no intent                          | Bind one exact live role session               |
+| State v1 valid                         | Ready; no rewrite on inspection                   | First accepted mutation migrates atomically    |
+| State invalid/unsafe/full              | `unavailable`; no side effect                     | Repair/move state explicitly                   |
+| Intent write fails before rename       | No side effect; prior state authoritative         | Inspect, then deliberate action if still ready |
+| Intent directory sync fails            | Unknown; adapter is not invoked                   | Inspect state; PC049 resolves                  |
+| Answer target already exists           | Persisted `failed`; target unchanged              | PC049 conflict/resolution                      |
+| Temp write/sync/link fails before link | Persisted `failed`; target absent/unchanged       | PC049 explicit resolution                      |
+| Parent sync/cleanup fails after link   | Persisted or inferred `unknown`; no retry         | Inspect target manually; PC049 resolves        |
+| Role exits/rebinds before input        | Persisted `failed`; no other PTY touched          | PC049 explicit resolution                      |
+| PTY accepts fixed line                 | `delivered` with transport evidence               | Await PC049/provider evidence                  |
+| Final outcome write fails              | Persisted intent becomes `unknown`                | Reload/restart; never resend                   |
+| Browser disconnect                     | Server attempt continues; browser assumes unknown | Reconnect and inspect durable state            |
+| Server restart with null outcome       | `unknown`; no adapter invocation                  | PC049 explicit resolution                      |
+| Duplicate/concurrent deliver           | Existing attempt returned; no side effect         | Inspect existing evidence                      |
 
 ## Compatibility
 
