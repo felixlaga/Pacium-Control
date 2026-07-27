@@ -306,6 +306,37 @@ describe("queue delivery contracts", () => {
         error: queueDeliveryError("DELIVERY_OUTCOME_UNKNOWN"),
       }).success,
     ).toBe(true);
+
+    expect(
+      QueueDeliveryStateSchema.safeParse({
+        status: "ready_retry",
+        decisionId: decision.decisionId,
+        decisionHash: decision.decisionHash,
+        target,
+        delivery,
+        error: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      QueueDeliveryStateSchema.safeParse({
+        status: "ready_retry",
+        decisionId: decision.decisionId,
+        decisionHash: decision.decisionHash,
+        target: { ...target, path: "/work/queue/OTHER" },
+        delivery,
+        error: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      QueueDeliveryStateSchema.safeParse({
+        status: "ready_retry",
+        decisionId: decision.decisionId,
+        decisionHash: decision.decisionHash,
+        target,
+        delivery: delivered,
+        error: null,
+      }).success,
+    ).toBe(false);
   });
 
   it("requires result status to agree with the complete state", () => {

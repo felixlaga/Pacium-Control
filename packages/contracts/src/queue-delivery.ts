@@ -331,6 +331,37 @@ export const QueueDeliveryStateSchema = z.discriminatedUnion("status", [
     .strict(),
   z
     .object({
+      status: z.literal("ready_retry"),
+      ...QueueDeliveryStateBase,
+      target: QueueDeliveryTargetSchema,
+      delivery: QueueDeliveryRecordSchema,
+      error: z.null(),
+    })
+    .strict()
+    .superRefine((state, context) => {
+      if (
+        state.delivery.decisionId !== state.decisionId ||
+        state.delivery.decisionHash !== state.decisionHash
+      ) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Retry-ready state and prior delivery decision identities must agree.",
+        });
+      }
+      if (
+        state.delivery.outcome?.status === "delivered" ||
+        JSON.stringify(state.delivery.target) !== JSON.stringify(state.target)
+      ) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Retry readiness requires the exact non-delivered prior target.",
+        });
+      }
+    }),
+  z
+    .object({
       status: z.enum(["delivering", "delivered", "failed", "unknown"]),
       ...QueueDeliveryStateBase,
       target: QueueDeliveryTargetSchema,
