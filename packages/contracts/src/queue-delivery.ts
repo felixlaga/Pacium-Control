@@ -58,6 +58,9 @@ export const QueueAnswerFileDeliveryEvidenceSchema = z
     contentHash: QueueHashSchema,
   })
   .strict();
+export type QueueAnswerFileDeliveryEvidence = z.infer<
+  typeof QueueAnswerFileDeliveryEvidenceSchema
+>;
 
 export const QueueRolePromptDeliveryEvidenceSchema = z
   .object({
@@ -72,6 +75,9 @@ export const QueueRolePromptDeliveryEvidenceSchema = z
     contentHash: QueueHashSchema,
   })
   .strict();
+export type QueueRolePromptDeliveryEvidence = z.infer<
+  typeof QueueRolePromptDeliveryEvidenceSchema
+>;
 
 export const QueueDeliveryEvidenceSchema = z.discriminatedUnion("kind", [
   QueueAnswerFileDeliveryEvidenceSchema,
