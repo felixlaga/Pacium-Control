@@ -90,61 +90,77 @@ export function deriveProcessAttention(
   session: SessionSummary,
   observedAt: string,
 ): AttentionResult {
+  return reduceAttention([processAttentionObservation(session, observedAt)], observedAt);
+}
+
+export function deriveSessionAttention(
+  session: SessionSummary,
+  observedAt: string,
+): AttentionResult {
+  const providerAttention = session.providerObservation?.attention;
+  return reduceAttention(
+    [
+      ...(providerAttention === null || providerAttention === undefined
+        ? []
+        : [
+            {
+              ...providerAttention,
+              staleAfter: earlierTimestamp(
+                providerAttention.staleAfter,
+                session.providerObservation?.staleAfter ??
+                  providerAttention.staleAfter,
+              ),
+            },
+          ]),
+      processAttentionObservation(session, observedAt),
+    ],
+    observedAt,
+  );
+}
+
+function processAttentionObservation(
+  session: SessionSummary,
+  observedAt: string,
+): AttentionObservation {
   const endedAt = session.exitedAt ?? observedAt;
   if (
     session.processState === "failed" ||
     session.exitSignal !== null ||
     (session.exitCode !== null && session.exitCode !== 0)
   ) {
-    return reduceAttention(
-      [
-        {
-          state: "failed",
-          source: "process",
-          confidence: "high",
-          observedAt: endedAt,
-          staleAfter: addHours(endedAt, 24),
-          reason:
-            session.exitSignal !== null
-              ? `Process ended from signal ${session.exitSignal}.`
-              : `Process exited with code ${session.exitCode ?? "unknown"}.`,
-        },
-      ],
-      observedAt,
-    );
+    return {
+      state: "failed",
+      source: "process",
+      confidence: "high",
+      observedAt: endedAt,
+      staleAfter: addHours(endedAt, 24),
+      reason:
+        session.exitSignal !== null
+          ? `Process ended from signal ${session.exitSignal}.`
+          : `Process exited with code ${session.exitCode ?? "unknown"}.`,
+    };
   }
 
   if (session.processState === "exited") {
-    return reduceAttention(
-      [
-        {
-          state: "finished",
-          source: "process",
-          confidence: "medium",
-          observedAt: endedAt,
-          staleAfter: addHours(endedAt, 24),
-          reason:
-            "Process exited cleanly; assigned-task completion is unverified.",
-        },
-      ],
-      observedAt,
-    );
+    return {
+      state: "finished",
+      source: "process",
+      confidence: "medium",
+      observedAt: endedAt,
+      staleAfter: addHours(endedAt, 24),
+      reason: "Process exited cleanly; assigned-task completion is unverified.",
+    };
   }
 
-  return reduceAttention(
-    [
-      {
-        state: "unknown",
-        source: "process",
-        confidence: "low",
-        observedAt,
-        staleAfter: addMinutes(observedAt, 5),
-        reason:
-          "Process is live; no provider activity observer is connected yet.",
-      },
-    ],
+  return {
+    state: "unknown",
+    source: "process",
+    confidence: "low",
     observedAt,
-  );
+    staleAfter: addMinutes(observedAt, 5),
+    reason:
+      "Process is live; no provider activity observer is connected yet.",
+  };
 }
 
 export function attentionStateLabel(state: AttentionState): string {
@@ -237,4 +253,8 @@ function addHours(value: string, hours: number): string {
 function addMilliseconds(value: string, milliseconds: number): string {
   const parsed = parseTimestamp(value);
   return new Date((parsed ?? 0) + milliseconds).toISOString();
+}
+
+function earlierTimestamp(left: string, right: string): string {
+  return Date.parse(left) <= Date.parse(right) ? left : right;
 }

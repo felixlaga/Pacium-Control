@@ -61,7 +61,7 @@ import {
 } from "./attention-inbox-model.js";
 import {
   attentionStateLabel,
-  deriveProcessAttention,
+  deriveSessionAttention,
 } from "./attention-model.js";
 import {
   loadPanelView,
@@ -1757,7 +1757,7 @@ export function App() {
     return new Map(
       sessions.map((session) => [
         session.id,
-        deriveProcessAttention(session, observedAt),
+        deriveSessionAttention(session, observedAt),
       ]),
     );
   }, [sessions]);

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   deriveProcessAttention,
+  deriveSessionAttention,
   reduceAttention,
   type AttentionObservation,
 } from "./attention-model.js";
@@ -24,6 +25,7 @@ const session: SessionSummary = {
     confidence: "confirmed",
     observedAt: now,
   },
+  providerObservation: null,
   repository: {
     status: "ready",
     root: "/work/pacium",
@@ -170,3 +172,130 @@ describe("process attention", () => {
     });
   });
 });
+
+describe("provider attention", () => {
+  it("uses explicit native evidence ahead of a live process", () => {
+    const result = deriveSessionAttention(
+      {
+        ...session,
+        providerObservation: providerObservation({
+          state: "needs_input",
+          source: "native",
+          reason: "Codex requested an approval.",
+        }),
+      },
+      now,
+    );
+
+    expect(result).toMatchObject({
+      state: "needs_input",
+      source: "native",
+      confidence: "confirmed",
+      reason: "Codex requested an approval.",
+    });
+  });
+
+  it("uses hook evidence without promoting it to native", () => {
+    const result = deriveSessionAttention(
+      {
+        ...session,
+        providerObservation: providerObservation({
+          state: "working",
+          source: "hook",
+          confidence: "high",
+          reason: "Claude reported a tool start through a hook.",
+        }),
+      },
+      now,
+    );
+
+    expect(result).toMatchObject({
+      state: "working",
+      source: "hook",
+      confidence: "high",
+    });
+  });
+
+  it("expires provider attention at the earlier snapshot boundary", () => {
+    const result = deriveSessionAttention(
+      {
+        ...session,
+        providerObservation: {
+          ...providerObservation({
+            state: "working",
+            source: "native",
+            staleAfter: later,
+          }),
+          staleAfter: "2026-07-27T10:01:00.000Z",
+        },
+      },
+      "2026-07-27T10:02:00.000Z",
+    );
+
+    expect(result).toMatchObject({
+      state: "stale",
+      source: "native",
+      staleAfter: "2026-07-27T10:01:00.000Z",
+    });
+  });
+
+  it("keeps unavailable observers as process-only unknown evidence", () => {
+    const result = deriveSessionAttention(
+      {
+        ...session,
+        providerObservation: {
+          ...providerObservation(),
+          health: {
+            state: "unavailable",
+            source: "none",
+            confidence: "low",
+            detail: "Observer is not connected.",
+          },
+          attention: null,
+        },
+      },
+      now,
+    );
+
+    expect(result).toMatchObject({
+      state: "unknown",
+      source: "process",
+      confidence: "low",
+    });
+  });
+});
+
+type ProviderAttention = NonNullable<
+  NonNullable<SessionSummary["providerObservation"]>["attention"]
+>;
+
+function providerObservation(
+  attention: Partial<ProviderAttention> = {},
+): NonNullable<SessionSummary["providerObservation"]> {
+  return {
+    contractVersion: 1,
+    provider: "codex",
+    adapterVersion: "1",
+    providerVersion: "0.145.0",
+    health: {
+      state: "ready",
+      source: "native",
+      confidence: "confirmed",
+      detail: "Native observer connected.",
+    },
+    capabilities: [],
+    attention: {
+      state: "working",
+      source: "native",
+      confidence: "confirmed",
+      observedAt: now,
+      staleAfter: later,
+      reason: "Provider reported an active turn.",
+      ...attention,
+    },
+    activities: [],
+    diagnostics: [],
+    observedAt: now,
+    staleAfter: later,
+  };
+}
