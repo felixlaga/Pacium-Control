@@ -9,6 +9,7 @@ import {
   interruptQueueItemInspection,
   queueItemSelection,
   reconcileQueueItemInspection,
+  reconcileQueueItemInspectionConfig,
   sameQueueIdentity,
 } from "./pacium-queue-inspection-model.js";
 
@@ -45,9 +46,9 @@ describe("queue item inspection state", () => {
     const selection = queueItemSelection(source(), observation(), 4)!;
     const loading = beginQueueItemInspection(selection, "request-1");
     const ready = detail();
-    expect(
-      acceptQueueItemInspection(loading, "unrelated", ready),
-    ).toBe(loading);
+    expect(acceptQueueItemInspection(loading, "unrelated", ready)).toBe(
+      loading,
+    );
     expect(
       acceptQueueItemInspection(loading, "request-1", {
         ...ready,
@@ -87,9 +88,9 @@ describe("queue item inspection state", () => {
       "request-1",
       detail(),
     );
-    expect(
-      reconcileQueueItemInspection(ready, aggregate(observation())),
-    ).toBe(ready);
+    expect(reconcileQueueItemInspection(ready, aggregate(observation()))).toBe(
+      ready,
+    );
     expect(
       reconcileQueueItemInspection(
         ready,
@@ -121,9 +122,9 @@ describe("queue item inspection state", () => {
   it("interrupts only the matching request and closes without retention", () => {
     const selection = queueItemSelection(source(), observation(), 4)!;
     const loading = beginQueueItemInspection(selection, "request-1");
-    expect(
-      interruptQueueItemInspection(loading, "unrelated", "failed"),
-    ).toBe(loading);
+    expect(interruptQueueItemInspection(loading, "unrelated", "failed")).toBe(
+      loading,
+    );
     expect(
       interruptQueueItemInspection(loading, "request-1", "Read failed"),
     ).toMatchObject({
@@ -132,6 +133,53 @@ describe("queue item inspection state", () => {
       errorMessage: "Read failed",
     });
     expect(closeQueueItemInspection()).toEqual(CLOSED_QUEUE_INSPECTION);
+  });
+
+  it("clears accepted text on config revision drift", () => {
+    const selection = queueItemSelection(source(), observation(), 4)!;
+    const ready = acceptQueueItemInspection(
+      beginQueueItemInspection(selection, "request-1"),
+      "request-1",
+      detail(),
+    );
+    expect(
+      reconcileQueueItemInspectionConfig(ready, {
+        status: "ready",
+        revision: 4,
+        workspace: {
+          id: "primary",
+          label: "Pacium",
+          repositories: [],
+          roles: { meta: null, orchestrator: null },
+          workers: [],
+          queueSources: [source()],
+          deliveryMethods: [],
+          context: { objective: null, plan: null },
+        },
+        error: null,
+      }),
+    ).toBe(ready);
+    expect(
+      reconcileQueueItemInspectionConfig(ready, {
+        status: "ready",
+        revision: 5,
+        workspace: {
+          id: "primary",
+          label: "Pacium",
+          repositories: [],
+          roles: { meta: null, orchestrator: null },
+          workers: [],
+          queueSources: [source()],
+          deliveryMethods: [],
+          context: { objective: null, plan: null },
+        },
+        error: null,
+      }),
+    ).toMatchObject({
+      status: "stale",
+      originalText: null,
+      inspection: null,
+    });
   });
 
   it("compares every current identity component", () => {

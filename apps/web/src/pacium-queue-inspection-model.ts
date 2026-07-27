@@ -1,4 +1,5 @@
 import type {
+  PaciumConfigObservation,
   PaciumQueueSource,
   QueueItemConfidence,
   QueueItemInspection,
@@ -24,20 +25,13 @@ export interface QueueItemSelection {
 export interface PaciumQueueInspectionState {
   selection: QueueItemSelection | null;
   requestId: string | null;
-  status:
-    | "closed"
-    | "loading"
-    | "ready"
-    | "stale"
-    | "unavailable"
-    | "error";
+  status: "closed" | "loading" | "ready" | "stale" | "unavailable" | "error";
   originalText: string | null;
   inspection: QueueItemInspectionEvidence | null;
   errorMessage: string | null;
 }
 
-export interface QueueItemInspectionEvidence
-  extends QueueItemInspectionIdentity {
+export interface QueueItemInspectionEvidence extends QueueItemInspectionIdentity {
   status: QueueItemInspection["status"];
   sourceObservedAt: string;
   firstObservedAt: string | null;
@@ -214,14 +208,37 @@ export function reconcileQueueItemInspection(
   return {
     ...state,
     requestId: null,
-    status:
-      observation.status === "ready" ? "stale" : "unavailable",
+    status: observation.status === "ready" ? "stale" : "unavailable",
     originalText: null,
     inspection: null,
     errorMessage:
       observation.status === "ready"
         ? "This queue item is no longer current. The source file and terminals were not changed."
         : "Current queue evidence is unavailable. The source file and terminals were not changed.",
+  };
+}
+
+export function reconcileQueueItemInspectionConfig(
+  state: PaciumQueueInspectionState,
+  config: PaciumConfigObservation,
+): PaciumQueueInspectionState {
+  if (
+    state.selection === null ||
+    (config.status === "ready" &&
+      config.revision === state.selection.identity.workspaceRevision)
+  ) {
+    return state;
+  }
+  const stale = config.status === "ready";
+  return {
+    ...state,
+    requestId: null,
+    status: stale ? "stale" : "unavailable",
+    originalText: null,
+    inspection: null,
+    errorMessage: stale
+      ? "The Pacium workspace changed, so this queue item is no longer current. The source file and terminals were not changed."
+      : "Current queue configuration is unavailable. The source file and terminals were not changed.",
   };
 }
 
