@@ -1,5 +1,6 @@
 import { loadServerConfig } from "./config.js";
 import { createPaciumHttpServer } from "./http-server.js";
+import { createHostActions } from "./host-actions.js";
 import { NodePtyFactory } from "./pty-adapter.js";
 import { SessionManager } from "./session-manager.js";
 
@@ -7,6 +8,7 @@ const config = loadServerConfig();
 const sessions = new SessionManager(
   new NodePtyFactory(config),
   config.launchPresets,
+  createHostActions(),
 );
 const application = createPaciumHttpServer(config, sessions);
 

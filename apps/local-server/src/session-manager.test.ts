@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { FakePtyFactory } from "@pacium/test-utils";
 
 import type { LaunchPresetDefinition } from "./launch-presets.js";
@@ -105,6 +105,47 @@ describe("SessionManager", () => {
     expect(factory.processes[0]?.signals).toEqual(["SIGTERM"]);
     factory.processes[0]?.emitExit(143, 15);
     expect(manager.list()).toHaveLength(0);
+  });
+
+  it("renames session metadata and emits an updated summary", async () => {
+    const factory = new FakePtyFactory();
+    const manager = new SessionManager(factory, testPresets);
+    const session = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+    const events: string[] = [];
+    manager.onSessionEvent((event) => {
+      if (event.type === "updated") {
+        events.push(event.session.displayName);
+      }
+    });
+
+    manager.rename(session.id, "  Meta  ");
+    expect(manager.list()[0]?.displayName).toBe("Meta");
+    expect(events).toEqual(["Meta"]);
+    expect(() => manager.rename(session.id, "   ")).toThrow(
+      "between 1 and 120",
+    );
+    manager.shutdown();
+  });
+
+  it("reveals only the session's canonical repository root", async () => {
+    const factory = new FakePtyFactory();
+    const revealPath = vi.fn().mockResolvedValue(undefined);
+    const manager = new SessionManager(factory, testPresets, { revealPath });
+    const session = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+
+    await manager.revealRepository(session.id);
+    expect(revealPath).toHaveBeenCalledWith(session.repositoryRoot);
+    manager.shutdown();
   });
 
   it("rejects a missing working directory without creating a PTY", async () => {

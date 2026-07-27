@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PROTOCOL_VERSION = 2 as const;
+export const PROTOCOL_VERSION = 3 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -95,6 +95,21 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     requestId: RequestIdSchema,
     sessionId: SessionIdSchema,
   }),
+  z
+    .object({
+      type: z.literal("session.rename"),
+      requestId: RequestIdSchema,
+      sessionId: SessionIdSchema,
+      displayName: z.string().trim().min(1).max(120),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("session.revealRepository"),
+      requestId: RequestIdSchema,
+      sessionId: SessionIdSchema,
+    })
+    .strict(),
   z.object({
     type: z.literal("session.close"),
     requestId: RequestIdSchema,

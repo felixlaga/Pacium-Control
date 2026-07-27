@@ -38,6 +38,7 @@ const callbacks = {
   onClosePane() {},
   onFocusPane() {},
   onInput() {},
+  onOpenActions() {},
   onResize() {},
   onSetRatio() {},
   onSplit() {},

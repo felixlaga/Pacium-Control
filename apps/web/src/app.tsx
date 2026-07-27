@@ -22,6 +22,11 @@ import {
   type TransportEvent,
 } from "./transport.js";
 import { DirectoryPicker } from "./directory-picker.js";
+import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
+import {
+  duplicateSessionInput,
+  relaunchSessionInput,
+} from "./session-actions-model.js";
 import { SplitWorkspace } from "./split-workspace.js";
 import {
   adjacentTerminalTabId,
@@ -123,6 +128,8 @@ export function App() {
   const [createOpen, setCreateOpen] = useState(false);
   const [capturedPaneId, setCapturedPaneId] = useState<string | null>(null);
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
+  const [actionSessionId, setActionSessionId] = useState<string | null>(null);
+  const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
 
   selectedIdRef.current = selectedId;
   tabsRef.current = tabs;
@@ -242,6 +249,10 @@ export function App() {
     () => sessions.find((session) => session.id === selectedId) ?? null,
     [selectedId, sessions],
   );
+  const actionSession =
+    sessions.find(({ id }) => id === actionSessionId) ?? null;
+  const renameSession =
+    sessions.find(({ id }) => id === renameSessionId) ?? null;
   const renderedSessionIds = useMemo(() => {
     const panes = listPanes(layout.root);
     if (layout.maximizedPaneId !== null) {
@@ -409,22 +420,32 @@ export function App() {
     [],
   );
 
-  const closeSelected = () => {
-    if (selectedSession === null) {
-      return;
-    }
+  const terminateSession = (session: SessionSummary) => {
     const isLive =
-      selectedSession.processState === "live" ||
-      selectedSession.processState === "closing";
-    if (
-      isLive &&
-      !window.confirm(
-        `Close “${selectedSession.displayName}” and terminate its running shell?`,
-      )
-    ) {
+      session.processState === "live" || session.processState === "closing";
+    const consequence = isLive
+      ? `Terminate “${session.displayName}”? Pacium will send SIGTERM and force termination if it does not exit.`
+      : `Remove the ended session “${session.displayName}” from Pacium?`;
+    if (!window.confirm(consequence)) {
       return;
     }
-    transportRef.current?.closeSession(selectedSession.id, isLive);
+    transportRef.current?.closeSession(session.id, isLive);
+    setActionSessionId(null);
+  };
+
+  const copySessionDirectory = async (session: SessionSummary) => {
+    try {
+      if (navigator.clipboard === undefined) {
+        throw new Error("Clipboard access is unavailable.");
+      }
+      await navigator.clipboard.writeText(session.cwd);
+      setNotice(`Copied ${session.cwd}`);
+    } catch {
+      setNotice(
+        `Pacium could not access the clipboard. The path is ${session.cwd}`,
+      );
+    }
+    setActionSessionId(null);
   };
 
   useEffect(() => {
@@ -547,6 +568,10 @@ export function App() {
                           }
                           className="session-item"
                           onClick={() => selectSession(session.id)}
+                          onContextMenu={(event) => {
+                            event.preventDefault();
+                            setActionSessionId(session.id);
+                          }}
                           title={`${session.commandLabel} in ${session.cwd}${
                             sessionShortcutNumbers.get(session.id) == null
                               ? ""
@@ -622,12 +647,12 @@ export function App() {
               Interrupt
             </button>
             <button
-              className="danger-ghost"
               disabled={selectedSession === null}
-              onClick={closeSelected}
+              onClick={() => setActionSessionId(selectedSession?.id ?? null)}
+              title="Session actions"
               type="button"
             >
-              Close
+              Actions
             </button>
           </div>
         </header>
@@ -676,6 +701,10 @@ export function App() {
                         );
                       }
                       setDraggedTabId(null);
+                    }}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      setActionSessionId(session.id);
                     }}
                   >
                     <button
@@ -838,6 +867,7 @@ export function App() {
               onInput={(sessionId, data) =>
                 transportRef.current?.input(sessionId, data)
               }
+              onOpenActions={(sessionId) => setActionSessionId(sessionId)}
               onResize={(sessionId, cols, rows) =>
                 transportRef.current?.resize(sessionId, cols, rows)
               }
@@ -934,6 +964,68 @@ export function App() {
           loadDirectories={loadDirectories}
           onCancel={() => setCreateOpen(false)}
           onCreate={createSession}
+        />
+      )}
+      {actionSession !== null && (
+        <SessionActionsMenu
+          onClose={() => setActionSessionId(null)}
+          onCloseView={() => {
+            closeViewTab(actionSession.id);
+            setActionSessionId(null);
+          }}
+          onCopyDirectory={() => {
+            void copySessionDirectory(actionSession);
+          }}
+          onDuplicate={() => {
+            transportRef.current?.createSession(
+              duplicateSessionInput(actionSession),
+            );
+            setNotice(
+              `Starting a duplicate of ${actionSession.displayName}. The original process is unchanged.`,
+            );
+            setActionSessionId(null);
+          }}
+          onInterrupt={() => {
+            transportRef.current?.interrupt(actionSession.id);
+            setNotice(
+              `Sent SIGINT to ${actionSession.displayName}. The process may continue running.`,
+            );
+            setActionSessionId(null);
+          }}
+          onRelaunch={() => {
+            const input = relaunchSessionInput(actionSession);
+            if (input !== null) {
+              transportRef.current?.createSession(input);
+              setNotice(
+                `Starting a new ${actionSession.displayName} process from its retained preset and directory.`,
+              );
+            }
+            setActionSessionId(null);
+          }}
+          onRename={() => {
+            setRenameSessionId(actionSession.id);
+            setActionSessionId(null);
+          }}
+          onRevealRepository={() => {
+            transportRef.current?.revealRepository(actionSession.id);
+            setNotice(
+              `Asked the Pacium host to reveal ${actionSession.repositoryName ?? "the repository"}.`,
+            );
+            setActionSessionId(null);
+          }}
+          onTerminate={() => terminateSession(actionSession)}
+          session={actionSession}
+        />
+      )}
+      {renameSession !== null && (
+        <RenameSessionDialog
+          onCancel={() => setRenameSessionId(null)}
+          onRename={(displayName) => {
+            transportRef.current?.renameSession(renameSession.id, displayName);
+            setNotice(`Renaming ${renameSession.displayName}…`);
+            setRenameSessionId(null);
+          }}
+          session={renameSession}
         />
       )}
     </div>

@@ -1447,6 +1447,161 @@ kbd {
   padding-top: 2px;
 }
 
+.session-actions-backdrop {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 66px 16px 16px;
+  background: #07070852;
+  backdrop-filter: blur(2px);
+}
+
+.session-actions-menu {
+  width: min(350px, calc(100vw - 32px));
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: #191a1e;
+  box-shadow: 0 24px 80px #0000008a;
+}
+
+.session-actions-menu > header {
+  display: flex;
+  min-height: 72px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.session-actions-menu h2 {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 570;
+  letter-spacing: -0.01em;
+}
+
+.session-actions-menu header p {
+  margin: 4px 0 0;
+  color: var(--text-faint);
+  font-size: 9px;
+  text-transform: capitalize;
+}
+
+.session-actions-menu header > button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-faint);
+  background: transparent;
+  cursor: pointer;
+}
+
+.session-actions-menu header > button:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.session-action-group {
+  padding: 5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.session-action-group:last-child {
+  border-bottom: 0;
+}
+
+.session-action-group > button {
+  display: flex;
+  width: 100%;
+  min-height: 45px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.session-action-group > button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: #ffffff0a;
+  background: #ffffff08;
+}
+
+.session-action-group > button:disabled {
+  cursor: default;
+  opacity: 0.38;
+}
+
+.session-action-icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-faint);
+  background: #111214;
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.session-action-group > button > span:nth-child(2) {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.session-action-group strong,
+.session-action-group small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-action-group strong {
+  color: inherit;
+  font-size: 10px;
+  font-weight: 550;
+}
+
+.session-action-group small {
+  color: var(--text-faint);
+  font-size: 8px;
+}
+
+.process-actions > button.is-danger {
+  color: #e98b92;
+}
+
+.process-actions > button.is-danger:hover:not(:disabled) {
+  border-color: #e46f7826;
+  background: #e46f780d;
+}
+
+.process-actions > button.is-danger .session-action-icon {
+  color: var(--red);
+  border-color: #e46f7833;
+  background: #e46f780d;
+}
+
+.rename-session-card {
+  width: min(390px, calc(100vw - 32px));
+}
+
 .directory-picker-backdrop {
   z-index: 30;
   padding: 18px;
@@ -1985,6 +2140,17 @@ kbd {
 
   .empty-pane-sessions {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-actions-backdrop {
+    align-items: flex-end;
+    padding: 8px;
+  }
+
+  .session-actions-menu {
+    width: 100%;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
   }
 
   .directory-picker-backdrop {

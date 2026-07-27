@@ -113,6 +113,23 @@ export class PaciumTransport {
     });
   }
 
+  public renameSession(sessionId: string, displayName: string): void {
+    this.send({
+      type: "session.rename",
+      requestId: crypto.randomUUID(),
+      sessionId,
+      displayName,
+    });
+  }
+
+  public revealRepository(sessionId: string): void {
+    this.send({
+      type: "session.revealRepository",
+      requestId: crypto.randomUUID(),
+      sessionId,
+    });
+  }
+
   public closeSession(sessionId: string, force: boolean): void {
     this.send({
       type: "session.close",
