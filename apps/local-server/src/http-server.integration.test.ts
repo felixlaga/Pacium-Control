@@ -907,6 +907,174 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await once(client.socket, "close");
   });
 
+  it("delivers one shell-safe line to only the configured live role PTY", async () => {
+    const queueDirectory = await mkdtemp(join(tmpdir(), "pacium-role-http-"));
+    temporaryDirectories.push(queueDirectory);
+    const queuePath = join(queueDirectory, "NEEDS-FELIX");
+    const questionText = "Question: Choose the exact worker\n";
+    await writeFile(queuePath, questionText, { mode: 0o600 });
+
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(factory);
+    application = setup.application;
+    manager = setup.manager;
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    const metaSession = await createTestSession(client);
+    const unrelatedSession = await createTestSession(client);
+    const workspace = {
+      ...paciumWorkspace("Role delivery workspace"),
+      roles: {
+        meta: {
+          type: "session" as const,
+          sessionId: metaSession.id,
+        },
+        orchestrator: null,
+      },
+      queueSources: [
+        {
+          id: "needs-felix",
+          label: "Needs Felix",
+          path: queuePath,
+          format: "plain_text" as const,
+          requestingRole: "meta" as const,
+          deliveryMethodId: "meta-prompt",
+        },
+      ],
+      deliveryMethods: [
+        {
+          id: "meta-prompt",
+          label: "Meta prompt",
+          type: "role_prompt" as const,
+          role: "meta" as const,
+        },
+      ],
+    };
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.config.replace",
+        requestId: "29249904-528e-4e9e-9db2-42bc58c4bf94",
+        expectedRevision: 0,
+        workspace,
+      }),
+    );
+    await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.config" &&
+        message.requestId === "29249904-528e-4e9e-9db2-42bc58c4bf94",
+      "role delivery config response",
+    );
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.observe",
+        requestId: "ce7ad1bc-bc04-40ca-b203-6060b7e45f5e",
+      }),
+    );
+    const observed = await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.queue.sources" &&
+        message.requestId === "ce7ad1bc-bc04-40ca-b203-6060b7e45f5e",
+      "role delivery queue observation",
+    );
+    if (observed.type !== "pacium.queue.sources") {
+      throw new Error("Expected role delivery queue observation");
+    }
+    const source = observed.observation.sources[0];
+    const candidate = source?.classification?.candidate;
+    if (
+      observed.observation.workspaceRevision === null ||
+      source === undefined ||
+      source.contentHash === null ||
+      candidate == null
+    ) {
+      throw new Error("Expected complete role delivery identity");
+    }
+    const identity = {
+      workspaceRevision: observed.observation.workspaceRevision,
+      sourceId: source.sourceId,
+      observationRevision: source.observationRevision,
+      contentHash: source.contentHash,
+      itemId: candidate.itemId,
+    };
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.question.answer",
+        requestId: "2f3fe63a-c178-4647-b59f-8e32cf90aa85",
+        ...identity,
+        payload: {
+          answer: "Use worker A.\nKeep the scope bounded; $(touch /tmp/no).",
+          note: null,
+        },
+      }),
+    );
+    const recorded = await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.queue.decision" &&
+        message.requestId === "2f3fe63a-c178-4647-b59f-8e32cf90aa85",
+      "role delivery decision",
+    );
+    if (
+      recorded.type !== "pacium.queue.decision" ||
+      recorded.result.status !== "recorded"
+    ) {
+      throw new Error("Expected recorded role delivery decision");
+    }
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.decision.deliver",
+        requestId: "f9cb23d9-4a79-4430-bc05-5b17da0b132f",
+        decisionId: recorded.result.decision.decisionId,
+        decisionHash: recorded.result.decision.decisionHash,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.delivery" &&
+          message.requestId === "f9cb23d9-4a79-4430-bc05-5b17da0b132f",
+        "role delivery response",
+      ),
+    ).resolves.toMatchObject({
+      result: {
+        status: "delivered",
+        state: {
+          target: {
+            type: "role_prompt",
+            role: "meta",
+            sessionId: metaSession.id,
+            sessionEpoch: metaSession.epoch,
+          },
+          delivery: {
+            outcome: {
+              evidence: {
+                kind: "terminal_transport_accepted",
+                sessionId: metaSession.id,
+              },
+            },
+          },
+        },
+      },
+    });
+    expect(factory.processes[0]?.writes).toHaveLength(1);
+    const line = factory.processes[0]?.writes[0];
+    expect(line).toMatch(/^# Pacium decision v1 .+\r$/);
+    expect(line?.split("\r")).toHaveLength(2);
+    expect(line).toContain("\\n");
+    expect(line).toContain("$(touch /tmp/no)");
+    expect(factory.processes[1]?.writes).toEqual([]);
+    expect(manager.hasSession(unrelatedSession.id)).toBe(true);
+    await expect(readFile(queuePath, "utf8")).resolves.toBe(questionText);
+
+    client.socket.close();
+    await once(client.socket, "close");
+  });
+
   it("subscribes one browser transport to multiple terminal streams", async () => {
     const factory = new FakePtyFactory();
     const setup = await startTestServer(factory);
@@ -1740,7 +1908,9 @@ async function connect(
   return client;
 }
 
-async function createTestSession(client: TestClient): Promise<{ id: string }> {
+async function createTestSession(
+  client: TestClient,
+): Promise<{ id: string; epoch: number }> {
   client.socket.send(
     JSON.stringify({
       type: "session.create",
@@ -1760,7 +1930,7 @@ async function createTestSession(client: TestClient): Promise<{ id: string }> {
   if (created.type !== "session.created") {
     throw new Error("Expected a created session");
   }
-  return { id: created.session.id };
+  return { id: created.session.id, epoch: created.session.epoch };
 }
 
 async function nextMessage(
