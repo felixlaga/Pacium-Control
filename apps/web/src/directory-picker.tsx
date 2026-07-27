@@ -38,7 +38,6 @@ export function DirectoryPicker({
   const filterInputRef = useRef<HTMLInputElement>(null);
   const pathInputRef = useRef<HTMLInputElement>(null);
   const requestSequenceRef = useRef(0);
-  const resultRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [listing, setListing] = useState<DirectoryListing | null>(null);
   const [requestedPath, setRequestedPath] = useState(initialPath);
   const [pathDraft, setPathDraft] = useState(initialPath);
@@ -66,6 +65,7 @@ export function DirectoryPicker({
         setListing(next);
         setRequestedPath(next.currentPath);
         setQuery("");
+        filterInputRef.current?.focus();
       } catch (caught) {
         if (requestSequenceRef.current !== sequence) {
           return;
@@ -146,7 +146,10 @@ export function DirectoryPicker({
     } else if (action.kind === "focus-filter") {
       filterInputRef.current?.focus();
     } else {
-      resultRefs.current[action.index]?.focus();
+      const result = dialogRef.current
+        ?.querySelectorAll<HTMLButtonElement>(".directory-row")
+        .item(action.index);
+      result?.focus();
     }
     return true;
   };
@@ -438,9 +441,6 @@ export function DirectoryPicker({
                         }),
                         event,
                       );
-                    }}
-                    ref={(node) => {
-                      resultRefs.current[index] = node;
                     }}
                     title={entry.path}
                     type="button"
