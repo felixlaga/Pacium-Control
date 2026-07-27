@@ -2,6 +2,47 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.16.0 — bounded changed-files oversight — 2026-07-27
+
+### Added
+
+- Protocol-6 changed-file observations with strict cross-field invariants,
+  bounded paths/counts/errors, and a command-free session-owned request.
+- Fixed read-only porcelain-v2 status and numstat inspection with a 1.5 second
+  timeout, 512 KiB output limit, 5,000-record parse limit, and 500-file payload
+  cap.
+- Deterministic conflict, mixed, staged, unstaged, and untracked oversight
+  ordering plus semantic add/modify/delete/rename/copy/type-change states.
+- Known text additions/deletions, explicit unavailable binary counts, file-size
+  classification, and large-file labels without file-content reads.
+- A lazy per-session Overview/Changes inspector with refresh, empty, loading,
+  truncated, degraded, reconnect, stale-response, and keyboard-tab behavior.
+- Real-Git fixture coverage and a Chromium workflow proving that changed-file
+  inspection preserves the selected terminal.
+
+### Verified
+
+- `pnpm verify` passes formatting, lint, type checking, 39 test files and
+  169 tests, and both production bundles.
+- `pnpm test:e2e` passes all five Chromium keyboard, focus, responsive,
+  accessibility-preference, zoom, and changed-files workflows.
+- A temporary real repository matched staged, unstaged, mixed, untracked,
+  deleted, renamed, type-changed, conflicted, binary, and large-file evidence.
+
+### Known limitations
+
+- Diff text, commit history, configured verification, and automatic filesystem
+  refresh begin with PC-035 through PC-038.
+- Git copy records are supported and parser-tested, but ordinary Git status
+  commonly reports newly copied content as added unless Git itself emits copy
+  evidence.
+- The default macOS Git wrapper on this machine remains blocked by the
+  unaccepted Xcode license; direct Xcode Git powered fixture and browser
+  evidence without changing that machine state.
+- The current machine ran verification on Node.js 26.4.0, not pinned Node.js
+  24.18.x.
+- The web bundle is 713 kB before gzip and retains the tracked warning.
+
 ## 0.15.0 — evidence-backed repository context — 2026-07-27
 
 ### Added
