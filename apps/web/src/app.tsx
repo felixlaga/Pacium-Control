@@ -40,11 +40,14 @@ import {
 } from "./attention-inbox.js";
 import {
   acknowledgeAttention,
+  buildAttentionNotificationContent,
   cursorEntry,
   isAttentionUnread,
   loadAttentionInbox,
+  markAttentionNotified,
   saveAttentionInbox,
   setSessionMuted,
+  shouldDeliverAttentionNotification,
   type AttentionInboxState,
 } from "./attention-inbox-model.js";
 import {
@@ -199,6 +202,9 @@ export function App() {
       ? "unsupported"
       : Notification.permission,
   );
+  const [pageVisibility, setPageVisibility] = useState<DocumentVisibilityState>(
+    () => document.visibilityState,
+  );
   const [systemPrefersDark, setSystemPrefersDark] = useState(
     () => window.matchMedia("(prefers-color-scheme: dark)").matches,
   );
@@ -273,6 +279,17 @@ export function App() {
     update();
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    const update = () => {
+      setPageVisibility(document.visibilityState);
+      if (typeof Notification !== "undefined") {
+        setNotificationPermission(Notification.permission);
+      }
+    };
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
   }, []);
 
   useEffect(() => {
@@ -454,6 +471,7 @@ export function App() {
     if (
       selectedId === null ||
       selectedAttention === null ||
+      pageVisibility !== "visible" ||
       !isAttentionUnread(
         attentionInboxRef.current,
         selectedId,
@@ -469,7 +487,62 @@ export function App() {
         selectedAttention,
       ),
     );
-  }, [persistAttentionInbox, selectedAttention, selectedId]);
+  }, [pageVisibility, persistAttentionInbox, selectedAttention, selectedId]);
+
+  useEffect(() => {
+    if (typeof Notification === "undefined") {
+      return;
+    }
+    let nextInbox = attentionInboxRef.current;
+    let delivered = false;
+    for (const session of sessions) {
+      const attention = attentionBySession.get(session.id);
+      if (
+        attention === undefined ||
+        !shouldDeliverAttentionNotification({
+          attention,
+          entry: cursorEntry(nextInbox, session.id),
+          permission: notificationPermission,
+          preference: preferences.notifications,
+          visibility: pageVisibility,
+        })
+      ) {
+        continue;
+      }
+      const content = buildAttentionNotificationContent(session.id, attention);
+      if (content === null) {
+        continue;
+      }
+      try {
+        const notification = new Notification(content.title, {
+          body: content.body,
+          silent: true,
+          tag: content.tag,
+        });
+        notification.onclick = () => {
+          window.focus();
+          selectSession(session.id);
+          notification.close();
+        };
+        nextInbox = markAttentionNotified(nextInbox, session.id, attention);
+        delivered = true;
+      } catch {
+        setNotice(
+          "The browser could not show an attention alert. The event remains unread inside Pacium.",
+        );
+      }
+    }
+    if (delivered) {
+      persistAttentionInbox(nextInbox);
+    }
+  }, [
+    attentionBySession,
+    notificationPermission,
+    pageVisibility,
+    persistAttentionInbox,
+    preferences.notifications,
+    sessions,
+  ]);
 
   const tabSessions = useMemo(
     () =>
