@@ -10,14 +10,15 @@ human-labelled lifecycle evidence, one bounded recovery retry, exact configured
 worker summaries, and read-only objective/plan plus recent-decision context are
 complete enough for continued slicing. Optional Tailscale Serve access is
 implemented at the application boundary, and the working-directory picker
-refresh is complete. The provider observation contract is next.
+refresh is complete. The bounded provider observation contract is complete;
+live Claude Code observation is next.
 
 Pacium Control now has an executable React application, loopback local server,
 direct-PTY session manager, typed WebSocket protocol, and automated terminal,
 Git, queue, and Pacium-context tests. This proves the bounded local
-compatibility workflow described below; it does not prove provider-native
-agent management, a real deployed tailnet/grants/public boundary, durable PTYs,
-packaging, or release readiness.
+compatibility workflow described below; it does not prove live provider-native
+agent observation or management, a real deployed tailnet/grants/public
+boundary, durable PTYs, packaging, or release readiness.
 
 ## Product direction
 
@@ -53,8 +54,9 @@ The secondary product is **Pacium mode**:
   canonical `*.ts.net` HTTPS Origin, bounded exact operator-login allowlist,
   canonical local-Origin isolation, exact remote Host/Origin/login checks,
   Funnel denial, and the unchanged ephemeral token for protected transport.
-- Protocol-18 per-socket Local or Tailscale/login evidence and a compact
-  accessible connection badge that clears stale identity on disconnect.
+- Protocol-19 per-socket Local or Tailscale/login evidence, plus one strict
+  nullable provider-observation snapshot per session, and a compact accessible
+  connection badge that clears stale identity on disconnect.
 - Bounded xterm headless snapshots that let a new browser transport attach to a still-live PTY.
 - A fixed server-owned Shell, Codex, and Claude Code launch catalog with honest executable availability.
 - A token-protected, read-only host directory browser with canonical paths,
@@ -88,11 +90,16 @@ The secondary product is **Pacium mode**:
   Run/Cancel, pass/fail/timeout/cancel/error evidence, truncation and
   changed-HEAD warnings, browser-refresh recovery, and five-tab keyboard
   navigation.
-- A lazy fifth Activity inspector that projects current attention, direct-PTY
-  lifecycle, changed-file totals, three recent local commits, and the
-  current/latest verification run into at most seven deterministic facts with
-  explicit observed/occurred timestamps, source availability, partial errors,
-  Refresh, reconnect recovery, and no terminal/provider narrative.
+- A lazy fifth Activity inspector that projects current attention, validated
+  provider facts, provider observer health/freshness, direct-PTY lifecycle,
+  changed-file totals, three recent local commits, and the current/latest
+  verification run into at most seven deterministic facts with explicit
+  observed/occurred timestamps, source availability, partial errors, Refresh,
+  reconnect recovery, and no terminal/provider narrative.
+- A version-1 provider observation contract with fixed capability/activity/
+  diagnostic bounds, typed Claude/Codex extensions, distinct questions and
+  approvals, source/confidence/freshness evidence, secret-like diagnostic-key
+  rejection, launch-preset matching, and honest unavailable defaults.
 - Protocol-17 strict Pacium workspace configuration for explicit Meta,
   Orchestrator, and worker session/preset bindings; canonical repositories;
   verification references; and queue, future-delivery, objective, and plan path
@@ -231,7 +238,7 @@ The secondary product is **Pacium mode**:
 - No general browser editor for workspace identity, repositories, workers,
   queue sources, delivery methods, context sources, or verification references,
   and no shortcut customization.
-- No Claude or Codex observer.
+- No live Claude or Codex observer, provider transport, or event ingestion.
 - No multi-item parsing, provider-native acknowledgement/activity, worker
   launching/reconfiguration, task state, or causal decision-to-Git/terminal
   correlation.
@@ -377,9 +384,9 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Define the provider observation contract in PC-060, then implement narrow
-Claude and Codex observers with explicit capability degradation before
-durability and packaging. Complete the real Tailscale
+Implement the narrow Claude observer in PC-061, then the Codex observer in
+PC-062 with explicit capability degradation before durability and packaging.
+Complete the real Tailscale
 Serve/grants/Funnel/public canary, pinned Node.js 24 clean-install, CI, broader
 browser/security, manual accessibility, and sustained-output gates before
 release.
