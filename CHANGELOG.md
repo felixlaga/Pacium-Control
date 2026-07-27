@@ -2,6 +2,62 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.24.0 — explicit Pacium prompt targeting — 2026-07-27
+
+### Added
+
+- A compact Pacium-only composer that lists Meta, Orchestrator, then configured
+  workers from accepted workspace bindings and exact current session IDs.
+- Honest target states for unassigned presets, missing sessions, process
+  startup/exit/failure, configuration replacement, and disconnect; only an
+  exact live connected direct-session binding can send.
+- A 4,000-Unicode-character prompt boundary that trims outer whitespace,
+  rejects empty input and every C0/C1 control including line breaks, and adds
+  exactly one carriage return after deliberate Send or `Cmd/Ctrl+Enter`.
+- Exact existing `terminal.input` request correlation with duplicate-send
+  locking, transport-acceptance-only success copy, rejected-draft retention,
+  no automatic retry, and unknown-outcome handling after disconnect.
+- Ephemeral prompt scope that never selects the visible terminal, persists a
+  draft, or survives success, mode exit, refresh, disconnect target reset, or
+  live-target drift beyond the documented recovery behavior.
+- Compact desktop, 320 CSS px, 200% zoom, forced-color, reduced-motion, hostile
+  text, keyboard, and focus behavior while keeping the terminal as the primary
+  visual surface.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 75 test
+  files and 410 tests, plus the 794.93 kB web and 166.07 kB local-server
+  production bundles.
+- `pnpm test:e2e` passed all nine Chromium regression workflows.
+- The real browser workflow kept an ordinary terminal selected, explicitly
+  targeted Meta, ignored plain Enter, sent through `Cmd/Ctrl+Enter`, observed
+  the marker only in Meta's real PTY, and reset target/draft after the matching
+  transport result.
+- Browser evidence also blocks multiline paste, clears unsent scope on mode
+  exit and refresh, and keeps labelled composer controls usable at 320 CSS px,
+  200% zoom, forced colors, and reduced motion.
+- Unit, semantic, and transport tests cover stable role/worker order, exact-ID
+  resolution, all availability states, Unicode/control limits, one generated
+  carriage return, hostile labels, duplicate locking, unrelated responses,
+  rejection, disconnect, target drift, and exact request bytes.
+
+### Known limitations
+
+- A successful result confirms only that the local server accepted terminal
+  input. It does not prove an agent received, read, processed, approved, or
+  completed the prompt.
+- Prompts are intentionally one line, browser-ephemeral, non-retriable, and
+  absent outside Pacium mode; there is no history, template, attachment,
+  provider conversation, or durable delivery receipt.
+- Worker targets appear only when already present in the server-owned workspace;
+  the browser still has no general worker/config editor or worker status list.
+- Queue observation/classification/list/decisions/delivery,
+  acknowledgement/conflicts, and objective/plan content remain PC-044 through
+  PC-050.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x.
+- The web bundle remains above Vite's 500 kB warning threshold.
+
 ## 0.23.0 — pinned Meta and Orchestrator roles — 2026-07-27
 
 ### Added
