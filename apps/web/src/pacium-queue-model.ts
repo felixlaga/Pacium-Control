@@ -148,7 +148,7 @@ export function buildPaciumQueueProjection(input: {
         : disconnected
           ? "Last accepted source evidence · disconnected."
           : evidenceCurrent
-            ? "Stable reads describe source health, not queue items."
+            ? "Whole-source classification is metadata only; no queue actions."
             : "Waiting for queue source evidence at this config revision.",
     sources,
   };

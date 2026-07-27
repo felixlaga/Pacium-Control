@@ -1,6 +1,9 @@
 import type { QueueSourceObservationStatus } from "@pacium/contracts";
 
-import type { PaciumQueueProjection } from "./pacium-queue-model.js";
+import {
+  queueClassificationPresentation,
+  type PaciumQueueProjection,
+} from "./pacium-queue-model.js";
 
 export function PaciumQueueSources({
   projection,
@@ -25,10 +28,17 @@ export function PaciumQueueSources({
           projection.sources.map(({ source, observation }) => {
             const status = observation?.status ?? "pending";
             const label = queueStatusLabel(status);
+            const classification = queueClassificationPresentation(observation);
             return (
               <article
-                aria-label={`${source.label} queue source, ${label}`}
-                className={`pacium-queue-source status-${status}`}
+                aria-label={`${source.label} queue source, ${label}${
+                  classification === null ? "" : `, ${classification.label}`
+                }`}
+                className={`pacium-queue-source status-${status}${
+                  classification === null
+                    ? ""
+                    : ` classification-${classification.kind}`
+                }`}
                 key={source.id}
               >
                 <span
@@ -40,6 +50,17 @@ export function PaciumQueueSources({
                   <span>
                     {label} · {requestingRoleLabel(source.requestingRole)}
                   </span>
+                  {classification === null ? null : (
+                    <span className="pacium-queue-classification">
+                      {classification.label}
+                    </span>
+                  )}
+                  {classification?.diagnostic === null ||
+                  classification?.diagnostic === undefined ? null : (
+                    <small className="pacium-queue-diagnostic">
+                      {classification.diagnostic}
+                    </small>
+                  )}
                   <small title={source.path}>
                     {sourceEvidenceDetail(observation)}
                   </small>

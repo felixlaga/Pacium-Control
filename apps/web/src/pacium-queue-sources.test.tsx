@@ -5,15 +5,19 @@ import { PaciumQueueSources } from "./pacium-queue-sources.js";
 import type { PaciumQueueProjection } from "./pacium-queue-model.js";
 
 describe("Pacium queue source semantics", () => {
-  it("renders source health without claiming queue items", () => {
+  it("renders source health and content-free classification metadata", () => {
     const markup = render();
 
     expect(markup).toContain('aria-label="Queue source observation"');
-    expect(markup).toContain("Needs Felix queue source, Stable");
+    expect(markup).toContain(
+      "Needs Felix queue source, Stable, Question · High confidence",
+    );
     expect(markup).toContain("Stable · Meta");
+    expect(markup).toContain("Question · High confidence");
+    expect(markup).toContain("A supported plain-text legacy marker was used.");
     expect(markup).toContain("2 KiB · aaaaaaaa · observed");
-    expect(markup).toContain("source health, not queue items");
-    expect(markup).not.toContain("Question");
+    expect(markup).toContain("metadata only; no queue actions");
+    expect(markup).not.toContain("bbbbbbbb");
   });
 
   it("renders degraded evidence and disables refresh while disconnected", () => {
@@ -45,6 +49,12 @@ describe("Pacium queue source semantics", () => {
     const projection = ready();
     projection.sources[0]!.source.label = "<script>queue()</script>";
     projection.sources[0]!.source.path = '"><img src=x onerror=queue()>';
+    projection.sources[0]!.observation!.classification!.diagnostics[0]!.message =
+      "</span><script>classify()</script>";
+    const classificationMarkup = render(projection);
+    expect(classificationMarkup).toContain(
+      "&lt;/span&gt;&lt;script&gt;classify()",
+    );
     projection.sources[0]!.observation = {
       ...projection.sources[0]!.observation!,
       status: "read_error",
@@ -88,7 +98,7 @@ function render(projection: PaciumQueueProjection = ready()) {
 function ready(): PaciumQueueProjection {
   return {
     status: "ready",
-    message: "Stable reads describe source health, not queue items.",
+    message: "Whole-source classification is metadata only; no queue actions.",
     disconnected: false,
     canRefresh: true,
     sources: [
