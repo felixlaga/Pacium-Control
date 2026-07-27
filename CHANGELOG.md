@@ -2,6 +2,68 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.26.0 — conservative queue-item classification — 2026-07-27
+
+### Added
+
+- Protocol-12 stable-only whole-source classification metadata with strict
+  candidate/none invariants, deterministic 64-character item identities, fixed
+  diagnostics, bounded confidence, and no content or authority fields.
+- A synchronous bounded `whole_source_v1` classifier that treats one complete
+  nonblank source as at most one question, concrete approval, failure, review,
+  or unknown candidate.
+- Confirmed exact Markdown markers, high-confidence supported legacy markers,
+  a medium-confidence final-question-mark heuristic that can identify only a
+  question, and low-confidence unknown fallback for every other document.
+- Strict approval separation: only `# Approval request: <action>` or
+  `Approval request: <action>` can classify approval. Missing actions,
+  conversational permission words, multiple markers, and C0/C1-bearing actions
+  remain unknown or question evidence.
+- Source/hash-bound deterministic identity, changed-hash replacement,
+  unchanged-hash classification reuse, stale-generation rejection, and
+  classification clearing on empty or degraded source evidence.
+- Compact content-free type, confidence, and fixed diagnostic metadata in the
+  existing Pacium source row, with escaped hostile text and no answer or
+  approval controls.
+- A real-file browser workflow covering question-to-explicit-approval rewrite,
+  raw-text absence, terminal/source preservation, General-mode hiding, 320 CSS
+  px layout, forced colors, reduced motion, and keyboard focus.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 83 test
+  files and 491 tests, plus the 805.10 kB web and 194.80 kB local-server
+  production bundles.
+- `pnpm test:e2e` passed all ten Chromium workflows in one run.
+- Thirty classifier fixtures cover supported markers, identity, confidence,
+  blank/BOM/Unicode input, malformed and multiple markers, conversational
+  permission text, HTML, links, commands, terminal controls, and unknown
+  fallback.
+- Contract, observer, authenticated integration, projection, and semantic tests
+  prove stable-only metadata, approval confidence, fixed safe diagnostics,
+  unchanged reuse, degraded clearing, content-free publication, exact
+  config/source joining, hostile rendering, and queue/config preservation.
+- The browser proved “Can you approve everything?” remains a question and only
+  an exact `Approval request: ...` rewrite becomes approval, without changing
+  the selected real PTY.
+
+### Known limitations
+
+- One complete source document is at most one candidate. Blank-line, Markdown,
+  checkbox, or arbitrary section structure is not treated as a multi-item
+  grammar; multiple supported top-level markers become unknown.
+- Classification sends no original text, title, excerpt, parsed action,
+  options, recommendation, risk, requesting session, or waiting time. PC-046
+  still owns the queue list and safe original-text inspector.
+- Candidate/classification state is ephemeral and reconstructable. No durable
+  import provenance, cross-source deduplication, decisions, answer/approval
+  actions, delivery, acknowledgement, supersession, or conflict handling exists.
+- Classification grants no authority and never executes, renders, sends, or
+  writes queue content.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x.
+  Chromium required the approved outside-sandbox macOS run.
+- The web bundle remains above Vite's 500 kB warning threshold.
+
 ## 0.25.0 — bounded queue-file observation — 2026-07-27
 
 ### Added
