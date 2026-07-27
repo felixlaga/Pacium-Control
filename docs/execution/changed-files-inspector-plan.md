@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `1e9ad19`
 - Target milestone: Milestone 2
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -145,3 +145,20 @@ terminal selection or focus.
 - Architecture: Git remains authoritative; browser holds disposable response
   state.
 - Security: fixed bounded read commands, no file content or shell.
+
+## Result
+
+Protocol 6 adds one strict, session-owned changed-files request and observation.
+The server runs fixed, bounded porcelain-v2 status and numstat reads, rejects
+escaping or malformed paths, and returns at most 500 deterministically ordered
+files without reading file content. A real temporary Git fixture confirms
+staged, unstaged, mixed, untracked, deleted, renamed, type-changed, conflicted,
+binary, and large-file evidence; focused parser coverage confirms copied and
+unusual-path records.
+
+The inspector now switches between Overview and Changes with standard tab
+keyboard behavior. Changes loads lazily per session, ignores stale responses,
+retains prior evidence while refreshing, recovers cleanly from disconnects, and
+keeps terminal selection and PTY lifecycle unchanged. Full verification passes
+with 39 test files and 169 tests. Five Chromium workflows pass, including the
+new lazy-loading, terminal-selection, and tab-keyboard regression.

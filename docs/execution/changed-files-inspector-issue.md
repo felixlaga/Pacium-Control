@@ -41,25 +41,25 @@ states. Refresh never mutates Git or affects the PTY.
 
 ## Acceptance criteria
 
-- [ ] Status matches direct Git inspection for staged, unstaged, mixed,
+- [x] Status matches direct Git inspection for staged, unstaged, mixed,
       untracked, deleted, renamed, copied, type-changed, and conflicted files.
-- [ ] Known text additions/deletions are shown; binary counts remain unknown.
-- [ ] Large and binary files are labelled without reading file content.
-- [ ] Paths, previous paths, counts, errors, file count, and total payload are
+- [x] Known text additions/deletions are shown; binary counts remain unknown.
+- [x] Large and binary files are labelled without reading file content.
+- [x] Paths, previous paths, counts, errors, file count, and total payload are
       strictly bounded.
-- [ ] NUL-delimited status parsing handles whitespace/newline filenames as
+- [x] NUL-delimited status parsing handles whitespace/newline filenames as
       untrusted text.
-- [ ] The server accepts only a session ID, resolves the repository root from
+- [x] The server accepts only a session ID, resolves the repository root from
       server-owned session evidence, and exposes no generic Git command.
-- [ ] A non-repository or degraded repository produces an honest empty/error
+- [x] A non-repository or degraded repository produces an honest empty/error
       observation without affecting the PTY.
-- [ ] The Changes view loads lazily, preserves terminal selection, and exposes
+- [x] The Changes view loads lazily, preserves terminal selection, and exposes
       textual status rather than color alone.
-- [ ] Empty, loading, ready, truncated, and error states explain the next useful
+- [x] Empty, loading, ready, truncated, and error states explain the next useful
       action.
-- [ ] Refresh is read-only, duplicate-safe, and leaves the terminal process
+- [x] Refresh is read-only, duplicate-safe, and leaves the terminal process
       unchanged.
-- [ ] Full verification and browser regressions pass.
+- [x] Full verification and browser regressions pass.
 
 ## User experience
 
