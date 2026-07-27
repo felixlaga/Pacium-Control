@@ -2,8 +2,9 @@
 
 **Current phase:** Core terminal workspace, bounded Git oversight, server-owned
 Pacium configuration, the General/Pacium toggle, and pinned Meta/Orchestrator
-roles plus explicit terminal prompt targeting are complete enough for
-continued slicing; conservative queue-file observation is next.
+roles plus explicit terminal prompt targeting and conservative queue-file
+observation are complete enough for continued slicing; queue-item
+classification is next.
 
 Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
 
@@ -72,10 +73,11 @@ The secondary product is **Pacium mode**:
   current/latest verification run into at most seven deterministic facts with
   explicit observed/occurred timestamps, source availability, partial errors,
   Refresh, reconnect recovery, and no terminal/provider narrative.
-- Protocol-10 strict Pacium workspace configuration for explicit Meta,
+- Protocol-11 strict Pacium workspace configuration for explicit Meta,
   Orchestrator, and worker session/preset bindings; canonical repositories;
   verification references; and queue, future-delivery, objective, and plan path
-  metadata without content or execution authority.
+  metadata without execution authority, plus content-free queue-source
+  observation.
 - One private server-owned version-1 `pacium.json` with a 96 KiB ceiling,
   complete graph/path/catalog validation, optimistic revisions,
   same-directory atomic replacement, corruption preservation, read-time drift
@@ -108,6 +110,15 @@ The secondary product is **Pacium mode**:
   after transport acceptance, retains rejected drafts without retry, marks
   disconnect outcomes unknown, and never claims provider delivery, processing,
   approval, or completion.
+- One local-server queue observer synchronized to exact accepted config
+  revisions, with canonical-parent watchers, 200 ms debounce, bounded
+  no-follow stable reads, strict UTF-8, a 64 KiB source ceiling, SHA-256
+  provenance, process-local revisions, semantic deduplication, bounded retry,
+  config-generation guards, and shutdown disposal.
+- A compact Pacium-only Queue sources group that joins content-free source
+  evidence to exact accepted IDs, shows honest stable/empty/missing/changing/
+  oversized/invalid/unsafe/read/watch states, byte/hash/freshness metadata, and
+  explicit Refresh while leaving General mode and terminal state unchanged.
 - Mode changes and reload preserve selected PTY, terminal tabs/splits,
   inspector context, panel state, terminal sync/input ownership, and existing
   Git/check evidence.
@@ -134,9 +145,9 @@ The secondary product is **Pacium mode**:
   queue sources, delivery methods, context sources, or verification references,
   and no shortcut customization.
 - No Claude or Codex observer.
-- No queue observation, decisions, delivery, worker role surface, or
+- No queue-item parsing, classification, list/inspector, durable provenance,
+  decisions, delivery, acknowledgement/conflicts, worker role surface, or
   objective/plan content presentation.
-- No queue integration.
 - No tmux adapter.
 
 Do not extrapolate from the working terminal slice to any capability in this list.
@@ -169,7 +180,7 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
   usable at 320 CSS px, 200% zoom, forced colors, and reduced motion.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
-- The protocol-version-10 boundary passed strict contract, atomic-store,
+- The protocol-version-11 boundary passed strict contract, atomic-store,
   canonical path/reference, authenticated WebSocket revision/conflict, PTY
   survival, and browser request-state tests on this machine.
 - Built server startup: served the application and health endpoint on `127.0.0.1:4174`.
