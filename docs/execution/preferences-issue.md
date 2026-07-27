@@ -34,19 +34,19 @@ A compact settings surface lets the operator adjust preferences that already hav
 
 ## Acceptance criteria
 
-- [ ] Missing, malformed, unknown-version, and out-of-range stored values resolve to safe defaults.
-- [ ] Saved preferences use one bounded versioned local-storage record.
-- [ ] Dark, light, and system themes update application and terminal colors.
-- [ ] Density changes application spacing without hiding information or reducing control semantics.
-- [ ] Terminal font family, size, line height, and scrollback update mounted xterm instances.
-- [ ] Scrollback remains within documented privacy and memory bounds.
-- [ ] The default preset initializes the new-terminal flow and falls back honestly when unavailable.
-- [ ] Settings open from a visible control, `Cmd/Ctrl ,`, and a palette result.
-- [ ] Cancel does not mutate current preferences; Restore defaults is explicit and reviewable before Apply.
-- [ ] The dialog is keyboard reachable, labelled, focus-contained, and closes with Escape.
-- [ ] Notification preference copy states that delivery begins with agent-attention support.
-- [ ] Preference, shortcut, terminal-option, and server-rendered settings states have deterministic tests.
-- [ ] The full repository verification gate passes.
+- [x] Missing, malformed, unknown-version, and out-of-range stored values resolve to safe defaults.
+- [x] Saved preferences use one bounded versioned local-storage record.
+- [x] Dark, light, and system themes update application and terminal colors.
+- [x] Density changes application spacing without hiding information or reducing control semantics.
+- [x] Terminal font family, size, line height, and scrollback update mounted xterm instances.
+- [x] Scrollback remains within documented privacy and memory bounds.
+- [x] The default preset initializes the new-terminal flow and falls back honestly when unavailable.
+- [x] Settings open from a visible control, `Cmd/Ctrl ,`, and a palette result.
+- [x] Cancel does not mutate current preferences; Restore defaults is explicit and reviewable before Apply.
+- [x] The dialog is keyboard reachable, labelled, focus-contained, and closes with Escape.
+- [x] Notification preference copy states that delivery begins with agent-attention support.
+- [x] Preference, shortcut, terminal-option, and server-rendered settings states have deterministic tests.
+- [x] The full repository verification gate passes.
 
 ## User experience
 
@@ -103,3 +103,15 @@ If a stored default preset is unavailable on the host, the new-terminal flow sel
 ## Open questions
 
 - Cross-browser preference synchronization remains intentionally deferred.
+
+## Completion evidence
+
+- Preference-model tests cover missing, malformed, oversized, unknown-version, extra-key, wrong-shape, and numeric-bound rejection plus deterministic serialization.
+- Storage boundary tests prove read and write exceptions fall back or report failure without throwing.
+- Theme and preset resolver tests cover system light/dark selection and unavailable-provider fallback.
+- Terminal-option tests cover established dark defaults plus controlled light theme, font, size, line height, and scrollback mapping.
+- Server-rendered settings tests cover defaults, custom values, numeric bounds, unavailable host presets, and honest future-notification copy.
+- Shortcut and command-catalog tests cover `Cmd/Ctrl ,`, editable suppression, visible palette discovery, and the searchable shortcut reference.
+- `pnpm verify` passed on 2026-07-27: format, lint, type checking, 23 test files with 94 tests, and both production builds.
+- Development runtime smoke passed on loopback: `/api/health` and the Vite application returned HTTP 200.
+- Rendered light/system theme, density, live xterm update, keyboard, focus, responsive, and refresh validation remains pending because the browser runtime reported no available backend.
