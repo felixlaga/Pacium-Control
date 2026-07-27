@@ -113,6 +113,29 @@ describe("repository Changes presentation", () => {
     expect(markup).not.toContain("<script");
   });
 
+  it("uses a singular summary for one changed file", () => {
+    const markup = renderToStaticMarkup(
+      <RepositoryChangesPanel
+        onRefresh={() => {}}
+        repository={repository}
+        state={{
+          status: "loaded",
+          requestId: "request-1",
+          observation: {
+            ...observation,
+            files: [observation.files[0]!],
+            totals: {
+              ...observation.totals,
+              fileCount: 1,
+            },
+          },
+        }}
+      />,
+    );
+    expect(markup).toContain("1 reported change");
+    expect(markup).not.toContain("1 reported changes");
+  });
+
   it("explains loading, empty, and degraded states without hiding terminal survival", () => {
     const loading = renderToStaticMarkup(
       <RepositoryChangesPanel

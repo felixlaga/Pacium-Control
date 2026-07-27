@@ -286,7 +286,9 @@ function changeSummary(observation: GitChangesObservation): string {
     case "ready":
       return observation.files.length === 0
         ? "Working tree clear"
-        : `${observation.files.length} reported changes`;
+        : `${observation.files.length} reported ${
+            observation.files.length === 1 ? "change" : "changes"
+          }`;
     case "not_repository":
       return "No repository";
     case "error":
