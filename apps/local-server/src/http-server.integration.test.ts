@@ -259,6 +259,51 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await once(client.socket, "close");
   });
 
+  it("refreshes repository evidence through a typed WebSocket request", async () => {
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(factory);
+    application = setup.application;
+    manager = setup.manager;
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    const session = await createTestSession(client);
+    const requestId = "2f5f99c6-54b3-4ecf-9b90-6e90b7326ef9";
+
+    client.socket.send(
+      JSON.stringify({
+        type: "session.refreshRepository",
+        requestId,
+        sessionId: session.id,
+      }),
+    );
+    const updated = await nextMessage(
+      client,
+      (message) =>
+        message.type === "session.updated" && message.session.id === session.id,
+    );
+    expect(updated).toMatchObject({
+      type: "session.updated",
+      session: {
+        id: session.id,
+        processState: "live",
+        repository: {
+          status: "ready",
+          branch: "dev",
+        },
+      },
+    });
+    expect(factory.processes[0]?.signals).toEqual([]);
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "command.result" && message.requestId === requestId,
+      ),
+    ).resolves.toMatchObject({ ok: true });
+    client.socket.close();
+    await once(client.socket, "close");
+  });
+
   it("rejects an invalid local access token", async () => {
     const setup = await startTestServer(new FakePtyFactory());
     application = setup.application;
