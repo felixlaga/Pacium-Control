@@ -2,6 +2,58 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.31.0 — worker and control context — 2026-07-27
+
+### Added
+
+- Protocol 17 `pacium.context.inspect` and correlated
+  `pacium.context` messages with no browser-selected workspace, revision, path,
+  queue identity, filter, count, session, command, or content authority.
+- Independent 32 KiB objective and plan observations using stable no-follow
+  regular-file reads, strict UTF-8, SHA-256 provenance, fixed safe failures,
+  and a second accepted-config revision check.
+- At most twelve newest validated immutable decision summaries with
+  UTF-8-safe 320-byte answer previews, exact approval outcomes, latest durable
+  transport evidence, and latest explicitly human-labelled lifecycle evidence.
+  Notes, targets, queue text, terminal bytes, commands, and provider data stay
+  excluded.
+- A compact configured Worker group in accepted order. Exact session UUIDs
+  project current process, command classification, repository, attention,
+  freshness, and already-loaded selected-session change evidence; preset-only
+  workers remain visibly not started and cannot launch from this surface.
+- An explicit Control-context route in the existing right inspector with
+  Open/Refresh/Back/Escape, focus restoration, inert objective/plan text,
+  independent degraded states, recent decisions, config/disconnect/mode
+  invalidation, and no terminal reselection.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 111 test
+  files and 675 tests, plus the 901.71 kB web JavaScript, 107.52 kB stylesheet,
+  and 328.37 kB local-server production bundles.
+- `pnpm test:e2e` passed all 11 Chromium workflows. The PC-050 workflow covered
+  exact live and preset-only worker rows, existing-PTY Open, explicit
+  context/Refresh/Back/Escape, focus return, browser reconnect, mode exit,
+  selected-terminal preservation, 320 CSS px, forced colors, and reduced
+  motion.
+- Authenticated integration tests proved byte-for-byte unchanged objective,
+  plan, configuration, queue, and PTY evidence; exclusion of notes, target
+  paths, and queue text; durable decision/transport/lifecycle reconstruction
+  after local-server restart; and no inferred replacement for ended direct
+  PTYs.
+
+### Known limitations
+
+- Provider-native events, task progress, usage, tool calls, completion, and
+  causal links to later Git or terminal activity remain unavailable. Current
+  process, transport, and human-labelled lifecycle facts are not promoted to
+  those claims.
+- Worker launch/reconfiguration, background Git fan-out, objective/plan
+  editing or watching, generalized tasks/runs, and multi-item queue parsing
+  remain out of scope.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's existing chunk-size warning.
+
 ## 0.30.0 — explicit queue reconciliation — 2026-07-27
 
 ### Added
