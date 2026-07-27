@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { PaciumConfigObservation } from "@pacium/contracts";
+import {
+  MAX_APPLICATION_MESSAGE_BYTES,
+  MAX_QUEUE_SOURCE_BYTES,
+  type PaciumConfigObservation,
+} from "@pacium/contracts";
 
 import type { QueueFileReadResult } from "./queue-file-reader.js";
 import { classifyQueueItem } from "./queue-item-classifier.js";
@@ -150,6 +154,40 @@ describe("queue observer", () => {
       originalTextBase64: null,
       error: { code: "QUEUE_UNAVAILABLE" },
     });
+    observer.dispose();
+  });
+
+  it("keeps a maximum escaped source inside the application message bound", async () => {
+    const content = "\u0000".repeat(MAX_QUEUE_SOURCE_BYTES);
+    const observer = new QueueObserver({
+      now: () => now,
+      readFile: () => Promise.resolve(stable(content)),
+      watchDirectory: inertWatcher,
+    });
+    const snapshot = await observer.syncConfig(config());
+    const source = snapshot.sources[0]!;
+    const candidate = source.classification?.candidate;
+    if (source.contentHash === null || candidate == null) {
+      throw new Error("Expected maximum-source candidate");
+    }
+    const inspection = observer.inspectItem({
+      workspaceRevision: snapshot.workspaceRevision!,
+      sourceId: source.sourceId,
+      observationRevision: source.observationRevision,
+      contentHash: source.contentHash,
+      itemId: candidate.itemId,
+    });
+
+    expect(inspection.status).toBe("ready");
+    expect(
+      Buffer.byteLength(
+        JSON.stringify({
+          type: "pacium.queue.item",
+          requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+          inspection,
+        }),
+      ),
+    ).toBeLessThanOrEqual(MAX_APPLICATION_MESSAGE_BYTES);
     observer.dispose();
   });
 
