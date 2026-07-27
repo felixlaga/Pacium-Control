@@ -8,6 +8,7 @@ import {
   type MouseEvent,
 } from "react";
 
+import { handleModalKeyDown } from "./modal-focus.js";
 import { sessionActionAvailability } from "./session-actions-model.js";
 
 interface SessionActionsMenuProps {
@@ -35,21 +36,14 @@ export function SessionActionsMenu({
   onTerminate,
   session,
 }: SessionActionsMenuProps) {
+  const dialogRef = useRef<HTMLElement>(null);
   const firstActionRef = useRef<HTMLButtonElement>(null);
   const availability = sessionActionAvailability(session);
   const live = session.processState === "live";
 
   useEffect(() => {
     firstActionRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, []);
 
   const stopPropagation = (event: MouseEvent<HTMLElement>) => {
     event.stopPropagation();
@@ -59,8 +53,13 @@ export function SessionActionsMenu({
     <div className="session-actions-backdrop" onMouseDown={onClose}>
       <section
         aria-labelledby="session-actions-title"
+        aria-modal="true"
         className="session-actions-menu"
+        onKeyDown={(event) =>
+          handleModalKeyDown(event, dialogRef.current, onClose)
+        }
         onMouseDown={stopPropagation}
+        ref={dialogRef}
         role="dialog"
       >
         <header>
@@ -207,6 +206,7 @@ export function RenameSessionDialog({
   onRename,
   session,
 }: RenameSessionDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [displayName, setDisplayName] = useState(session.displayName);
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -221,6 +221,10 @@ export function RenameSessionDialog({
       aria-labelledby="rename-session-title"
       aria-modal="true"
       className="dialog-backdrop"
+      onKeyDown={(event) =>
+        handleModalKeyDown(event, dialogRef.current, onCancel)
+      }
+      ref={dialogRef}
       role="dialog"
     >
       <form className="dialog-card rename-session-card" onSubmit={submit}>

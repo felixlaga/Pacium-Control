@@ -30,6 +30,7 @@ import {
   type PaletteCommand,
 } from "./command-palette-model.js";
 import { DirectoryPicker } from "./directory-picker.js";
+import { handleModalKeyDown } from "./modal-focus.js";
 import {
   loadPanelView,
   savePanelView,
@@ -1592,6 +1593,7 @@ function CreateTerminalDialog({
     launchPreset: LaunchPresetId;
   }) => void;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [cwd, setCwd] = useState(defaultCwd);
   const [displayName, setDisplayName] = useState("");
   const [launchPreset, setLaunchPreset] =
@@ -1630,6 +1632,10 @@ function CreateTerminalDialog({
       aria-labelledby="create-terminal-title"
       aria-modal="true"
       className="dialog-backdrop"
+      onKeyDown={(event) =>
+        handleModalKeyDown(event, dialogRef.current, onCancel)
+      }
+      ref={dialogRef}
       role="dialog"
     >
       <form className="dialog-card" onSubmit={submit}>
