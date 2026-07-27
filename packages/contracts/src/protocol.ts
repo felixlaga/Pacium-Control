@@ -177,6 +177,194 @@ export const RepositoryObservationSchema = z
   });
 export type RepositoryObservation = z.infer<typeof RepositoryObservationSchema>;
 
+export const GitChangeKindSchema = z.enum([
+  "added",
+  "modified",
+  "deleted",
+  "renamed",
+  "copied",
+  "type_changed",
+  "untracked",
+  "conflicted",
+]);
+
+export const GitChangedFileSchema = z
+  .object({
+    path: z
+      .string()
+      .min(1)
+      .max(4096)
+      .refine((value) => !value.includes("\0")),
+    previousPath: z
+      .string()
+      .min(1)
+      .max(4096)
+      .refine((value) => !value.includes("\0"))
+      .nullable(),
+    kind: GitChangeKindSchema,
+    staged: z.boolean(),
+    unstaged: z.boolean(),
+    untracked: z.boolean(),
+    conflicted: z.boolean(),
+    additions: z.number().int().nonnegative().nullable(),
+    deletions: z.number().int().nonnegative().nullable(),
+    binary: z.boolean(),
+    large: z.boolean(),
+    sizeBytes: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable(),
+  })
+  .strict()
+  .superRefine((file, context) => {
+    if (!file.staged && !file.unstaged && !file.untracked && !file.conflicted) {
+      context.addIssue({
+        code: "custom",
+        message: "A changed file requires at least one status source.",
+      });
+    }
+    if (
+      file.untracked &&
+      (file.kind !== "untracked" ||
+        file.staged ||
+        file.unstaged ||
+        file.conflicted)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Untracked evidence cannot contain tracked status.",
+      });
+    }
+    if (file.conflicted && file.kind !== "conflicted") {
+      context.addIssue({
+        code: "custom",
+        message: "Conflicted evidence requires the conflicted kind.",
+      });
+    }
+    const carriesPreviousPath =
+      file.kind === "renamed" || file.kind === "copied";
+    if ((file.previousPath !== null) !== carriesPreviousPath) {
+      context.addIssue({
+        code: "custom",
+        message: "Only renamed or copied files carry a previous path.",
+      });
+    }
+    if (
+      (file.additions === null) !== (file.deletions === null) ||
+      (file.binary && (file.additions !== null || file.deletions !== null))
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Line counts must be a complete numeric pair or unavailable.",
+      });
+    }
+  });
+export type GitChangedFile = z.infer<typeof GitChangedFileSchema>;
+
+export const GitChangesStatusSchema = z.enum([
+  "ready",
+  "not_repository",
+  "error",
+]);
+export const GitChangesErrorCodeSchema = z.enum([
+  "git_unavailable",
+  "timeout",
+  "inspection_failed",
+  "invalid_output",
+  "repository_unavailable",
+]);
+
+export const GitChangesObservationSchema = z
+  .object({
+    status: GitChangesStatusSchema,
+    root: z.string().min(1).max(4096).nullable(),
+    headCommit: z
+      .string()
+      .regex(/^[0-9a-f]{40,64}$/)
+      .nullable(),
+    observedAt: z.string().datetime(),
+    files: z.array(GitChangedFileSchema).max(500),
+    totals: z
+      .object({
+        fileCount: z.number().int().min(0).max(500),
+        additions: z.number().int().nonnegative(),
+        deletions: z.number().int().nonnegative(),
+        unavailableLineCount: z.number().int().min(0).max(500),
+        conflictCount: z.number().int().min(0).max(500),
+      })
+      .strict(),
+    truncated: z.boolean(),
+    error: z
+      .object({
+        code: GitChangesErrorCodeSchema,
+        message: z.string().min(1).max(200),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict()
+  .superRefine((observation, context) => {
+    const expected = {
+      fileCount: observation.files.length,
+      additions: observation.files.reduce(
+        (sum, file) => sum + (file.additions ?? 0),
+        0,
+      ),
+      deletions: observation.files.reduce(
+        (sum, file) => sum + (file.deletions ?? 0),
+        0,
+      ),
+      unavailableLineCount: observation.files.filter(
+        (file) => file.additions === null,
+      ).length,
+      conflictCount: observation.files.filter((file) => file.conflicted).length,
+    };
+    if (
+      Object.entries(expected).some(
+        ([key, value]) =>
+          observation.totals[key as keyof typeof expected] !== value,
+      )
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Changed-file totals must match the file evidence.",
+      });
+    }
+
+    if (observation.status === "ready") {
+      if (observation.root === null || observation.error !== null) {
+        context.addIssue({
+          code: "custom",
+          message: "Ready changes require a root and no error.",
+        });
+      }
+      return;
+    }
+
+    if (
+      observation.files.length !== 0 ||
+      observation.truncated ||
+      observation.headCommit !== null
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Unavailable changes cannot contain file evidence.",
+      });
+    }
+    if (
+      (observation.status === "error") !== (observation.error !== null) ||
+      (observation.status === "not_repository" && observation.root !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Changed-file error evidence must match status.",
+      });
+    }
+  });
+export type GitChangesObservation = z.infer<typeof GitChangesObservationSchema>;
+
 export const SessionSummarySchema = z.object({
   id: SessionIdSchema,
   epoch: z.number().int().positive(),

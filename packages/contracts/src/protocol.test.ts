@@ -5,6 +5,8 @@ import {
   ClientMessageSchema,
   decodeTerminalDataFrame,
   encodeTerminalDataFrame,
+  GitChangedFileSchema,
+  GitChangesObservationSchema,
   MAX_TERMINAL_INPUT_CHARS,
   PROTOCOL_VERSION,
   RepositoryObservationSchema,
@@ -350,6 +352,108 @@ describe("repository observation contract", () => {
       RepositoryObservationSchema.safeParse({
         ...error,
         error: { ...error.error, message: "x".repeat(201) },
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("changed-file observation contract", () => {
+  const file = {
+    path: "apps/web/src/app.tsx",
+    previousPath: null,
+    kind: "modified",
+    staged: true,
+    unstaged: true,
+    untracked: false,
+    conflicted: false,
+    additions: 12,
+    deletions: 3,
+    binary: false,
+    large: false,
+    sizeBytes: 42_000,
+  };
+  const ready = {
+    status: "ready",
+    root: "/work/pacium",
+    headCommit: "a".repeat(40),
+    observedAt: "2026-07-27T10:00:00.000Z",
+    files: [file],
+    totals: {
+      fileCount: 1,
+      additions: 12,
+      deletions: 3,
+      unavailableLineCount: 0,
+      conflictCount: 0,
+    },
+    truncated: false,
+    error: null,
+  };
+
+  it("accepts bounded mixed tracked evidence and exact totals", () => {
+    expect(GitChangesObservationSchema.safeParse(ready).success).toBe(true);
+    expect(
+      GitChangesObservationSchema.safeParse({
+        ...ready,
+        totals: { ...ready.totals, additions: 13 },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires previous paths and binary/count invariants", () => {
+    expect(
+      GitChangedFileSchema.safeParse({
+        ...file,
+        kind: "renamed",
+      }).success,
+    ).toBe(false);
+    expect(
+      GitChangedFileSchema.safeParse({
+        ...file,
+        binary: true,
+      }).success,
+    ).toBe(false);
+    expect(
+      GitChangedFileSchema.safeParse({
+        ...file,
+        path: "unsafe\0path",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts non-repository and bounded error states without files", () => {
+    const empty = {
+      status: "not_repository",
+      root: null,
+      headCommit: null,
+      observedAt: ready.observedAt,
+      files: [],
+      totals: {
+        fileCount: 0,
+        additions: 0,
+        deletions: 0,
+        unavailableLineCount: 0,
+        conflictCount: 0,
+      },
+      truncated: false,
+      error: null,
+    };
+    expect(GitChangesObservationSchema.safeParse(empty).success).toBe(true);
+    expect(
+      GitChangesObservationSchema.safeParse({
+        ...empty,
+        status: "error",
+        root: "/work/pacium",
+        error: {
+          code: "timeout",
+          message: "Git changes inspection timed out.",
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      GitChangesObservationSchema.safeParse({
+        ...empty,
+        status: "error",
+        error: null,
       }).success,
     ).toBe(false);
   });
