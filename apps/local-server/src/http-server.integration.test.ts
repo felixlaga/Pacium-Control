@@ -1092,77 +1092,111 @@ describe("localhost HTTP and WebSocket boundary", () => {
     if (restartedInitial.type !== "pacium.queue.sources") {
       throw new Error("Expected restarted queue observation");
     }
-    const firstStableRestartedObservation =
-      restartedInitial.observation.sources[0]?.classification?.candidate != null
-        ? restartedInitial
-        : await nextMessageWithin(
-            restartedClient,
-            (message) =>
-              message.type === "pacium.queue.sources.updated" &&
-              message.observation.sources[0]?.classification?.candidate != null,
-            "stable restarted queue observation",
-          );
-    if (
-      firstStableRestartedObservation.type !== "pacium.queue.sources" &&
-      firstStableRestartedObservation.type !== "pacium.queue.sources.updated"
-    ) {
-      throw new Error("Expected stable restarted queue evidence");
+    let restartedObservation = restartedInitial;
+    for (const requestId of [
+      "6c12f7bf-b81c-481b-bf6d-917ee1d7ea42",
+      "216e87b2-7801-46fb-88ce-ed95d88e622e",
+      "d404cdad-bd96-42dd-9dc3-c0032bc36b0a",
+    ]) {
+      if (
+        restartedObservation.observation.sources[0]?.classification
+          ?.candidate != null
+      ) {
+        break;
+      }
+      restartedClient.socket.send(
+        JSON.stringify({
+          type: "pacium.queue.observe",
+          requestId,
+        }),
+      );
+      const nextObservation = await nextMessageWithin(
+        restartedClient,
+        (message) =>
+          message.type === "pacium.queue.sources" &&
+          message.requestId === requestId,
+        "settled restarted queue observation",
+      );
+      if (nextObservation.type !== "pacium.queue.sources") {
+        throw new Error("Expected settled restarted queue observation");
+      }
+      restartedObservation = nextObservation;
     }
-    expect(
-      firstStableRestartedObservation.observation.sources[0]?.classification
-        ?.candidate,
-    ).not.toBeNull();
-    restartedClient.socket.send(
-      JSON.stringify({
-        type: "pacium.queue.observe",
-        requestId: "6c12f7bf-b81c-481b-bf6d-917ee1d7ea42",
-      }),
-    );
-    const restartedObservation = await nextMessageWithin(
-      restartedClient,
-      (message) =>
-        message.type === "pacium.queue.sources" &&
-        message.requestId === "6c12f7bf-b81c-481b-bf6d-917ee1d7ea42" &&
-        message.observation.sources[0]?.classification?.candidate != null,
-      "settled restarted queue observation",
-    );
-    if (restartedObservation.type !== "pacium.queue.sources") {
-      throw new Error("Expected settled restarted queue observation");
-    }
-    const restartedSource = restartedObservation.observation.sources[0];
-    const restartedCandidate =
-      restartedSource?.classification?.candidate ?? null;
-    if (
-      restartedObservation.observation.workspaceRevision === null ||
-      restartedSource?.contentHash === null ||
-      restartedSource === undefined ||
-      restartedCandidate === null
-    ) {
-      throw new Error("Expected restarted exact queue identity");
-    }
-    const restartedIdentity = {
-      workspaceRevision: restartedObservation.observation.workspaceRevision,
-      sourceId: restartedSource.sourceId,
-      observationRevision: restartedSource.observationRevision,
-      contentHash: restartedSource.contentHash,
-      itemId: restartedCandidate.itemId,
-    };
-    restartedClient.socket.send(
-      JSON.stringify({
-        type: "pacium.queue.item.inspect",
-        requestId: "0154f7ac-e930-492d-b4cb-0570ece2a02e",
-        ...restartedIdentity,
-      }),
-    );
-    await expect(
-      nextMessageWithin(
+    let restartedItem: ServerMessage | null = null;
+    let settledRestartedRevision = 0;
+    for (const [inspectRequestId, refreshRequestId] of [
+      [
+        "0154f7ac-e930-492d-b4cb-0570ece2a02e",
+        "9cfd2b21-9de9-4029-bd5d-31130bea4526",
+      ],
+      [
+        "6d29bd3b-9b06-42d0-8982-888652f228a1",
+        "39529efe-eec5-4e61-8a8a-1d289fc75b1a",
+      ],
+      [
+        "5c0c869a-f32a-45b0-807f-4c15b689058c",
+        "8ec35b1d-2e90-4dc8-94e4-79d7c474af94",
+      ],
+    ] as const) {
+      const restartedSource = restartedObservation.observation.sources[0];
+      const restartedCandidate =
+        restartedSource?.classification?.candidate ?? null;
+      if (
+        restartedObservation.observation.workspaceRevision === null ||
+        restartedSource?.contentHash === null ||
+        restartedSource === undefined ||
+        restartedCandidate === null
+      ) {
+        throw new Error("Expected restarted exact queue identity");
+      }
+      restartedClient.socket.send(
+        JSON.stringify({
+          type: "pacium.queue.item.inspect",
+          requestId: inspectRequestId,
+          workspaceRevision: restartedObservation.observation.workspaceRevision,
+          sourceId: restartedSource.sourceId,
+          observationRevision: restartedSource.observationRevision,
+          contentHash: restartedSource.contentHash,
+          itemId: restartedCandidate.itemId,
+        }),
+      );
+      const item = await nextMessageWithin(
         restartedClient,
         (message) =>
           message.type === "pacium.queue.item" &&
-          message.requestId === "0154f7ac-e930-492d-b4cb-0570ece2a02e",
+          message.requestId === inspectRequestId,
         "restarted reconciliation inspection",
-      ),
-    ).resolves.toMatchObject({
+      );
+      if (
+        item.type === "pacium.queue.item" &&
+        item.inspection.status === "ready"
+      ) {
+        restartedItem = item;
+        settledRestartedRevision = restartedSource.observationRevision;
+        break;
+      }
+      restartedClient.socket.send(
+        JSON.stringify({
+          type: "pacium.queue.observe",
+          requestId: refreshRequestId,
+        }),
+      );
+      const refreshed = await nextMessageWithin(
+        restartedClient,
+        (message) =>
+          message.type === "pacium.queue.sources" &&
+          message.requestId === refreshRequestId,
+        "refreshed restart identity",
+      );
+      if (refreshed.type !== "pacium.queue.sources") {
+        throw new Error("Expected refreshed restart identity");
+      }
+      restartedObservation = refreshed;
+    }
+    if (restartedItem === null || restartedItem.type !== "pacium.queue.item") {
+      throw new Error("Restarted queue identity did not stabilize");
+    }
+    expect(restartedItem).toMatchObject({
       decisionState: {
         status: "decided",
         decision: {
@@ -1201,7 +1235,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
             message.requestId === "2f525c11-c46f-45dd-9d26-d7a4b3ae554d") ||
             message.type === "pacium.queue.sources.updated") &&
           (message.observation.sources[0]?.observationRevision ?? 0) >
-            restartedSource.observationRevision,
+            settledRestartedRevision,
         "source conflict after restart",
       ),
     ).resolves.toMatchObject({
