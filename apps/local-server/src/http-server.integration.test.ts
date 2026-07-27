@@ -1,5 +1,5 @@
 import { once } from "node:events";
-import { mkdtemp, rm } from "node:fs/promises";
+import { lstat, mkdtemp, rm } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -276,6 +276,53 @@ describe("localhost HTTP and WebSocket boundary", () => {
         revision: 2,
         workspace: { label: "Agent workspace" },
       },
+    });
+
+    client.socket.close();
+    await once(client.socket, "close");
+  });
+
+  it("rejects a missing live-session binding before touching disk or PTYs", async () => {
+    const setup = await startTestServer(new FakePtyFactory());
+    application = setup.application;
+    manager = setup.manager;
+
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    const liveSession = await createTestSession(client);
+    const invalid: PaciumWorkspace = {
+      ...paciumWorkspace("Pacium"),
+      roles: {
+        meta: null,
+        orchestrator: {
+          type: "session",
+          sessionId: "87931f36-a38b-44d7-b096-ce5ba4e76482",
+        },
+      },
+    };
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.config.replace",
+        requestId: "0534556c-60ee-4ccb-bc84-254ff08fbbac",
+        expectedRevision: 0,
+        workspace: invalid,
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "error" &&
+          message.requestId === "0534556c-60ee-4ccb-bc84-254ff08fbbac",
+      ),
+    ).resolves.toMatchObject({
+      code: "PACIUM_CONFIG_INVALID_WORKSPACE",
+      retryable: false,
+    });
+    expect(manager.hasSession(liveSession.id)).toBe(true);
+    await expect(lstat(setup.config.dataDirectory)).rejects.toMatchObject({
+      code: "ENOENT",
     });
 
     client.socket.close();
