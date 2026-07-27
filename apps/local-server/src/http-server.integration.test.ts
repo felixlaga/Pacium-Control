@@ -1243,6 +1243,46 @@ describe("localhost HTTP and WebSocket boundary", () => {
     );
     restartedClient.socket.send(
       JSON.stringify({
+        type: "pacium.context.inspect",
+        requestId: "38c9db5e-f042-4508-b75c-dfd678b464be",
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        restartedClient,
+        (message) =>
+          message.type === "pacium.context" &&
+          message.requestId === "38c9db5e-f042-4508-b75c-dfd678b464be",
+        "restarted control context",
+      ),
+    ).resolves.toMatchObject({
+      observation: {
+        status: "ready",
+        recentDecisions: {
+          status: "ready",
+          decisions: [
+            {
+              decisionId: recorded.result.decision.decisionId,
+              response: {
+                kind: "question_answer",
+                preview: "Keep the first slice narrow.",
+              },
+              delivery: {
+                status: "delivered",
+                evidenceKind: "answer_file_created",
+              },
+              lifecycle: {
+                action: "applied",
+                source: "human_labelled",
+              },
+            },
+          ],
+        },
+      },
+    });
+    expect(restarted.manager.list()).toEqual([]);
+    restartedClient.socket.send(
+      JSON.stringify({
         type: "pacium.queue.observe",
         requestId: "af68163e-2ac2-43ee-a26c-6da095733ba6",
       }),
