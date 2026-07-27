@@ -2,6 +2,55 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.34.0 — provider observation contract — 2026-07-28
+
+### Added
+
+- Protocol 19 session snapshots with one strict nullable version-1 provider
+  observation that must match the server-owned Claude Code or Codex launch
+  preset; shell sessions cannot carry provider state.
+- Fixed capability, activity, diagnostic, scalar-field, string, and timestamp
+  bounds; duplicate IDs, arbitrary raw payloads, cross-provider extensions,
+  secret-like diagnostic keys, and impossible freshness order are rejected.
+- Distinct question and approval activity kinds, typed Claude/Codex extension
+  data, provider/adapter versions, adapter health, source, confidence, and
+  freshness without storing prompts, transcripts, environments, tool
+  input/output, credentials, or tokens.
+- Honest initial unavailable health and unknown capabilities for agent
+  terminals while their direct PTYs and process evidence remain independent.
+- Explicit native/hook attention integration through the existing precedence
+  and staleness reducer, plus bounded provider facts and
+  ready/degraded/stale/unavailable observer evidence in the Activity inspector.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 116 test
+  files and 722 tests, plus the 913.12 kB web JavaScript, 109.81 kB stylesheet,
+  and 345.21 kB local-server production bundles.
+- `pnpm test:e2e` passed all 14 Chromium workflows after the Activity evidence
+  boundary copy was synchronized. The existing terminal, directory,
+  responsive/accessibility, Pacium roles/context/queue, Git, verification,
+  reconnect, and mode-preservation workflows remained green.
+- Focused schema, protocol, server, attention, activity-model, semantic-render,
+  and preset/provider-boundary tests cover unavailable defaults, native/hook
+  precedence, stale evidence, distinct questions/approvals, diagnostic
+  rejection, provider matching, and PTY independence.
+
+### Known limitations
+
+- PC-060 defines and consumes the contract only. It does not start, attach to,
+  detect, or ingest Claude Code hooks/status or Codex App Server events.
+- No provider CLI version is declared supported yet. PC-061 and PC-062 must use
+  current capability detection and explicit degradation because vendor
+  protocols and hook availability are version-sensitive.
+- Provider observations are disposable process-local projections. Pacium does
+  not persist transcripts or raw provider events, and direct PTYs retain the
+  existing local-server restart limitation.
+- Questions and approvals are observation-only here; this contract grants no
+  authority to answer, approve, prompt, steer, interrupt, or execute.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's existing chunk-size warning.
+
 ## 0.33.0 — host directory-picker refresh — 2026-07-28
 
 ### Added
