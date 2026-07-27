@@ -1603,6 +1603,7 @@ export function CreateTerminalDialog({
     launchPreset: LaunchPresetId;
   }) => void;
 }) {
+  const browseButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const [cwd, setCwd] = useState(defaultCwd);
   const [displayName, setDisplayName] = useState("");
@@ -1623,12 +1624,19 @@ export function CreateTerminalDialog({
     });
   };
 
+  const closeDirectoryPicker = () => {
+    setPickerOpen(false);
+    window.requestAnimationFrame(() => {
+      browseButtonRef.current?.focus();
+    });
+  };
+
   if (pickerOpen) {
     return (
       <DirectoryPicker
         initialPath={cwd.trim() || defaultCwd}
         loadDirectories={loadDirectories}
-        onCancel={() => setPickerOpen(false)}
+        onCancel={closeDirectoryPicker}
         onSelect={(path) => {
           setCwd(path);
           setPickerOpen(false);
@@ -1713,6 +1721,7 @@ export function CreateTerminalDialog({
             <button
               className="browse-directory-button"
               onClick={() => setPickerOpen(true)}
+              ref={browseButtonRef}
               type="button"
             >
               <span aria-hidden="true">⌘</span>

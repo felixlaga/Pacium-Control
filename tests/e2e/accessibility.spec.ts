@@ -56,6 +56,18 @@ test("terminal launcher closes with Escape and restores invoking focus", async (
   await expect(dialog).toBeVisible();
   await expect(page.getByLabel("Working directory")).toBeFocused();
 
+  const browseButton = page.getByRole("button", { name: "Browse" });
+  await browseButton.click();
+  const directoryDialog = page.getByRole("dialog", {
+    name: "Choose a working directory",
+  });
+  await expect(directoryDialog).toBeVisible();
+  await expect(page.getByLabel("Filter directories")).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(directoryDialog).toBeHidden();
+  await expect(browseButton).toBeFocused();
+
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(createButton).toBeFocused();
