@@ -178,11 +178,19 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
   deterministic conflict/mixed/staged/unstaged/untracked order, known line
   totals, rename/copy/type/delete states, binary/large labels, freshness,
   truncation, and honest degraded states without reading content or affecting
-  PTYs. Diff text remains assigned to PC-035.
+  PTYs. Selecting a reported path now continues into PC-035.
 
 ### PC-035 Implement diff viewer
 
 - File selection, syntax-aware rendering, collapse, search, line wrapping, and bounded payload.
+- Current status: protocol 7 exposes one freshly revalidated changed path
+  through fixed no-shell tracked, untracked, and unborn Git reads. Patch bytes,
+  lines, individual lines, paths, errors, and final serialized messages are
+  bounded; binary, large, stale, non-repository, and error states carry no
+  patch content. The compact Changes subview renders unified syntax and
+  old/new line numbers as text, with browser-local search, hunk collapse,
+  wrapping, refresh, Back/Escape, stale-response rejection, and focus return
+  without affecting PTYs or persisting repository content.
 
 ### PC-036 Implement commit history
 
