@@ -2,6 +2,34 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.13.0 — evidence-labelled attention reducer — 2026-07-27
+
+### Added
+
+- A pure working/waiting/needs-input/finished/failed/stale/unknown reducer with
+  labelled native, hook, human, process, terminal, and no-evidence sources.
+- Deterministic source, confidence, and recency precedence plus stale conversion
+  that prevents weak terminal noise from overriding stronger evidence.
+- Honest process-only projection: live is Unknown, nonzero/signalled exit is
+  Failed, and clean exit is Finished with unverified-task copy.
+- Textual attention state in session rows and a source/confidence/reason/time
+  evidence card in the inspector.
+- Reducer boundary and server-rendered semantic tests.
+
+### Verified
+
+- `pnpm verify` passes formatting, lint, type checking, 31 test files and
+  120 tests, and both production bundles.
+
+### Known limitations
+
+- Provider-native and hook observations are not connected yet; a live process
+  intentionally remains Unknown.
+- Unread cursors and notification delivery begin with PC-032.
+- The current machine ran verification on Node.js 26.4.0, not pinned Node.js
+  24.18.x.
+- The web bundle is 694 kB before gzip and retains the tracked warning.
+
 ## 0.12.0 — evidence-labelled agent detection — 2026-07-27
 
 ### Added
