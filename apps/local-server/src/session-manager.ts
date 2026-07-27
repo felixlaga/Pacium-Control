@@ -32,6 +32,7 @@ import {
   inspectRepositoryContext,
   type RepositoryInspector,
 } from "./repository-context.js";
+import { initialProviderObservation } from "./provider-observation.js";
 import {
   verificationPresetsForRepository,
   type VerificationCatalog,
@@ -240,6 +241,7 @@ export class SessionManager {
           ...preset.classification,
           observedAt: createdAt,
         },
+        providerObservation: initialProviderObservation(preset.id, createdAt),
         repository,
         runtime: "pty",
         processState: "live",

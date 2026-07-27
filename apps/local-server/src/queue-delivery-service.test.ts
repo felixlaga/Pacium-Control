@@ -559,6 +559,7 @@ function liveSession(): SessionSummary {
       confidence: "confirmed",
       observedAt,
     },
+    providerObservation: null,
     repository: {
       status: "not_repository",
       root: null,

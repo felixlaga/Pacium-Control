@@ -210,6 +210,7 @@ describe("SessionManager", () => {
         confidence: "confirmed",
         observedAt: session.createdAt,
       },
+      providerObservation: null,
     });
 
     manager.shutdown();
@@ -638,6 +639,17 @@ describe("SessionManager", () => {
         source: "launch_preset",
         confidence: "confirmed",
         observedAt: session.createdAt,
+      },
+      providerObservation: {
+        provider: "codex",
+        health: {
+          state: "unavailable",
+          source: "none",
+          confidence: "low",
+        },
+        attention: null,
+        activities: [],
+        diagnostics: [],
       },
       shell: "/opt/test/bin/codex",
     });
