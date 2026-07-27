@@ -92,6 +92,14 @@ import {
   repositoryDiffKey,
   type RepositoryDiffViewState,
 } from "./repository-diff-model.js";
+import { RepositoryHistoryPanel } from "./repository-history.js";
+import {
+  IDLE_REPOSITORY_HISTORY,
+  acceptRepositoryHistoryResponse,
+  beginRepositoryHistoryRequest,
+  interruptRepositoryHistoryRequest,
+  type RepositoryHistoryViewState,
+} from "./repository-history-model.js";
 import { RepositoryContextCard } from "./repository-context.js";
 import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
 import {
@@ -246,6 +254,10 @@ export function App() {
   const [selectedDiffPathBySession, setSelectedDiffPathBySession] = useState(
     new Map<string, string>(),
   );
+  const [repositoryHistoryBySession, setRepositoryHistoryBySession] = useState(
+    new Map<string, RepositoryHistoryViewState>(),
+  );
+  const repositoryHistoryRef = useRef(repositoryHistoryBySession);
 
   panelViewRef.current = panelView;
   selectedIdRef.current = selectedId;
@@ -254,6 +266,7 @@ export function App() {
   attentionInboxRef.current = attentionInbox;
   repositoryChangesRef.current = repositoryChangesBySession;
   repositoryDiffRef.current = repositoryDiffByKey;
+  repositoryHistoryRef.current = repositoryHistoryBySession;
 
   const effectiveTheme = resolveEffectiveTheme(
     preferences.theme,
@@ -299,6 +312,19 @@ export function App() {
         if (diffChanged) {
           repositoryDiffRef.current = nextDiffs;
           setRepositoryDiffByKey(nextDiffs);
+        }
+        let historyChanged = false;
+        const nextHistory = new Map(repositoryHistoryRef.current);
+        for (const [sessionId, state] of nextHistory) {
+          const interrupted = interruptRepositoryHistoryRequest(state);
+          if (interrupted !== state) {
+            nextHistory.set(sessionId, interrupted);
+            historyChanged = true;
+          }
+        }
+        if (historyChanged) {
+          repositoryHistoryRef.current = nextHistory;
+          setRepositoryHistoryBySession(nextHistory);
         }
       }
       return;
@@ -346,6 +372,24 @@ export function App() {
         next.set(key, accepted);
         repositoryDiffRef.current = next;
         setRepositoryDiffByKey(next);
+      }
+      return;
+    }
+    if (event.message.type === "repository.history") {
+      const current =
+        repositoryHistoryRef.current.get(event.message.sessionId) ??
+        IDLE_REPOSITORY_HISTORY;
+      const accepted = acceptRepositoryHistoryResponse(
+        current,
+        event.message.requestId,
+        event.message.sessionId,
+        event.message.observation,
+      );
+      if (accepted !== current) {
+        const next = new Map(repositoryHistoryRef.current);
+        next.set(event.message.sessionId, accepted);
+        repositoryHistoryRef.current = next;
+        setRepositoryHistoryBySession(next);
       }
       return;
     }
@@ -410,6 +454,31 @@ export function App() {
       next.set(key, nextState);
       repositoryDiffRef.current = next;
       setRepositoryDiffByKey(next);
+    },
+    [connection],
+  );
+
+  const requestRepositoryHistory = useCallback(
+    (sessionId: string) => {
+      const transport = transportRef.current;
+      if (connection !== "connected" || transport === null) {
+        setNotice(
+          "Commit history needs a live Pacium connection. The terminal process is unaffected.",
+        );
+        return;
+      }
+      const requestId = transport.requestRepositoryHistory(sessionId);
+      const current =
+        repositoryHistoryRef.current.get(sessionId) ?? IDLE_REPOSITORY_HISTORY;
+      const nextState = beginRepositoryHistoryRequest(
+        current,
+        sessionId,
+        requestId,
+      );
+      const next = new Map(repositoryHistoryRef.current);
+      next.set(sessionId, nextState);
+      repositoryHistoryRef.current = next;
+      setRepositoryHistoryBySession(next);
     },
     [connection],
   );
@@ -536,6 +605,10 @@ export function App() {
       : (repositoryDiffByKey.get(
           repositoryDiffKey(selectedId, selectedDiffPath),
         ) ?? IDLE_REPOSITORY_DIFF);
+  const selectedRepositoryHistory =
+    selectedId === null
+      ? IDLE_REPOSITORY_HISTORY
+      : (repositoryHistoryBySession.get(selectedId) ?? IDLE_REPOSITORY_HISTORY);
 
   useEffect(() => {
     if (
@@ -573,6 +646,24 @@ export function App() {
     selectedDiffPath,
     selectedId,
     selectedRepositoryDiff.status,
+  ]);
+
+  useEffect(() => {
+    if (
+      inspectorTab !== "history" ||
+      selectedId === null ||
+      connection !== "connected" ||
+      selectedRepositoryHistory.status !== "idle"
+    ) {
+      return;
+    }
+    requestRepositoryHistory(selectedId);
+  }, [
+    connection,
+    inspectorTab,
+    requestRepositoryHistory,
+    selectedId,
+    selectedRepositoryHistory.status,
   ]);
 
   const openSelectedRepositoryDiff = useCallback(
@@ -1901,27 +1992,39 @@ export function App() {
                 )}
             </section>
           </div>
-        ) : selectedDiffPath === null ? (
-          <RepositoryChangesPanel
-            onOpenDiff={openSelectedRepositoryDiff}
+        ) : inspectorTab === "changes" ? (
+          selectedDiffPath === null ? (
+            <RepositoryChangesPanel
+              onOpenDiff={openSelectedRepositoryDiff}
+              onRefresh={() => {
+                if (selectedId !== null) {
+                  requestRepositoryChanges(selectedId);
+                }
+              }}
+              repository={selectedSession?.repository ?? null}
+              state={selectedRepositoryChanges}
+            />
+          ) : (
+            <RepositoryDiffPanel
+              key={repositoryDiffKey(selectedId!, selectedDiffPath)}
+              onBack={closeSelectedRepositoryDiff}
+              onRefresh={() => {
+                if (selectedId !== null) {
+                  requestRepositoryDiff(selectedId, selectedDiffPath);
+                }
+              }}
+              state={selectedRepositoryDiff}
+            />
+          )
+        ) : (
+          <RepositoryHistoryPanel
             onRefresh={() => {
               if (selectedId !== null) {
-                requestRepositoryChanges(selectedId);
+                requestRepositoryHistory(selectedId);
               }
             }}
             repository={selectedSession?.repository ?? null}
-            state={selectedRepositoryChanges}
-          />
-        ) : (
-          <RepositoryDiffPanel
-            key={repositoryDiffKey(selectedId!, selectedDiffPath)}
-            onBack={closeSelectedRepositoryDiff}
-            onRefresh={() => {
-              if (selectedId !== null) {
-                requestRepositoryDiff(selectedId, selectedDiffPath);
-              }
-            }}
-            state={selectedRepositoryDiff}
+            state={selectedRepositoryHistory}
           />
         )}
       </aside>

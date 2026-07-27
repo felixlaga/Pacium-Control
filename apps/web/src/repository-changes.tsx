@@ -10,7 +10,7 @@ import {
   type RepositoryChangesViewState,
 } from "./repository-changes-model.js";
 
-export type InspectorTab = "overview" | "changes";
+export type InspectorTab = "overview" | "changes" | "history";
 
 export function InspectorTabs({
   active,
@@ -49,6 +49,20 @@ export function InspectorTabs({
       >
         Changes
       </button>
+      <button
+        aria-controls="inspector-history-panel"
+        aria-selected={active === "history"}
+        id="inspector-history-tab"
+        onClick={() => onChange("history")}
+        onKeyDown={(event) =>
+          handleInspectorTabKeyDown(event, "history", onChange)
+        }
+        role="tab"
+        tabIndex={active === "history" ? 0 : -1}
+        type="button"
+      >
+        History
+      </button>
     </div>
   );
 }
@@ -61,10 +75,15 @@ export function nextInspectorTab(
     return "overview";
   }
   if (key === "End") {
-    return "changes";
+    return "history";
   }
-  if (key === "ArrowLeft" || key === "ArrowRight") {
-    return current === "overview" ? "changes" : "overview";
+  const order: InspectorTab[] = ["overview", "changes", "history"];
+  const currentIndex = order.indexOf(current);
+  if (key === "ArrowLeft") {
+    return order[(currentIndex + order.length - 1) % order.length] ?? null;
+  }
+  if (key === "ArrowRight") {
+    return order[(currentIndex + 1) % order.length] ?? null;
   }
   return null;
 }

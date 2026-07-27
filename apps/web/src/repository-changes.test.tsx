@@ -73,15 +73,20 @@ describe("repository Changes presentation", () => {
     expect(markup).toContain('role="tablist"');
     expect(markup).toContain('aria-selected="true"');
     expect(markup).toContain('id="inspector-changes-tab"');
+    expect(markup).toContain('id="inspector-history-tab"');
     expect(markup).toContain("Overview");
     expect(markup).toContain("Changes");
+    expect(markup).toContain("History");
   });
 
   it("moves predictably between inspector tabs from the keyboard", () => {
     expect(nextInspectorTab("overview", "ArrowRight")).toBe("changes");
     expect(nextInspectorTab("changes", "ArrowLeft")).toBe("overview");
+    expect(nextInspectorTab("changes", "ArrowRight")).toBe("history");
+    expect(nextInspectorTab("history", "ArrowRight")).toBe("overview");
+    expect(nextInspectorTab("overview", "ArrowLeft")).toBe("history");
     expect(nextInspectorTab("changes", "Home")).toBe("overview");
-    expect(nextInspectorTab("overview", "End")).toBe("changes");
+    expect(nextInspectorTab("overview", "End")).toBe("history");
     expect(nextInspectorTab("overview", "Enter")).toBeNull();
   });
 
