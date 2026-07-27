@@ -2072,6 +2072,17 @@ kbd {
   font-weight: 450;
 }
 
+.queue-decision-panel label > small {
+  color: var(--text-faint);
+  font-size: 7px;
+  font-weight: 450;
+  text-align: right;
+}
+
+.queue-decision-panel label > small.is-invalid {
+  color: var(--red);
+}
+
 .queue-decision-panel textarea {
   width: 100%;
   min-height: 68px;

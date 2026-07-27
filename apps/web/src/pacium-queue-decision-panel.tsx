@@ -76,6 +76,10 @@ export function PaciumQueueDecisionPanel({
 
   const submitting = state.decisionStatus === "submitting";
   const blocked = state.decisionStatus === "error";
+  const answerBytes = utf8ByteLength(answer);
+  const noteBytes = utf8ByteLength(note);
+  const answerTooLarge = answerBytes > MAX_QUEUE_ANSWER_BYTES;
+  const noteTooLarge = noteBytes > MAX_QUEUE_DECISION_NOTE_BYTES;
   const normalizedNote = note.trim().length === 0 ? null : note;
 
   return (
@@ -94,7 +98,13 @@ export function PaciumQueueDecisionPanel({
         <form
           onSubmit={(event: FormEvent<HTMLFormElement>) => {
             event.preventDefault();
-            if (submitting || blocked || answer.trim().length === 0) {
+            if (
+              submitting ||
+              blocked ||
+              answer.trim().length === 0 ||
+              answerTooLarge ||
+              noteTooLarge
+            ) {
               return;
             }
             onRecordQuestion({
@@ -106,6 +116,8 @@ export function PaciumQueueDecisionPanel({
           <label>
             Answer
             <textarea
+              aria-describedby="queue-answer-bound"
+              aria-invalid={answerTooLarge}
               disabled={submitting || blocked}
               maxLength={MAX_QUEUE_ANSWER_BYTES}
               onChange={(event) => setAnswer(event.currentTarget.value)}
@@ -114,14 +126,28 @@ export function PaciumQueueDecisionPanel({
               rows={5}
               value={answer}
             />
+            <small
+              className={answerTooLarge ? "is-invalid" : ""}
+              id="queue-answer-bound"
+            >
+              {answerBytes} / {MAX_QUEUE_ANSWER_BYTES} UTF-8 bytes
+            </small>
           </label>
           <DecisionNote
             disabled={submitting || blocked}
             note={note}
+            noteBytes={noteBytes}
+            noteTooLarge={noteTooLarge}
             setNote={setNote}
           />
           <button
-            disabled={submitting || blocked || answer.trim().length === 0}
+            disabled={
+              submitting ||
+              blocked ||
+              answer.trim().length === 0 ||
+              answerTooLarge ||
+              noteTooLarge
+            }
             type="submit"
           >
             {submitting ? "Recording answer…" : "Record answer"}
@@ -136,6 +162,8 @@ export function PaciumQueueDecisionPanel({
           <DecisionNote
             disabled={submitting || blocked}
             note={note}
+            noteBytes={noteBytes}
+            noteTooLarge={noteTooLarge}
             setNote={setNote}
           />
           {confirmation === null ? (
@@ -145,7 +173,7 @@ export function PaciumQueueDecisionPanel({
               role="group"
             >
               <button
-                disabled={submitting || blocked}
+                disabled={submitting || blocked || noteTooLarge}
                 onClick={() => setConfirmation("denied")}
                 type="button"
               >
@@ -153,7 +181,7 @@ export function PaciumQueueDecisionPanel({
               </button>
               <button
                 className="primary"
-                disabled={submitting || blocked}
+                disabled={submitting || blocked || noteTooLarge}
                 onClick={() => setConfirmation("approved")}
                 type="button"
               >
@@ -175,7 +203,7 @@ export function PaciumQueueDecisionPanel({
               </p>
               <div>
                 <button
-                  disabled={submitting}
+                  disabled={submitting || noteTooLarge}
                   onClick={() => setConfirmation(null)}
                   type="button"
                 >
@@ -183,7 +211,7 @@ export function PaciumQueueDecisionPanel({
                 </button>
                 <button
                   className={confirmation === "approved" ? "primary" : ""}
-                  disabled={submitting}
+                  disabled={submitting || noteTooLarge}
                   onClick={() =>
                     onRecordApproval({
                       outcome: confirmation,
@@ -225,16 +253,22 @@ export function PaciumQueueDecisionPanel({
 function DecisionNote({
   disabled,
   note,
+  noteBytes,
+  noteTooLarge,
   setNote,
 }: {
   disabled: boolean;
   note: string;
+  noteBytes: number;
+  noteTooLarge: boolean;
   setNote: (value: string) => void;
 }) {
   return (
     <label>
       Note <span>Optional</span>
       <textarea
+        aria-describedby="queue-decision-note-bound"
+        aria-invalid={noteTooLarge}
         disabled={disabled}
         maxLength={MAX_QUEUE_DECISION_NOTE_BYTES}
         onChange={(event) => setNote(event.currentTarget.value)}
@@ -242,6 +276,12 @@ function DecisionNote({
         rows={3}
         value={note}
       />
+      <small
+        className={noteTooLarge ? "is-invalid" : ""}
+        id="queue-decision-note-bound"
+      >
+        {noteBytes} / {MAX_QUEUE_DECISION_NOTE_BYTES} UTF-8 bytes
+      </small>
     </label>
   );
 }
@@ -321,4 +361,8 @@ function formatTimestamp(iso: string): string {
   return Number.isNaN(timestamp.getTime())
     ? "Unavailable"
     : timestamp.toLocaleString();
+}
+
+function utf8ByteLength(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
 }
