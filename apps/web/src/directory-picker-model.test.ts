@@ -56,9 +56,9 @@ describe("directory picker model", () => {
     };
 
     expect(loadRecentDirectories(unavailable, "recent")).toEqual([]);
-    expect(
-      saveRecentDirectories(unavailable, "recent", ["/work/pacium"]),
-    ).toBe(false);
+    expect(saveRecentDirectories(unavailable, "recent", ["/work/pacium"])).toBe(
+      false,
+    );
   });
 
   it("loads and saves versioned recents through the storage boundary", () => {
@@ -71,9 +71,7 @@ describe("directory picker model", () => {
     expect(saveRecentDirectories(storage, "recent", ["/work/pacium"])).toBe(
       true,
     );
-    expect(loadRecentDirectories(storage, "recent")).toEqual([
-      "/work/pacium",
-    ]);
+    expect(loadRecentDirectories(storage, "recent")).toEqual(["/work/pacium"]);
   });
 
   it("resolves compact picker keyboard movement deterministically", () => {
