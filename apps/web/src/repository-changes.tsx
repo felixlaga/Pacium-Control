@@ -84,10 +84,12 @@ function handleInspectorTabKeyDown(
 }
 
 export function RepositoryChangesPanel({
+  onOpenDiff,
   onRefresh,
   repository,
   state,
 }: {
+  onOpenDiff?: (file: GitChangedFile) => void;
   onRefresh: () => void;
   repository: RepositoryObservation | null;
   state: RepositoryChangesViewState;
@@ -159,7 +161,11 @@ export function RepositoryChangesPanel({
           </div>
           <ul className="changed-file-list">
             {observation.files.map((file) => (
-              <ChangedFileRow file={file} key={file.path} />
+              <ChangedFileRow
+                file={file}
+                key={file.path}
+                {...(onOpenDiff === undefined ? {} : { onOpenDiff })}
+              />
             ))}
           </ul>
           {observation.truncated && (
@@ -177,9 +183,15 @@ export function RepositoryChangesPanel({
   );
 }
 
-function ChangedFileRow({ file }: { file: GitChangedFile }) {
-  return (
-    <li className={file.conflicted ? "is-conflicted" : undefined}>
+function ChangedFileRow({
+  file,
+  onOpenDiff,
+}: {
+  file: GitChangedFile;
+  onOpenDiff?: (file: GitChangedFile) => void;
+}) {
+  const content = (
+    <>
       <div className="changed-file-copy">
         <strong title={file.path}>{file.path}</strong>
         {file.previousPath !== null && (
@@ -205,6 +217,22 @@ function ChangedFileRow({ file }: { file: GitChangedFile }) {
           </>
         )}
       </span>
+    </>
+  );
+  return (
+    <li className={file.conflicted ? "is-conflicted" : undefined}>
+      {onOpenDiff === undefined ? (
+        content
+      ) : (
+        <button
+          aria-label={`Open diff for ${file.path}`}
+          className="changed-file-button"
+          onClick={() => onOpenDiff(file)}
+          type="button"
+        >
+          {content}
+        </button>
+      )}
     </li>
   );
 }

@@ -88,6 +88,7 @@ describe("repository Changes presentation", () => {
   it("renders rename, mixed, binary, large, counts, and truncation as text", () => {
     const markup = renderToStaticMarkup(
       <RepositoryChangesPanel
+        onOpenDiff={() => {}}
         onRefresh={() => {}}
         repository={repository}
         state={{
@@ -98,6 +99,7 @@ describe("repository Changes presentation", () => {
       />,
     );
     expect(markup).toContain("src/new.ts");
+    expect(markup).toContain('aria-label="Open diff for src/new.ts"');
     expect(markup).toContain("pacium");
     expect(markup).toContain("dev · aaaaaaaa");
     expect(markup).toContain("From src/old.ts");
