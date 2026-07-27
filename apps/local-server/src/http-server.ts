@@ -23,6 +23,7 @@ import {
   isLoopbackHostHeader,
   isValidAccessToken,
 } from "./security.js";
+import type { PaciumConfigStore } from "./pacium-config-store.js";
 import type { SessionManager } from "./session-manager.js";
 import { WebSocketHub } from "./ws-hub.js";
 
@@ -34,9 +35,10 @@ export interface PaciumHttpServer {
 export function createPaciumHttpServer(
   config: ServerConfig,
   sessions: SessionManager,
+  paciumConfig: PaciumConfigStore,
 ): PaciumHttpServer {
   const webRoot = fileURLToPath(new URL("../../web/dist/", import.meta.url));
-  const hub = new WebSocketHub(config, sessions);
+  const hub = new WebSocketHub(config, sessions, paciumConfig);
   const server = createServer((request, response) => {
     void routeRequest(request, response, config, webRoot);
   });

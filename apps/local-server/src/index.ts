@@ -1,6 +1,8 @@
 import { buildChildEnvironment, loadServerConfig } from "./config.js";
 import { createPaciumHttpServer } from "./http-server.js";
 import { createHostActions } from "./host-actions.js";
+import { normalizePaciumWorkspace } from "./pacium-config-normalizer.js";
+import { PaciumConfigStore } from "./pacium-config-store.js";
 import { NodePtyFactory } from "./pty-adapter.js";
 import { SessionManager } from "./session-manager.js";
 import { VerificationRunner } from "./verification-runner.js";
@@ -20,7 +22,17 @@ const sessions = new SessionManager(
   config.verificationCatalog,
   verificationRunner,
 );
-const application = createPaciumHttpServer(config, sessions);
+const paciumConfig = new PaciumConfigStore(config.dataDirectory, {
+  normalizeWorkspace: (workspace) =>
+    normalizePaciumWorkspace(workspace, {
+      dataDirectory: config.dataDirectory,
+      sessionExists: (sessionId) => sessions.hasSession(sessionId),
+      launchPresetExists: (launchPreset) =>
+        sessions.hasLaunchPreset(launchPreset),
+      verificationCatalog: config.verificationCatalog,
+    }),
+});
+const application = createPaciumHttpServer(config, sessions, paciumConfig);
 
 application.server.listen(config.port, config.host, () => {
   process.stdout.write(

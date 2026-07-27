@@ -9,6 +9,10 @@ import {
 import { WebSocket, WebSocketServer, type RawData } from "ws";
 
 import type { ServerConfig } from "./config.js";
+import {
+  PaciumConfigStoreError,
+  type PaciumConfigStore,
+} from "./pacium-config-store.js";
 import { presetCapabilities } from "./launch-presets.js";
 import { SessionError, type SessionManager } from "./session-manager.js";
 
@@ -36,6 +40,7 @@ export class WebSocketHub {
   public constructor(
     private readonly config: ServerConfig,
     private readonly sessions: SessionManager,
+    private readonly paciumConfig: PaciumConfigStore,
   ) {
     this.server.on("connection", (socket) => {
       this.handleConnection(socket);
@@ -188,6 +193,19 @@ export class WebSocketHub {
           error.code,
           error.message,
           error.retryable,
+        );
+        return;
+      }
+      if (error instanceof PaciumConfigStoreError) {
+        this.sendError(
+          client.socket,
+          parsed.data.requestId,
+          `PACIUM_CONFIG_${error.code.toUpperCase()}`,
+          error.message,
+          error.code === "conflict" ||
+            error.code === "write_failed" ||
+            error.code === "durability_unknown" ||
+            error.code === "invalid_result",
         );
         return;
       }
@@ -360,6 +378,23 @@ export class WebSocketHub {
             ),
           }),
         );
+        return;
+      case "pacium.config.get":
+        this.send(client.socket, {
+          type: "pacium.config",
+          requestId: message.requestId,
+          observation: await this.paciumConfig.inspect(),
+        });
+        return;
+      case "pacium.config.replace":
+        this.send(client.socket, {
+          type: "pacium.config",
+          requestId: message.requestId,
+          observation: await this.paciumConfig.replace(
+            message.expectedRevision,
+            message.workspace,
+          ),
+        });
         return;
       case "session.close":
         this.sessions.close(
