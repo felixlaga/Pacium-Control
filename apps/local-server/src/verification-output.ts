@@ -16,9 +16,9 @@ export class VerificationOutputCapture {
   private readonly edgeBytes = Math.floor(
     (MAX_VERIFICATION_OUTPUT_BYTES - TRUNCATION_MARKER.byteLength) / 2,
   );
+  private complete: Buffer | null = Buffer.alloc(0);
   private prefix = Buffer.alloc(0);
   private tail = Buffer.alloc(0);
-  private receivedBytes = 0;
 
   public append(chunk: Uint8Array | string): void {
     const bytes =
@@ -28,40 +28,51 @@ export class VerificationOutputCapture {
     if (bytes.byteLength === 0) {
       return;
     }
-    this.receivedBytes += bytes.byteLength;
 
-    if (this.prefix.byteLength < this.edgeBytes) {
-      const missing = this.edgeBytes - this.prefix.byteLength;
-      this.prefix = Buffer.concat([this.prefix, bytes.subarray(0, missing)]);
+    if (this.complete !== null) {
+      if (
+        this.complete.byteLength + bytes.byteLength <=
+        MAX_VERIFICATION_OUTPUT_BYTES
+      ) {
+        this.complete = Buffer.concat([this.complete, bytes]);
+        return;
+      }
+      this.prefix = Buffer.concat([
+        this.complete,
+        bytes.subarray(0, this.edgeBytes),
+      ]).subarray(0, this.edgeBytes);
+      this.tail = appendTail(this.complete, bytes, this.edgeBytes);
+      this.complete = null;
+      return;
     }
 
-    this.tail = Buffer.concat([this.tail, bytes]);
-    if (this.tail.byteLength > this.edgeBytes) {
-      this.tail = this.tail.subarray(this.tail.byteLength - this.edgeBytes);
-    }
+    this.tail = appendTail(this.tail, bytes, this.edgeBytes);
   }
 
   public finish(): CapturedVerificationOutput {
-    const truncated = this.receivedBytes > MAX_VERIFICATION_OUTPUT_BYTES;
-    const raw = truncated
-      ? Buffer.concat([this.prefix, TRUNCATION_MARKER, this.tail])
-      : this.completeUntruncatedBuffer();
+    const truncated = this.complete === null;
+    const raw =
+      this.complete ??
+      Buffer.concat([this.prefix, TRUNCATION_MARKER, this.tail]);
     return {
       text: boundUtf8Text(normalizeOutput(raw.toString("utf8"))),
       truncated,
     };
   }
+}
 
-  private completeUntruncatedBuffer(): Buffer {
-    if (this.receivedBytes <= this.edgeBytes) {
-      return this.prefix;
-    }
-    const bytesAfterPrefix = this.receivedBytes - this.prefix.byteLength;
-    return Buffer.concat([
-      this.prefix,
-      this.tail.subarray(this.tail.byteLength - bytesAfterPrefix),
-    ]);
+function appendTail(
+  previous: Buffer,
+  chunk: Buffer,
+  maximumBytes: number,
+): Buffer {
+  if (chunk.byteLength >= maximumBytes) {
+    return chunk.subarray(chunk.byteLength - maximumBytes);
   }
+  const combined = Buffer.concat([previous, chunk]);
+  return combined.byteLength <= maximumBytes
+    ? combined
+    : combined.subarray(combined.byteLength - maximumBytes);
 }
 
 function normalizeOutput(value: string): string {
