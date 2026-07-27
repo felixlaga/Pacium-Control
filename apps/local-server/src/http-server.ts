@@ -41,10 +41,6 @@ export function createPaciumHttpServer(
 ): PaciumHttpServer {
   const webRoot = fileURLToPath(new URL("../../web/dist/", import.meta.url));
   const hub = new WebSocketHub(config, sessions, paciumConfig, queueObserver);
-  void paciumConfig
-    .inspect()
-    .then((observation) => queueObserver.syncConfig(observation))
-    .catch(() => undefined);
   const server = createServer((request, response) => {
     void routeRequest(request, response, config, webRoot);
   });

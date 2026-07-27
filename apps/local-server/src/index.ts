@@ -24,6 +24,7 @@ const sessions = new SessionManager(
 );
 const paciumConfig = createPaciumConfigStore(config, sessions);
 const queueObserver = new QueueObserver();
+await queueObserver.syncConfig(await paciumConfig.inspect());
 const application = createPaciumHttpServer(
   config,
   sessions,
