@@ -41,14 +41,15 @@ The secondary product is **Pacium mode**:
 - Keyboard commands for session creation, numbered selection, previous/next selection, and leaving terminal capture.
 - Browser-owned terminal tabs with pinning, pointer/keyboard reordering, view-only close, stale-session reconciliation, and versioned local restoration.
 - A bounded four-pane terminal layout with horizontal/vertical nesting, pointer/keyboard resizing, explicit focus, session move/swap, maximize/restore, view-only close, and versioned local restoration.
-- Contract, configuration, security, preset, repository, grouping, tab-state, fake-PTY, real-PTY, and WebSocket reconnect tests.
+- Consistent session actions for rename, duplicate, ended-session relaunch, cwd copy, host repository reveal, `SIGINT`, view closure, and confirmed termination.
+- Contract, configuration, security, preset, repository, grouping, tab-state, action-model, fake-PTY, real-PTY, and WebSocket reconnect tests.
 
 ## What is not present
 
 - No packaged `pacium` launcher or release artifact.
 - No durable session restoration after local-server restart.
 - No browser-driven test or completed visual/accessibility review in the current environment.
-- No durable server-owned workspace configuration, command palette, or complete keyboard model.
+- No durable server-owned workspace configuration, command palette, preferences, or complete keyboard model.
 - No Claude or Codex observer.
 - No Git inspector.
 - No functional Pacium mode; the toggle is visibly marked as upcoming.
@@ -63,10 +64,10 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm test`: 15 files and 55 tests passed, including split-layout transitions and rendered markup, simultaneous terminal subscriptions, directory contracts/resolution/authorization, picker state and transport, preset resolution, repository discovery, grouping, terminal-tab transitions, shortcut logic, a real `node-pty` shell, and reconnect snapshots.
+- `pnpm test`: 18 files and 70 tests passed, including session-action contracts, availability, rendered markup and host adapters; split-layout transitions and simultaneous terminal subscriptions; directory authorization; preset and repository behavior; a real `node-pty` shell; and reconnect snapshots.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
-- The live protocol-version-2 welcome message advertised Shell, Codex, and Claude Code as available on this machine.
+- The live protocol-version-3 welcome message advertised Shell, Codex, and Claude Code as available on this machine.
 - Built server startup: served the application and health endpoint on `127.0.0.1:4174`.
 - Hostile bootstrap Origin: returned HTTP 403.
 
@@ -77,7 +78,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 649 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
+- The current web bundle is 656 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
 - Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
 ## Active decisions
@@ -106,4 +107,4 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Finish the pinned Node.js 24 clean-install, CI, browser, security, and sustained-output gates. Then build richer session actions and the command palette before agent-aware status and Pacium mode.
+Build the command palette, preferences, and accessibility baseline before agent-aware status, Git inspection, and Pacium mode. Complete the pinned Node.js 24 clean-install, CI, browser, security, and sustained-output gates before release.
