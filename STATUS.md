@@ -6,10 +6,15 @@ roles plus explicit terminal prompt targeting and conservative queue-file
 observation, whole-source queue classification, and a read-only queue
 list/original-text inspector plus immutable local question/approval decisions
 and explicit compatible answer-file/role-prompt delivery, reconciliation,
-human-labelled lifecycle evidence, and one bounded recovery retry are complete
-enough for continued slicing; worker and objective context are next.
+human-labelled lifecycle evidence, one bounded recovery retry, exact configured
+worker summaries, and read-only objective/plan plus recent-decision context are
+complete enough for continued slicing; optional Tailscale Serve access is next.
 
-Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
+Pacium Control now has an executable React application, loopback local server,
+direct-PTY session manager, typed WebSocket protocol, and automated terminal,
+Git, queue, and Pacium-context tests. This proves the bounded local
+compatibility workflow described below; it does not prove provider-native
+agent management, remote access, durable PTYs, packaging, or release readiness.
 
 ## Product direction
 
@@ -76,7 +81,7 @@ The secondary product is **Pacium mode**:
   current/latest verification run into at most seven deterministic facts with
   explicit observed/occurred timestamps, source availability, partial errors,
   Refresh, reconnect recovery, and no terminal/provider narrative.
-- Protocol-16 strict Pacium workspace configuration for explicit Meta,
+- Protocol-17 strict Pacium workspace configuration for explicit Meta,
   Orchestrator, and worker session/preset bindings; canonical repositories;
   verification references; and queue, future-delivery, objective, and plan path
   metadata without generic execution authority, plus content-free queue-source
@@ -174,6 +179,21 @@ The secondary product is **Pacium mode**:
 - Explicit Review/Cancel/Confirm lifecycle labels for acknowledged, applied,
   unable-to-apply, confirmed-not-delivered, and superseded evidence. These are
   server-authored, immutable, hash-verified, and visibly human-labelled.
+- A compact configured Worker group that preserves accepted order, resolves
+  only exact session UUIDs, capability-labels preset-only workers as not
+  started, opens only an existing exact PTY, and projects source-labelled
+  process, command, repository, attention, freshness, and already-loaded
+  selected-session change evidence without task or authorship claims.
+- An explicit Control-context inspector backed by one identity-free protocol
+  request. It reads only accepted objective and plan paths with stable bounded
+  no-follow regular-file/strict-UTF-8 checks, renders inert current text and
+  provenance, and reconstructs at most twelve newest immutable decisions with
+  local response, latest transport attempt, and latest human-labelled
+  lifecycle evidence kept separate.
+- Request/workspace-revision correlation plus config, disconnect, mode, Back,
+  and route invalidation that prevents stale context text from crossing an
+  accepted definition. Context projections are disposable and neither read
+  trigger writes files, queue state, configuration, Git, or terminal input.
 - Mode changes and reload preserve selected PTY, terminal tabs/splits,
   inspector context, panel state, terminal sync/input ownership, and existing
   Git/check evidence.
@@ -200,8 +220,9 @@ The secondary product is **Pacium mode**:
   queue sources, delivery methods, context sources, or verification references,
   and no shortcut customization.
 - No Claude or Codex observer.
-- No multi-item parsing, provider-native acknowledgement, worker role surface,
-  or objective/plan content presentation.
+- No multi-item parsing, provider-native acknowledgement/activity, worker
+  launching/reconfiguration, task state, or causal decision-to-Git/terminal
+  correlation.
 - No tmux adapter.
 
 Do not extrapolate from the working terminal slice to any capability in this list.
@@ -212,16 +233,25 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 104 test files and 623 tests,
-  plus the 876.41 kB web JavaScript, 100.24 kB stylesheet, and 307.56 kB
+- `pnpm verify`: formatting, lint, type checking, 111 test files and 675 tests,
+  plus the 901.71 kB web JavaScript, 107.52 kB stylesheet, and 328.37 kB
   local-server production builds passed.
-- `pnpm test:e2e`: ten Chromium workflows passed for skip navigation, panel
+- `pnpm test:e2e`: eleven Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
   changed-file/diff/history/Activity inspection, and configured verification
   run/reload/cancel without terminal reselection. General/Pacium coverage
   proved pointer, chord, palette, reload persistence, unchanged selected PTY
   and inspector context, configured-state presentation, and narrow layouts.
+- PC-050 browser evidence projected one exact live worker and one preset-only
+  worker without launching or inferring either, selected only the existing
+  worker PTY, opened/refreshed/closed Control context with focus return,
+  preserved terminal selection across browser refresh and mode exit, rendered
+  accepted objective/plan text plus honest empty decision evidence, and fit
+  the 320 CSS px forced-colors/reduced-motion drawer. Authenticated integration
+  coverage proves exact source reads without mutation, bounded decision
+  summaries without notes/targets/queue text/PTY input, and reconstruction
+  after local-server restart.
 - PC-047 browser evidence recorded a bounded question answer, kept Escape in
   the answer field, recovered the immutable record after reload, invalidated
   exact text after a source rewrite, kept approval controls separate, cancelled
@@ -269,13 +299,14 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
   keyboard-accessible at 200% zoom.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
-- The protocol-version-16 boundary passed strict contract, atomic-store,
+- The protocol-version-17 boundary passed strict contract, atomic-store,
   canonical path/reference, authenticated WebSocket revision/conflict, PTY
   survival, bounded queue reader/observer/classifier, content-free bulk item
   evidence, exact-current base64 text inspection, stale/config/disconnect
   clearing, approval separation, source-conflict derivation, no-follow target
-  reconciliation, human-labelled lifecycle, one-retry gating, and browser
-  request-state tests on this machine.
+  reconciliation, human-labelled lifecycle, one-retry gating, bounded context
+  file/decision projection, stale-revision rejection, exact configured-worker
+  projection, and browser request-state tests on this machine.
 - Built server startup: served the application and health endpoint on `127.0.0.1:4174`.
 - Hostile bootstrap Origin: returned HTTP 403.
 
@@ -290,7 +321,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 876.41 kB before gzip and emits Vite's chunk-size
+- The current web bundle is 901.71 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
 - Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
@@ -320,8 +351,10 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Begin PC-050 with a compact worker list, bounded current objective and plan
-context, recent immutable decisions, and resulting evidence without creating a
-workflow engine or provider narrative. Complete the pinned Node.js 24
-clean-install, CI, broader browser/security, manual accessibility, and
-sustained-output gates before release.
+Begin PC-077 with the accepted Tailscale Serve proxy contract while preserving
+the loopback-only application bind, exact HTTPS Origin, verified identity
+headers, and explicit operator allowlist. Then refresh the existing
+working-directory picker boundary before provider enrichment, durability, and
+packaging. Complete the pinned Node.js 24 clean-install, CI, broader
+browser/security, manual accessibility, and sustained-output gates before
+release.
