@@ -5,11 +5,16 @@ import { expect, test, type Page } from "@playwright/test";
 
 const queuePath = process.env.PACIUM_E2E_QUEUE_PATH;
 const stateDirectory = process.env.PACIUM_E2E_STATE_DIRECTORY;
+const answerPath =
+  stateDirectory === undefined
+    ? undefined
+    : join(stateDirectory, "PACIUM-ANSWERS");
 
 test.beforeEach(async ({ page }) => {
   if (stateDirectory !== undefined) {
     await rm(join(stateDirectory, "pacium.json"), { force: true });
     await rm(join(stateDirectory, "queue-state.json"), { force: true });
+    await rm(join(stateDirectory, "PACIUM-ANSWERS"), { force: true });
   }
   await page.goto("/");
   await terminateAllSessions(page);
@@ -22,19 +27,20 @@ test.afterEach(async ({ page }) => {
     if (stateDirectory !== undefined) {
       await rm(join(stateDirectory, "pacium.json"), { force: true });
       await rm(join(stateDirectory, "queue-state.json"), { force: true });
+      await rm(join(stateDirectory, "PACIUM-ANSWERS"), { force: true });
     }
   }
 });
 
-test("records separate immutable question and approval decisions without delivery", async ({
+test("records separate decisions and explicitly delivers one compatible answer", async ({
   page,
 }) => {
-  if (queuePath === undefined) {
-    throw new Error("The disposable queue fixture path is unavailable.");
+  if (queuePath === undefined || answerPath === undefined) {
+    throw new Error("The disposable queue fixture paths are unavailable.");
   }
   await writeFile(queuePath, "Can you approve everything?\n", { mode: 0o600 });
   await openTerminal(page, "Queue observer terminal");
-  await configureQueueWorkspace(page, queuePath);
+  await configureQueueWorkspace(page, queuePath, answerPath);
   await page.reload();
 
   const status = page.locator(".workspace-status");
@@ -98,9 +104,12 @@ test("records separate immutable question and approval decisions without deliver
     "Do not grant blanket approval.",
   );
   await expect(questionInspector).toContainText("Local operator");
+  await expect(questionInspector).toContainText("Ready for delivery");
   await expect(
-    questionInspector.getByText("Not delivered yet").first(),
-  ).toBeVisible();
+    questionInspector
+      .getByRole("region", { name: "Ready for delivery" })
+      .getByRole("code"),
+  ).toContainText("PACIUM-ANSWERS");
   await expect(
     questionInspector.getByRole("button", { name: "Record answer" }),
   ).toHaveCount(0);
@@ -114,6 +123,39 @@ test("records separate immutable question and approval decisions without deliver
   const recordedQuestionState = await readFile(decisionStatePath, "utf8");
   expect(recordedQuestionState).toContain("Do not grant blanket approval.");
   expect(recordedQuestionState).not.toContain("Can you approve everything?");
+  await expect(readFile(answerPath, "utf8")).rejects.toMatchObject({
+    code: "ENOENT",
+  });
+  await questionInspector.getByText("Review delivery").click();
+  const confirmDelivery = questionInspector.getByRole("button", {
+    name: "Confirm delivery",
+  });
+  await expect(confirmDelivery).toBeVisible();
+  await confirmDelivery.click();
+  await expect(questionInspector).toContainText("Delivered");
+  await expect(questionInspector).toContainText(
+    "private answer file was created",
+  );
+  const answerDocument = JSON.parse(await readFile(answerPath, "utf8")) as {
+    format: string;
+    decision: {
+      kind: string;
+      payload: { answer?: string };
+    };
+  };
+  expect(answerDocument).toMatchObject({
+    format: "pacium_decision_v1",
+    decision: {
+      kind: "question_answer",
+      payload: { answer: "Do not grant blanket approval." },
+    },
+  });
+  expect(await readFile(decisionStatePath, "utf8")).toContain(
+    '"status": "delivered"',
+  );
+  await expect(
+    questionInspector.getByRole("button", { name: "Confirm delivery" }),
+  ).toHaveCount(0);
   await expect(status).toContainText("Queue observer terminal");
 
   await questionInspector.getByRole("button", { name: "← Back" }).click();
@@ -134,6 +176,7 @@ test("records separate immutable question and approval decisions without deliver
   await expect(restoredInspector).toContainText(
     "Do not grant blanket approval.",
   );
+  await expect(restoredInspector).toContainText("Delivered");
 
   await writeFile(queuePath, "Approval request: Run exact migration\n", {
     mode: 0o600,
@@ -221,9 +264,13 @@ test("records separate immutable question and approval decisions without deliver
   await expect(status).toContainText("Queue observer terminal");
 });
 
-async function configureQueueWorkspace(page: Page, path: string) {
+async function configureQueueWorkspace(
+  page: Page,
+  path: string,
+  deliveryPath: string,
+) {
   await page.evaluate(
-    async ({ queueSourcePath }) => {
+    async ({ answerFilePath, queueSourcePath }) => {
       const bootstrapResponse = await fetch("/api/bootstrap", {
         headers: { accept: "application/json" },
       });
@@ -291,10 +338,17 @@ async function configureQueueWorkspace(page: Page, path: string) {
               path: queueSourcePath,
               format: "plain_text",
               requestingRole: "meta",
-              deliveryMethodId: null,
+              deliveryMethodId: "answers",
             },
           ],
-          deliveryMethods: [],
+          deliveryMethods: [
+            {
+              id: "answers",
+              label: "Pacium answers",
+              type: "answer_file",
+              path: answerFilePath,
+            },
+          ],
           context: { objective: null, plan: null },
         },
       });
@@ -307,7 +361,7 @@ async function configureQueueWorkspace(page: Page, path: string) {
       }
       socket.close();
     },
-    { queueSourcePath: path },
+    { answerFilePath: deliveryPath, queueSourcePath: path },
   );
 }
 
