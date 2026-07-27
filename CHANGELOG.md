@@ -2,6 +2,48 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.17.0 — bounded one-file diff oversight — 2026-07-27
+
+### Added
+
+- Protocol-7 one-file diff requests and strict ready, empty, binary,
+  too-large, stale, non-repository, and error observations with aggregate
+  cross-field invariants.
+- Fresh session-owned changed-path revalidation before fixed no-shell Git
+  reads, including tracked, untracked, and unborn-HEAD behavior.
+- A 64 KiB patch limit, 2,000-line limit, 4,096-character line limit, bounded
+  paths/errors, short-circuited binary/known-large files, and a final serialized
+  WebSocket message check.
+- A compact Changes subview with unified-diff syntax, old/new line numbers,
+  literal case-insensitive search, hunk collapse, wrapping, explicit refresh,
+  Back/Escape navigation, and file-row focus restoration.
+- Disposable keyed browser state that rejects stale responses, interrupts
+  pending reads on disconnect, retains at most one selected diff per session,
+  and never persists patch content.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, type checking, 46 test files and 199
+  tests, and both production bundles.
+- `pnpm test:e2e` passed all five Chromium workflows; the deterministic
+  temporary-Git workflow verified file selection, deleted/added lines, search,
+  wrap, collapse, Escape return, focus restoration, and terminal selection.
+- Real-Git fixtures passed for tracked, staged, unstaged, mixed, deleted,
+  renamed, conflicted, untracked, binary, known-large, symlink, stale, and
+  unborn states.
+
+### Known limitations
+
+- Commit history, configured verification, recent activity, Git mutations,
+  language grammar highlighting, side-by-side review, and automatic filesystem
+  refresh remain later slices.
+- The connected in-app browser backend was unavailable; automated headless
+  Chromium evidence passed, while independent manual visual and screen-reader
+  review remain release gates.
+- The current machine ran verification on Node.js 26.4.0, not pinned Node.js
+  24.18.x.
+- The web bundle is 725 kB before gzip and retains the tracked warning.
+
 ## 0.16.0 — bounded changed-files oversight — 2026-07-27
 
 ### Added
