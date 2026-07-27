@@ -7,10 +7,13 @@ import {
   encodeTerminalDataFrame,
   GitChangedFileSchema,
   GitChangesObservationSchema,
+  GitCommitRecordSchema,
   GitDiffObservationSchema,
   GitDiffSectionSchema,
+  GitHistoryObservationSchema,
   MAX_GIT_DIFF_BYTES,
   MAX_GIT_DIFF_LINE_CHARS,
+  MAX_GIT_HISTORY_COMMITS,
   MAX_TERMINAL_INPUT_CHARS,
   PROTOCOL_VERSION,
   RepositoryRelativePathSchema,
@@ -40,8 +43,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for bounded diff inspection", () => {
-    expect(PROTOCOL_VERSION).toBe(7);
+  it("advances the wire contract for bounded commit history", () => {
+    expect(PROTOCOL_VERSION).toBe(8);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -142,6 +145,24 @@ describe("client protocol", () => {
         root: "/tmp/browser-controlled",
         revision: "main",
         command: "git diff",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts only a session identity for commit-history inspection", () => {
+    const message = {
+      type: "repository.history",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+    };
+    expect(ClientMessageSchema.safeParse(message).success).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        ...message,
+        root: "/tmp/browser-controlled",
+        revision: "origin/main..HEAD",
+        count: 5_000,
+        command: "git log",
       }).success,
     ).toBe(false);
   });
@@ -673,6 +694,151 @@ describe("bounded diff observation contract", () => {
     ).toBe(false);
     expect(
       RepositoryRelativePathSchema.safeParse("\\\\server\\share").success,
+    ).toBe(false);
+  });
+});
+
+describe("bounded commit-history observation contract", () => {
+  const record = {
+    id: "a".repeat(40),
+    parents: ["b".repeat(40), "c".repeat(40)],
+    authorName: "Pacium Agent",
+    authoredAt: "2026-07-27T10:00:00.000+02:00",
+    subject: "Keep history bounded",
+  };
+  const ready = {
+    status: "ready",
+    root: "/work/pacium",
+    headCommit: record.id,
+    observedAt: "2026-07-27T10:05:00.000Z",
+    commits: [record],
+    truncated: false,
+    error: null,
+  };
+
+  it("accepts bounded merge evidence and the strict wire response", () => {
+    expect(GitCommitRecordSchema.safeParse(record).success).toBe(true);
+    expect(GitHistoryObservationSchema.safeParse(ready).success).toBe(true);
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "repository.history",
+        requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+        sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+        observation: ready,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects unsafe text, invalid parent evidence, and extra fields", () => {
+    for (const field of ["authorName", "subject"] as const) {
+      expect(
+        GitCommitRecordSchema.safeParse({
+          ...record,
+          [field]: `safe\nforged row`,
+        }).success,
+      ).toBe(false);
+    }
+    expect(
+      GitCommitRecordSchema.safeParse({
+        ...record,
+        parents: [record.id],
+      }).success,
+    ).toBe(false);
+    expect(
+      GitCommitRecordSchema.safeParse({
+        ...record,
+        parents: Array.from({ length: 17 }, (_, index) =>
+          index.toString(16).padStart(40, "0"),
+        ),
+      }).success,
+    ).toBe(false);
+    expect(
+      GitCommitRecordSchema.safeParse({
+        ...record,
+        authorEmail: "not-requested@example.test",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires unique newest-first evidence beginning at HEAD", () => {
+    expect(
+      GitHistoryObservationSchema.safeParse({
+        ...ready,
+        headCommit: "d".repeat(40),
+      }).success,
+    ).toBe(false);
+    expect(
+      GitHistoryObservationSchema.safeParse({
+        ...ready,
+        commits: [record, record],
+      }).success,
+    ).toBe(false);
+    expect(
+      GitHistoryObservationSchema.safeParse({
+        ...ready,
+        truncated: true,
+      }).success,
+    ).toBe(false);
+
+    const commits = [
+      record,
+      ...Array.from({ length: MAX_GIT_HISTORY_COMMITS - 1 }, (_, index) => ({
+        ...record,
+        id: (index + 1).toString(16).padStart(40, "0"),
+        parents: [],
+      })),
+    ];
+    expect(
+      GitHistoryObservationSchema.safeParse({
+        ...ready,
+        commits,
+        truncated: true,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts honest unborn, non-repository, and degraded states", () => {
+    const empty = {
+      status: "empty",
+      root: "/work/pacium",
+      headCommit: null,
+      observedAt: ready.observedAt,
+      commits: [],
+      truncated: false,
+      error: null,
+    };
+    expect(GitHistoryObservationSchema.safeParse(empty).success).toBe(true);
+    expect(
+      GitHistoryObservationSchema.safeParse({
+        ...empty,
+        status: "not_repository",
+        root: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      GitHistoryObservationSchema.safeParse({
+        ...empty,
+        status: "error",
+        headCommit: record.id,
+        error: {
+          code: "timeout",
+          message: "Git history inspection timed out.",
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      GitHistoryObservationSchema.safeParse({
+        ...empty,
+        status: "error",
+        error: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      GitHistoryObservationSchema.safeParse({
+        ...empty,
+        status: "not_repository",
+        headCommit: record.id,
+      }).success,
     ).toBe(false);
   });
 });

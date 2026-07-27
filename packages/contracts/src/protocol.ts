@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PROTOCOL_VERSION = 7 as const;
+export const PROTOCOL_VERSION = 8 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -8,6 +8,10 @@ export const MAX_TERMINAL_SNAPSHOT_CHARS = 512 * 1024;
 export const MAX_GIT_DIFF_BYTES = 64 * 1024;
 export const MAX_GIT_DIFF_LINES = 2_000;
 export const MAX_GIT_DIFF_LINE_CHARS = 4_096;
+export const MAX_GIT_HISTORY_COMMITS = 50;
+export const MAX_GIT_HISTORY_AUTHOR_CHARS = 200;
+export const MAX_GIT_HISTORY_SUBJECT_CHARS = 500;
+export const MAX_GIT_HISTORY_PARENTS = 16;
 
 const RequestIdSchema = z.string().uuid();
 const SessionIdSchema = z.string().uuid();
@@ -543,6 +547,159 @@ export const GitDiffObservationSchema = z
   });
 export type GitDiffObservation = z.infer<typeof GitDiffObservationSchema>;
 
+const GitObjectIdSchema = z.string().regex(/^[0-9a-f]{40,64}$/);
+const HistoryAuthorSchema = z
+  .string()
+  .min(1)
+  .max(MAX_GIT_HISTORY_AUTHOR_CHARS)
+  .refine((value) => !hasLayoutControlCharacter(value), {
+    message: "Commit author cannot contain layout control characters.",
+  });
+const HistorySubjectSchema = z
+  .string()
+  .min(1)
+  .max(MAX_GIT_HISTORY_SUBJECT_CHARS)
+  .refine((value) => !hasLayoutControlCharacter(value), {
+    message: "Commit subject cannot contain layout control characters.",
+  });
+
+export const GitCommitRecordSchema = z
+  .object({
+    id: GitObjectIdSchema,
+    parents: z.array(GitObjectIdSchema).max(MAX_GIT_HISTORY_PARENTS),
+    authorName: HistoryAuthorSchema,
+    authoredAt: z.string().datetime({ offset: true }),
+    subject: HistorySubjectSchema,
+  })
+  .strict()
+  .superRefine((record, context) => {
+    if (
+      record.parents.includes(record.id) ||
+      new Set(record.parents).size !== record.parents.length
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Commit parents must be unique and cannot contain the commit.",
+      });
+    }
+  });
+export type GitCommitRecord = z.infer<typeof GitCommitRecordSchema>;
+
+export const GitHistoryStatusSchema = z.enum([
+  "ready",
+  "empty",
+  "not_repository",
+  "error",
+]);
+export const GitHistoryErrorCodeSchema = z.enum([
+  "git_unavailable",
+  "timeout",
+  "inspection_failed",
+  "invalid_output",
+  "repository_unavailable",
+]);
+
+export const GitHistoryObservationSchema = z
+  .object({
+    status: GitHistoryStatusSchema,
+    root: z.string().min(1).max(4096).nullable(),
+    headCommit: GitObjectIdSchema.nullable(),
+    observedAt: z.string().datetime(),
+    commits: z.array(GitCommitRecordSchema).max(MAX_GIT_HISTORY_COMMITS),
+    truncated: z.boolean(),
+    error: z
+      .object({
+        code: GitHistoryErrorCodeSchema,
+        message: z.string().min(1).max(200),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict()
+  .superRefine((observation, context) => {
+    const commitIds = observation.commits.map(({ id }) => id);
+    if (new Set(commitIds).size !== commitIds.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Commit history cannot contain duplicate commits.",
+      });
+    }
+    if (
+      observation.headCommit !== null &&
+      observation.commits.length > 0 &&
+      observation.commits[0]?.id !== observation.headCommit
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Commit history must begin at the observed HEAD.",
+      });
+    }
+    if (
+      observation.truncated &&
+      (observation.status !== "ready" ||
+        observation.commits.length !== MAX_GIT_HISTORY_COMMITS)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Truncated history must contain the maximum ready records.",
+      });
+    }
+
+    if (observation.status === "ready") {
+      if (
+        observation.root === null ||
+        observation.headCommit === null ||
+        observation.commits.length === 0 ||
+        observation.error !== null
+      ) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Ready history requires a root, HEAD, commits, and no error.",
+        });
+      }
+      return;
+    }
+
+    if (observation.commits.length !== 0 || observation.truncated) {
+      context.addIssue({
+        code: "custom",
+        message: "Unavailable history cannot contain commit evidence.",
+      });
+    }
+    if ((observation.status === "error") !== (observation.error !== null)) {
+      context.addIssue({
+        code: "custom",
+        message: "History error evidence must match status.",
+      });
+    }
+    if (
+      observation.status === "empty" &&
+      (observation.root === null || observation.headCommit !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Empty history requires a repository with unborn HEAD.",
+      });
+    }
+    if (
+      observation.status === "not_repository" &&
+      (observation.root !== null || observation.headCommit !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Non-repository history cannot contain repository evidence.",
+      });
+    }
+    if (observation.root === null && observation.headCommit !== null) {
+      context.addIssue({
+        code: "custom",
+        message: "History HEAD evidence requires a known repository root.",
+      });
+    }
+  });
+export type GitHistoryObservation = z.infer<typeof GitHistoryObservationSchema>;
+
 export const SessionSummarySchema = z.object({
   id: SessionIdSchema,
   epoch: z.number().int().positive(),
@@ -645,6 +802,13 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
       path: RepositoryRelativePathSchema,
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("repository.history"),
+      requestId: RequestIdSchema,
+      sessionId: SessionIdSchema,
+    })
+    .strict(),
   z.object({
     type: z.literal("session.close"),
     requestId: RequestIdSchema,
@@ -697,6 +861,14 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
       requestId: RequestIdSchema,
       sessionId: SessionIdSchema,
       observation: GitDiffObservationSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("repository.history"),
+      requestId: RequestIdSchema,
+      sessionId: SessionIdSchema,
+      observation: GitHistoryObservationSchema,
     })
     .strict(),
   z.object({
@@ -761,6 +933,13 @@ function utf8ByteLength(value: string): number {
 function patchLineCount(value: string): number {
   const lines = value.split("\n");
   return value.endsWith("\n") ? lines.length - 1 : lines.length;
+}
+
+function hasLayoutControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint !== undefined && (codePoint <= 0x1f || codePoint === 0x7f);
+  });
 }
 
 export interface TerminalDataFrame {
