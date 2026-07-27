@@ -207,6 +207,12 @@ export class PaciumTransport {
     return requestId;
   }
 
+  public requestPaciumContext(): string {
+    const requestId = crypto.randomUUID();
+    this.send(paciumContextInspectMessage(requestId));
+    return requestId;
+  }
+
   public requestQueueItemInspection(
     identity: QueueItemInspectionIdentity,
   ): string {
@@ -500,6 +506,15 @@ export function paciumConfigGetMessage(
 ): Extract<ClientMessage, { type: "pacium.config.get" }> {
   return {
     type: "pacium.config.get",
+    requestId,
+  };
+}
+
+export function paciumContextInspectMessage(
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.context.inspect" }> {
+  return {
+    type: "pacium.context.inspect",
     requestId,
   };
 }
