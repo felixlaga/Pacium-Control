@@ -35,8 +35,19 @@ ADR-0016 permits one remote shape:
 
 - Tailscale Serve proxies HTTPS and WebSockets to loopback Pacium.
 - Tailscale grants restrict network reachability.
-- Verified Serve user headers identify the requesting operator.
-- An explicit login allowlist denies other tailnet users.
+- The exact configured Serve Host and HTTPS Origin select the remote boundary.
+- `Tailscale-User-Login` identifies the requesting operator only after Serve
+  has stripped spoofed inbound identity headers.
+- An explicit exact-login allowlist denies other tailnet and externally shared
+  users.
+- Missing identity denies tagged source devices.
+- A Funnel marker is rejected.
 - The ephemeral Pacium token still protects the application transport.
+- Protocol 18 reports the current connection kind/login but does not persist
+  identity or create an application user.
 
 This remains a single-operator application on the same host as its PTYs. Shared input, multiple application users, another proxy, public ingress, or cross-host control requires a new ADR.
+
+Configuration, grants, enable/disable, revocation, and manual external evidence
+are defined in the
+[Tailscale Serve operations runbook](../operations/tailscale-serve.md).

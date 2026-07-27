@@ -34,7 +34,18 @@ Pacium on 127.0.0.1
 PTYs / Meta / Orchestrator / queue files on the same host
 ```
 
-Remote mode requires the exact tailnet Origin, verified Serve user identity, an explicit operator allowlist, and the ephemeral Pacium token. Tailscale Funnel is never used.
+Remote mode is implemented through two startup values: one canonical
+`https://<node>.<tailnet>.ts.net` Origin and one non-empty exact-login
+allowlist. Pacium still reports and listens only on `127.0.0.1`. Serve preserves
+the exact tailnet Host and adds the verified login header; protected browser
+transport additionally requires the exact Origin and ephemeral Pacium token.
+Protocol 18 labels the current connection Local or Tailscale plus the verified
+login.
+
+Tailscale grants are required outside the application. Tailscale Funnel, direct
+tailnet/LAN binding, another reverse proxy, and tagged-device-only access are
+denied or unsupported. See the
+[active Serve runbook](../operations/tailscale-serve.md).
 
 ## Startup requirements
 

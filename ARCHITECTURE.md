@@ -215,7 +215,27 @@ environment data are excluded.
 - Repository paths are canonicalized against configured roots.
 - The process runs with the invoking user’s privileges; no privilege escalation is introduced.
 
-Optional remote access follows ADR-0016: Tailscale Serve terminates tailnet-only HTTPS and proxies to this same loopback process. Remote bootstrap requires an exact HTTPS Origin, verified Tailscale user identity, an explicit operator allowlist, and the existing ephemeral token.
+Optional remote access follows ADR-0016 and is implemented without another
+application process. `PACIUM_TAILSCALE_ORIGIN` and
+`PACIUM_TAILSCALE_OPERATOR_LOGINS` form one fail-closed startup configuration.
+Tailscale Serve terminates tailnet-only HTTPS and preserves the exact incoming
+Host while proxying to this same loopback process. Pacium classifies each
+request independently:
+
+- Local requires a loopback Host and canonical configured loopback HTTP Origin
+  or same-origin navigation evidence.
+- Tailscale requires the exact configured `*.ts.net` Host and HTTPS Origin, one
+  bounded `Tailscale-User-Login` in the exact application allowlist, no Funnel
+  marker, and the existing token for protected HTTP/WebSocket transport.
+- Assets and health require valid navigation authority before revealing the
+  application boundary.
+- Protocol 18 reports only `local`, or `tailscale` plus the current exact
+  verified login in `server.welcome`.
+
+Connection authority is disposable per socket. It is never persisted, inferred
+from IP, display name, profile, device, tag, or browser messages. Grants and
+Serve remain Tailscale-owned outer controls; the local server never invokes or
+configures the daemon.
 
 Pacium remains on the same host as the PTYs and files it controls. Multi-user roles, another ingress mechanism, cross-host aggregation, or a separate privilege broker require a future ADR.
 
