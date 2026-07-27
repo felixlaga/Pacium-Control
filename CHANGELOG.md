@@ -2,6 +2,43 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.12.0 — evidence-labelled agent detection — 2026-07-27
+
+### Added
+
+- Strict provider-neutral classification types for Shell, Codex, Claude Code,
+  and unknown agents, with bounded source, confidence, and observation time.
+- Deterministic server-owned classification on every fixed Shell, Codex CLI,
+  and Claude Code CLI launch preset.
+- Protocol version 4 session summaries with required immutable classification
+  evidence that browser create messages cannot supply or override.
+- A compact selected-session evidence card showing type, source, confidence,
+  and observation time.
+- Accessible session-row names that state classification and process lifecycle
+  without inferring “working.”
+- Contract, launch-definition, session-manager, WebSocket, presentation-model,
+  and server-rendered evidence tests.
+
+### Verified
+
+- `pnpm verify` passes formatting, lint, type checking, 29 test files and
+  114 tests, and both production bundles.
+- `pnpm test:e2e` passes all four existing Chromium keyboard and responsive
+  workflows against protocol 4.
+- Session creation uses one timestamp for both creation and launch-evidence
+  observation, and the evidence remains intact in existing session messages.
+
+### Known limitations
+
+- Process liveness does not imply agent activity; PC-031 adds attention state
+  from separately labelled evidence.
+- Configured-command, unknown/adopted-process, provider-version, Claude hook,
+  and Codex native classification remain future slices.
+- The current machine ran verification on Node.js 26.4.0; the pinned Node.js
+  24.18.x runtime remains to be verified.
+- The web bundle is 690 kB before gzip and still emits the tracked chunk-size
+  warning.
+
 ## 0.11.0 — responsive accessibility baseline — 2026-07-27
 
 ### Added
