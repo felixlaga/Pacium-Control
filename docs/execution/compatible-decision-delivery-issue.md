@@ -61,45 +61,45 @@ no uncertain or completed attempt is retried in this slice.
 
 ## Acceptance criteria
 
-- [ ] Delivery requests contain only `requestId`, immutable `decisionId`, and
+- [x] Delivery requests contain only `requestId`, immutable `decisionId`, and
       `decisionHash`; strict schemas reject target, payload, path, role,
       session, terminal bytes, command, actor, or retry fields.
-- [ ] The server resolves the current decision, queue source, configured method,
+- [x] The server resolves the current decision, queue source, configured method,
       and exact target without accepting browser authority.
-- [ ] A decision can be delivered only while its complete current source
+- [x] A decision can be delivered only while its complete current source
       identity and workspace revision still match; drift records no intent or
       side effect.
-- [ ] Intent is durable before any file creation or PTY input. An interruption
+- [x] Intent is durable before any file creation or PTY input. An interruption
       after intent is exposed as `unknown` and never retried automatically.
-- [ ] One decision identity has at most one delivery attempt. Duplicate requests
+- [x] One decision identity has at most one delivery attempt. Duplicate requests
       return the existing attempt and cannot duplicate a file or PTY write.
-- [ ] Version-1 decision state remains readable and migrates atomically to
+- [x] Version-1 decision state remains readable and migrates atomically to
       version 2 without changing any decision record or hash.
-- [ ] Answer-file delivery creates one mode-`0600` regular non-symlink target
+- [x] Answer-file delivery creates one mode-`0600` regular non-symlink target
       through same-directory temporary bytes and an atomic no-clobber publish.
-- [ ] An existing, symlinked, unsafe, changed-parent, or otherwise unavailable
+- [x] An existing, symlinked, unsafe, changed-parent, or otherwise unavailable
       answer target is never overwritten and produces fixed bounded failure or
       unknown evidence.
-- [ ] The answer-file document is deterministic, versioned, bounded, valid
+- [x] The answer-file document is deterministic, versioned, bounded, valid
       UTF-8 JSON, includes exact decision provenance, and never includes queue
       source text, commands, secrets from the environment, or terminal data.
-- [ ] Role-prompt delivery requires the configured exact role to resolve to one
+- [x] Role-prompt delivery requires the configured exact role to resolve to one
       live direct PTY and captures its immutable session ID and epoch.
-- [ ] Role-prompt bytes are one bounded comment-prefixed line plus one carriage
+- [x] Role-prompt bytes are one bounded comment-prefixed line plus one carriage
       return; operator text is JSON-escaped so newlines and controls cannot
       become additional shell input.
-- [ ] A terminal write accepted by the PTY is labelled `delivered` only at the
+- [x] A terminal write accepted by the PTY is labelled `delivered` only at the
       terminal-transport boundary, with provider processing explicitly
       unverified.
-- [ ] The inspector shows no action when delivery is unconfigured or unsafe;
+- [x] The inspector shows no action when delivery is unconfigured or unsafe;
       otherwise it previews the configured method and target and requires an
       explicit second confirmation.
-- [ ] Reload and local-server restart recover ready, delivered, failed, or
+- [x] Reload and local-server restart recover ready, delivered, failed, or
       unknown delivery state without repeating a side effect.
-- [ ] Question delivery cannot create approval authority; approval delivery
+- [x] Question delivery cannot create approval authority; approval delivery
       communicates the immutable approved/denied outcome but never executes the
       requested action.
-- [ ] Focused, contract, migration, file, PTY, integration, browser, security,
+- [x] Focused, contract, migration, file, PTY, integration, browser, security,
       full verification, and production-build evidence pass.
 
 ## User experience
@@ -214,6 +214,33 @@ inspect the target manually. Refresh/reload never resends.
   counts and bundle sizes recorded.
 - Small coherent commit history, clean branch, fast-forward merge into `dev`,
   and pushed exact `origin/dev` head.
+
+## Completion evidence
+
+Accepted on 2026-07-27 with the following exact-head evidence:
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 97 test
+  files and 584 tests, and all production builds.
+- The production build emitted an 850.51 kB web JavaScript bundle, a 97.09 kB
+  stylesheet, and a 263.56 kB local-server bundle. The existing Vite
+  greater-than-500-kB chunk warning remains recorded.
+- `pnpm test:e2e` passed all 10 Chromium workflows. The queue workflow proves
+  decision recording, accepted-target preview, explicit Review/Cancel/Confirm,
+  no file after Cancel, private answer-file creation, durable delivery evidence,
+  reload recovery, and continued question/approval separation.
+- Focused contracts and store tests prove protocol 15 strict authority,
+  queue-state v1-to-v2 migration, hash/cross-reference validation, serialized
+  one-attempt persistence, duplicate suppression, restart reconstruction, and
+  explicit durability uncertainty.
+- File adapter and authenticated server tests prove mode-`0600` deterministic
+  JSON, no-clobber existing/symlink behavior, intent-before-effect ordering,
+  exact configured target resolution, duplicate no-op, and unchanged queue,
+  configuration, and live-session evidence.
+- The role integration test proves one JSON-escaped comment line plus one
+  carriage return reaches only the exact configured live Meta PTY and is
+  labelled terminal-transport accepted without provider-handling claims.
+- Verification used Node.js 26.4.0 instead of the pinned Node.js 24.18.x
+  runtime. Chromium ran outside the sandbox with the required Xcode Git path.
 
 ## Open questions
 

@@ -2,6 +2,64 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.29.0 — explicit compatible decision delivery — 2026-07-27
+
+### Added
+
+- Protocol 15 identity-only `pacium.queue.decision.deliver` requests,
+  correlated results, and decided-item delivery state. Strict schemas reject
+  browser-selected paths, roles, sessions, payloads, terminal bytes, commands,
+  actors, and retry flags.
+- Queue-state schema 2 with compatible version-1 reads and first-mutation
+  migration, immutable target/payload snapshots, intent-before-effect
+  ordering, one attempt per decision, duplicate joining, hashed outcomes, and
+  restart-safe unknown state for unfinished intent.
+- A deterministic versioned answer document published as a private mode-`0600`
+  regular file through same-directory no-clobber creation. Existing files,
+  symlinks, unsafe parents, and uncertain post-publish durability are preserved
+  and reported without fallback targets.
+- A role-prompt adapter that resolves only the accepted live Meta or
+  Orchestrator session ID/epoch and sends one bounded JSON-escaped,
+  comment-prefixed line plus one carriage return. Success means terminal
+  transport accepted the bytes; provider handling remains unverified.
+- A compact decided-item Delivery section with accepted-target preview,
+  explicit Review/Cancel/Confirm, pending and durable states, no action for
+  unconfigured or unavailable targets, and distinct delivered, failed, and
+  unknown evidence. Recording a decision still never delivers automatically.
+- Browser and authenticated-server coverage for Cancel without side effect,
+  private answer-file creation, reload recovery, duplicate no-op, exact role
+  PTY isolation, hostile multiline/metacharacter escaping, and unchanged queue,
+  configuration, unrelated PTY, and approval boundaries.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 97 test
+  files and 584 tests, plus the 850.51 kB web JavaScript, 97.09 kB stylesheet,
+  and 263.56 kB local-server production bundles.
+- `pnpm test:e2e` passed all 10 Chromium workflows on the exact head, including
+  explicit delivery review, cancellation, confirmation, durable evidence,
+  reload, narrow layout, forced colors, and reduced motion.
+- Contract, migration/store, serializer, file adapter, service, authenticated
+  WebSocket, reducer, semantic-rendering, and real SessionManager/FakePty
+  integration tests passed. Exact role evidence proves one line reaches only
+  the configured live PTY.
+
+### Known limitations
+
+- Delivery evidence is not acknowledgement or applied/unable-to-apply state.
+  There is no conflict-resolution or retry workflow; failed and unknown
+  attempts remain terminal until PC-049 adds an explicit resolution model.
+- The no-clobber answer-file method is a single-slot compatibility mailbox.
+  Appending or rewriting another legacy format requires a separately typed
+  adapter rather than inference from existing content.
+- Recent decision/delivery activity and compact resulting-work summaries remain
+  PC-050. Provider-native receipt, processing, approval execution, and
+  completion evidence remain later enrichment.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x.
+  Chromium required the approved outside-sandbox macOS run with the Xcode Git
+  path.
+- The web bundle remains above Vite's 500 kB warning threshold.
+
 ## 0.28.0 — immutable local queue decisions — 2026-07-27
 
 ### Added
