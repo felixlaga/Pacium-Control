@@ -2,6 +2,50 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.22.0 — functional General/Pacium workspace mode — 2026-07-27
+
+### Added
+
+- A real General/Pacium presentation-mode control with a strict version-1
+  browser preference that safely falls back to General.
+- One shared mode transition for the segmented control, command palette, and
+  bounded `G` then `P` shortcut, including terminal, editable, modal, modifier,
+  and repeat ownership guards.
+- A compact Pacium definition card that honestly distinguishes loading,
+  unconfigured, configured, errored, and disconnected evidence without
+  manufacturing live role or queue state.
+- Configured workspace, role, worker, repository, and queue-source counts
+  projected only from accepted protocol-10 configuration observations.
+- Explicit retry and persistence-failure feedback that leaves PTYs and current
+  browser state intact.
+- Responsive, zoom, forced-color, reduced-motion, focus, semantic, and hostile
+  text coverage for the new presentation.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 68 test
+  files and 353 tests, plus the 770.96 kB web and 166.07 kB local-server
+  production bundles.
+- `pnpm test:e2e` passed all eight Chromium regression workflows after the
+  browser was launched with the macOS host permission it requires.
+- Browser evidence covers pointer, `G` then `P`, palette, and reload mode
+  changes while preserving the selected terminal and Changes inspector.
+- Unit and semantic evidence covers strict storage, unavailable storage,
+  shortcut expiry and ownership, palette projection, all configuration summary
+  states, retry visibility, and text-only hostile evidence.
+
+### Known limitations
+
+- Pacium mode does not yet resolve, pin, launch, replace, or repair configured
+  Meta, Orchestrator, or worker bindings. PC-042 begins that work.
+- Queue observation, classification, decisions, answers, delivery,
+  acknowledgements, conflicts, objective/plan content, and compact worker
+  oversight remain PC-044 through PC-050.
+- The preference currently applies to the one browser shell rather than a
+  future multi-workspace router.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x.
+- The web bundle remains above Vite's 500 kB warning threshold.
+
 ## 0.21.0 — server-owned Pacium workspace configuration — 2026-07-27
 
 ### Added
