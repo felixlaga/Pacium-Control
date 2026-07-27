@@ -2,6 +2,68 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.28.0 — immutable local queue decisions — 2026-07-27
+
+### Added
+
+- Protocol-14 separate `pacium.queue.question.answer` and
+  `pacium.queue.approval.decide` requests plus correlated
+  `pacium.queue.decision` results. Strict schemas bind every request to the
+  exact current workspace/source/observation/hash/item identity and reject
+  browser-supplied actor, timestamp, decision ID/hash, path, command, delivery,
+  or authority fields.
+- Server-owned attribution, time, UUID, and canonical SHA-256 hashing for
+  immutable question-answer and approval-outcome records with bounded UTF-8
+  answer and optional-note content.
+- A private schema-version-1 `queue-state.json` with 4 MiB and 4,096-record
+  ceilings, strict ownership/mode/type/schema/uniqueness/hash validation,
+  serialized same-directory atomic replacement, identical-replay recovery,
+  competing-decision rejection, and explicit unknown-durability handling.
+- Exact source and classification revalidation immediately before persistence;
+  rewrite, config drift, type confusion, unsafe state, or disconnect fails
+  closed without changing queue files, delivery targets, terminals, Git state,
+  providers, or `pacium.json`.
+- A bounded question answer form and optional note plus distinct Approve/Deny
+  controls with inline second confirmation. Success replaces controls with the
+  complete immutable local record and an explicit “Not delivered yet” label.
+- Reload and local-server reconstruction recover the same exact decision.
+  Missing state creates nothing until the first valid append; invalid state is
+  preserved rather than repaired or overwritten.
+- Chromium coverage for question/approval separation, Escape ownership in an
+  answer field, approval cancellation and confirmation, reload recovery,
+  rewrite staleness, source/config/terminal preservation, 320 CSS px, forced
+  colors, and reduced motion.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 91 test
+  files and 546 tests, plus the 834.31 kB web and 227.62 kB local-server
+  production bundles.
+- `pnpm test:e2e` passed all ten Chromium workflows in one run with the required
+  Xcode Git path.
+- Contract tests prove separate request shapes, UTF-8 byte bounds, forbidden
+  authority fields, strict decision-state/result unions, canonical hashes, and
+  protocol 14.
+- Store, service, and authenticated WebSocket tests prove private atomic state,
+  restart reconstruction, exact source/type revalidation, replay idempotency,
+  competing-decision rejection, concurrency, injected write/durability
+  failures, and unchanged source/config/delivery-target/live-PTY evidence.
+
+### Known limitations
+
+- Decisions remain local records only. There is no compatible delivery,
+  acknowledgement, applied state, provider callback, terminal input, automatic
+  retry, supersession, or conflict-resolution workflow. PC-048 is next.
+- One complete stable source remains at most one item; multi-item parsing,
+  semantic fields, cross-source deduplication, and durable delivery provenance
+  remain later work.
+- The actor is the fixed server-owned `Local operator` label, not a remote-user
+  identity. Tailscale Serve identity attribution requires its later
+  transport-aware security slice.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x.
+  Chromium required the approved outside-sandbox macOS run.
+- The web bundle remains above Vite's 500 kB warning threshold.
+
 ## 0.27.0 — read-only queue list and exact item inspector — 2026-07-27
 
 ### Added
