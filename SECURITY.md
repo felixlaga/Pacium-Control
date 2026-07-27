@@ -41,11 +41,35 @@ Untrusted inputs still include:
 Optional remote access is supported only through the trust boundary in ADR-0016:
 
 - Pacium remains bound to loopback.
+- `PACIUM_TAILSCALE_ORIGIN` and `PACIUM_TAILSCALE_OPERATOR_LOGINS` must both be
+  absent or both pass strict bounded startup validation.
 - Tailscale Serve proxies tailnet-only HTTPS and WebSockets.
 - Tailscale Funnel is prohibited.
-- Remote requests require an exact configured Origin, verified Serve identity headers, an explicit login allowlist, and the ephemeral Pacium token.
+- Remote navigation requires the exact configured Serve Host, a verified
+  bounded `Tailscale-User-Login` in the exact allowlist, safe fetch metadata,
+  and no Funnel marker.
+- Remote bootstrap, protected HTTP, and WebSocket upgrades additionally require
+  the exact configured HTTPS Origin. Protected HTTP and WebSocket access still
+  requires the ephemeral token.
+- Missing identity denies tagged source devices. Display name, profile picture,
+  app capabilities, forwarded/source IP, and device identity are not
+  authorization inputs.
+- Custom local allowed Origins are restricted to canonical loopback HTTP
+  origins and cannot activate remote mode.
+- Content Security Policy permits only the exact configured remote WSS host
+  when remote mode is enabled.
 - Network grants and application identity checks are both required.
 - A Tailscale IP is never treated as permanent user identity.
+- Protocol 18 exposes only Local, or Tailscale plus the current exact verified
+  login. Connection identity is cleared on disconnect and never persisted.
+
+Current Tailscale Serve strips inbound identity/Funnel headers, preserves the
+tailnet Host, and adds verified identity context before the loopback proxy
+request. Pacium still treats a process already running as the invoking OS user
+as inside its accepted host-local trust boundary. See the
+[Serve operations runbook](docs/operations/tailscale-serve.md) for grants,
+validation, immediate non-PTY-killing disable/revocation, and the manual
+public-reachability gate.
 
 ## PTY and process safety
 
@@ -231,6 +255,13 @@ Prefer bounded in-memory scrollback. If diagnostic export is added, it must be e
 
 - non-loopback reachability;
 - hostile Origin and missing/invalid token;
+- incomplete/unsafe remote startup configuration;
+- spoofed, duplicate, missing, tagged-device-only, unlisted, or non-ASCII
+  Tailscale login headers;
+- wrong remote Host/Origin, Funnel marker, direct LAN/tailnet Host, and exact
+  remote WSS policy;
+- Local/Tailscale socket evidence, stale-identity clearing, and canary PTY
+  survival across browser reconnect;
 - oversized and malformed WebSocket messages;
 - terminal title, link, clipboard, and escape-sequence injection;
 - path traversal and symlink escape;
