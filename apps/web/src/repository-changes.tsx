@@ -1,5 +1,5 @@
 import type { GitChangedFile, GitChangesObservation } from "@pacium/contracts";
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 
 import {
   visibleRepositoryChanges,
@@ -22,6 +22,9 @@ export function InspectorTabs({
         aria-selected={active === "overview"}
         id="inspector-overview-tab"
         onClick={() => onChange("overview")}
+        onKeyDown={(event) =>
+          handleInspectorTabKeyDown(event, "overview", onChange)
+        }
         role="tab"
         tabIndex={active === "overview" ? 0 : -1}
         type="button"
@@ -33,6 +36,9 @@ export function InspectorTabs({
         aria-selected={active === "changes"}
         id="inspector-changes-tab"
         onClick={() => onChange("changes")}
+        onKeyDown={(event) =>
+          handleInspectorTabKeyDown(event, "changes", onChange)
+        }
         role="tab"
         tabIndex={active === "changes" ? 0 : -1}
         type="button"
@@ -41,6 +47,36 @@ export function InspectorTabs({
       </button>
     </div>
   );
+}
+
+export function nextInspectorTab(
+  current: InspectorTab,
+  key: string,
+): InspectorTab | null {
+  if (key === "Home") {
+    return "overview";
+  }
+  if (key === "End") {
+    return "changes";
+  }
+  if (key === "ArrowLeft" || key === "ArrowRight") {
+    return current === "overview" ? "changes" : "overview";
+  }
+  return null;
+}
+
+function handleInspectorTabKeyDown(
+  event: KeyboardEvent<HTMLButtonElement>,
+  current: InspectorTab,
+  onChange: (tab: InspectorTab) => void,
+): void {
+  const next = nextInspectorTab(current, event.key);
+  if (next === null) {
+    return;
+  }
+  event.preventDefault();
+  onChange(next);
+  document.getElementById(`inspector-${next}-tab`)?.focus();
 }
 
 export function RepositoryChangesPanel({

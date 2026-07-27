@@ -2,7 +2,11 @@ import type { GitChangesObservation } from "@pacium/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { InspectorTabs, RepositoryChangesPanel } from "./repository-changes.js";
+import {
+  InspectorTabs,
+  RepositoryChangesPanel,
+  nextInspectorTab,
+} from "./repository-changes.js";
 
 const observation: GitChangesObservation = {
   status: "ready",
@@ -60,6 +64,14 @@ describe("repository Changes presentation", () => {
     expect(markup).toContain('id="inspector-changes-tab"');
     expect(markup).toContain("Overview");
     expect(markup).toContain("Changes");
+  });
+
+  it("moves predictably between inspector tabs from the keyboard", () => {
+    expect(nextInspectorTab("overview", "ArrowRight")).toBe("changes");
+    expect(nextInspectorTab("changes", "ArrowLeft")).toBe("overview");
+    expect(nextInspectorTab("changes", "Home")).toBe("overview");
+    expect(nextInspectorTab("overview", "End")).toBe("changes");
+    expect(nextInspectorTab("overview", "Enter")).toBeNull();
   });
 
   it("renders rename, mixed, binary, large, counts, and truncation as text", () => {
