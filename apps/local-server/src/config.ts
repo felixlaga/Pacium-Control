@@ -1,6 +1,7 @@
 import { existsSync, realpathSync } from "node:fs";
 import { randomBytes, randomUUID } from "node:crypto";
 import { homedir } from "node:os";
+import { isAbsolute, join, normalize, parse } from "node:path";
 
 import { z } from "zod";
 
@@ -24,6 +25,7 @@ export interface ServerConfig {
   serverId: string;
   defaultCwd: string;
   homeDirectory: string;
+  dataDirectory: string;
   shell: string;
   environmentKeys: readonly string[];
   launchPresets: readonly LaunchPresetDefinition[];
@@ -52,6 +54,10 @@ export function loadServerConfig(
     environment.PACIUM_DEFAULT_CWD ?? process.cwd(),
   );
   const homeDirectory = realpathSync(environment.HOME ?? homedir());
+  const dataDirectory = resolvePaciumDataDirectory(
+    environment.PACIUM_DATA_DIR,
+    homeDirectory,
+  );
   const shell = environment.SHELL ?? "/bin/zsh";
 
   if (!shell.startsWith("/") || !existsSync(shell)) {
@@ -86,6 +92,7 @@ export function loadServerConfig(
     serverId: randomUUID(),
     defaultCwd,
     homeDirectory,
+    dataDirectory,
     shell,
     environmentKeys: [
       ...new Set([...DEFAULT_ENVIRONMENT_KEYS, ...extraEnvironmentKeys]),
@@ -95,6 +102,29 @@ export function loadServerConfig(
       environment.PACIUM_VERIFICATION_CONFIG,
     ),
   };
+}
+
+export function resolvePaciumDataDirectory(
+  configuredPath: string | undefined,
+  homeDirectory: string,
+): string {
+  const candidate =
+    configuredPath ??
+    join(homeDirectory, "Library", "Application Support", "Pacium Control");
+  if (
+    !isAbsolute(candidate) ||
+    candidate.length > 4096 ||
+    hasControlCharacter(candidate)
+  ) {
+    throw new Error(
+      "PACIUM_DATA_DIR must be a bounded absolute path without controls.",
+    );
+  }
+  const resolved = normalize(candidate);
+  if (resolved === parse(resolved).root || resolved === homeDirectory) {
+    throw new Error("PACIUM_DATA_DIR must name a dedicated child directory.");
+  }
+  return resolved;
 }
 
 export function buildChildEnvironment(
@@ -114,4 +144,11 @@ export function buildChildEnvironment(
   }
 
   return childEnvironment;
+}
+
+function hasControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint !== undefined && (codePoint <= 0x1f || codePoint === 0x7f);
+  });
 }

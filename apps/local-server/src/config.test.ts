@@ -1,6 +1,12 @@
+import { realpathSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
-import { buildChildEnvironment, loadServerConfig } from "./config.js";
+import {
+  buildChildEnvironment,
+  loadServerConfig,
+  resolvePaciumDataDirectory,
+} from "./config.js";
 
 describe("local server configuration", () => {
   it("fails closed when a non-loopback host is configured", () => {
@@ -21,6 +27,32 @@ describe("local server configuration", () => {
       configured: false,
       repositories: [],
     });
+  });
+
+  it("uses a dedicated macOS-first data directory without creating it", () => {
+    const home = realpathSync(process.env.HOME!);
+    expect(resolvePaciumDataDirectory(undefined, home)).toBe(
+      `${home}/Library/Application Support/Pacium Control`,
+    );
+    expect(
+      resolvePaciumDataDirectory("/private/tmp/pacium-state/../config", home),
+    ).toBe("/private/tmp/config");
+  });
+
+  it("rejects broad, relative, and control-bearing data directories", () => {
+    const home = realpathSync(process.env.HOME!);
+    expect(() => resolvePaciumDataDirectory("/", home)).toThrow(
+      "dedicated child",
+    );
+    expect(() => resolvePaciumDataDirectory(home, home)).toThrow(
+      "dedicated child",
+    );
+    expect(() => resolvePaciumDataDirectory("relative", home)).toThrow(
+      "bounded absolute",
+    );
+    expect(() =>
+      resolvePaciumDataDirectory("/private/tmp/pacium\nhidden", home),
+    ).toThrow("bounded absolute");
   });
 
   it("passes only allowlisted environment values to terminals", () => {

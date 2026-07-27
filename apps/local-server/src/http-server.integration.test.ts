@@ -748,6 +748,7 @@ async function startTestServer(
     serverId: "d5805287-d2b0-41f4-b80f-56c77d892cbc",
     defaultCwd: process.cwd(),
     homeDirectory: process.env.HOME ?? process.cwd(),
+    dataDirectory: "/private/tmp/pacium-control-http-test",
     shell: "/bin/zsh",
     environmentKeys: [],
     verificationCatalog: verification?.catalog ?? {
