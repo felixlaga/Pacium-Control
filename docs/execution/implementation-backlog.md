@@ -104,6 +104,7 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-024 Implement session actions
 
 - Create, rename, duplicate, interrupt, relaunch, close, copy cwd, and reveal repository.
+- Current status: implemented through one consequence-aware menu in the workspace header, pane headers, and session/tab context menus. Rename and reveal are server-owned typed operations; duplicate and ended-session relaunch reuse retained launch context. Rendered browser and accessibility validation remain pending because no browser backend was available.
 
 ### PC-025 Implement launch presets
 
@@ -113,7 +114,7 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-026 Implement keyboard and command palette
 
 - Global navigation, session switching, split focus, create, actions, shortcut help, and terminal escape chord.
-- Current status: create, numbered selection, previous/next selection, and the terminal escape chord are implemented. The command palette, split focus, action commands, and shortcut-help surface remain.
+- Current status: create, numbered selection, previous/next selection, split creation and focus, session action menus, and the terminal escape chord are implemented. The searchable command palette, complete terminal-aware routing, and shortcut-help surface remain.
 
 ### PC-027 Implement preferences
 
