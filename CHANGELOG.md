@@ -2,6 +2,75 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.27.0 — read-only queue list and exact item inspector — 2026-07-27
+
+### Added
+
+- Protocol-13 process-local candidate-first-seen evidence plus strict
+  `pacium.queue.item.inspect` and correlated `pacium.queue.item` messages bound
+  to workspace revision, source ID, observation revision, content hash, and
+  deterministic item ID.
+- An exact-current local observer lookup that returns only already bounded
+  accepted source text, reports fixed stale/unavailable states, and accepts no
+  browser path, command, content, decision, or authority field.
+- Bounded UTF-8 base64 transport so a maximum 64 KiB control-heavy source stays
+  inside the existing 128 KiB application-message limit without JSON escape
+  expansion.
+- A compact content-free Queue list with native button keyboard behavior,
+  type/source/requesting-role/confidence labels, honest current-server-run
+  waiting evidence, disconnected disabling, and compact Q/A/F/R/? rail glyphs.
+- A queue-specific right-panel inspector with inert exact original text,
+  source/config/classification provenance, explicit unavailable semantic
+  fields, no answer/approval controls, and exact live requesting-session
+  context where configured.
+- Correlated ephemeral browser state that rejects late or mismatched responses
+  and clears accepted text on source rewrite/degradation, config drift,
+  disconnect, General-mode exit, reload, or Back.
+- Back/Escape focus restoration to the originating current queue row while
+  preserving the selected PTY, terminal tabs/splits, process lifecycle, and
+  previous session-inspector tab.
+- Real-file Chromium coverage for question inspection, rewrite invalidation,
+  explicit approval inspection without authority, source/terminal
+  preservation, keyboard focus, 320 CSS px, 200% zoom, forced colors, and
+  reduced motion.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 86 test
+  files and 512 tests, plus the 819.07 kB web and 201.10 kB local-server
+  production bundles.
+- `pnpm test:e2e` passed all ten Chromium workflows in one run.
+- Strict contract tests prove ready/stale/unavailable invariants, fixed safe
+  diagnostics, exact identity, forbidden path/content/command/decision extras,
+  base64 bounds, protocol 13, and content-free bulk observations.
+- Observer and authenticated WebSocket integration tests prove exact current
+  text, maximum-message bounds, rewrite staleness, unavailable state, source/
+  config preservation, and no original text in bulk messages.
+- Browser reducer and semantic tests prove request correlation, fatal UTF-8
+  decoding, identity/config drift clearing, hostile HTML/link/ANSI treatment,
+  no raw text in list labels, unavailable-field honesty, and no decision
+  controls.
+- The real browser retained the selected live PTY while opening a question,
+  returned focus with Escape, removed stale text after rewrite, opened the new
+  explicit approval, and kept both source content and terminal selection
+  unchanged.
+
+### Known limitations
+
+- One complete stable source is still at most one item. There is no supported
+  multi-item grammar, priority/blocking inference, cross-source deduplication,
+  unread state, or durable age/provenance.
+- Reason, consequence, recommendation, related evidence, and conflict state
+  are labelled unavailable rather than inferred from unstructured text.
+- There are no immutable local decisions, notes, answer/deny/approve controls,
+  delivery, acknowledgement, application evidence, supersession, or conflict
+  resolution. PC-047 is next.
+- Inspected original text and first-seen evidence are process/browser
+  ephemeral. Refresh or server restart requires a deliberate new inspection.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x.
+  Chromium required the approved outside-sandbox macOS run.
+- The web bundle remains above Vite's 500 kB warning threshold.
+
 ## 0.26.0 — conservative queue-item classification — 2026-07-27
 
 ### Added
