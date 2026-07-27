@@ -34,18 +34,18 @@ Every session exposes one compact, consequence-aware action menu from the worksp
 
 ## Acceptance criteria
 
-- [ ] Rename updates the authoritative in-memory session summary and every browser surface.
-- [ ] Names are trimmed, bounded, and malformed rename commands fail deterministically.
-- [ ] Duplicate starts a new PTY from the same preset, cwd, and dimensions without affecting the source.
-- [ ] Relaunch is offered only for ended/failed sessions and starts a visibly announced successor.
-- [ ] Copy directory reports success or explains that the path remains available in the UI.
-- [ ] Reveal repository can target only the canonical repository associated with the session.
-- [ ] Reveal uses a fixed platform executable and argument list, never a parsed shell string.
-- [ ] Interrupt states that it sends `SIGINT` and does not imply termination.
-- [ ] Closing a view and terminating a process remain distinct labelled actions.
-- [ ] The action menu is reachable from visible controls, context menu, and keyboard focus.
-- [ ] Server protocol, session manager, and pure availability logic have deterministic tests.
-- [ ] The full repository verification gate passes.
+- [x] Rename updates the authoritative in-memory session summary and every browser surface.
+- [x] Names are trimmed, bounded, and malformed rename commands fail deterministically.
+- [x] Duplicate starts a new PTY from the same preset, cwd, and dimensions without affecting the source.
+- [x] Relaunch is offered only for ended/failed sessions and starts a visibly announced successor.
+- [x] Copy directory reports success or explains that the path remains available in the UI.
+- [x] Reveal repository can target only the canonical repository associated with the session.
+- [x] Reveal uses a fixed platform executable and argument list, never a parsed shell string.
+- [x] Interrupt states that it sends `SIGINT` and does not imply termination.
+- [x] Closing a view and terminating a process remain distinct labelled actions.
+- [x] The action menu is reachable from visible controls, context menu, and keyboard focus.
+- [x] Server protocol, session manager, and pure availability logic have deterministic tests.
+- [x] The full repository verification gate passes.
 
 ## Failure and security behavior
 
@@ -76,3 +76,13 @@ Every session exposes one compact, consequence-aware action menu from the worksp
 - Component/action-model results.
 - Full `pnpm verify`.
 - Rendered workflow when a browser backend is available.
+
+## Completion evidence
+
+- Protocol version 3 rejects malformed rename and browser-supplied reveal paths.
+- Session-manager and WebSocket integration tests prove rename broadcasts and canonical repository reveal selection.
+- Host-action tests prove fixed no-shell platform argument arrays and bounded errors.
+- Action-model and server-rendered component tests cover availability, labels, context entry points, and the rename dialog.
+- `pnpm verify` passed on 2026-07-27: format, lint, type checking, 18 test files with 70 tests, and both production builds.
+- Development runtime smoke passed on loopback: `/api/health` and the Vite application returned HTTP 200.
+- Rendered browser and accessibility validation remains pending because no browser backend was available.
