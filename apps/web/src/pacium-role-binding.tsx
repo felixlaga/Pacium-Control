@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { PaciumBinding, PaciumRoleId } from "@pacium/contracts";
 
 import { handleModalKeyDown } from "./modal-focus.js";
@@ -42,6 +42,14 @@ export function PaciumRoleBindingDialog({
         null)
       : null;
   const roleName = roleLabel(role);
+
+  useEffect(() => {
+    dialogRef.current
+      ?.querySelector<HTMLElement>(
+        "input:not(:disabled), select:not(:disabled), button:not(:disabled)",
+      )
+      ?.focus();
+  }, []);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
