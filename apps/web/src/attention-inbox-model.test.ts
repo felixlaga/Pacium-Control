@@ -4,6 +4,7 @@ import {
   EMPTY_ATTENTION_INBOX,
   acknowledgeAttention,
   attentionEventKey,
+  buildAttentionNotificationContent,
   cursorEntry,
   isAttentionUnread,
   loadAttentionInbox,
@@ -77,6 +78,21 @@ describe("attention inbox state", () => {
         entry: { ...entry, notifiedKey: attentionEventKey(failed) },
       }),
     ).toBe(false);
+  });
+
+  it("builds minimal notification copy without terminal details", () => {
+    const content = buildAttentionNotificationContent("session-1", failed);
+    expect(content).toMatchObject({
+      title: "Pacium Control",
+      body: "A terminal session failed.",
+    });
+    expect(JSON.stringify(content)).not.toContain(failed.reason);
+    expect(
+      buildAttentionNotificationContent("session-1", {
+        ...failed,
+        state: "working",
+      }),
+    ).toBeNull();
   });
 
   it("rejects malformed, extra, duplicate, and oversized records", () => {

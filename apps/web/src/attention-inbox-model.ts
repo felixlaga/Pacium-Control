@@ -18,6 +18,12 @@ export interface AttentionInboxState {
   entries: AttentionCursorEntry[];
 }
 
+export interface AttentionNotificationContent {
+  title: string;
+  body: string;
+  tag: string;
+}
+
 export const EMPTY_ATTENTION_INBOX: AttentionInboxState = {
   version: ATTENTION_INBOX_SCHEMA_VERSION,
   entries: [],
@@ -181,6 +187,27 @@ export function shouldDeliverAttentionNotification(input: {
     input.entry.seenKey !== key &&
     input.entry.notifiedKey !== key
   );
+}
+
+export function buildAttentionNotificationContent(
+  sessionId: string,
+  attention: AttentionResult,
+): AttentionNotificationContent | null {
+  const key = attentionEventKey(attention);
+  if (key === null) {
+    return null;
+  }
+  const body =
+    attention.state === "needs_input"
+      ? "A terminal session needs input."
+      : attention.state === "failed"
+        ? "A terminal session failed."
+        : "A terminal session finished.";
+  return {
+    title: "Pacium Control",
+    body,
+    tag: `pacium-attention:${sessionId}:${key}`,
+  };
 }
 
 function updateCursor(
