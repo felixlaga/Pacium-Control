@@ -6,6 +6,7 @@ import {
   type ClientMessage,
   type DirectoryListing,
   type LaunchPresetId,
+  type QueueItemInspectionIdentity,
   type PaciumWorkspace,
   type ServerMessage,
   type TerminalDataFrame,
@@ -200,6 +201,14 @@ export class PaciumTransport {
     const requestId = crypto.randomUUID();
     this.emit({ type: "pacium.queue.requested", requestId });
     this.send(queueObserveMessage(requestId));
+    return requestId;
+  }
+
+  public requestQueueItemInspection(
+    identity: QueueItemInspectionIdentity,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(queueItemInspectMessage(identity, requestId));
     return requestId;
   }
 
@@ -476,6 +485,21 @@ export function queueObserveMessage(
   return {
     type: "pacium.queue.observe",
     requestId,
+  };
+}
+
+export function queueItemInspectMessage(
+  identity: QueueItemInspectionIdentity,
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.queue.item.inspect" }> {
+  return {
+    type: "pacium.queue.item.inspect",
+    requestId,
+    workspaceRevision: identity.workspaceRevision,
+    sourceId: identity.sourceId,
+    observationRevision: identity.observationRevision,
+    contentHash: identity.contentHash,
+    itemId: identity.itemId,
   };
 }
 

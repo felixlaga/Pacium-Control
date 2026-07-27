@@ -4,6 +4,7 @@ import {
   fetchDirectoryListing,
   paciumConfigGetMessage,
   paciumConfigReplaceMessage,
+  queueItemInspectMessage,
   queueObserveMessage,
   repositoryChangesMessage,
   repositoryDiffMessage,
@@ -145,6 +146,28 @@ describe("queue observation transport", () => {
         type: "pacium.queue.observe",
         requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
       },
+    );
+  });
+
+  it("requests one exact item without a path or content field", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    const identity = {
+      workspaceRevision: 4,
+      sourceId: "needs-felix",
+      observationRevision: 7,
+      contentHash: "a".repeat(64),
+      itemId: "b".repeat(64),
+    };
+    expect(queueItemInspectMessage(identity, requestId)).toEqual({
+      type: "pacium.queue.item.inspect",
+      requestId,
+      ...identity,
+    });
+    expect(queueItemInspectMessage(identity, requestId)).not.toHaveProperty(
+      "path",
+    );
+    expect(queueItemInspectMessage(identity, requestId)).not.toHaveProperty(
+      "originalText",
     );
   });
 });
