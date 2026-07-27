@@ -4,8 +4,8 @@
 Pacium configuration, the General/Pacium toggle, and pinned Meta/Orchestrator
 roles plus explicit terminal prompt targeting and conservative queue-file
 observation, whole-source queue classification, and a read-only queue
-list/original-text inspector are complete enough for continued slicing;
-immutable local decisions are next.
+list/original-text inspector plus immutable local question/approval decisions
+are complete enough for continued slicing; compatible delivery is next.
 
 Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
 
@@ -74,7 +74,7 @@ The secondary product is **Pacium mode**:
   current/latest verification run into at most seven deterministic facts with
   explicit observed/occurred timestamps, source availability, partial errors,
   Refresh, reconnect recovery, and no terminal/provider narrative.
-- Protocol-13 strict Pacium workspace configuration for explicit Meta,
+- Protocol-14 strict Pacium workspace configuration for explicit Meta,
   Orchestrator, and worker session/preset bindings; canonical repositories;
   verification references; and queue, future-delivery, objective, and plan path
   metadata without execution authority, plus content-free queue-source
@@ -135,6 +135,19 @@ The secondary product is **Pacium mode**:
 - A queue-specific right-inspector route with loading/stale/unavailable states,
   rewrite/config/disconnect/mode clearing, Back/Escape focus restoration, and
   unchanged selected PTY, tabs, splits, and prior session-inspector tab.
+- Strictly separate question-answer and approval-decision requests bound to the
+  exact current workspace/source/observation/hash/item identity and classified
+  type, with UTF-8 byte bounds and rejection of browser-supplied actor,
+  timestamp, decision ID/hash, delivery, command, or authority fields.
+- A private version-1 `queue-state.json` with a 4 MiB/4,096-record ceiling,
+  strict schema/uniqueness/hash validation, serialized same-directory atomic
+  append, identical-replay detection, competing-decision rejection,
+  corruption preservation, and explicit unknown-durability recovery.
+- Question answer and optional-note controls plus distinct approval/denial
+  controls with inline confirmation, pending and failure states, stale-evidence
+  clearing, and immutable local record presentation after reload or server
+  restart. Recording does not deliver, acknowledge, execute, or send terminal
+  input.
 - Mode changes and reload preserve selected PTY, terminal tabs/splits,
   inspector context, panel state, terminal sync/input ownership, and existing
   Git/check evidence.
@@ -161,8 +174,8 @@ The secondary product is **Pacium mode**:
   queue sources, delivery methods, context sources, or verification references,
   and no shortcut customization.
 - No Claude or Codex observer.
-- No multi-item parsing, durable queue provenance, decisions, answer/approval
-  controls, delivery, acknowledgement/conflicts, worker role surface, or
+- No multi-item parsing, compatible decision delivery,
+  acknowledgement/conflicts/supersession, worker role surface, or
   objective/plan content presentation.
 - No tmux adapter.
 
