@@ -167,8 +167,8 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 81 test files and 451 tests,
-  plus the 801.90 kB web and 185.93 kB local-server production builds passed.
+- `pnpm verify`: formatting, lint, type checking, 83 test files and 491 tests,
+  plus the 805.10 kB web and 194.80 kB local-server production builds passed.
 - `pnpm test:e2e`: ten Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
@@ -193,12 +193,20 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
   surface in General mode, and cleaned its test session. Responsive coverage
   proved the labelled region and Refresh at 320 CSS px, 200% zoom, forced
   colors, and reduced motion.
+- PC-045 browser evidence kept “Can you approve everything?” a
+  medium-confidence question, then classified only the exact
+  `Approval request: ...` rewrite as a high-confidence approval. Neither
+  private document rendered in the browser; the selected real PTY and source
+  file were preserved. The type/confidence/diagnostic line and Refresh remained
+  visible and keyboard-focusable at 320 CSS px with forced colors and reduced
+  motion.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
-- The protocol-version-11 boundary passed strict contract, atomic-store,
+- The protocol-version-12 boundary passed strict contract, atomic-store,
   canonical path/reference, authenticated WebSocket revision/conflict, PTY
-  survival, bounded queue reader/observer, content-free source evidence, and
-  browser request-state tests on this machine.
+  survival, bounded queue reader/observer/classifier, content-free source/item
+  evidence, approval separation, and browser request-state tests on this
+  machine.
 - Built server startup: served the application and health endpoint on `127.0.0.1:4174`.
 - Hostile bootstrap Origin: returned HTTP 403.
 
@@ -213,7 +221,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 801.90 kB before gzip and emits Vite's chunk-size
+- The current web bundle is 805.10 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
 - Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
