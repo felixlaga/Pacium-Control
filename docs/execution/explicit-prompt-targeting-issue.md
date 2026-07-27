@@ -1,5 +1,7 @@
 # Send one bounded prompt to an explicit Pacium target
 
+**Status:** Complete
+
 ## Problem
 
 PC-042 makes Meta and Orchestrator visible and actionable, but communicating
@@ -63,39 +65,39 @@ prompt.
 
 ## Acceptance criteria
 
-- [ ] The composer exists only in Pacium mode and never displaces, remounts, or
+- [x] The composer exists only in Pacium mode and never displaces, remounts, or
       changes the selected terminal, split layout, inspector, or keyboard
       capture without explicit focus.
-- [ ] Targets are derived only from the accepted workspace and exact current
+- [x] Targets are derived only from the accepted workspace and exact current
       session IDs; Meta, Orchestrator, then workers use stable labels and
       explicit availability text.
-- [ ] No target is selected by default, on refresh, after leaving/re-entering
+- [x] No target is selected by default, on refresh, after leaving/re-entering
       Pacium, after successful send, or after a disconnected unknown outcome.
-- [ ] Only an exact live session binding can send. Preset, missing, creating,
+- [x] Only an exact live session binding can send. Preset, missing, creating,
       closing, ended, failed, invalid-config, loading, replacing, and
       disconnected states remain visible but disabled.
-- [ ] The prompt is at most 4,000 Unicode characters, non-empty after trimming,
+- [x] The prompt is at most 4,000 Unicode characters, non-empty after trimming,
       and contains no C0/C1 controls or line breaks.
-- [ ] Send transmits exactly the trimmed prompt plus one `\r` to the chosen
+- [x] Send transmits exactly the trimmed prompt plus one `\r` to the chosen
       immutable session ID through the existing `terminal.input` message.
-- [ ] The UI disables duplicate send while its exact request is pending and
+- [x] The UI disables duplicate send while its exact request is pending and
       ignores unrelated `command.result` or error responses.
-- [ ] Accepted command result clears draft/target and says only that terminal
+- [x] Accepted command result clears draft/target and says only that terminal
       input was accepted; it does not claim delivery to or processing by an
       agent.
-- [ ] A rejected input retains draft/target and explains no automatic retry. A
+- [x] A rejected input retains draft/target and explains no automatic retry. A
       disconnect retains the draft, clears target, labels outcome unknown, and
       requires terminal inspection before reselection.
-- [ ] Leaving Pacium mode clears draft/target without sending; returning to
+- [x] Leaving Pacium mode clears draft/target without sending; returning to
       Pacium starts unscoped.
-- [ ] Ordinary prompts remain distinct from queue questions and approvals and
+- [x] Ordinary prompts remain distinct from queue questions and approvals and
       grant no new permission or durable decision.
-- [ ] Pointer, labelled controls, visible focus, and `Cmd/Ctrl+Enter` work at
+- [x] Pointer, labelled controls, visible focus, and `Cmd/Ctrl+Enter` work at
       desktop, 320 CSS px, 200% zoom, forced colors, and reduced motion without
       leaking shortcuts into terminal capture.
-- [ ] No protocol version, server operation, durable file, content read,
+- [x] No protocol version, server operation, durable file, content read,
       provider state, or queue behavior is added.
-- [ ] Focused tests, `pnpm verify`, and `pnpm test:e2e` pass with synchronized
+- [x] Focused tests, `pnpm verify`, and `pnpm test:e2e` pass with synchronized
       issue, plan, README, status, backlog, and changelog evidence.
 
 ## User experience
