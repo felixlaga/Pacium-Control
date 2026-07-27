@@ -3,6 +3,7 @@ import {
   MAX_APPLICATION_MESSAGE_BYTES,
   PROTOCOL_VERSION,
   encodeTerminalDataFrame,
+  queueDecisionError,
   type ClientMessage,
   type QueueDecisionRequestIdentity,
   type ServerMessage,
@@ -489,19 +490,28 @@ export class WebSocketHub {
               )
             : null;
         inspection = this.queueObserver.inspectItem(identity);
+        const completeDecidedEvidence =
+          decisionState?.status !== "decided" ||
+          (deliveryState !== null && reconciliation !== null);
+        const responseDecisionState =
+          inspection.status !== "ready"
+            ? null
+            : completeDecidedEvidence
+              ? decisionState
+              : {
+                  status: "unavailable" as const,
+                  decision: null,
+                  error: queueDecisionError("DECISION_STATE_UNAVAILABLE"),
+                };
         this.send(client.socket, {
           type: "pacium.queue.item",
           requestId: message.requestId,
           inspection,
-          decisionState: inspection.status === "ready" ? decisionState : null,
+          decisionState: responseDecisionState,
           deliveryState:
-            inspection.status === "ready" && decisionState?.status === "decided"
-              ? deliveryState
-              : null,
+            responseDecisionState?.status === "decided" ? deliveryState : null,
           reconciliation:
-            inspection.status === "ready" && decisionState?.status === "decided"
-              ? reconciliation
-              : null,
+            responseDecisionState?.status === "decided" ? reconciliation : null,
         });
         return;
       }
