@@ -302,6 +302,7 @@ describe("Pacium role projection", () => {
         requestId: "request-1",
         sourceRevision: 3,
         stage: "binding" as const,
+        sessionId: "00000000-0000-4000-8000-000000000001",
       },
     };
 

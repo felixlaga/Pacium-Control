@@ -29,12 +29,20 @@ export type PaciumRoleStatus =
   | "launching"
   | "binding";
 
-export interface PendingPaciumRoleLaunch {
-  role: PaciumRoleId;
-  requestId: string;
-  sourceRevision: number;
-  stage: "launching" | "binding";
-}
+export type PendingPaciumRoleLaunch =
+  | {
+      role: PaciumRoleId;
+      requestId: string;
+      sourceRevision: number;
+      stage: "launching";
+    }
+  | {
+      role: PaciumRoleId;
+      requestId: string;
+      sourceRevision: number;
+      stage: "binding";
+      sessionId: string;
+    };
 
 export interface PaciumRoleModel {
   role: PaciumRoleId;
