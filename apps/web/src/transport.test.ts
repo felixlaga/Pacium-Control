@@ -5,6 +5,7 @@ import {
   paciumConfigGetMessage,
   paciumConfigReplaceMessage,
   queueApprovalDecisionMessage,
+  queueDecisionDeliveryMessage,
   queueItemInspectMessage,
   queueObserveMessage,
   queueQuestionAnswerMessage,
@@ -217,6 +218,24 @@ describe("queue observation transport", () => {
         note: "Risk is not bounded.",
       },
     });
+  });
+
+  it("delivers only one immutable decision identity", () => {
+    const message = queueDecisionDeliveryMessage(
+      "28c9142a-8986-43c7-9451-445fd8c13c3e",
+      "c".repeat(64),
+      "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+    );
+    expect(message).toEqual({
+      type: "pacium.queue.decision.deliver",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      decisionId: "28c9142a-8986-43c7-9451-445fd8c13c3e",
+      decisionHash: "c".repeat(64),
+    });
+    expect(message).not.toHaveProperty("path");
+    expect(message).not.toHaveProperty("role");
+    expect(message).not.toHaveProperty("payload");
+    expect(message).not.toHaveProperty("retry");
   });
 });
 

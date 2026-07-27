@@ -232,6 +232,17 @@ export class PaciumTransport {
     return requestId;
   }
 
+  public deliverQueueDecision(
+    decisionId: string,
+    decisionHash: string,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(
+      queueDecisionDeliveryMessage(decisionId, decisionHash, requestId),
+    );
+    return requestId;
+  }
+
   public closeSession(sessionId: string, force: boolean): void {
     this.send({
       type: "session.close",
@@ -554,6 +565,19 @@ export function queueApprovalDecisionMessage(
     contentHash: identity.contentHash,
     itemId: identity.itemId,
     payload,
+  };
+}
+
+export function queueDecisionDeliveryMessage(
+  decisionId: string,
+  decisionHash: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.queue.decision.deliver" }> {
+  return {
+    type: "pacium.queue.decision.deliver",
+    requestId,
+    decisionId,
+    decisionHash,
   };
 }
 
