@@ -25,6 +25,7 @@ export interface TerminalSurfaceHandle {
 
 export interface TerminalSurfaceProps {
   ariaLabel: string;
+  autoFocus?: boolean;
   disabled?: boolean;
   onCaptureChange?: (captured: boolean) => void;
   onInput: (data: string) => void;
@@ -59,12 +60,20 @@ export const TerminalSurface = forwardRef<
   TerminalSurfaceHandle,
   TerminalSurfaceProps
 >(function TerminalSurface(
-  { ariaLabel, disabled = false, onCaptureChange, onInput, onResize },
+  {
+    ariaLabel,
+    autoFocus = true,
+    disabled = false,
+    onCaptureChange,
+    onInput,
+    onResize,
+  },
   forwardedRef,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const autoFocusOnMountRef = useRef(autoFocus);
   const inputHandlerRef = useRef(onInput);
   const resizeHandlerRef = useRef(onResize);
 
@@ -143,7 +152,9 @@ export const TerminalSurface = forwardRef<
     const resizeObserver = new ResizeObserver(fit);
     resizeObserver.observe(container);
     fit();
-    terminal.focus();
+    if (autoFocusOnMountRef.current) {
+      terminal.focus();
+    }
 
     return () => {
       cancelAnimationFrame(animationFrame);
