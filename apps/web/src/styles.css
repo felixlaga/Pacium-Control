@@ -5721,9 +5721,80 @@ kbd {
   opacity: 0.35;
 }
 
+.directory-toolbar > .directory-edit-path {
+  width: auto;
+  min-width: 42px;
+  padding: 0 7px;
+  color: var(--text-faint);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 8px;
+}
+
+.directory-toolbar > .directory-edit-path:hover,
+.directory-toolbar > .directory-edit-path:focus-visible {
+  color: var(--text);
+  border-color: var(--border-strong);
+  outline: none;
+}
+
+.directory-path-editor {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.directory-path-editor input {
+  height: 29px;
+  min-width: 0;
+  flex: 1;
+  padding: 0 9px;
+  border: 1px solid #7566dc99;
+  border-radius: 5px;
+  outline: 0;
+  color: var(--text);
+  background: #101113;
+  box-shadow: 0 0 0 2px #7566dc1c;
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 9px;
+}
+
+.directory-path-editor button {
+  height: 29px;
+  flex: 0 0 auto;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--panel);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.directory-path-editor button:last-child {
+  width: 29px;
+  padding: 0;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+
+.directory-path-editor button:hover,
+.directory-path-editor button:focus-visible {
+  color: var(--text);
+  border-color: var(--border-strong);
+  outline: none;
+}
+
+.directory-path-editor button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
 .breadcrumbs {
   display: flex;
   min-width: 0;
+  flex: 1;
   align-items: center;
   overflow-x: auto;
   scrollbar-width: none;
@@ -6060,6 +6131,19 @@ html[data-theme="light"] .command-palette-footer,
 html[data-theme="light"] .directory-picker-header,
 html[data-theme="light"] .directory-picker-footer {
   background: var(--panel);
+}
+
+html[data-theme="light"] .directory-locations {
+  background: #f6f6f8;
+}
+
+html[data-theme="light"] .directory-search,
+html[data-theme="light"] .directory-path-editor input {
+  background: #ffffff;
+}
+
+html[data-theme="light"] .directory-row {
+  border-bottom-color: #dedfe4;
 }
 
 html[data-theme="light"] .command-result:hover:not(:disabled),
@@ -6507,6 +6591,14 @@ html[data-density="comfortable"] .terminal-panel {
 
   .directory-picker-footer > div:last-child {
     justify-content: flex-end;
+  }
+
+  .directory-toolbar > .directory-edit-path {
+    min-width: 38px;
+  }
+
+  .directory-path-editor input {
+    font-size: 8px;
   }
 
   .pacium-role-binding-dialog {
