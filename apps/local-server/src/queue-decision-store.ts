@@ -470,14 +470,19 @@ export class QueueDecisionStore {
         "Queue delivery outcome is already immutable.",
       );
     }
-    const { deliveryHash: _previousHash, ...unhashed } = existing;
+    const unhashed = {
+      deliveryId: existing.deliveryId,
+      decisionId: existing.decisionId,
+      decisionHash: existing.decisionHash,
+      target: existing.target,
+      payloadHash: existing.payloadHash,
+      payloadByteLength: existing.payloadByteLength,
+      requestedAt: existing.requestedAt,
+      outcome: parsedOutcome,
+    };
     const updated: QueueDeliveryRecord = {
       ...unhashed,
-      outcome: parsedOutcome,
-      deliveryHash: computeQueueDeliveryHash({
-        ...unhashed,
-        outcome: parsedOutcome,
-      }),
+      deliveryHash: computeQueueDeliveryHash(unhashed),
     };
     const deliveries = [...current.deliveries];
     deliveries[index] = updated;
