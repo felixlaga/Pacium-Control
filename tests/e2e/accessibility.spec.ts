@@ -92,3 +92,43 @@ test("narrow shell exposes panels as dismissible drawers at 320 CSS pixels", asy
   );
   expect(scrollWidth).toBeLessThanOrEqual(320);
 });
+
+test("two-times zoom and system accessibility preferences keep controls usable", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 720, width: 640 });
+  await page.emulateMedia({
+    forcedColors: "active",
+    reducedMotion: "reduce",
+  });
+  await page.goto("/");
+  await page.evaluate(() => {
+    document.documentElement.style.zoom = "2";
+  });
+
+  const workspace = page.getByRole("main", { name: "Terminal workspace" });
+  await page.getByRole("button", { name: "Show session sidebar" }).click();
+  const newTerminal = page.getByRole("button", { name: "New terminal" });
+  await expect(workspace).toBeVisible();
+  await expect(newTerminal).toBeVisible();
+
+  await page.getByRole("button", { name: "Close session sidebar" }).focus();
+  await page.keyboard.press("Tab");
+  await expect(newTerminal).toBeFocused();
+  const accessibilityStyles = await newTerminal.evaluate((element) => {
+    const styles = getComputedStyle(element);
+    return {
+      outlineStyle: styles.outlineStyle,
+      transitionDuration: styles.transitionDuration,
+    };
+  });
+  expect(accessibilityStyles.outlineStyle).not.toBe("none");
+  expect(
+    Number.parseFloat(accessibilityStyles.transitionDuration),
+  ).toBeLessThan(0.001);
+
+  const scrollWidth = await page.evaluate(
+    () => document.documentElement.scrollWidth,
+  );
+  expect(scrollWidth).toBeLessThanOrEqual(640);
+});
