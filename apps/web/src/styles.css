@@ -1385,6 +1385,85 @@ kbd {
   line-height: 1.45;
 }
 
+.attention-label {
+  color: var(--text-faint);
+}
+
+.attention-label::before {
+  margin-right: 4px;
+  content: "·";
+}
+
+.attention-needs_input,
+.attention-failed {
+  color: var(--danger);
+}
+
+.attention-finished {
+  color: var(--success);
+}
+
+.attention-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-raised);
+}
+
+.attention-card > header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.attention-glyph {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.attention-card > header > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attention-card strong {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.attention-card small,
+.attention-card time {
+  color: var(--text-faint);
+  font-size: 9px;
+}
+
+.attention-card > p {
+  margin: 0;
+  padding: 9px 10px 5px;
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.attention-card > time {
+  display: block;
+  padding: 0 10px 10px;
+}
+
+.attention-section {
+  padding-top: 0;
+}
+
 .dialog-backdrop {
   position: fixed;
   z-index: 20;

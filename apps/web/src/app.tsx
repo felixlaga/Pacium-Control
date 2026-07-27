@@ -33,6 +33,11 @@ import { DirectoryPicker } from "./directory-picker.js";
 import { handleModalKeyDown } from "./modal-focus.js";
 import { AgentClassificationCard } from "./agent-classification.js";
 import { sessionAccessibleName } from "./agent-classification-model.js";
+import { AttentionEvidenceCard } from "./attention.js";
+import {
+  attentionStateLabel,
+  deriveProcessAttention,
+} from "./attention-model.js";
 import {
   loadPanelView,
   savePanelView,
@@ -389,6 +394,19 @@ export function App() {
     }
   }, [connection, renderedSessionIds]);
   const sessionGroups = useMemo(() => groupSessions(sessions), [sessions]);
+  const attentionBySession = useMemo(() => {
+    const observedAt = new Date().toISOString();
+    return new Map(
+      sessions.map((session) => [
+        session.id,
+        deriveProcessAttention(session, observedAt),
+      ]),
+    );
+  }, [sessions]);
+  const selectedAttention =
+    selectedSession === null
+      ? null
+      : (attentionBySession.get(selectedSession.id) ?? null);
   const tabSessions = useMemo(
     () =>
       tabs.flatMap((tab) => {
@@ -919,7 +937,10 @@ export function App() {
                     {group.sessions.map((session) => (
                       <li key={session.id}>
                         <button
-                          aria-label={sessionAccessibleName(session)}
+                          aria-label={`${sessionAccessibleName(session)}, attention ${attentionStateLabel(
+                            attentionBySession.get(session.id)?.state ??
+                              "unknown",
+                          )}`}
                           aria-current={
                             session.id === selectedId ? "page" : undefined
                           }
@@ -944,6 +965,17 @@ export function App() {
                             <span className="session-row-meta">
                               <span className="preset-label">
                                 {session.commandLabel}
+                              </span>
+                              <span
+                                className={`attention-label attention-${
+                                  attentionBySession.get(session.id)?.state ??
+                                  "unknown"
+                                }`}
+                              >
+                                {attentionStateLabel(
+                                  attentionBySession.get(session.id)?.state ??
+                                    "unknown",
+                                )}
                               </span>
                               <span>{compactPath(session.cwd)}</span>
                             </span>
@@ -1379,6 +1411,12 @@ export function App() {
             <AgentClassificationCard
               classification={selectedSession.agentClassification}
             />
+          )}
+        </section>
+        <section className="inspector-section attention-section">
+          <h2>Attention</h2>
+          {selectedAttention !== null && (
+            <AttentionEvidenceCard attention={selectedAttention} />
           )}
         </section>
       </aside>
