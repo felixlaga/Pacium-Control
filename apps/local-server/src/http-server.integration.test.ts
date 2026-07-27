@@ -11,7 +11,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { FakePtyFactory } from "@pacium/test-utils";
+import { FakePty, FakePtyFactory } from "@pacium/test-utils";
 import {
   decodeTerminalDataFrame,
   DirectoryListingSchema,
@@ -1225,14 +1225,14 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await once(restartedClient.socket, "close");
   });
 
-  it("delivers one shell-safe line to only the configured live role PTY", async () => {
+  it("retries one shell-safe role prompt only after human non-delivery confirmation", async () => {
     const queueDirectory = await mkdtemp(join(tmpdir(), "pacium-role-http-"));
     temporaryDirectories.push(queueDirectory);
     const queuePath = join(queueDirectory, "NEEDS-FELIX");
     const questionText = "Question: Choose the exact worker\n";
     await writeFile(queuePath, questionText, { mode: 0o600 });
 
-    const factory = new FakePtyFactory();
+    const factory = new FailFirstWritePtyFactory();
     const setup = await startTestServer(factory);
     application = setup.application;
     manager = setup.manager;
@@ -1350,17 +1350,16 @@ describe("localhost HTTP and WebSocket boundary", () => {
         decisionHash: recorded.result.decision.decisionHash,
       }),
     );
-    await expect(
-      nextMessageWithin(
-        client,
-        (message) =>
-          message.type === "pacium.queue.delivery" &&
-          message.requestId === "f9cb23d9-4a79-4430-bc05-5b17da0b132f",
-        "role delivery response",
-      ),
-    ).resolves.toMatchObject({
+    const firstDelivery = await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.queue.delivery" &&
+        message.requestId === "f9cb23d9-4a79-4430-bc05-5b17da0b132f",
+      "failed role delivery response",
+    );
+    expect(firstDelivery).toMatchObject({
       result: {
-        status: "delivered",
+        status: "failed",
         state: {
           target: {
             type: "role_prompt",
@@ -1370,6 +1369,140 @@ describe("localhost HTTP and WebSocket boundary", () => {
           },
           delivery: {
             outcome: {
+              status: "failed",
+              evidence: null,
+              error: { code: "DELIVERY_TARGET_UNAVAILABLE" },
+            },
+          },
+        },
+      },
+    });
+    if (
+      firstDelivery.type !== "pacium.queue.delivery" ||
+      firstDelivery.result.state.delivery === null
+    ) {
+      throw new Error("Expected a durable failed role delivery");
+    }
+    const firstAttempt = firstDelivery.result.state.delivery;
+    expect(factory.processes[0]?.writes).toEqual([]);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.item.inspect",
+        requestId: "9adebcee-7094-4507-8412-d8d3d13ea353",
+        ...identity,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.item" &&
+          message.requestId === "9adebcee-7094-4507-8412-d8d3d13ea353",
+        "locked role retry inspection",
+      ),
+    ).resolves.toMatchObject({
+      deliveryState: {
+        status: "failed",
+        delivery: { deliveryId: firstAttempt.deliveryId },
+      },
+      reconciliation: {
+        attempts: [{ deliveryId: firstAttempt.deliveryId }],
+        artifact: {
+          status: "acknowledgement_unavailable",
+          source: "provider_unavailable",
+          reason: "role_prompt_unobserved",
+        },
+        lifecycle: { status: "awaiting_evidence" },
+        retry: { status: "locked" },
+      },
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.decision.resolve",
+        requestId: "285209f2-717a-48f6-aaca-e7c3f3bf957c",
+        decisionId: recorded.result.decision.decisionId,
+        decisionHash: recorded.result.decision.decisionHash,
+        action: "confirmed_not_delivered",
+        delivery: {
+          deliveryId: firstAttempt.deliveryId,
+          deliveryHash: firstAttempt.deliveryHash,
+        },
+        relatedDecision: null,
+        note: "Verified that the first prompt did not reach the role.",
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.resolution" &&
+          message.requestId === "285209f2-717a-48f6-aaca-e7c3f3bf957c",
+        "role retry unlock response",
+      ),
+    ).resolves.toMatchObject({
+      result: {
+        status: "recorded",
+        resolution: {
+          action: "confirmed_not_delivered",
+          delivery: { deliveryId: firstAttempt.deliveryId },
+          source: "human_labelled",
+        },
+        error: null,
+      },
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.item.inspect",
+        requestId: "432ec2a8-e2cc-4f08-a957-f9aefdf2cf17",
+        ...identity,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.item" &&
+          message.requestId === "432ec2a8-e2cc-4f08-a957-f9aefdf2cf17",
+        "ready role retry inspection",
+      ),
+    ).resolves.toMatchObject({
+      deliveryState: {
+        status: "ready_retry",
+        delivery: { deliveryId: firstAttempt.deliveryId },
+      },
+      reconciliation: {
+        lifecycle: { status: "confirmed_not_delivered" },
+        retry: { status: "ready" },
+      },
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.decision.deliver",
+        requestId: "7dc274c2-6d9e-4261-9335-b79a4478553e",
+        decisionId: recorded.result.decision.decisionId,
+        decisionHash: recorded.result.decision.decisionHash,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.delivery" &&
+          message.requestId === "7dc274c2-6d9e-4261-9335-b79a4478553e",
+        "successful role retry response",
+      ),
+    ).resolves.toMatchObject({
+      result: {
+        status: "delivered",
+        state: {
+          delivery: {
+            deliveryId: expect.not.stringMatching(firstAttempt.deliveryId),
+            outcome: {
+              status: "delivered",
               evidence: {
                 kind: "terminal_transport_accepted",
                 sessionId: metaSession.id,
@@ -1386,6 +1519,30 @@ describe("localhost HTTP and WebSocket boundary", () => {
     expect(line).toContain("\\n");
     expect(line).toContain("$(touch /tmp/no)");
     expect(factory.processes[1]?.writes).toEqual([]);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.decision.deliver",
+        requestId: "3f75fb1a-7143-46b0-af5e-84396ec500d9",
+        decisionId: recorded.result.decision.decisionId,
+        decisionHash: recorded.result.decision.decisionHash,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.delivery" &&
+          message.requestId === "3f75fb1a-7143-46b0-af5e-84396ec500d9",
+        "exhausted role retry response",
+      ),
+    ).resolves.toMatchObject({
+      result: {
+        status: "existing",
+        state: { status: "delivered" },
+      },
+    });
+    expect(factory.processes[0]?.writes).toHaveLength(1);
     expect(manager.hasSession(unrelatedSession.id)).toBe(true);
     await expect(readFile(queuePath, "utf8")).resolves.toBe(questionText);
 
@@ -2180,6 +2337,29 @@ function paciumWorkspace(label: string): PaciumWorkspace {
     deliveryMethods: [],
     context: { objective: null, plan: null },
   };
+}
+
+class FailFirstWritePty extends FakePty {
+  private failNextWrite = true;
+
+  public override write(data: string): void {
+    if (this.failNextWrite) {
+      this.failNextWrite = false;
+      throw new Error("Synthetic first transport rejection.");
+    }
+    super.write(data);
+  }
+}
+
+class FailFirstWritePtyFactory extends FakePtyFactory {
+  public override create(
+    options: Parameters<FakePtyFactory["create"]>[0],
+  ): FakePty {
+    this.createCalls.push(options);
+    const process = new FailFirstWritePty(41_000 + this.processes.length);
+    this.processes.push(process);
+    return process;
+  }
 }
 
 async function connect(
