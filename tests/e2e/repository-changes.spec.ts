@@ -161,6 +161,48 @@ test("recent history loads lazily without changing terminal selection", async ({
   await page.getByRole("button", { name: "Close inspector" }).click();
 });
 
+test("General and Pacium modes preserve terminal and inspector context", async ({
+  page,
+}) => {
+  const workspaceStatus = await openFixtureTerminal(page);
+  const changesTab = page.getByRole("tab", { name: "Changes" });
+  await changesTab.click();
+  await expect(changesTab).toHaveAttribute("aria-selected", "true");
+
+  const paciumButton = page.getByRole("button", { name: "Pacium" });
+  await paciumButton.click();
+  await expect(paciumButton).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("region", { name: "Pacium workspace definition" }),
+  ).toContainText("Pacium setup needed");
+  await expect(changesTab).toHaveAttribute("aria-selected", "true");
+  await expect(workspaceStatus).toContainText("Oversight fixture");
+
+  await page.getByRole("main", { name: "Terminal workspace" }).focus();
+  await page.keyboard.press("g");
+  await page.keyboard.press("p");
+  const generalButton = page.getByRole("button", { name: "General" });
+  await expect(generalButton).toHaveAttribute("aria-pressed", "true");
+  await expect(changesTab).toHaveAttribute("aria-selected", "true");
+  await expect(workspaceStatus).toContainText("Oversight fixture");
+
+  await page.keyboard.press("Control+k");
+  const palette = page.getByRole("dialog", { name: "Command palette" });
+  await palette
+    .getByRole("combobox", { name: "Search commands" })
+    .fill("pacium mode");
+  await palette.getByRole("option", { name: /Switch to Pacium mode/ }).click();
+  await expect(paciumButton).toHaveAttribute("aria-pressed", "true");
+  await expect(workspaceStatus).toContainText("Oversight fixture");
+
+  await page.reload();
+  await expect(paciumButton).toHaveAttribute("aria-pressed", "true");
+  await expect(workspaceStatus).toContainText("Oversight fixture");
+  await expect(
+    page.getByRole("region", { name: "Pacium workspace definition" }),
+  ).toContainText("Pacium setup needed");
+});
+
 async function openFixtureTerminal(page: Page) {
   await page.goto("/");
   const workspaceStatus = page.locator(".workspace-status");
