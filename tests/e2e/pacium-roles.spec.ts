@@ -63,9 +63,7 @@ test("assigns, opens, launches, and durably binds the two primary roles", async 
     name: "Assign Orchestrator",
   });
   await expect(orchestratorDialog.getByLabel("Running session")).toBeFocused();
-  await orchestratorDialog
-    .getByText("Launch preset", { exact: true })
-    .click();
+  await orchestratorDialog.getByText("Launch preset", { exact: true }).click();
   await expect(orchestratorDialog.getByLabel("Shell")).toBeChecked();
   await expect(orchestratorDialog.getByLabel("Working directory")).toHaveValue(
     "",
