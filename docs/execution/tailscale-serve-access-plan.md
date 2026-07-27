@@ -271,24 +271,24 @@ being inferred from local request fixtures.
 
 ## Failure model
 
-| Failure point | Expected state | Recovery |
-| ------------- | -------------- | -------- |
-| Both remote values absent | Local-only startup | Configure both only when remote access is needed |
-| Only origin or allowlist set | Startup rejected before listening | Supply a complete reviewed pair or remove both |
-| Unsafe origin/login | Startup rejected with bounded config-field error | Correct startup environment |
-| Serve not installed/running | Local Pacium works; remote URL unavailable | Configure Serve externally |
-| Funnel/public exposure configured | Unsupported external security failure | Run `tailscale serve off`, remove Funnel, reconfigure Serve |
-| Wrong Host or Origin | Generic 403; no token or state | Use the one configured Serve URL |
-| Identity missing/tagged | Generic 403 | Use an allowlisted user-associated device |
-| Identity unlisted/revoked | Generic 403 | Review grants/allowlist; do not auto-enrol |
-| Duplicate/malformed identity header | Generic 403 | Repair proxy path; another proxy is unsupported |
-| Missing/wrong token | Protected API/upgrade denied | Re-bootstrap through the authorized origin |
-| Browser disconnect | Existing PTYs survive; stale identity clears | Reconnect and re-authorize |
-| Pacium restart | Direct PTYs follow current exit behavior; token rotates | Restart and bootstrap again |
-| Remove allowlist member | Existing socket lasts only until server restart | Restart Pacium to apply startup config; user cannot reconnect |
-| Disable Serve | Remote reachability ends; local Pacium/PTYs continue | Use localhost or re-enable reviewed Serve config |
-| Local spoofed Tailscale header | Remains local; header grants no remote identity | No action |
-| Automated external validation unavailable | Release gate remains explicitly unverified | Run manual tailnet/public checks |
+| Failure point                             | Expected state                                          | Recovery                                                      |
+| ----------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------- |
+| Both remote values absent                 | Local-only startup                                      | Configure both only when remote access is needed              |
+| Only origin or allowlist set              | Startup rejected before listening                       | Supply a complete reviewed pair or remove both                |
+| Unsafe origin/login                       | Startup rejected with bounded config-field error        | Correct startup environment                                   |
+| Serve not installed/running               | Local Pacium works; remote URL unavailable              | Configure Serve externally                                    |
+| Funnel/public exposure configured         | Unsupported external security failure                   | Run `tailscale serve off`, remove Funnel, reconfigure Serve   |
+| Wrong Host or Origin                      | Generic 403; no token or state                          | Use the one configured Serve URL                              |
+| Identity missing/tagged                   | Generic 403                                             | Use an allowlisted user-associated device                     |
+| Identity unlisted/revoked                 | Generic 403                                             | Review grants/allowlist; do not auto-enrol                    |
+| Duplicate/malformed identity header       | Generic 403                                             | Repair proxy path; another proxy is unsupported               |
+| Missing/wrong token                       | Protected API/upgrade denied                            | Re-bootstrap through the authorized origin                    |
+| Browser disconnect                        | Existing PTYs survive; stale identity clears            | Reconnect and re-authorize                                    |
+| Pacium restart                            | Direct PTYs follow current exit behavior; token rotates | Restart and bootstrap again                                   |
+| Remove allowlist member                   | Existing socket lasts only until server restart         | Restart Pacium to apply startup config; user cannot reconnect |
+| Disable Serve                             | Remote reachability ends; local Pacium/PTYs continue    | Use localhost or re-enable reviewed Serve config              |
+| Local spoofed Tailscale header            | Remains local; header grants no remote identity         | No action                                                     |
+| Automated external validation unavailable | Release gate remains explicitly unverified              | Run manual tailnet/public checks                              |
 
 ## Compatibility
 
