@@ -173,11 +173,26 @@ Prefer bounded in-memory scrollback. If diagnostic export is added, it must be e
   Resolve source, method, path, role, session ID/epoch, and serialized payload
   exclusively from current server-owned state and exact runtime evidence.
 - Persist one hashed delivery intent before invoking a transport. Join a
-  duplicate request to that attempt; never replay a completed, failed, or
-  unknown attempt in the current slice.
+  duplicate request to that attempt; never replay a completed or uncertain
+  attempt automatically.
 - Create answer files privately with deterministic bounded bytes and atomic
   no-clobber publication. Reject existing, symlinked, unsafe, or drifted
   targets without choosing another path.
+- Reinspect only the exact server-resolved answer target with bounded
+  no-follow reads. Exact bytes prove only that the transport artifact is
+  present; missing, changed, unreadable, or unsafe bytes never imply provider
+  acknowledgement or application.
+- Derive source conflicts from accepted source IDs, hashes, and immutable
+  decision provenance. Never expose conflict text, choose a duplicate source,
+  edit queue bytes, or execute content.
+- Accept lifecycle mutations containing only exact decision/attempt identities,
+  one fixed action, an optional bounded note, and an exact related decision for
+  supersession. The server authors actor, evidence source, timestamp, ID, and
+  hash and validates every monotonic transition.
+- Permit one second delivery attempt only after the operator explicitly records
+  `confirmed_not_delivered` for a failed or unknown first attempt and confirms
+  delivery again. Revalidate the exact source, configuration, target, payload,
+  and attempt ceiling immediately before persisting that intent.
 - Send role-prompt decisions only as one bounded JSON-escaped,
   comment-prefixed line to the exact configured live PTY. Treat PTY write
   acceptance as transport evidence only, never provider handling or approval

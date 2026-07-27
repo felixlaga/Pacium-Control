@@ -155,18 +155,28 @@ delivery, objective, and plan consumers. It owns no live process, terminal,
 Git, provider, verification-command, or file-content truth.
 
 `queue-state.json` owns only bounded immutable local question/approval
-decisions and their single compatible delivery attempts. Schema 2 references
-every attempt to an exact decision/hash, validates recomputable hashes, and
-records target snapshots, payload hashes, intent time, and
-delivered/failed/unknown evidence. Valid schema-1 decision-only state remains
-readable and migrates atomically on the first later mutation. It contains no
-queue source text, provider token, environment, terminal transcript, or
-generic command.
+decisions, compatible delivery attempts, and explicit human-labelled lifecycle
+resolutions. Schema 3 references every attempt and resolution to an exact
+decision/hash, validates recomputable hashes, and records target snapshots,
+payload hashes, intent/outcome evidence, and monotonic lifecycle transitions.
+Valid schema-1 decision-only and schema-2 delivery state remains readable and
+migrates atomically on the first later mutation. It contains no queue source
+text, provider token, environment, terminal transcript, or generic command.
 
-Delivery intent is persisted before the one configured answer-file or
-role-prompt side effect. The answer-file adapter creates one private
-no-clobber file; the role adapter writes one fixed-shape comment line to one
-exact live configured PTY. A completed or uncertain attempt is never replayed.
+Delivery intent is persisted before each configured answer-file or role-prompt
+side effect. The answer-file adapter creates one private no-clobber file; the
+role adapter writes one fixed-shape comment line to one exact live configured
+PTY. A completed or uncertain attempt is never replayed automatically. One
+second attempt is possible only after a failed or unknown first attempt is
+explicitly labelled `confirmed_not_delivered`; a third attempt is invalid.
+
+Queue-source conflicts and current answer-artifact observations are disposable
+server projections. They are recomputed from accepted configuration, bounded
+no-follow reads, current queue evidence, and immutable state only when sources
+or an exact item are observed. Exact answer bytes prove a transport artifact,
+not provider acknowledgement or application. Those states remain unavailable
+unless a future provider observer supplies native evidence or the operator
+records an explicitly human-labelled resolution.
 
 Writes use complete schema/reference validation, optimistic revisions, a
 private same-directory temporary file, atomic rename, and directory sync.

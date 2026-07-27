@@ -311,7 +311,7 @@ mismatch, unsafe state, or disconnect fails closed. Decision recording itself
 grants no delivery, acknowledgement, provider callback, terminal input, shell,
 or execution authority.
 
-Protocol 15 adds one separate identity-only delivery mutation:
+Protocol 16 retains the separate identity-only delivery mutation:
 
 ```text
 pacium.queue.decision.deliver(requestId, decisionId, decisionHash)
@@ -323,15 +323,46 @@ bytes, command, or retry flag. The server resolves and revalidates the exact
 decision, current source identity, workspace revision, configured method, and
 accepted target. It persists one hashed intent before creating an answer file
 or sending one role-prompt line. A duplicate joins the existing attempt;
-completed or uncertain attempts are not replayed.
+completed or uncertain attempts are not replayed automatically.
 
-Valid queue-state schema 1 remains readable. The first later mutation writes
-schema 2 with unchanged decisions plus at most one target/payload snapshot and
-outcome per decision. Answer files contain deterministic
-`pacium_decision_v1` JSON and use private no-clobber creation. Role prompts are
-one bounded JSON-escaped comment line plus one carriage return to the exact
-configured live role session. PTY acceptance proves only terminal transport,
-not provider handling, acknowledgement, application, or completion.
+Valid queue-state schemas 1 and 2 remain readable. The first later mutation
+writes schema 3 with unchanged prior decisions and attempts plus bounded,
+immutable, hash-verified lifecycle resolutions. Answer files contain
+deterministic `pacium_decision_v1` JSON and use private no-clobber creation.
+Role prompts are one bounded JSON-escaped comment line plus one carriage return
+to the exact configured live role session. PTY acceptance proves only terminal
+transport, not provider handling, acknowledgement, application, or completion.
+
+Protocol 16 also adds one identity-only lifecycle mutation:
+
+```text
+pacium.queue.decision.resolve(
+  requestId,
+  decisionId,
+  decisionHash,
+  action,
+  deliveryId?,
+  deliveryHash?,
+  relatedDecisionId?,
+  relatedDecisionHash?,
+  note?
+)
+pacium.queue.resolution(requestId, result)
+```
+
+The server authors the lifecycle source, operator label, timestamp, identifier,
+and canonical hash. `acknowledged`, `applied`, `unable_to_apply`,
+`confirmed_not_delivered`, and `superseded` remain explicitly human-labelled;
+they are never inferred from terminal activity, source rewrites, or answer-file
+presence. Supersession requires another existing decision for the same
+accepted source and a distinct exact item identity.
+
+An exact item inspection recomputes bounded source-conflict and answer-artifact
+evidence without polling. It follows no links and reads only the accepted
+answer target. Exact bytes mean `transport_artifact_present`, not
+acknowledgement. A failed or unknown first attempt can unlock one explicit
+second attempt only after its `confirmed_not_delivered` resolution; the server
+revalidates the full boundary, and no third attempt is valid.
 
 ## Atomicity and recovery
 
@@ -368,13 +399,16 @@ content, objective/plan content, actor identity, timestamps, decision
 identifiers or hashes, verification definitions, or generic write targets.
 The only accepted decision content is a protocol-14 bounded question answer or
 approval outcome plus an optional bounded note for the exact current item. A
-protocol-15 delivery request contains only its immutable decision identity.
+protocol-16 delivery request contains only its immutable decision identity; a
+resolution request contains only exact immutable references, one fixed action,
+and an optional bounded note.
 
 Configured paths are metadata candidates until the local server canonicalizes
 them. Queue observation can read only the accepted queue-source subset after
 canonicalization; classification derives only bounded data-only metadata and
 does not expose, render, execute, or log contents in bulk. Pacium persists only
-application-owned decision answer/outcome/note content and bounded delivery
-intent/outcome evidence, never the queue source text. It does not persist
-provider tokens, passwords, full environments, classifications, terminal
-transcripts, or acknowledgements.
+application-owned decision answer/outcome/note content, bounded delivery
+intent/outcome evidence, and explicitly human-labelled lifecycle resolutions,
+never the queue source text. It does not persist provider tokens, passwords,
+full environments, classifications, terminal transcripts, or provider-native
+acknowledgements.
