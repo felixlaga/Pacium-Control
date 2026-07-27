@@ -8,23 +8,31 @@ files own their content, and provider runtimes own native events.
 
 ## Current server-owned state
 
-PC-040 introduces exactly one durable server-owned file:
+PC-040 and PC-047 introduce two narrowly scoped durable server-owned files:
 
 ```text
 $PACIUM_DATA_DIR/
-└── pacium.json
+├── pacium.json
+└── queue-state.json
 ```
 
-It contains the versioned, revisioned Pacium workspace definition: role or
+`pacium.json` contains the versioned, revisioned Pacium workspace definition: role or
 launch-preset bindings, repository references, worker slots, queue-source path
 metadata, future delivery metadata, and objective/plan path metadata.
 
-It does not contain:
+`queue-state.json` contains only Pacium-owned immutable local question answers
+and approval outcomes. Each bounded record carries exact source identity and
+hash provenance, a server-assigned local-operator label and timestamp, a UUID,
+and a recomputable SHA-256 decision hash. It contains no queue source text,
+delivery attempt, acknowledgement, executable instruction, provider event, or
+terminal bytes.
+
+Neither file contains:
 
 - live PTY/process state;
 - browser terminal tabs, splits, selection, or preferences;
 - terminal scrollback or input;
-- queue, objective, plan, or answer content;
+- queue-source, objective, or plan content;
 - verification executable definitions or results;
 - provider credentials, environments, events, or transcripts.
 
@@ -37,14 +45,14 @@ See the
 [Pacium workspace configuration contract](../execution/pacium-workspace-configuration.md)
 for the exact schema and lifecycle.
 
-## Current ephemeral queue state
+## Current queue observation state
 
 PC-044 adds no durable file. While the local server is running, one queue
 observer retains at most 64 KiB of complete stable UTF-8 text for each accepted
 queue source plus bounded source-health metadata. The text is discarded when a
 source degrades, leaves accepted configuration, or the server stops.
 
-Protocol 13 bulk observations send only source ID, process-local observation
+Protocol 14 bulk observations send only source ID, process-local observation
 revision, status, time, byte length, modification time, SHA-256 provenance,
 bounded error evidence, process-local candidate-first-seen time, and
 content-free whole-source classification metadata. Candidate IDs are
@@ -63,14 +71,35 @@ stable read. Filesystem watchers and debounce timers remain disposable runtime
 resources. Configured queue files remain the content authority and are never
 modified by observation, classification, or inspection.
 
+## Durable queue decisions
+
+The first valid local decision creates schema-version-1 `queue-state.json`;
+inspection of missing state creates nothing. The document is capped at 4 MiB
+and 4,096 records. Question answers and optional notes are UTF-8 byte-bounded,
+questions and approvals have distinct strict payloads, and one item identity
+can have only one immutable decision.
+
+Before appending, the server twice revalidates the exact accepted workspace,
+source, observation revision, content hash, item ID, and item type. An identical
+request replay returns the existing record without a write or revision change.
+A different decision for the same item is rejected without modifying the first.
+Browser input cannot select the actor, time, decision ID, hash, path, command,
+delivery target, or executable behavior.
+
+The complete document is schema-, uniqueness-, and hash-validated on every
+read. Missing state is open; corrupt, unsupported, unsafe, oversized, or full
+state disables mutation while terminals and read-only queue observation remain
+available. Decisions are recovered after browser reload and local-server
+restart, but PC-047 does not deliver them anywhere.
+
 ## File lifecycle
 
 - Missing data/config state is `unconfigured`; inspection creates nothing.
 - The default macOS data directory is
   `<canonical home>/Library/Application Support/Pacium Control`.
 - `PACIUM_DATA_DIR` can select another dedicated absolute directory.
-- The server creates the directory at mode `0700` and `pacium.json` at mode
-  `0600`.
+- The server creates the directory at mode `0700` and each owned JSON file at
+  mode `0600`.
 - Existing directory/file ownership, modes, type, and symlink status are
   checked before reads or replacement.
 - Complete content is schema-validated and server-reference/path-validated.
@@ -89,19 +118,18 @@ modified by observation, classification, or inspection.
 - Directory-sync failure after rename: inspect before retrying because the
   visible revision may already have changed.
 - Browser disconnect: durable state and PTYs are unchanged; reconnect rereads
-  config.
+  config and exact queue inspection rejoins a matching decision.
 - Local-server restart: config is reread; direct PTYs have ended, so explicit
   session bindings may be unresolved and must not be rebound by inference.
+  Queue decisions are reread and remain local, with no automatic delivery.
 
 ## Planned state, not implemented
 
 Later accepted slices may add narrowly scoped versioned files only when a real
-consumer requires them, for example queue classification/decision/delivery
-provenance or packaged-launcher preferences. The following are not current
-files:
+consumer requires them, for example queue delivery provenance or
+packaged-launcher preferences. The following are not current files:
 
 ```text
-queue-state.json
 activity/*.jsonl
 cache/
 session restoration metadata
