@@ -46,7 +46,8 @@ The secondary product is **Pacium mode**:
 - Versioned browser-local settings for system/dark/light themes, compact/comfortable density, controlled terminal font stacks, bounded font size/line height/scrollback, default launch preset, and future attention-notification level.
 - Named application and terminal landmarks, skip navigation, concise connection/selection/keyboard-owner status, persisted sidebar/inspector controls, narrow drawers, shared modal focus behavior, forced-colors support, and reduced-motion behavior.
 - Protocol-4 session classification evidence for fixed Shell, Codex CLI, and Claude Code CLI launches, including source, confidence, observation time, inspector presentation, and accessible session-row naming.
-- Contract, configuration, security, preset, classification, preference, panel, modal, terminal-option, repository, grouping, tab-state, action-model, command-search, semantic-rendering, fake-PTY, real-PTY, WebSocket reconnect, and Playwright accessibility tests.
+- A pure attention reducer with explicit source/confidence/recency precedence, stale handling, and honest process-only Unknown/Finished/Failed sidebar and inspector states.
+- Contract, configuration, security, preset, classification, attention, preference, panel, modal, terminal-option, repository, grouping, tab-state, action-model, command-search, semantic-rendering, fake-PTY, real-PTY, WebSocket reconnect, and Playwright accessibility tests.
 
 ## What is not present
 
@@ -68,7 +69,7 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 29 test files and 114 tests, plus web and local-server production builds passed.
+- `pnpm verify`: formatting, lint, type checking, 31 test files and 120 tests, plus web and local-server production builds passed.
 - `pnpm test:e2e`: four Chromium workflows passed for skip navigation, panel shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200% zoom, forced colors, and reduced motion.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
@@ -83,7 +84,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 690 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
+- The current web bundle is 694 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
 - Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
 ## Active decisions
@@ -112,4 +113,4 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Build the evidence-labelled attention reducer, unread policy, and Git inspection before Pacium mode. Complete the pinned Node.js 24 clean-install, CI, broader browser/security, manual accessibility, and sustained-output gates before release.
+Build unread/notification policy and Git inspection before Pacium mode. Complete the pinned Node.js 24 clean-install, CI, broader browser/security, manual accessibility, and sustained-output gates before release.
