@@ -371,6 +371,7 @@ function sessionSummary(overrides: Partial<SessionSummary>): SessionSummary {
       confidence: "confirmed",
       observedAt: "2026-07-27T08:00:00.000Z",
     },
+    providerObservation: null,
     repository: {
       status: "ready",
       root: "/work/pacium",
