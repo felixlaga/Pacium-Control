@@ -79,6 +79,7 @@ describe("repository Changes presentation", () => {
     expect(markup).toContain("Changes");
     expect(markup).toContain("History");
     expect(markup).toContain("Checks");
+    expect(markup).toContain("Activity");
   });
 
   it("moves predictably between inspector tabs from the keyboard", () => {
@@ -86,10 +87,11 @@ describe("repository Changes presentation", () => {
     expect(nextInspectorTab("changes", "ArrowLeft")).toBe("overview");
     expect(nextInspectorTab("changes", "ArrowRight")).toBe("history");
     expect(nextInspectorTab("history", "ArrowRight")).toBe("checks");
-    expect(nextInspectorTab("checks", "ArrowRight")).toBe("overview");
-    expect(nextInspectorTab("overview", "ArrowLeft")).toBe("checks");
+    expect(nextInspectorTab("checks", "ArrowRight")).toBe("activity");
+    expect(nextInspectorTab("activity", "ArrowRight")).toBe("overview");
+    expect(nextInspectorTab("overview", "ArrowLeft")).toBe("activity");
     expect(nextInspectorTab("changes", "Home")).toBe("overview");
-    expect(nextInspectorTab("overview", "End")).toBe("checks");
+    expect(nextInspectorTab("overview", "End")).toBe("activity");
     expect(nextInspectorTab("overview", "Enter")).toBeNull();
   });
 
