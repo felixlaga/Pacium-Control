@@ -92,6 +92,64 @@ export const PaciumWorkerSchema = z
   .strict();
 export type PaciumWorker = z.infer<typeof PaciumWorkerSchema>;
 
+export const PaciumRoleIdSchema = z.enum(["meta", "orchestrator"]);
+export type PaciumRoleId = z.infer<typeof PaciumRoleIdSchema>;
+
+const PaciumDeliveryBaseShape = {
+  id: PaciumIdentifierSchema,
+  label: PaciumLabelSchema,
+};
+
+export const PaciumAnswerFileDeliverySchema = z
+  .object({
+    ...PaciumDeliveryBaseShape,
+    type: z.literal("answer_file"),
+    path: PaciumAbsolutePathSchema,
+  })
+  .strict();
+
+export const PaciumRolePromptDeliverySchema = z
+  .object({
+    ...PaciumDeliveryBaseShape,
+    type: z.literal("role_prompt"),
+    role: PaciumRoleIdSchema,
+  })
+  .strict();
+
+export const PaciumDeliveryMethodSchema = z.discriminatedUnion("type", [
+  PaciumAnswerFileDeliverySchema,
+  PaciumRolePromptDeliverySchema,
+]);
+export type PaciumDeliveryMethod = z.infer<typeof PaciumDeliveryMethodSchema>;
+
+export const PaciumQueueSourceSchema = z
+  .object({
+    id: PaciumIdentifierSchema,
+    label: PaciumLabelSchema,
+    path: PaciumAbsolutePathSchema,
+    format: z.literal("plain_text"),
+    requestingRole: PaciumRoleIdSchema.or(z.literal("unknown")),
+    deliveryMethodId: PaciumIdentifierSchema.nullable(),
+  })
+  .strict();
+export type PaciumQueueSource = z.infer<typeof PaciumQueueSourceSchema>;
+
+export const PaciumContextSourceSchema = z
+  .object({
+    format: z.literal("plain_text"),
+    path: PaciumAbsolutePathSchema,
+  })
+  .strict();
+export type PaciumContextSource = z.infer<typeof PaciumContextSourceSchema>;
+
+export const PaciumContextSchema = z
+  .object({
+    objective: PaciumContextSourceSchema.nullable(),
+    plan: PaciumContextSourceSchema.nullable(),
+  })
+  .strict();
+export type PaciumContext = z.infer<typeof PaciumContextSchema>;
+
 function hasControlCharacter(value: string): boolean {
   return [...value].some((character) => {
     const codePoint = character.codePointAt(0);

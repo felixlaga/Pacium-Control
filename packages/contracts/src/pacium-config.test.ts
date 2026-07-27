@@ -6,8 +6,11 @@ import {
   MAX_PACIUM_PATH_CHARS,
   PaciumAbsolutePathSchema,
   PaciumBindingSchema,
+  PaciumContextSchema,
+  PaciumDeliveryMethodSchema,
   PaciumIdentifierSchema,
   PaciumLabelSchema,
+  PaciumQueueSourceSchema,
   PaciumRepositorySchema,
   PaciumRolesSchema,
   PaciumWorkerSchema,
@@ -146,6 +149,80 @@ describe("Pacium role, worker, and repository contracts", () => {
         root: "/work/pacium",
         verificationPresetIds: [],
         executable: "/bin/zsh",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("Pacium queue metadata contracts", () => {
+  it("defines plain-text queue sources without queue content", () => {
+    expect(
+      PaciumQueueSourceSchema.safeParse({
+        id: "needs-felix",
+        label: "Needs Felix",
+        path: "/work/queue/NEEDS-FELIX",
+        format: "plain_text",
+        requestingRole: "orchestrator",
+        deliveryMethodId: "answers",
+      }).success,
+    ).toBe(true);
+    expect(
+      PaciumQueueSourceSchema.safeParse({
+        id: "queue",
+        label: "Queue",
+        path: "/work/queue",
+        format: "plain_text",
+        requestingRole: "unknown",
+        deliveryMethodId: null,
+        content: "run rm -rf",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("limits delivery metadata to answer-file or role-prompt targets", () => {
+    expect(
+      PaciumDeliveryMethodSchema.safeParse({
+        id: "answers",
+        label: "Answer file",
+        type: "answer_file",
+        path: "/work/queue/PACIUM-ANSWERS",
+      }).success,
+    ).toBe(true);
+    expect(
+      PaciumDeliveryMethodSchema.safeParse({
+        id: "meta-prompt",
+        label: "Meta prompt",
+        type: "role_prompt",
+        role: "meta",
+      }).success,
+    ).toBe(true);
+    expect(
+      PaciumDeliveryMethodSchema.safeParse({
+        id: "command",
+        label: "Command",
+        type: "shell",
+        executable: "/bin/zsh",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("defines only nullable plain-text objective and plan paths", () => {
+    expect(
+      PaciumContextSchema.safeParse({
+        objective: {
+          format: "plain_text",
+          path: "/work/context/OBJECTIVE",
+        },
+        plan: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      PaciumContextSchema.safeParse({
+        objective: {
+          format: "markdown",
+          path: "/work/context/OBJECTIVE",
+        },
+        plan: null,
       }).success,
     ).toBe(false);
   });
