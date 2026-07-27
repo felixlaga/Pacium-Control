@@ -210,6 +210,7 @@ export class VerificationRunner {
 
   public shutdown(): void {
     for (const active of this.activeByOwner.values()) {
+      active.finishing = true;
       clearTimeout(active.timeout);
       if (active.forceTimer !== undefined) {
         clearTimeout(active.forceTimer);
