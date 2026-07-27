@@ -47,7 +47,7 @@ describe("local server configuration", () => {
     });
   });
 
-  it("adds only a valid Serve origin to the browser origin set", () => {
+  it("keeps the Serve origin separate from local browser origins", () => {
     const config = loadServerConfig({
       HOME: process.env.HOME,
       SHELL: "/bin/zsh",
@@ -56,7 +56,7 @@ describe("local server configuration", () => {
     });
 
     expect(config.host).toBe("127.0.0.1");
-    expect(config.allowedOrigins).toContain(
+    expect(config.allowedOrigins).not.toContain(
       "https://pacium-host.example-tailnet.ts.net",
     );
     expect(config.tailscaleServe?.operatorLogins).toEqual(

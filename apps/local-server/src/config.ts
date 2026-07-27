@@ -81,15 +81,14 @@ export function loadServerConfig(
     .filter((origin) => origin.length > 0);
 
   const tailscaleServe = loadTailscaleServeConfig(environment);
-  const allowedOrigins = new Set([
-    ...(configuredOrigins ?? [
+  const allowedOrigins = new Set(
+    configuredOrigins ?? [
       "http://127.0.0.1:4173",
       "http://localhost:4173",
       `http://127.0.0.1:${port}`,
       `http://localhost:${port}`,
-    ]),
-    ...(tailscaleServe === null ? [] : [tailscaleServe.origin]),
-  ]);
+    ],
+  );
 
   const extraEnvironmentKeys =
     environment.PACIUM_ENV_ALLOWLIST?.split(",")
