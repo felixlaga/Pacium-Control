@@ -3,12 +3,18 @@ import { z } from "zod";
 import { PaciumIdentifierSchema } from "./pacium-config.js";
 import { QUEUE_ITEM_BOUNDARY_VERSION } from "./queue-classification.js";
 import { QueueItemInspectionIdentitySchema } from "./queue-item-inspection.js";
+import {
+  MAX_QUEUE_DECISIONS,
+  MAX_QUEUE_DECISION_NOTE_BYTES,
+} from "./queue-limits.js";
 
 export const QUEUE_STATE_SCHEMA_VERSION_V1 = 1 as const;
 export const MAX_QUEUE_STATE_BYTES = 4 * 1024 * 1024;
-export const MAX_QUEUE_DECISIONS = 4096;
 export const MAX_QUEUE_ANSWER_BYTES = 8 * 1024;
-export const MAX_QUEUE_DECISION_NOTE_BYTES = 2 * 1024;
+export {
+  MAX_QUEUE_DECISIONS,
+  MAX_QUEUE_DECISION_NOTE_BYTES,
+} from "./queue-limits.js";
 
 const QueueHashSchema = z.string().regex(/^[0-9a-f]{64}$/);
 

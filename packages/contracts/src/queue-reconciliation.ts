@@ -7,7 +7,7 @@ import {
 import {
   MAX_QUEUE_DECISIONS,
   MAX_QUEUE_DECISION_NOTE_BYTES,
-} from "./queue-decision.js";
+} from "./queue-limits.js";
 
 export const MAX_QUEUE_RESOLUTIONS = MAX_QUEUE_DECISIONS * 2;
 export const MAX_QUEUE_ITEM_PRIOR_DECISIONS = 8;
@@ -250,7 +250,7 @@ export const QueueSourceConflictSchema = z
   .object({
     conflictId: QueueHashSchema,
     kind: QueueSourceConflictKindSchema,
-    decisionCount: z.number().int().positive().max(MAX_QUEUE_DECISIONS),
+    decisionCount: z.number().int().nonnegative().max(MAX_QUEUE_DECISIONS),
     relatedSourceIds: z
       .array(PaciumIdentifierSchema)
       .max(MAX_PACIUM_QUEUE_SOURCES),
@@ -264,6 +264,12 @@ export const QueueSourceConflictSchema = z
         code: "custom",
         message:
           "Only duplicate-current-item conflicts name related accepted sources.",
+      });
+    }
+    if (!duplicate && conflict.decisionCount === 0) {
+      context.addIssue({
+        code: "custom",
+        message: "Decision-derived source conflicts require a prior decision.",
       });
     }
   });
