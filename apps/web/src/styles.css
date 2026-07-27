@@ -894,6 +894,54 @@ kbd {
   font-weight: 500;
 }
 
+.dialog-field {
+  margin-top: 13px;
+}
+
+.dialog-field > label {
+  margin: 0 0 7px;
+}
+
+.path-input-row {
+  display: flex;
+  gap: 7px;
+}
+
+.path-input-row input {
+  min-width: 0;
+  flex: 1;
+}
+
+.browse-directory-button {
+  display: flex;
+  height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid #5d568e;
+  border-radius: 6px;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 550;
+}
+
+.browse-directory-button:hover {
+  color: #fff;
+  border-color: var(--accent);
+  background: #7566dc2b;
+}
+
+.field-helper {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-faint);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
 .preset-fieldset {
   min-width: 0;
   margin: 0 0 14px;
@@ -1039,6 +1087,455 @@ kbd {
   padding-top: 2px;
 }
 
+.directory-picker-backdrop {
+  z-index: 30;
+  padding: 18px;
+}
+
+.directory-picker-card {
+  display: flex;
+  width: min(860px, calc(100vw - 36px));
+  height: min(640px, calc(100vh - 36px));
+  min-height: 480px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  flex-direction: column;
+  background: #17181b;
+  box-shadow: 0 34px 110px #000000a3;
+}
+
+.directory-picker-header {
+  display: flex;
+  min-height: 76px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  background: #1b1c20;
+}
+
+.directory-picker-header h2 {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 580;
+  letter-spacing: -0.02em;
+}
+
+.directory-picker-header p {
+  margin: 5px 0 0;
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.directory-picker-header > button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-faint);
+  background: transparent;
+  cursor: pointer;
+  font-size: 17px;
+}
+
+.directory-picker-header > button:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.directory-picker-body {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 190px minmax(0, 1fr);
+}
+
+.directory-locations {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 10px;
+  border-right: 1px solid var(--border);
+  background: #141518;
+}
+
+.directory-section-label {
+  display: block;
+  margin: 4px 8px 7px;
+  color: var(--text-faint);
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.directory-section-label.recent-label {
+  margin-top: 18px;
+}
+
+.directory-locations button {
+  display: flex;
+  width: 100%;
+  height: 32px;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text-faint);
+  background: transparent;
+  cursor: pointer;
+  font-size: 10px;
+  text-align: left;
+}
+
+.directory-locations button > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directory-locations button:hover {
+  color: var(--text-muted);
+  background: #ffffff08;
+}
+
+.directory-locations button.is-active {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.directory-browser {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.directory-toolbar {
+  display: flex;
+  min-width: 0;
+  height: 42px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.directory-toolbar > button {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.directory-toolbar > button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.breadcrumbs {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.breadcrumbs > span {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  color: var(--text-faint);
+}
+
+.breadcrumbs button {
+  max-width: 150px;
+  padding: 4px 6px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-faint);
+  background: transparent;
+  cursor: pointer;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breadcrumbs button:hover,
+.breadcrumbs button[aria-current="location"] {
+  color: var(--text);
+  background: #ffffff08;
+}
+
+.directory-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.directory-search {
+  display: flex;
+  height: 34px;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-faint);
+  background: #101113;
+}
+
+.directory-search:focus-within {
+  border-color: #7566dc99;
+  box-shadow: 0 0 0 2px #7566dc1c;
+}
+
+.directory-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  background: transparent;
+  font-size: 10px;
+}
+
+.hidden-directory-toggle {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.hidden-directory-toggle input {
+  accent-color: var(--accent);
+}
+
+.directory-results {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 12px 10px;
+}
+
+.directory-row {
+  display: flex;
+  width: 100%;
+  min-height: 47px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 9px;
+  border: 0;
+  border-bottom: 1px solid #24262b;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.directory-row:hover,
+.directory-row:focus-visible {
+  border-radius: 6px;
+  color: var(--text);
+  background: #ffffff08;
+  outline: none;
+}
+
+.directory-icon {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-faint);
+  background: var(--panel);
+  font-size: 11px;
+}
+
+.directory-icon.is-repository {
+  color: var(--accent-strong);
+  border-color: #7566dc66;
+  background: var(--accent-soft);
+}
+
+.directory-row-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.directory-row-copy strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: 10px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directory-row-copy small {
+  color: var(--text-faint);
+  font-size: 8px;
+}
+
+.directory-hidden-label {
+  color: var(--text-faint);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.directory-chevron {
+  color: var(--text-faint);
+  font-size: 15px;
+}
+
+.directory-state {
+  display: flex;
+  height: 100%;
+  min-height: 220px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.directory-state > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--accent-strong);
+}
+
+.directory-state strong {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.directory-state p {
+  max-width: 350px;
+  margin: 6px 0 0;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.directory-state button {
+  margin-top: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--panel);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.directory-error > span {
+  color: var(--red);
+  border-color: #e46f7855;
+  background: #e46f780d;
+}
+
+.directory-spinner {
+  border-top-color: var(--accent) !important;
+  border-radius: 50% !important;
+  animation: directory-spin 800ms linear infinite;
+}
+
+.directory-truncated {
+  margin: 0;
+  padding: 7px 12px;
+  border-top: 1px solid #d7a64a26;
+  color: var(--amber);
+  background: #d7a64a08;
+  font-size: 8px;
+}
+
+.directory-picker-footer {
+  display: flex;
+  min-height: 66px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: #1b1c20;
+}
+
+.directory-picker-footer > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.directory-picker-footer span {
+  color: var(--text-faint);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.directory-picker-footer code {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directory-picker-footer > div:last-child {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 7px;
+}
+
+.directory-picker-footer button {
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: var(--panel);
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.directory-picker-footer button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+@keyframes directory-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 218px minmax(360px, 1fr);
@@ -1098,6 +1595,60 @@ kbd {
   .header-actions .connection-badge,
   .header-actions button:not(.danger-ghost) {
     display: none;
+  }
+
+  .directory-picker-backdrop {
+    padding: 8px;
+  }
+
+  .directory-picker-card {
+    width: calc(100vw - 16px);
+    height: calc(100vh - 16px);
+    min-height: 0;
+  }
+
+  .directory-picker-header {
+    min-height: 68px;
+    padding: 13px;
+  }
+
+  .directory-picker-header p {
+    display: none;
+  }
+
+  .directory-picker-body {
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .directory-locations {
+    display: flex;
+    gap: 5px;
+    overflow-x: auto;
+    padding: 7px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .directory-section-label {
+    display: none;
+  }
+
+  .directory-locations button {
+    width: auto;
+    max-width: 150px;
+    flex: 0 0 auto;
+    padding-right: 10px;
+  }
+
+  .directory-picker-footer {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .directory-picker-footer > div:last-child {
+    justify-content: flex-end;
   }
 }
 

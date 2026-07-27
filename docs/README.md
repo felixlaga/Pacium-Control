@@ -57,7 +57,7 @@ This directory specifies the local-first Pacium Control product.
 
 ## Decisions
 
-See the [ADR index](decisions/README.md). ADR-0013 through ADR-0015 record the local-first reset and supersede the old mandatory-tmux, tailnet/broker, and generalized-state architecture.
+See the [ADR index](decisions/README.md). ADR-0013 through ADR-0015 record the local-first reset. ADR-0016 adds a narrow Tailscale Serve path without restoring the old broker, membership, or multi-host architecture.
 
 ## Templates
 
@@ -65,4 +65,4 @@ See [templates](templates/README.md).
 
 ## Retained historical and deferred documents
 
-Some research, operations, multi-host, and generalized workflow documents remain for historical context. They are not implementation authority when they conflict with [STATUS.md](../STATUS.md), the root architecture, or accepted ADR-0013 through ADR-0015. Remote access, multi-user operation, multi-host coordination, and the old control-plane deployment require future product approval and new ADRs.
+Some research, operations, multi-host, and generalized workflow documents remain for historical context. They are not implementation authority when they conflict with [STATUS.md](../STATUS.md), the root architecture, or accepted ADR-0013 through ADR-0016. Multi-user operation, multi-host coordination, public ingress, and the old control-plane deployment require future product approval and new ADRs.

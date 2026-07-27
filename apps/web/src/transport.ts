@@ -1,8 +1,10 @@
 import {
+  DirectoryListingSchema,
   PROTOCOL_VERSION,
   ServerMessageSchema,
   decodeTerminalDataFrame,
   type ClientMessage,
+  type DirectoryListing,
   type LaunchPresetId,
   type ServerMessage,
   type TerminalDataFrame,
@@ -25,6 +27,7 @@ interface BootstrapResponse {
 
 export class PaciumTransport {
   private socket: WebSocket | null = null;
+  private accessToken: string | null = null;
   private stopped = false;
   private retryAttempt = 0;
   private retryTimer: number | undefined;
@@ -44,6 +47,7 @@ export class PaciumTransport {
     }
     this.socket?.close(1000, "Pacium browser closed");
     this.socket = null;
+    this.accessToken = null;
     this.emit({ type: "connection", state: "disconnected" });
   }
 
@@ -118,6 +122,18 @@ export class PaciumTransport {
     });
   }
 
+  public async listDirectories(path?: string): Promise<DirectoryListing> {
+    if (this.accessToken === null) {
+      throw new Error(
+        "Pacium is still connecting. Try browsing host folders again.",
+      );
+    }
+    return fetchDirectoryListing({
+      accessToken: this.accessToken,
+      ...(path === undefined ? {} : { path }),
+    });
+  }
+
   private async connect(): Promise<void> {
     this.emit({
       type: "connection",
@@ -136,6 +152,7 @@ export class PaciumTransport {
       if (bootstrap.protocolVersion !== PROTOCOL_VERSION) {
         throw new Error("Browser and local server protocol versions differ");
       }
+      this.accessToken = bootstrap.accessToken;
 
       const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
       const url = `${scheme}//${window.location.host}${bootstrap.webSocketPath}`;
@@ -254,4 +271,43 @@ export class PaciumTransport {
       void this.connect();
     }, delay);
   }
+}
+
+export async function fetchDirectoryListing(input: {
+  accessToken: string;
+  path?: string;
+  fetcher?: typeof fetch;
+}): Promise<DirectoryListing> {
+  const fetcher = input.fetcher ?? fetch;
+  const query =
+    input.path === undefined ? "" : `?path=${encodeURIComponent(input.path)}`;
+  const response = await fetcher(`/api/directories${query}`, {
+    credentials: "same-origin",
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${input.accessToken}`,
+    },
+  });
+  if (!response.ok) {
+    let message = `Host folder browsing failed with HTTP ${response.status}`;
+    try {
+      const body = (await response.json()) as unknown;
+      if (
+        typeof body === "object" &&
+        body !== null &&
+        "error" in body &&
+        typeof body.error === "string"
+      ) {
+        message = body.error;
+      }
+    } catch {
+      // Keep the bounded HTTP status message when no JSON error exists.
+    }
+    throw new Error(message);
+  }
+  const parsed = DirectoryListingSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    throw new Error("The Pacium host returned an invalid directory listing.");
+  }
+  return parsed.data;
 }

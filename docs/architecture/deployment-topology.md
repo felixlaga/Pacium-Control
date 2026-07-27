@@ -22,6 +22,20 @@ The packaged form may be:
 
 The packaging decision does not change the localhost server or PTY architecture.
 
+## Optional remote operation
+
+```text
+Tailnet browser
+      ↕ HTTPS / WSS
+Tailscale Serve
+      ↕ loopback proxy
+Pacium on 127.0.0.1
+      ↕
+PTYs / Meta / Orchestrator / queue files on the same host
+```
+
+Remote mode requires the exact tailnet Origin, verified Serve user identity, an explicit operator allowlist, and the ephemeral Pacium token. Tailscale Funnel is never used.
+
 ## Startup requirements
 
 - supported runtime or bundled runtime;
@@ -36,7 +50,7 @@ The packaging decision does not change the localhost server or PTY architecture.
 
 - public network binding;
 - server/VPS hosting;
-- Tailscale exposure;
+- direct tailnet binding or Tailscale Funnel;
 - multiple users;
 - containerized remote shells;
 - shared state directory;

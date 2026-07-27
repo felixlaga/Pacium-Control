@@ -1,5 +1,6 @@
 import { existsSync, realpathSync } from "node:fs";
 import { randomBytes, randomUUID } from "node:crypto";
+import { homedir } from "node:os";
 
 import { z } from "zod";
 
@@ -18,6 +19,7 @@ export interface ServerConfig {
   accessToken: string;
   serverId: string;
   defaultCwd: string;
+  homeDirectory: string;
   shell: string;
   environmentKeys: readonly string[];
   launchPresets: readonly LaunchPresetDefinition[];
@@ -44,6 +46,7 @@ export function loadServerConfig(
   const defaultCwd = realpathSync(
     environment.PACIUM_DEFAULT_CWD ?? process.cwd(),
   );
+  const homeDirectory = realpathSync(environment.HOME ?? homedir());
   const shell = environment.SHELL ?? "/bin/zsh";
 
   if (!shell.startsWith("/") || !existsSync(shell)) {
@@ -77,6 +80,7 @@ export function loadServerConfig(
     accessToken: randomBytes(32).toString("base64url"),
     serverId: randomUUID(),
     defaultCwd,
+    homeDirectory,
     shell,
     environmentKeys: [
       ...new Set([...DEFAULT_ENVIRONMENT_KEYS, ...extraEnvironmentKeys]),

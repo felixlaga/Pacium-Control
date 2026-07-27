@@ -38,7 +38,14 @@ Untrusted inputs still include:
 - Do not put reusable tokens in logs, terminal output, or durable shared URLs.
 - Set a restrictive Content Security Policy and self-host all terminal-route assets.
 
-Remote access is unsupported until a new trust-boundary design is accepted.
+Optional remote access is supported only through the trust boundary in ADR-0016:
+
+- Pacium remains bound to loopback.
+- Tailscale Serve proxies tailnet-only HTTPS and WebSockets.
+- Tailscale Funnel is prohibited.
+- Remote requests require an exact configured Origin, verified Serve identity headers, an explicit login allowlist, and the ephemeral Pacium token.
+- Network grants and application identity checks are both required.
+- A Tailscale IP is never treated as permanent user identity.
 
 ## PTY and process safety
 
@@ -108,4 +115,4 @@ Prefer bounded in-memory scrollback. If diagnostic export is added, it must be e
 
 ## Future expansion
 
-Remote access, team use, shared machines, or multi-host operation would materially change the threat model. Those capabilities require a new ADR, authentication and authorization design, privilege separation review, and migration plan.
+The accepted Tailscale Serve mode remains single-operator and same-host. Team use, shared input ownership, another reverse proxy, public exposure, or multi-host operation would materially change the threat model and require a new ADR, authentication and authorization design, privilege review, and migration plan.

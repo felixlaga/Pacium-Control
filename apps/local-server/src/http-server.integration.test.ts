@@ -2,7 +2,11 @@ import { once } from "node:events";
 import type { AddressInfo } from "node:net";
 
 import { FakePtyFactory } from "@pacium/test-utils";
-import { ServerMessageSchema, type ServerMessage } from "@pacium/contracts";
+import {
+  DirectoryListingSchema,
+  ServerMessageSchema,
+  type ServerMessage,
+} from "@pacium/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 import { WebSocket, type RawData } from "ws";
 
@@ -134,6 +138,50 @@ describe("localhost HTTP and WebSocket boundary", () => {
     ];
     expect(response.statusCode).toBe(403);
   });
+
+  it("lists host directories only with the local token and allowed Origin", async () => {
+    const setup = await startTestServer(new FakePtyFactory());
+    application = setup.application;
+    manager = setup.manager;
+    const httpUrl = setup.url.replace("ws://", "http://");
+    const allowedOrigin = [...setup.config.allowedOrigins][0] ?? "";
+
+    const allowed = await fetch(
+      `${httpUrl}/api/directories?path=${encodeURIComponent(process.cwd())}`,
+      {
+        headers: {
+          authorization: `Bearer ${setup.config.accessToken}`,
+          origin: allowedOrigin,
+        },
+      },
+    );
+    expect(allowed.status).toBe(200);
+    const listing = DirectoryListingSchema.parse(await allowed.json());
+    expect(listing.currentPath).toBe(process.cwd());
+    expect(listing.entries.some(({ name }) => name === "apps")).toBe(true);
+
+    const deniedToken = await fetch(
+      `${httpUrl}/api/directories?path=${encodeURIComponent(process.cwd())}`,
+      {
+        headers: {
+          authorization: "Bearer wrong-token",
+          origin: allowedOrigin,
+        },
+      },
+    );
+    expect(deniedToken.status).toBe(403);
+
+    const deniedOrigin = await fetch(
+      `${httpUrl}/api/directories?path=${encodeURIComponent("/missing")}`,
+      {
+        headers: {
+          authorization: `Bearer ${setup.config.accessToken}`,
+          origin: "https://hostile.example",
+        },
+      },
+    );
+    expect(deniedOrigin.status).toBe(403);
+  });
 });
 
 async function startTestServer(factory: FakePtyFactory): Promise<{
@@ -149,6 +197,7 @@ async function startTestServer(factory: FakePtyFactory): Promise<{
     accessToken: "test-access-token",
     serverId: "d5805287-d2b0-41f4-b80f-56c77d892cbc",
     defaultCwd: process.cwd(),
+    homeDirectory: process.env.HOME ?? process.cwd(),
     shell: "/bin/zsh",
     environmentKeys: [],
     launchPresets: [

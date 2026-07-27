@@ -34,7 +34,7 @@ pnpm start
 
 Then open `http://127.0.0.1:4174`.
 
-The current slice can launch available Shell, Codex, and Claude Code presets; group sessions by repository; manage a browser-local tab working set; and interrupt, resize, reconnect to, or close direct-PTY sessions. Tabs can be pinned, reordered, and closed without stopping the underlying terminal. Sessions survive browser refresh but not local-server restart.
+The current slice can launch available Shell, Codex, and Claude Code presets; browse host directories through a compact repository-aware picker; group sessions by repository; manage a browser-local tab working set; and interrupt, resize, reconnect to, or close direct-PTY sessions. Tabs can be pinned, reordered, and closed without stopping the underlying terminal. Sessions survive browser refresh but not local-server restart.
 
 Current keyboard shortcuts:
 
@@ -119,7 +119,7 @@ Node.js local server
       shells / Claude Code / Codex
 ```
 
-The initial product is one local process. There is no separate broker, application database, Tailscale dependency, membership model, or multi-host protocol.
+The core product is one loopback-bound local process. Tailscale is optional: remote operation uses Tailscale Serve to proxy tailnet-only HTTPS to Pacium on the same host as the managed sessions. There is no separate broker, application database, membership model, or multi-host protocol.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) and the [accepted ADRs](docs/decisions/README.md).
 
@@ -144,7 +144,7 @@ The canonical execution sequence is [ROADMAP.md](ROADMAP.md). The first implemen
 - Do not introduce a database.
 - Do not claim semantic agent state when only process or terminal activity was observed.
 - Keep questions and approvals separate.
-- Keep remote access, team roles, multi-host operation, and enterprise workflow out of the initial build.
+- Keep public access, team roles, multi-host aggregation, and enterprise workflow out of the initial build.
 
 ## Documentation
 

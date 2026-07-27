@@ -2,6 +2,30 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.6.0 — host directory picker and tailnet contract — 2026-07-27
+
+### Added
+
+- A token-protected, read-only `GET /api/directories` endpoint with Host, Origin, and bearer-token checks before filesystem access.
+- Canonical host-directory resolution with deterministic sorting, bounded results, hidden-folder metadata, and repository markers.
+- A compact host working-directory picker with breadcrumbs, Home/default/recent locations, filtering, hidden-folder control, error recovery, and typed-path fallback.
+- Versioned, bounded browser-local recent-directory state.
+- ADR-0016 defining optional Tailscale Serve as the sole supported remote ingress while Pacium remains loopback-bound.
+- A scoped PC-029 issue and implementation plan.
+
+### Verified
+
+- Formatting, lint, type checking, 45 automated tests, and both production bundles pass.
+- Resolver, schema, protected HTTP boundary, browser transport, and picker-state behavior have deterministic tests.
+- The development UI and direct `/api/health` endpoint returned HTTP 200.
+
+### Known limitations
+
+- Rendered picker interaction and accessibility validation remain pending because no browser backend was available.
+- Tailscale Serve setup, identity enforcement, revocation, WebSocket, and public-reachability tests are still PC-077 work; ADR-0016 is a contract, not implementation evidence.
+- The current machine ran verification on Node.js 26.4.0; the pinned Node.js 24.18.x runtime remains to be verified.
+- The web bundle is 635 kB before gzip and still emits the tracked chunk-size warning.
+
 ## 0.5.0 — terminal tab workspace — 2026-07-27
 
 ### Added

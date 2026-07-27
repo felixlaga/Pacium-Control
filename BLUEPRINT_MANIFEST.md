@@ -20,7 +20,7 @@
 
 ## Superseded scope
 
-The original mandatory-tmux, tailnet-hosted, separate-broker, multi-user control-plane, generalized state engine, and multi-host roadmap is superseded by ADR-0013 through ADR-0015.
+The original mandatory-tmux, tailnet-hosted, separate-broker, multi-user control-plane, generalized state engine, and multi-host roadmap is superseded by ADR-0013 through ADR-0015. ADR-0016 restores only optional Tailscale Serve ingress to the loopback-bound single-operator application.
 
 Retained historical documents are not implementation authority when they conflict with:
 
@@ -49,5 +49,5 @@ Before handoff, verify:
 - relative Markdown links;
 - one top-level heading per Markdown file;
 - no stale milestone links;
-- no active canonical statement that tmux, Tailscale, broker, remote access, or generalized state are initial requirements;
+- no active canonical statement that tmux, a broker, public ingress, multi-user access, multi-host control, or generalized state are initial requirements;
 - no application source, dependencies, local state, terminal captures, credentials, or generated build output.

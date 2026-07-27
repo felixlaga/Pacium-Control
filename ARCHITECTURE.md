@@ -165,7 +165,9 @@ Writes are validated and atomic. Caches are disposable. Terminal history is boun
 - Repository paths are canonicalized against configured roots.
 - The process runs with the invoking user’s privileges; no privilege escalation is introduced.
 
-Remote access, multi-user authorization, and a separate privilege broker require a future ADR.
+Optional remote access follows ADR-0016: Tailscale Serve terminates tailnet-only HTTPS and proxies to this same loopback process. Remote bootstrap requires an exact HTTPS Origin, verified Tailscale user identity, an explicit operator allowlist, and the existing ephemeral token.
+
+Pacium remains on the same host as the PTYs and files it controls. Multi-user roles, another ingress mechanism, cross-host aggregation, or a separate privilege broker require a future ADR.
 
 ## Failure behavior
 

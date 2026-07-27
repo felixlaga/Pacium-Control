@@ -13,6 +13,10 @@ import { PROTOCOL_VERSION } from "@pacium/contracts";
 
 import type { ServerConfig } from "./config.js";
 import {
+  browseHostDirectories,
+  DirectoryBrowserError,
+} from "./directory-browser.js";
+import {
   SECURITY_HEADERS,
   canReadBootstrap,
   isAllowedOrigin,
@@ -90,11 +94,12 @@ async function routeRequest(
     return;
   }
 
-  const pathname = parsePathname(request);
-  if (pathname === undefined) {
+  const requestUrl = parseRequestUrl(request);
+  if (requestUrl === undefined) {
     sendJson(response, 400, { error: "Invalid request URL" });
     return;
   }
+  const { pathname } = requestUrl;
 
   if (pathname === "/api/health") {
     sendJson(response, 200, { status: "ok" }, request.method === "HEAD");
@@ -116,6 +121,34 @@ async function routeRequest(
       },
       request.method === "HEAD",
     );
+    return;
+  }
+
+  if (pathname === "/api/directories") {
+    if (!canReadProtectedApi(request, config)) {
+      sendJson(response, 403, { error: "Forbidden" });
+      return;
+    }
+    try {
+      const requestedPath = requestUrl.searchParams.get("path");
+      const listing = await browseHostDirectories({
+        defaultPath: config.defaultCwd,
+        homePath: config.homeDirectory,
+        ...(requestedPath === null ? {} : { requestedPath }),
+      });
+      sendJson(response, 200, listing, request.method === "HEAD");
+    } catch (error) {
+      if (error instanceof DirectoryBrowserError) {
+        sendJson(response, 400, {
+          code: error.code,
+          error: error.message,
+        });
+      } else {
+        sendJson(response, 500, {
+          error: "Pacium could not inspect that host directory.",
+        });
+      }
+    }
     return;
   }
 
@@ -186,11 +219,45 @@ async function serveWebAsset(
 }
 
 function parsePathname(request: IncomingMessage): string | undefined {
+  return parseRequestUrl(request)?.pathname;
+}
+
+function parseRequestUrl(request: IncomingMessage): URL | undefined {
   try {
-    return new URL(request.url ?? "/", "http://localhost").pathname;
+    return new URL(request.url ?? "/", "http://localhost");
   } catch {
     return undefined;
   }
+}
+
+function canReadProtectedApi(
+  request: IncomingMessage,
+  config: ServerConfig,
+): boolean {
+  if (!isLoopbackHostHeader(request.headers.host)) {
+    return false;
+  }
+  const origin = request.headers.origin;
+  if (origin !== undefined && !isAllowedOrigin(origin, config.allowedOrigins)) {
+    return false;
+  }
+  const fetchSite = request.headers["sec-fetch-site"];
+  if (
+    origin === undefined &&
+    fetchSite !== undefined &&
+    fetchSite !== "same-origin"
+  ) {
+    return false;
+  }
+  return isValidAccessToken(
+    readBearerToken(request.headers.authorization),
+    config.accessToken,
+  );
+}
+
+function readBearerToken(value: string | undefined): string | undefined {
+  const prefix = "Bearer ";
+  return value?.startsWith(prefix) ? value.slice(prefix.length) : undefined;
 }
 
 function hasProtocol(request: IncomingMessage, protocol: string): boolean {
