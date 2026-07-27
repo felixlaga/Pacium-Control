@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `73c01de3c34d133fdd27e2d0db7ca10f4cfe4f8a`
 - Target milestone: Milestone 1
-- Status: In progress
+- Status: Implemented; rendered browser validation pending
 
 ## Objective
 
@@ -82,3 +82,14 @@ The browser derives deterministic action availability from the session state. Du
 - Full format, lint, type, test, and build gate.
 - Runtime health smoke.
 - Rendered interaction evidence when a browser backend is available.
+
+## Result
+
+- Protocol version 3 adds strict `session.rename` and `session.revealRepository` commands.
+- The server owns rename state and resolves reveal targets only from canonical repository metadata.
+- The host adapter launches a fixed platform executable and argument array without a shell.
+- One shared browser action model and menu now serves the header, pane headers, sidebar rows, and tabs.
+- Duplicate and ended-session relaunch create new PTYs without mutating the source session.
+- `pnpm verify` passed on 2026-07-27 with 18 test files and 70 tests.
+- Both loopback development services passed direct HTTP smoke checks.
+- Rendered pointer, keyboard, dialog-focus, and accessibility validation remains open because no browser backend was available.
