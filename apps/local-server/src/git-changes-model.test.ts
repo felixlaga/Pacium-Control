@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  aggregateChangedFiles,
+  LARGE_CHANGED_FILE_BYTES,
   MAX_GIT_CHANGES_OUTPUT_BYTES,
+  parseNumstat,
   parsePorcelainV2,
 } from "./git-changes-model.js";
 
@@ -97,6 +100,110 @@ describe("Git porcelain-v2 status parsing", () => {
     expect(() => parsePorcelainV2("x unknown\0")).toThrow("unsupported");
     expect(() =>
       parsePorcelainV2("x".repeat(MAX_GIT_CHANGES_OUTPUT_BYTES + 1)),
+    ).toThrow("exceeded");
+  });
+});
+
+describe("Git numstat and changed-file aggregation", () => {
+  it("parses numeric and binary records with unusual paths", () => {
+    expect(
+      parseNumstat("12\t3\ttext file.ts\0-\t-\tbinary\tfile.bin\0"),
+    ).toEqual([
+      {
+        path: "text file.ts",
+        additions: 12,
+        deletions: 3,
+        binary: false,
+      },
+      {
+        path: "binary\tfile.bin",
+        additions: null,
+        deletions: null,
+        binary: true,
+      },
+    ]);
+  });
+
+  it("combines old and new no-renames stats for a renamed file", () => {
+    const hash = "a".repeat(40);
+    const statuses = parsePorcelainV2(
+      `2 R. N... 100644 100644 100644 ${hash} ${hash} R100 new.ts\0old.ts\0`,
+    );
+    const result = aggregateChangedFiles(
+      statuses,
+      parseNumstat(["20\t0\tnew.ts", "0\t10\told.ts", ""].join("\0")),
+      new Map([["new.ts", 2_000]]),
+    );
+    expect(result.files[0]).toMatchObject({
+      path: "new.ts",
+      previousPath: "old.ts",
+      kind: "renamed",
+      additions: 20,
+      deletions: 10,
+      sizeBytes: 2_000,
+    });
+  });
+
+  it("orders oversight states and labels unavailable, binary, and large facts", () => {
+    const hash = "a".repeat(40);
+    const statuses = parsePorcelainV2(
+      [
+        "? untracked.txt\0",
+        ordinary(".M", "unstaged.ts"),
+        ordinary("M.", "staged.ts"),
+        ordinary("MM", "mixed.ts"),
+        `u UU N... 100644 100644 100644 100644 ${hash} ${hash} ${hash} conflict.ts\0`,
+        ordinary(".M", "large.bin"),
+      ].join(""),
+    );
+    const result = aggregateChangedFiles(
+      statuses,
+      parseNumstat(
+        [
+          "1\t1\tunstaged.ts\0",
+          "2\t0\tstaged.ts\0",
+          "3\t2\tmixed.ts\0",
+          "1\t1\tconflict.ts\0",
+          "-\t-\tlarge.bin\0",
+        ].join(""),
+      ),
+      new Map([["large.bin", LARGE_CHANGED_FILE_BYTES + 1]]),
+    );
+    expect(result.files.map(({ path }) => path)).toEqual([
+      "conflict.ts",
+      "mixed.ts",
+      "staged.ts",
+      "large.bin",
+      "unstaged.ts",
+      "untracked.txt",
+    ]);
+    expect(result.files.find(({ path }) => path === "large.bin")).toMatchObject(
+      {
+        binary: true,
+        large: true,
+        additions: null,
+        deletions: null,
+      },
+    );
+    expect(result.totals).toEqual({
+      fileCount: 6,
+      additions: 7,
+      deletions: 4,
+      unavailableLineCount: 2,
+      conflictCount: 1,
+    });
+  });
+
+  it("rejects malformed, duplicate, unsafe-count, and excessive numstat", () => {
+    expect(() => parseNumstat("invalid\0")).toThrow("malformed");
+    expect(() =>
+      parseNumstat(["1\t1\ta.ts", "1\t2\ta.ts", ""].join("\0")),
+    ).toThrow("duplicate");
+    expect(() =>
+      parseNumstat(`${Number.MAX_SAFE_INTEGER}0\t1\ta.ts\0`),
+    ).toThrow("safe bounds");
+    expect(() =>
+      parseNumstat("x".repeat(MAX_GIT_CHANGES_OUTPUT_BYTES + 1)),
     ).toThrow("exceeded");
   });
 });
