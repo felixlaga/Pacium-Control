@@ -1211,16 +1211,27 @@ kbd {
 
 .connection-badge {
   display: flex;
+  min-width: 0;
+  max-width: min(320px, 36vw);
   align-items: center;
   gap: 7px;
   margin-right: 4px;
   color: var(--text-faint);
   font-size: 10px;
   text-transform: capitalize;
+  white-space: nowrap;
 }
 
 .connection-badge .status-dot {
+  flex: 0 0 auto;
   margin: 0;
+}
+
+.connection-login {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: none;
 }
 
 .pacium-prompt-composer {
@@ -6280,9 +6291,15 @@ html[data-density="comfortable"] .terminal-panel {
     justify-content: center;
   }
 
-  .header-actions .connection-badge,
   .header-actions button:not(.danger-ghost) {
     display: none;
+  }
+
+  .header-actions .connection-badge {
+    max-width: 124px;
+    gap: 4px;
+    margin-right: 0;
+    font-size: 8.5px;
   }
 
   #command-palette-trigger {
