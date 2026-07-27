@@ -127,7 +127,9 @@ describe("Pacium mode configuration summary", () => {
         { label: "Queues", value: "1" },
       ],
     });
-    expect(summary.detail).toContain("Primary roles resolve below");
+    expect(summary.detail).toContain(
+      "Primary roles and queue-source health resolve below",
+    );
   });
 });
 

@@ -82,7 +82,7 @@ export function buildPaciumModeSummary(
     status: "ready",
     title: workspace.label,
     detail:
-      "Configured references only. Primary roles resolve below; queue observation and delivery are not active yet.",
+      "Primary roles and queue-source health resolve below. Queue items and delivery are not active yet.",
     freshness,
     canRetry: connection === "connected",
     stats: [
