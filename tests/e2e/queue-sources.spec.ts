@@ -77,7 +77,7 @@ test("records separate decisions and explicitly delivers one compatible answer",
     "A final question mark suggests a question.",
   );
   await expect(questionInspector).toContainText("whole_source_v1");
-  await expect(questionInspector).toContainText("Conflict detection");
+  await expect(questionInspector).toContainText("No current conflict signal");
   await expect(
     questionInspector.getByRole("button", { name: "Record answer" }),
   ).toBeDisabled();
@@ -143,7 +143,14 @@ test("records separate decisions and explicitly delivers one compatible answer",
   await expect(questionInspector).toContainText(
     "private answer file was created",
   );
-  const answerDocument = JSON.parse(await readFile(answerPath, "utf8")) as {
+  await expect(questionInspector).toContainText("Reconciliation evidence");
+  await expect(questionInspector).toContainText("Transport artifact present");
+  await expect(questionInspector).toContainText(
+    "proves transport output only, not acknowledgement or application",
+  );
+  await expect(questionInspector).toContainText("Awaiting human evidence");
+  const deliveredAnswerText = await readFile(answerPath, "utf8");
+  const answerDocument = JSON.parse(deliveredAnswerText) as {
     format: string;
     decision: {
       kind: string;
@@ -163,6 +170,43 @@ test("records separate decisions and explicitly delivers one compatible answer",
   await expect(
     questionInspector.getByRole("button", { name: "Confirm delivery" }),
   ).toHaveCount(0);
+
+  await questionInspector
+    .getByRole("button", { name: "Mark acknowledged" })
+    .click();
+  const confirmLabel = questionInspector.getByRole("button", {
+    name: "Confirm label",
+  });
+  await expect(confirmLabel).toBeVisible();
+  await expect(questionInspector).toContainText(
+    "Pacium cannot infer this from terminal or artifact evidence",
+  );
+  await questionInspector.getByRole("button", { name: "Cancel" }).click();
+  await expect(confirmLabel).toBeHidden();
+  await questionInspector
+    .getByRole("button", { name: "Mark acknowledged" })
+    .click();
+  await questionInspector
+    .getByRole("textbox", { name: /Evidence note/ })
+    .fill("Verified acknowledgement outside Pacium.");
+  await confirmLabel.click();
+  await expect(questionInspector).toContainText(
+    "Acknowledged · human-labelled",
+  );
+  await expect(readFile(answerPath, "utf8")).resolves.toBe(deliveredAnswerText);
+
+  await questionInspector.getByRole("button", { name: "Mark applied" }).click();
+  await expect(questionInspector).toContainText(
+    "does not execute the requested action",
+  );
+  await questionInspector
+    .getByRole("button", { name: "Confirm label" })
+    .click();
+  await expect(questionInspector).toContainText("Applied · human-labelled");
+  await expect(questionInspector).toContainText("Human-labelled history");
+  await expect(readFile(queuePath, "utf8")).resolves.toBe(
+    "Can you approve everything?\n",
+  );
   await expect(status).toContainText("Queue observer terminal");
 
   await questionInspector.getByRole("button", { name: "← Back" }).click();
@@ -184,6 +228,8 @@ test("records separate decisions and explicitly delivers one compatible answer",
     "Do not grant blanket approval.",
   );
   await expect(restoredInspector).toContainText("Delivered");
+  await expect(restoredInspector).toContainText("Applied · human-labelled");
+  await expect(restoredInspector).toContainText("Transport artifact present");
 
   await writeFile(queuePath, "Approval request: Run exact migration\n", {
     mode: 0o600,
@@ -204,6 +250,9 @@ test("records separate decisions and explicitly delivers one compatible answer",
   await expect(approval).toBeFocused();
   await expect(approval).toContainText("Approval from Needs Felix");
   await expect(approval).toContainText("Meta · high confidence");
+  await expect(approval).toContainText(
+    "Conflict · Source changed after decision",
+  );
   await approval.press("Enter");
   const approvalInspector = page.getByRole("complementary", {
     name: "Queue item inspector",
