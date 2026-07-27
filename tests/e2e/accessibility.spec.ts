@@ -102,7 +102,7 @@ test("narrow shell exposes panels as dismissible drawers at 320 CSS pixels", asy
     primaryRoles.locator('[data-role="orchestrator"]'),
   ).toBeVisible();
   const queueSources = sidebar.getByRole("region", {
-    name: "Queue source observation",
+    name: "Pacium queue",
   });
   await expect(queueSources).toBeVisible();
   await expect(
@@ -173,7 +173,7 @@ test("two-times zoom and system accessibility preferences keep controls usable",
   const primaryRoles = page.locator(".pacium-role-group");
   await expect(primaryRoles).toBeVisible();
   const queueSources = page.getByRole("region", {
-    name: "Queue source observation",
+    name: "Pacium queue",
   });
   await expect(queueSources).toBeVisible();
   const refreshQueue = queueSources.getByRole("button", { name: "Refresh" });

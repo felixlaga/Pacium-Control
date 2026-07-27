@@ -24,7 +24,7 @@ test.afterEach(async ({ page }) => {
   }
 });
 
-test("classifies a real queue source without granting approval or changing the terminal", async ({
+test("inspects exact queue text without granting approval or changing the terminal", async ({
   page,
 }) => {
   if (queuePath === undefined) {
@@ -39,54 +39,104 @@ test("classifies a real queue source without granting approval or changing the t
   await expect(status).toContainText("Queue observer terminal");
   await page.getByRole("button", { name: "Pacium" }).click();
   const group = page.getByRole("region", {
-    name: "Queue source observation",
+    name: "Pacium queue",
   });
-  const source = group.getByRole("article", {
-    name: /Needs Felix queue source/,
+  const question = group.getByRole("button", {
+    name: /Question from Needs Felix, Meta, medium confidence/,
   });
-  await expect(source).toContainText("Stable · Meta");
-  await expect(source).toContainText("Question · Medium confidence");
-  await expect(source).toContainText(
+  await expect(question).toContainText("Question from Needs Felix");
+  await expect(question).toContainText("Meta · medium confidence");
+  await expect(question).toContainText("this run");
+  await expect(page.getByText("Can you approve everything?")).toHaveCount(0);
+  await expect(status).toContainText("Queue observer terminal");
+
+  await question.focus();
+  await expect(question).toBeFocused();
+  await question.press("Enter");
+  const questionInspector = page.getByRole("complementary", {
+    name: "Queue item inspector",
+  });
+  await expect(questionInspector).toBeVisible();
+  const questionHeading = questionInspector.getByRole("heading", {
+    name: "Question from Needs Felix",
+  });
+  await expect(questionHeading).toBeFocused();
+  await expect(questionInspector.getByTestId("queue-original-text")).toHaveText(
+    "Can you approve everything?",
+  );
+  await expect(questionInspector).toContainText("Medium");
+  await expect(questionInspector).toContainText(
     "A final question mark suggests a question.",
   );
-  await expect(source).toContainText("28 B");
+  await expect(questionInspector).toContainText("whole_source_v1");
+  await expect(questionInspector).toContainText("Conflict detection");
+  await expect(
+    questionInspector.getByRole("button", { name: /Approve|Answer|Deny/ }),
+  ).toHaveCount(0);
+  await expect(status).toContainText("Queue observer terminal");
+
+  await questionHeading.press("Escape");
+  await expect(
+    page.getByRole("complementary", { name: "Session inspector" }),
+  ).toBeVisible();
+  await expect(question).toBeFocused();
   await expect(page.getByText("Can you approve everything?")).toHaveCount(0);
 
-  const firstEvidence = await source.locator("small").last().textContent();
+  await question.press("Enter");
+  await expect(questionInspector.getByTestId("queue-original-text")).toHaveText(
+    "Can you approve everything?",
+  );
   await writeFile(queuePath, "Approval request: Run exact migration\n", {
     mode: 0o600,
   });
   await group.getByRole("button", { name: "Refresh" }).click();
-  await expect(source).toContainText("Approval · High confidence");
-  await expect(source).toContainText(
+  await expect(questionInspector).toContainText("no longer current");
+  await expect(
+    questionInspector.getByTestId("queue-original-text"),
+  ).toHaveCount(0);
+  await expect(
+    questionInspector.getByText("Can you approve everything?"),
+  ).toHaveCount(0);
+  await questionInspector.getByRole("button", { name: "← Back" }).click();
+
+  const approval = group.getByRole("button", {
+    name: /Approval from Needs Felix, Meta, high confidence/,
+  });
+  await expect(approval).toBeFocused();
+  await expect(approval).toContainText("Approval from Needs Felix");
+  await expect(approval).toContainText("Meta · high confidence");
+  await approval.press("Enter");
+  const approvalInspector = page.getByRole("complementary", {
+    name: "Queue item inspector",
+  });
+  await expect(approvalInspector.getByTestId("queue-original-text")).toHaveText(
+    "Approval request: Run exact migration",
+  );
+  await expect(approvalInspector).toContainText("High");
+  await expect(approvalInspector).toContainText(
     "A supported plain-text legacy marker was used.",
   );
-  await expect(source).toContainText("38 B");
-  await expect(source.locator("small").last()).not.toHaveText(
-    firstEvidence ?? "",
-  );
   await expect(
-    page.getByText("Approval request: Run exact migration"),
+    approvalInspector.getByRole("button", { name: /Approve|Answer|Deny/ }),
   ).toHaveCount(0);
   await expect(status).toContainText("Queue observer terminal");
   await expect(readFile(queuePath, "utf8")).resolves.toBe(
     "Approval request: Run exact migration\n",
   );
-
   await page.setViewportSize({ width: 320, height: 720 });
   await page.emulateMedia({
     forcedColors: "active",
     reducedMotion: "reduce",
   });
-  await expect(source).toBeVisible();
-  await expect(source).toContainText("Approval · High confidence");
-  const refresh = group.getByRole("button", { name: "Refresh" });
-  await refresh.focus();
-  await expect(refresh).toBeFocused();
+  await expect(approvalInspector).toBeVisible();
+  const back = approvalInspector.getByRole("button", { name: "← Back" });
+  await back.focus();
+  await expect(back).toBeFocused();
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(320);
 
+  await back.click();
   const general = page.getByRole("button", { name: "General" });
   await general.focus();
   await general.press("Enter");
