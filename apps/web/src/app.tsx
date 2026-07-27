@@ -110,6 +110,8 @@ import {
   rejectVerificationRequest,
   type RepositoryVerificationViewState,
 } from "./repository-verification-model.js";
+import { buildRecentActivity } from "./recent-activity-model.js";
+import { RecentActivityPanel } from "./recent-activity.js";
 import { RepositoryContextCard } from "./repository-context.js";
 import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
 import {
@@ -858,6 +860,35 @@ export function App() {
     selectedRepositoryVerification.status,
   ]);
 
+  useEffect(() => {
+    if (
+      inspectorTab !== "activity" ||
+      selectedId === null ||
+      connection !== "connected"
+    ) {
+      return;
+    }
+    if (selectedRepositoryChanges.status === "idle") {
+      requestRepositoryChanges(selectedId);
+    }
+    if (selectedRepositoryHistory.status === "idle") {
+      requestRepositoryHistory(selectedId);
+    }
+    if (selectedRepositoryVerification.status === "idle") {
+      requestRepositoryVerification(selectedId);
+    }
+  }, [
+    connection,
+    inspectorTab,
+    requestRepositoryChanges,
+    requestRepositoryHistory,
+    requestRepositoryVerification,
+    selectedId,
+    selectedRepositoryChanges.status,
+    selectedRepositoryHistory.status,
+    selectedRepositoryVerification.status,
+  ]);
+
   const openSelectedRepositoryDiff = useCallback(
     (file: GitChangedFile) => {
       if (selectedId === null) {
@@ -985,6 +1016,16 @@ export function App() {
     selectedSession === null
       ? null
       : (attentionBySession.get(selectedSession.id) ?? null);
+  const selectedRecentActivity =
+    selectedSession === null || selectedAttention === null
+      ? null
+      : buildRecentActivity({
+          session: selectedSession,
+          attention: selectedAttention,
+          changes: selectedRepositoryChanges,
+          history: selectedRepositoryHistory,
+          verification: selectedRepositoryVerification,
+        });
   const selectedAttentionCursor =
     selectedSession === null
       ? null
@@ -2218,7 +2259,7 @@ export function App() {
             repository={selectedSession?.repository ?? null}
             state={selectedRepositoryHistory}
           />
-        ) : (
+        ) : inspectorTab === "checks" ? (
           <RepositoryVerificationPanel
             onCancel={(runId) => {
               if (selectedId !== null) {
@@ -2237,6 +2278,17 @@ export function App() {
             }}
             repository={selectedSession?.repository ?? null}
             state={selectedRepositoryVerification}
+          />
+        ) : (
+          <RecentActivityPanel
+            activity={selectedRecentActivity}
+            onRefresh={() => {
+              if (selectedId !== null) {
+                requestRepositoryChanges(selectedId);
+                requestRepositoryHistory(selectedId);
+                requestRepositoryVerification(selectedId);
+              }
+            }}
           />
         )}
       </aside>
