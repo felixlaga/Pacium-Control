@@ -96,6 +96,17 @@ describe("workspace shortcuts", () => {
   };
 
   it("maps creation, navigation, numbered selection, and capture escape", () => {
+    expect(resolveWorkspaceShortcut({ ...baseKeys, code: "KeyK" })).toEqual({
+      type: "open-command-palette",
+    });
+    expect(
+      resolveWorkspaceShortcut({
+        ...baseKeys,
+        code: "Slash",
+        metaKey: false,
+        shiftKey: true,
+      }),
+    ).toEqual({ type: "open-shortcut-reference" });
     expect(
       resolveWorkspaceShortcut({
         ...baseKeys,
@@ -157,6 +168,22 @@ describe("workspace shortcuts", () => {
         ...baseKeys,
         code: "Backslash",
         terminalCaptured: true,
+      }),
+    ).toBeNull();
+    expect(
+      resolveWorkspaceShortcut({
+        ...baseKeys,
+        code: "KeyK",
+        terminalCaptured: true,
+      }),
+    ).toBeNull();
+    expect(
+      resolveWorkspaceShortcut({
+        ...baseKeys,
+        code: "Slash",
+        metaKey: false,
+        shiftKey: true,
+        dialogOpen: true,
       }),
     ).toBeNull();
   });

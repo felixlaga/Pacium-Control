@@ -23,6 +23,8 @@ interface StoredTerminalTabs {
 }
 
 export type WorkspaceShortcut =
+  | { type: "open-command-palette" }
+  | { type: "open-shortcut-reference" }
   | { type: "new-terminal" }
   | { type: "previous-session" }
   | { type: "next-session" }
@@ -51,6 +53,22 @@ export function resolveWorkspaceShortcut(input: {
   }
 
   const commandModifier = input.metaKey || input.ctrlKey;
+  if (
+    commandModifier &&
+    !input.shiftKey &&
+    !input.altKey &&
+    input.code === "KeyK"
+  ) {
+    return { type: "open-command-palette" };
+  }
+  if (
+    !commandModifier &&
+    input.shiftKey &&
+    !input.altKey &&
+    input.code === "Slash"
+  ) {
+    return { type: "open-shortcut-reference" };
+  }
   if (commandModifier && input.shiftKey && input.code === "KeyT") {
     return { type: "new-terminal" };
   }
