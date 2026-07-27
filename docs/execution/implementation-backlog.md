@@ -145,6 +145,11 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-031 Define attention-state reducer
 
 - Working, waiting, needs input, finished, failed, stale, and unknown with source, confidence, observation, and expiry.
+- Current status: a pure browser reducer implements the full vocabulary with
+  deterministic source/confidence/recency precedence and stale conversion. The
+  current UI consumes process-only evidence: live remains unknown, nonzero or
+  signalled exit becomes failed, and clean exit becomes finished with explicit
+  unverified-task copy. Hook/native observations arrive with provider adapters.
 
 ### PC-032 Add unread and notification policy
 
