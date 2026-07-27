@@ -1,17 +1,23 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  MAX_QUEUE_ITEM_PRIOR_DECISIONS,
+  QueueItemReconciliationSchema,
   QueueResolutionRecordSchema,
   QueueResolutionRequestSchema,
   queueResolutionError,
+  type QueueArtifactObservation,
   type QueueDecisionRecord,
   type QueueDeliveryRecord,
+  type QueueItemReconciliation,
   type QueueLifecycleState,
   type QueueResolutionRecord,
   type QueueResolutionRequest,
   type QueueResolutionResult,
+  type QueueSourceConflict,
 } from "@pacium/contracts";
 
+import { reconcileAnswerFile } from "./answer-file-reconciliation.js";
 import {
   QueueDecisionStoreWriteError,
   type QueueDecisionStoreObservation,
@@ -30,12 +36,18 @@ export interface QueueReconciliationServiceOptions {
   isDeliveryActive?: (deliveryId: string) => boolean;
   now?: () => string;
   randomId?: () => string;
+  reconcileArtifact?: (
+    delivery: QueueDeliveryRecord,
+  ) => Promise<QueueArtifactObservation>;
 }
 
 export class QueueReconciliationService {
   private readonly isDeliveryActive: (deliveryId: string) => boolean;
   private readonly now: () => string;
   private readonly randomId: () => string;
+  private readonly reconcileArtifact: (
+    delivery: QueueDeliveryRecord,
+  ) => Promise<QueueArtifactObservation>;
 
   public constructor(
     private readonly store: QueueResolutionStateStore,
@@ -44,6 +56,64 @@ export class QueueReconciliationService {
     this.isDeliveryActive = options.isDeliveryActive ?? (() => false);
     this.now = options.now ?? (() => new Date().toISOString());
     this.randomId = options.randomId ?? randomUUID;
+    this.reconcileArtifact = options.reconcileArtifact ?? reconcileAnswerFile;
+  }
+
+  public async inspectItem(
+    decisionId: string,
+    decisionHash: string,
+    conflicts: readonly QueueSourceConflict[] = [],
+  ): Promise<QueueItemReconciliation | null> {
+    const state = await this.store.inspect();
+    if (state.status !== "ready") {
+      return null;
+    }
+    const decision = findDecision(state, decisionId, decisionHash);
+    if (decision === null) {
+      return null;
+    }
+    const attempts = state.deliveries.filter(
+      (delivery) => delivery.decisionId === decision.decisionId,
+    );
+    const resolutions = state.resolutions.filter(
+      (resolution) => resolution.decisionId === decision.decisionId,
+    );
+    const lifecycle = lifecycleState(resolutions);
+    const latestAttempt = attempts.at(-1) ?? null;
+    const artifact =
+      latestAttempt === null
+        ? null
+        : await this.reconcileArtifact(latestAttempt);
+    const prior = state.decisions
+      .filter(
+        (candidate) =>
+          candidate.decisionId !== decision.decisionId &&
+          candidate.source.workspaceId === decision.source.workspaceId &&
+          candidate.source.sourceId === decision.source.sourceId &&
+          candidate.source.itemId !== decision.source.itemId,
+      )
+      .sort((left, right) => right.decidedAt.localeCompare(left.decidedAt));
+    return QueueItemReconciliationSchema.parse({
+      decisionId,
+      decisionHash,
+      conflicts,
+      priorDecisions: {
+        decisions: prior
+          .slice(0, MAX_QUEUE_ITEM_PRIOR_DECISIONS)
+          .map((candidate) => ({
+            decisionId: candidate.decisionId,
+            decisionHash: candidate.decisionHash,
+            itemId: candidate.source.itemId,
+            itemType: candidate.source.itemType,
+            decidedAt: candidate.decidedAt,
+          })),
+        truncated: prior.length > MAX_QUEUE_ITEM_PRIOR_DECISIONS,
+      },
+      attempts,
+      artifact,
+      lifecycle,
+      retry: { status: retryStatus(attempts, lifecycle) },
+    });
   }
 
   public async lifecycle(
@@ -274,6 +344,28 @@ function canAppendResolution(
     );
   }
   return next !== "confirmed_not_delivered";
+}
+
+function retryStatus(
+  attempts: readonly QueueDeliveryRecord[],
+  lifecycle: QueueLifecycleState,
+): QueueItemReconciliation["retry"]["status"] {
+  if (attempts.length === 0) {
+    return "not_applicable";
+  }
+  if (attempts.length >= 2) {
+    return "exhausted";
+  }
+  if (
+    attempts[0]?.outcome?.status === "delivered" ||
+    lifecycle.status === "acknowledged" ||
+    lifecycle.status === "applied" ||
+    lifecycle.status === "unable_to_apply" ||
+    lifecycle.status === "superseded"
+  ) {
+    return "not_applicable";
+  }
+  return lifecycle.status === "confirmed_not_delivered" ? "ready" : "locked";
 }
 
 function failedResult(

@@ -1,4 +1,5 @@
 import type {
+  QueueArtifactObservation,
   QueueDecisionRecord,
   QueueDeliveryRecord,
   QueueResolutionRecord,
@@ -197,6 +198,52 @@ describe("queue reconciliation service", () => {
       historyTruncated: false,
     });
   });
+
+  it("joins prior decisions, attempts, artifact, lifecycle, and retry state", async () => {
+    const prior = decision({
+      decisionId: "4699b11f-94d3-430a-960e-1c574a03db41",
+      itemId: "f".repeat(64),
+    });
+    const confirmed = resolutionRecord("confirmed_not_delivered");
+    const fixture = serviceFixture({
+      decisions: [prior],
+      resolutions: [confirmed],
+      artifact: {
+        status: "acknowledgement_unavailable",
+        source: "filesystem_observed",
+        observedAt: now,
+        reason: "answer_file_missing",
+        byteLength: null,
+        contentHash: null,
+      },
+    });
+    await expect(
+      fixture.service.inspectItem(
+        fixture.decision.decisionId,
+        fixture.decision.decisionHash,
+        [
+          {
+            conflictId: "9".repeat(64),
+            kind: "source_changed_after_decision",
+            decisionCount: 1,
+            relatedSourceIds: [],
+            observedAt: now,
+          },
+        ],
+      ),
+    ).resolves.toMatchObject({
+      decisionId: fixture.decision.decisionId,
+      conflicts: [{ kind: "source_changed_after_decision" }],
+      priorDecisions: {
+        decisions: [{ decisionId: prior.decisionId }],
+        truncated: false,
+      },
+      attempts: [{ deliveryId: fixture.delivery.deliveryId }],
+      artifact: { reason: "answer_file_missing" },
+      lifecycle: { status: "confirmed_not_delivered" },
+      retry: { status: "ready" },
+    });
+  });
 });
 
 function serviceFixture(
@@ -205,6 +252,7 @@ function serviceFixture(
     isDeliveryActive?: boolean;
     outcome?: QueueDeliveryRecord["outcome"];
     resolutions?: QueueResolutionRecord[];
+    artifact?: QueueArtifactObservation;
   } = {},
 ) {
   const primaryDecision = decision();
@@ -240,6 +288,17 @@ function serviceFixture(
       isDeliveryActive: () => options.isDeliveryActive ?? false,
       now: () => now,
       randomId: () => "bb3d98ca-8308-46d7-9fe3-cf8a131e8dad",
+      reconcileArtifact: () =>
+        Promise.resolve(
+          options.artifact ?? {
+            status: "acknowledgement_unavailable",
+            source: "filesystem_observed",
+            observedAt: now,
+            reason: "answer_file_missing",
+            byteLength: null,
+            contentHash: null,
+          },
+        ),
     }),
     store,
   };
@@ -324,7 +383,7 @@ function delivery(
 }
 
 function resolutionRecord(
-  action: "acknowledged" | "applied",
+  action: "acknowledged" | "applied" | "confirmed_not_delivered",
   overrides: { resolutionId?: string } = {},
 ): QueueResolutionRecord {
   return {
