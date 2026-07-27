@@ -65,7 +65,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     );
     expect(welcome).toMatchObject({
       type: "server.welcome",
-      protocolVersion: 8,
+      protocolVersion: 9,
       capabilities: {
         launchPresets: [
           { id: "shell", available: true },
@@ -443,6 +443,67 @@ describe("localhost HTTP and WebSocket boundary", () => {
         requestId: invalidRequestId,
         sessionId: session.id,
         revision: "origin/main..HEAD",
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "error" && message.requestId === invalidRequestId,
+      ),
+    ).resolves.toMatchObject({
+      type: "error",
+      code: "INVALID_MESSAGE",
+    });
+    expect(factory.processes[0]?.signals).toEqual([]);
+    client.socket.close();
+    await once(client.socket, "close");
+  });
+
+  it("inspects explicit verification state and rejects browser commands", async () => {
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(factory);
+    application = setup.application;
+    manager = setup.manager;
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    const session = await createTestSession(client);
+    const requestId = "7869825c-8a29-45b8-b953-ea670d6557a1";
+
+    client.socket.send(
+      JSON.stringify({
+        type: "repository.verification.inspect",
+        requestId,
+        sessionId: session.id,
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "repository.verification" &&
+          message.requestId === requestId,
+      ),
+    ).resolves.toMatchObject({
+      type: "repository.verification",
+      sessionId: session.id,
+      observation: {
+        status: "unconfigured",
+        configured: false,
+        presets: [],
+        run: null,
+      },
+    });
+
+    const invalidRequestId = "34e30bba-a9e4-4387-aede-05ac7b89a27b";
+    client.socket.send(
+      JSON.stringify({
+        type: "repository.verification.run",
+        requestId: invalidRequestId,
+        sessionId: session.id,
+        presetId: "verify",
+        executable: "/bin/zsh",
+        args: ["-lc", "dangerous"],
       }),
     );
     await expect(
