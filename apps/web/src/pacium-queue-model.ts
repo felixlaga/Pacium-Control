@@ -20,6 +20,12 @@ export interface PaciumQueueSourceModel {
   observation: QueueSourceObservation | null;
 }
 
+export interface QueueClassificationPresentation {
+  kind: "none" | "question" | "approval" | "failure" | "review" | "unknown";
+  label: string;
+  diagnostic: string | null;
+}
+
 export interface PaciumQueueProjection {
   status: "loading" | "unconfigured" | "error" | "ready";
   message: string;
@@ -146,4 +152,68 @@ export function buildPaciumQueueProjection(input: {
             : "Waiting for queue source evidence at this config revision.",
     sources,
   };
+}
+
+export function queueClassificationPresentation(
+  observation: QueueSourceObservation | null,
+): QueueClassificationPresentation | null {
+  if (observation === null) {
+    return null;
+  }
+  if (observation.status === "empty") {
+    return {
+      kind: "none",
+      label: "No item · Empty source",
+      diagnostic: null,
+    };
+  }
+  if (observation.status !== "stable" || observation.classification === null) {
+    return null;
+  }
+  const classification = observation.classification;
+  if (classification.status === "none") {
+    return {
+      kind: "none",
+      label: "No item · Blank source",
+      diagnostic:
+        classification.diagnostics.map(({ message }) => message).join(" ") ||
+        null,
+    };
+  }
+  const candidate = classification.candidate;
+  if (candidate === null) {
+    return null;
+  }
+  return {
+    kind: candidate.type,
+    label: `${queueItemTypeLabel(candidate.type)} · ${confidenceLabel(
+      candidate.confidence,
+    )} confidence`,
+    diagnostic:
+      classification.diagnostics.map(({ message }) => message).join(" ") ||
+      null,
+  };
+}
+
+function queueItemTypeLabel(
+  type: Exclude<QueueClassificationPresentation["kind"], "none">,
+): string {
+  switch (type) {
+    case "question":
+      return "Question";
+    case "approval":
+      return "Approval";
+    case "failure":
+      return "Failure";
+    case "review":
+      return "Review";
+    case "unknown":
+      return "Unknown";
+  }
+}
+
+function confidenceLabel(
+  confidence: "confirmed" | "high" | "medium" | "low",
+): string {
+  return `${confidence.charAt(0).toUpperCase()}${confidence.slice(1)}`;
 }

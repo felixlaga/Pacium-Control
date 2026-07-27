@@ -7,6 +7,7 @@ import {
   beginPaciumQueueRequest,
   buildPaciumQueueProjection,
   interruptPaciumQueueRequest,
+  queueClassificationPresentation,
 } from "./pacium-queue-model.js";
 import type { PaciumConfigViewState } from "./pacium-config-model.js";
 
@@ -116,6 +117,64 @@ describe("Pacium queue source projection", () => {
         connection: "connected",
       }).status,
     ).toBe("unconfigured");
+  });
+});
+
+describe("Pacium queue classification presentation", () => {
+  it("presents current candidate type, confidence, and fixed diagnostics", () => {
+    expect(
+      queueClassificationPresentation(observation(4).sources[0] ?? null),
+    ).toEqual({
+      kind: "question",
+      label: "Question · High confidence",
+      diagnostic: "A supported plain-text legacy marker was used.",
+    });
+  });
+
+  it("distinguishes empty, blank, and degraded sources from candidates", () => {
+    const source = observation(4).sources[0]!;
+    expect(
+      queueClassificationPresentation({
+        ...source,
+        status: "empty",
+        byteLength: 0,
+        classification: null,
+      }),
+    ).toEqual({
+      kind: "none",
+      label: "No item · Empty source",
+      diagnostic: null,
+    });
+    expect(
+      queueClassificationPresentation({
+        ...source,
+        classification: {
+          status: "none",
+          boundary: "whole_source_v1",
+          candidate: null,
+          diagnostics: [
+            {
+              code: "blank_content",
+              message: "The stable source contains only whitespace.",
+            },
+          ],
+        },
+      }),
+    ).toEqual({
+      kind: "none",
+      label: "No item · Blank source",
+      diagnostic: "The stable source contains only whitespace.",
+    });
+    expect(
+      queueClassificationPresentation({
+        ...source,
+        status: "missing",
+        byteLength: null,
+        modifiedAt: null,
+        contentHash: null,
+        classification: null,
+      }),
+    ).toBeNull();
   });
 });
 
