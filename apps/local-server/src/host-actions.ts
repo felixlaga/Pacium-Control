@@ -76,7 +76,7 @@ function runHostCommand(
       if (error === null) {
         resolve();
       } else {
-        reject(error);
+        reject(new Error(error.message, { cause: error }));
       }
     });
   });
