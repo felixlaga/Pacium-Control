@@ -21,6 +21,11 @@ import {
   type ConnectionState,
   type TransportEvent,
 } from "./transport.js";
+import { CommandPalette, type CommandPaletteView } from "./command-palette.js";
+import {
+  buildPaletteCatalog,
+  type PaletteCommand,
+} from "./command-palette-model.js";
 import { DirectoryPicker } from "./directory-picker.js";
 import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
 import {
@@ -104,6 +109,7 @@ export function App() {
   const layoutRef = useRef<SplitLayoutState>(
     createSplitLayout(`pane-${crypto.randomUUID()}`),
   );
+  const paletteInvokerRef = useRef<HTMLElement | null>(null);
   const transportRef = useRef<PaciumTransport | null>(null);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -130,6 +136,9 @@ export function App() {
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
   const [actionSessionId, setActionSessionId] = useState<string | null>(null);
   const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
+  const [paletteView, setPaletteView] = useState<CommandPaletteView | null>(
+    null,
+  );
 
   selectedIdRef.current = selectedId;
   tabsRef.current = tabs;
@@ -267,6 +276,17 @@ export function App() {
       pane.sessionId === null ? [] : [pane.sessionId],
     );
   }, [layout]);
+  const paletteCommands = useMemo(
+    () =>
+      buildPaletteCatalog({
+        focusedPaneId: getFocusedPane(layout)?.id ?? null,
+        maximizedPaneId: layout.maximizedPaneId,
+        paneCount: listPanes(layout.root).length,
+        selectedSessionId: selectedId,
+        sessions,
+      }),
+    [layout, selectedId, sessions],
+  );
 
   useEffect(() => {
     if (connection !== "connected") {
@@ -488,6 +508,112 @@ export function App() {
     setActionSessionId(null);
   };
 
+  const openPalette = (view: CommandPaletteView) => {
+    paletteInvokerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setCapturedPaneId(null);
+    setPaletteView(view);
+  };
+
+  const closePalette = (restoreFocus = true) => {
+    setPaletteView(null);
+    if (!restoreFocus) {
+      return;
+    }
+    const target = paletteInvokerRef.current;
+    window.requestAnimationFrame(() => {
+      if (target?.isConnected) {
+        target.focus();
+        return;
+      }
+      document.getElementById("command-palette-trigger")?.focus();
+    });
+  };
+
+  const executePaletteCommand = (command: PaletteCommand) => {
+    if (!command.enabled) {
+      return;
+    }
+    if (command.action.type === "show-shortcuts") {
+      setPaletteView("shortcuts");
+      return;
+    }
+
+    closePalette(false);
+    switch (command.action.type) {
+      case "new-terminal":
+        setCreateOpen(true);
+        return;
+      case "split-pane":
+        splitPane(command.action.direction);
+        return;
+      case "focus-pane":
+        focusAdjacentPane(command.action.direction);
+        return;
+      case "toggle-maximize": {
+        const next = toggleMaximizedPane(
+          layoutRef.current,
+          command.action.paneId,
+        );
+        setLayout(next);
+        setSelectedId(getFocusedPane(next)?.sessionId ?? null);
+        return;
+      }
+      case "select-session":
+        selectSession(command.action.sessionId);
+        return;
+      case "rename-session":
+      case "duplicate-session":
+      case "relaunch-session":
+      case "copy-session-directory":
+      case "reveal-session-repository":
+      case "close-session-view":
+      case "interrupt-session":
+      case "review-session-termination": {
+        const sessionId = command.action.sessionId;
+        const session = sessions.find(({ id }) => id === sessionId);
+        if (session === undefined) {
+          setNotice("That session is no longer available. Reopen the palette.");
+          return;
+        }
+        switch (command.action.type) {
+          case "rename-session":
+            beginRenameSession(session);
+            return;
+          case "duplicate-session":
+            duplicateSession(session);
+            return;
+          case "relaunch-session":
+            relaunchSession(session);
+            return;
+          case "copy-session-directory":
+            void copySessionDirectory(session);
+            return;
+          case "reveal-session-repository":
+            revealSessionRepository(session);
+            return;
+          case "close-session-view":
+            closeViewTab(session.id);
+            return;
+          case "interrupt-session":
+            interruptSession(session);
+            return;
+          case "review-session-termination":
+            setActionSessionId(session.id);
+            return;
+        }
+      }
+    }
+  };
+
+  const modalOpen =
+    createOpen ||
+    actionSession !== null ||
+    renameSession !== null ||
+    paletteView !== null;
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const shortcut = resolveWorkspaceShortcut({
@@ -497,7 +623,7 @@ export function App() {
         shiftKey: event.shiftKey,
         altKey: event.altKey,
         editable: isEditableTarget(event.target),
-        dialogOpen: createOpen,
+        dialogOpen: modalOpen,
         terminalCaptured: capturedPaneId !== null,
       });
       if (shortcut === null) {
@@ -516,6 +642,12 @@ export function App() {
           setCapturedPaneId(null);
           return;
         }
+        case "open-command-palette":
+          openPalette("commands");
+          return;
+        case "open-shortcut-reference":
+          openPalette("shortcuts");
+          return;
         case "new-terminal":
           setCreateOpen(true);
           return;
@@ -557,7 +689,7 @@ export function App() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [capturedPaneId, createOpen, tabs]);
+  }, [capturedPaneId, modalOpen, tabs]);
 
   return (
     <div className="app-shell">
@@ -674,6 +806,15 @@ export function App() {
           </div>
           <div className="header-actions">
             <ConnectionBadge state={connection} />
+            <button
+              id="command-palette-trigger"
+              onClick={() => openPalette("commands")}
+              title="Command palette (Cmd/Ctrl K)"
+              type="button"
+            >
+              Commands
+              <kbd>⌘K</kbd>
+            </button>
             <button
               disabled={selectedSession?.processState !== "live"}
               onClick={() => {
@@ -1004,6 +1145,15 @@ export function App() {
           loadDirectories={loadDirectories}
           onCancel={() => setCreateOpen(false)}
           onCreate={createSession}
+        />
+      )}
+      {paletteView !== null && (
+        <CommandPalette
+          commands={paletteCommands}
+          onClose={() => closePalette()}
+          onExecute={executePaletteCommand}
+          onViewChange={setPaletteView}
+          view={paletteView}
         />
       )}
       {actionSession !== null && (
