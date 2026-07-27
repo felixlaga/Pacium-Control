@@ -12,6 +12,12 @@ const testPresets: readonly LaunchPresetDefinition[] = [
     unavailableReason: null,
     executable: "/bin/zsh",
     args: ["-l"],
+    classification: {
+      type: "shell",
+      label: "Shell",
+      source: "launch_preset",
+      confidence: "confirmed",
+    },
   },
   {
     id: "codex",
@@ -20,6 +26,12 @@ const testPresets: readonly LaunchPresetDefinition[] = [
     unavailableReason: null,
     executable: "/opt/test/bin/codex",
     args: [],
+    classification: {
+      type: "codex",
+      label: "Codex CLI",
+      source: "launch_preset",
+      confidence: "confirmed",
+    },
   },
   {
     id: "claude",
@@ -28,6 +40,12 @@ const testPresets: readonly LaunchPresetDefinition[] = [
     unavailableReason: "Claude Code is not installed or not on PATH.",
     executable: null,
     args: [],
+    classification: {
+      type: "claude",
+      label: "Claude Code CLI",
+      source: "launch_preset",
+      confidence: "confirmed",
+    },
   },
 ];
 

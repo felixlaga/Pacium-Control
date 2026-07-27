@@ -338,6 +338,12 @@ async function startTestServer(
         unavailableReason: null,
         executable: "/bin/zsh",
         args: ["-l"],
+        classification: {
+          type: "shell",
+          label: "Shell",
+          source: "launch_preset",
+          confidence: "confirmed",
+        },
       },
       {
         id: "codex",
@@ -346,6 +352,12 @@ async function startTestServer(
         unavailableReason: "Codex is not installed or not on PATH.",
         executable: null,
         args: [],
+        classification: {
+          type: "codex",
+          label: "Codex CLI",
+          source: "launch_preset",
+          confidence: "confirmed",
+        },
       },
       {
         id: "claude",
@@ -354,6 +366,12 @@ async function startTestServer(
         unavailableReason: "Claude Code is not installed or not on PATH.",
         executable: null,
         args: [],
+        classification: {
+          type: "claude",
+          label: "Claude Code CLI",
+          source: "launch_preset",
+          confidence: "confirmed",
+        },
       },
     ],
   };
