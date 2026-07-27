@@ -195,6 +195,16 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-036 Implement commit history
 
 - Current branch commits and relationship to configured base where available.
+- Current status: protocol 8 exposes a command-free, selected-session local
+  `HEAD` history read with fixed no-shell/no-pager arguments, a 1.5 second
+  timeout, 256 KiB raw-output ceiling, 51-record read window, and 50-record
+  payload cap. IDs, parents, author names, authored times, subjects, errors, and
+  final messages are strict and bounded. The lazy History tab shows merge,
+  truncation, unborn, freshness, and degraded evidence with Refresh,
+  cross-session/stale-response rejection, reconnect recovery, three-tab
+  keyboard navigation, and no PTY impact or durable history. Configured-base
+  comparison remains deferred until server-owned workspace/base configuration
+  exists.
 
 ### PC-037 Implement verification presets
 
