@@ -78,7 +78,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     );
     expect(welcome).toMatchObject({
       type: "server.welcome",
-      protocolVersion: 11,
+      protocolVersion: 12,
       capabilities: {
         launchPresets: [
           { id: "shell", available: true },
@@ -333,7 +333,9 @@ describe("localhost HTTP and WebSocket boundary", () => {
     const queueDirectory = await mkdtemp(join(tmpdir(), "pacium-queue-http-"));
     temporaryDirectories.push(queueDirectory);
     const queuePath = join(queueDirectory, "NEEDS-FELIX");
-    await writeFile(queuePath, "First private question\n", { mode: 0o600 });
+    await writeFile(queuePath, "Can you approve everything?\n", {
+      mode: 0o600,
+    });
 
     const setup = await startTestServer(new FakePtyFactory());
     application = setup.application;
@@ -394,22 +396,36 @@ describe("localhost HTTP and WebSocket boundary", () => {
           {
             sourceId: "needs-felix",
             status: "stable",
-            byteLength: 23,
+            byteLength: 28,
+            classification: {
+              status: "candidate",
+              candidate: {
+                type: "question",
+                confidence: "medium",
+              },
+              diagnostics: [{ code: "question_heuristic" }],
+            },
           },
         ],
       },
     });
-    expect(JSON.stringify(observed)).not.toContain("First private question");
+    expect(JSON.stringify(observed)).not.toContain("approve everything");
     if (observed.type !== "pacium.queue.sources") {
       throw new Error("Expected queue source observation");
     }
-    expect(observed.observation.sources[0]?.contentHash).toMatch(
+    const firstSource = observed.observation.sources[0];
+    expect(firstSource?.contentHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(firstSource?.classification?.candidate?.itemId).toMatch(
       /^[0-9a-f]{64}$/,
     );
-    const firstRevision =
-      observed.observation.sources[0]?.observationRevision ?? 0;
+    expect(firstSource?.classification).not.toHaveProperty("title");
+    expect(firstSource?.classification).not.toHaveProperty("originalText");
+    const firstItemId = firstSource?.classification?.candidate?.itemId;
+    const firstRevision = firstSource?.observationRevision ?? 0;
 
-    await writeFile(queuePath, "Second private question\n", { mode: 0o600 });
+    await writeFile(queuePath, "Approval request: Run exact migration\n", {
+      mode: 0o600,
+    });
     client.socket.send(
       JSON.stringify({
         type: "pacium.queue.observe",
@@ -431,14 +447,28 @@ describe("localhost HTTP and WebSocket boundary", () => {
           {
             sourceId: "needs-felix",
             status: "stable",
-            byteLength: 24,
+            byteLength: 38,
+            classification: {
+              status: "candidate",
+              candidate: {
+                type: "approval",
+                confidence: "high",
+              },
+              diagnostics: [{ code: "legacy_marker" }],
+            },
           },
         ],
       },
     });
-    expect(JSON.stringify(updated)).not.toContain("Second private question");
+    expect(JSON.stringify(updated)).not.toContain("Run exact migration");
+    if (updated.type !== "pacium.queue.sources") {
+      throw new Error("Expected refreshed queue source observation");
+    }
+    expect(
+      updated.observation.sources[0]?.classification?.candidate?.itemId,
+    ).not.toBe(firstItemId);
     await expect(readFile(queuePath, "utf8")).resolves.toBe(
-      "Second private question\n",
+      "Approval request: Run exact migration\n",
     );
     await expect(
       readFile(join(setup.config.dataDirectory, "pacium.json")),
