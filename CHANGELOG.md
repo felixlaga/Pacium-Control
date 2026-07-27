@@ -2,6 +2,32 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.9.0 — contextual command palette — 2026-07-27
+
+### Added
+
+- A compact `Cmd/Ctrl K` command palette that ranks selected-terminal context before general workspace commands.
+- Bounded case-insensitive token search across session name, repository, preset, cwd, state, and action context.
+- Typed dispatch for terminal creation, session switching, split creation/focus/maximize, and existing session actions.
+- Consequence-labelled disabled results and confirmation routing for destructive process or record removal.
+- A searchable `?` reference for every currently implemented application shortcut.
+- Arrow, Enter, Escape, pointer, modal-focus, invoking-focus restoration, no-match, and responsive states.
+- Deterministic catalog, ranking, query/result bound, keyboard-routing, and server-rendered component tests.
+- A scoped PC-026 issue and implementation plan with acceptance evidence.
+
+### Verified
+
+- Formatting, lint, type checking, 82 automated tests, and both production bundles pass.
+- The development UI and direct `/api/health` endpoint returned HTTP 200 on loopback.
+- Terminal capture, editable controls, and open modals suppress global palette/help shortcuts in deterministic tests.
+
+### Known limitations
+
+- Rendered pointer, keyboard, modal-focus, responsive, and international-layout validation remains pending because no browser backend was available.
+- The palette covers implemented terminal-workspace actions only; Git, provider, Pacium-mode, preferences, and verification commands arrive with their consumers.
+- The current machine ran verification on Node.js 26.4.0; the pinned Node.js 24.18.x runtime remains to be verified.
+- The web bundle is 673 kB before gzip and still emits the tracked chunk-size warning.
+
 ## 0.8.0 — consistent session actions — 2026-07-27
 
 ### Added
