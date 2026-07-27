@@ -136,6 +136,11 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-030 Detect process and agent type
 
 - Shell, Claude Code, Codex, configured command, and unknown.
+- Current status: fixed server-owned Shell, Claude Code, and Codex launch
+  presets now create strict type/source/confidence/observed-at classification
+  evidence in protocol 4. The inspector consumes that evidence without
+  inferring activity. Configured-command, unknown/adopted-process, and
+  provider-native classification remain future consumers.
 
 ### PC-031 Define attention-state reducer
 

@@ -24,6 +24,13 @@ const baseSession: SessionSummary = {
   shell: "/bin/zsh",
   launchPreset: "shell",
   commandLabel: "Shell",
+  agentClassification: {
+    type: "shell",
+    label: "Shell",
+    source: "launch_preset",
+    confidence: "confirmed",
+    observedAt: "2026-07-27T10:00:00.000Z",
+  },
   repositoryRoot: "/work/alpha",
   repositoryName: "alpha",
   runtime: "pty",

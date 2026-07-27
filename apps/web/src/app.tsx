@@ -31,6 +31,8 @@ import {
 } from "./command-palette-model.js";
 import { DirectoryPicker } from "./directory-picker.js";
 import { handleModalKeyDown } from "./modal-focus.js";
+import { AgentClassificationCard } from "./agent-classification.js";
+import { sessionAccessibleName } from "./agent-classification-model.js";
 import {
   loadPanelView,
   savePanelView,
@@ -917,6 +919,7 @@ export function App() {
                     {group.sessions.map((session) => (
                       <li key={session.id}>
                         <button
+                          aria-label={sessionAccessibleName(session)}
                           aria-current={
                             session.id === selectedId ? "page" : undefined
                           }
@@ -1371,19 +1374,12 @@ export function App() {
           </dl>
         )}
         <section className="inspector-section">
-          <h2>Agent context</h2>
-          <div className="planned-card">
-            <span className="planned-icon" aria-hidden="true">
-              ◇
-            </span>
-            <div>
-              <strong>CLI awareness comes next</strong>
-              <p>
-                Provider status, Git changes, and work evidence will live here
-                without replacing terminal truth.
-              </p>
-            </div>
-          </div>
+          <h2>Agent evidence</h2>
+          {selectedSession !== null && (
+            <AgentClassificationCard
+              classification={selectedSession.agentClassification}
+            />
+          )}
         </section>
       </aside>
 

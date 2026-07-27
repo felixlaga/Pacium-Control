@@ -20,6 +20,13 @@ const session: SessionSummary = {
   shell: "/bin/zsh",
   launchPreset: "codex",
   commandLabel: "Codex",
+  agentClassification: {
+    type: "codex",
+    label: "Codex CLI",
+    source: "launch_preset",
+    confidence: "confirmed",
+    observedAt: "2026-07-27T10:00:00.000Z",
+  },
   repositoryRoot: "/work/pacium",
   repositoryName: "pacium",
   runtime: "pty",

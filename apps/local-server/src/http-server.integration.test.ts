@@ -62,7 +62,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     );
     expect(welcome).toMatchObject({
       type: "server.welcome",
-      protocolVersion: 3,
+      protocolVersion: 4,
       capabilities: {
         launchPresets: [
           { id: "shell", available: true },
@@ -93,8 +93,17 @@ describe("localhost HTTP and WebSocket boundary", () => {
     expect(created.session).toMatchObject({
       launchPreset: "shell",
       commandLabel: "Shell",
+      agentClassification: {
+        type: "shell",
+        label: "Shell",
+        source: "launch_preset",
+        confidence: "confirmed",
+      },
       repositoryName: "Pacium Control",
     });
+    expect(created.session.agentClassification.observedAt).toBe(
+      created.session.createdAt,
+    );
 
     factory.processes[0]?.emitData("survives browser refresh\r\n");
     first.socket.close();
@@ -338,6 +347,12 @@ async function startTestServer(
         unavailableReason: null,
         executable: "/bin/zsh",
         args: ["-l"],
+        classification: {
+          type: "shell",
+          label: "Shell",
+          source: "launch_preset",
+          confidence: "confirmed",
+        },
       },
       {
         id: "codex",
@@ -346,6 +361,12 @@ async function startTestServer(
         unavailableReason: "Codex is not installed or not on PATH.",
         executable: null,
         args: [],
+        classification: {
+          type: "codex",
+          label: "Codex CLI",
+          source: "launch_preset",
+          confidence: "confirmed",
+        },
       },
       {
         id: "claude",
@@ -354,6 +375,12 @@ async function startTestServer(
         unavailableReason: "Claude Code is not installed or not on PATH.",
         executable: null,
         args: [],
+        classification: {
+          type: "claude",
+          label: "Claude Code CLI",
+          source: "launch_preset",
+          confidence: "confirmed",
+        },
       },
     ],
   };

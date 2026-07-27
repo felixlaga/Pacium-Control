@@ -152,6 +152,10 @@ export class SessionManager {
         shell: preset.executable,
         launchPreset: preset.id,
         commandLabel: preset.label,
+        agentClassification: {
+          ...preset.classification,
+          observedAt: createdAt,
+        },
         repositoryRoot: repository?.root ?? null,
         repositoryName: repository?.name ?? null,
         runtime: "pty",

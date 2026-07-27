@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PROTOCOL_VERSION = 3 as const;
+export const PROTOCOL_VERSION = 4 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -30,6 +30,37 @@ export const ProcessStateSchema = z.enum([
   "failed",
 ]);
 
+export const AgentTypeSchema = z.enum(["shell", "codex", "claude", "unknown"]);
+export type AgentType = z.infer<typeof AgentTypeSchema>;
+
+export const AgentClassificationSourceSchema = z.enum([
+  "launch_preset",
+  "process_observed",
+  "human_labelled",
+]);
+export type AgentClassificationSource = z.infer<
+  typeof AgentClassificationSourceSchema
+>;
+
+export const EvidenceConfidenceSchema = z.enum([
+  "confirmed",
+  "high",
+  "medium",
+  "low",
+]);
+export type EvidenceConfidence = z.infer<typeof EvidenceConfidenceSchema>;
+
+export const AgentClassificationSchema = z
+  .object({
+    type: AgentTypeSchema,
+    label: z.string().min(1).max(40),
+    source: AgentClassificationSourceSchema,
+    confidence: EvidenceConfidenceSchema,
+    observedAt: z.string().datetime(),
+  })
+  .strict();
+export type AgentClassification = z.infer<typeof AgentClassificationSchema>;
+
 export const SessionSummarySchema = z.object({
   id: SessionIdSchema,
   epoch: z.number().int().positive(),
@@ -38,6 +69,7 @@ export const SessionSummarySchema = z.object({
   shell: z.string().min(1).max(4096),
   launchPreset: LaunchPresetIdSchema,
   commandLabel: z.string().min(1).max(40),
+  agentClassification: AgentClassificationSchema,
   repositoryRoot: z.string().min(1).max(4096).nullable(),
   repositoryName: z.string().min(1).max(255).nullable(),
   runtime: z.literal("pty"),
