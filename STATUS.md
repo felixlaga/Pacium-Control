@@ -3,8 +3,9 @@
 **Current phase:** Core terminal workspace, bounded Git oversight, server-owned
 Pacium configuration, the General/Pacium toggle, and pinned Meta/Orchestrator
 roles plus explicit terminal prompt targeting and conservative queue-file
-observation plus whole-source queue classification are complete enough for
-continued slicing; the queue list and original-text inspector are next.
+observation, whole-source queue classification, and a read-only queue
+list/original-text inspector are complete enough for continued slicing;
+immutable local decisions are next.
 
 Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
 
@@ -73,7 +74,7 @@ The secondary product is **Pacium mode**:
   current/latest verification run into at most seven deterministic facts with
   explicit observed/occurred timestamps, source availability, partial errors,
   Refresh, reconnect recovery, and no terminal/provider narrative.
-- Protocol-12 strict Pacium workspace configuration for explicit Meta,
+- Protocol-13 strict Pacium workspace configuration for explicit Meta,
   Orchestrator, and worker session/preset bindings; canonical repositories;
   verification references; and queue, future-delivery, objective, and plan path
   metadata without execution authority, plus content-free queue-source
@@ -115,7 +116,7 @@ The secondary product is **Pacium mode**:
   no-follow stable reads, strict UTF-8, a 64 KiB source ceiling, SHA-256
   provenance, process-local revisions, semantic deduplication, bounded retry,
   config-generation guards, and shutdown disposal.
-- A compact Pacium-only Queue sources group that joins content-free source
+- A compact Pacium-only Queue group that joins content-free source
   evidence to exact accepted IDs, shows honest stable/empty/missing/changing/
   oversized/invalid/unsafe/read/watch states, byte/hash/freshness metadata, and
   explicit Refresh while leaving General mode and terminal state unchanged.
@@ -124,10 +125,16 @@ The secondary product is **Pacium mode**:
   supported question/concrete-approval/failure/review markers; uses a final
   question mark only for medium-confidence questions; and keeps malformed,
   multiple-marker, control-bearing, or unrecognized documents unknown.
-- Content-free type, confidence, and fixed diagnostic evidence in each current
-  Pacium source row, with exact config/source joining, unchanged-hash reuse,
-  degraded-state clearing, disconnected labelling, hostile-text escaping, and
-  no answer or approval action.
+- Content-free queue item buttons with exact config/source joining, type,
+  requesting role, confidence, process-local first-seen evidence, native
+  keyboard activation, narrow type glyphs, and disconnected disabling.
+- An authenticated exact-current item inspection bound to workspace/source/
+  observation/hash/item identity, with bounded base64 transport, strict UTF-8
+  browser decoding, inert original-text rendering, full source provenance,
+  honest unavailable structured fields, and no answer or approval action.
+- A queue-specific right-inspector route with loading/stale/unavailable states,
+  rewrite/config/disconnect/mode clearing, Back/Escape focus restoration, and
+  unchanged selected PTY, tabs, splits, and prior session-inspector tab.
 - Mode changes and reload preserve selected PTY, terminal tabs/splits,
   inspector context, panel state, terminal sync/input ownership, and existing
   Git/check evidence.
@@ -154,9 +161,9 @@ The secondary product is **Pacium mode**:
   queue sources, delivery methods, context sources, or verification references,
   and no shortcut customization.
 - No Claude or Codex observer.
-- No multi-item parsing, original-text queue list/inspector, durable provenance,
-  decisions, answer/approval controls, delivery, acknowledgement/conflicts,
-  worker role surface, or objective/plan content presentation.
+- No multi-item parsing, durable queue provenance, decisions, answer/approval
+  controls, delivery, acknowledgement/conflicts, worker role surface, or
+  objective/plan content presentation.
 - No tmux adapter.
 
 Do not extrapolate from the working terminal slice to any capability in this list.
@@ -251,7 +258,7 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Begin PC-046 with a compact keyboard-accessible queue list and safe text-only
-inspector tied to the exact source/hash candidate identity. Complete the pinned
+Begin PC-047 with immutable local question/approval decisions that retain the
+strict authority boundary and do not yet imply delivery. Complete the pinned
 Node.js 24 clean-install, CI, broader browser/security, manual accessibility,
 and sustained-output gates before release.

@@ -311,12 +311,24 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
   document remains unknown. Item identity binds boundary/source ID/content
   hash, unchanged hashes reuse classification, degraded evidence clears it, and
   Pacium shows only type/confidence/fixed diagnostics beside source health.
-  Original text, multi-item boundaries, titles/excerpts, queue list/inspector,
-  durable provenance, and every decision/delivery action remain PC-046 onward.
+  PC-046 now provides exact original-text inspection; multi-item boundaries,
+  semantic titles/excerpts, durable provenance, and every decision/delivery
+  action remain later work.
 
 ### PC-046 Implement queue list and inspector
 
 - Waiting time, requesting session, reason, consequence, recommendation, source, evidence, keyboard flow, and conflict state.
+- Current status: protocol 13 adds a compact current-candidate queue list and
+  one exact authenticated on-demand item inspection. Rows show fixed
+  type/source/requesting-role/confidence plus process-local first-seen evidence.
+  The right inspector renders bounded exact current UTF-8 as inert text and
+  exposes source path, IDs, revisions, boundary, hashes, and timestamps.
+  Unavailable reason/consequence/recommendation/evidence/conflict fields are
+  labelled rather than inferred. Rewrite, degradation, config drift,
+  disconnect, mode exit, and late responses clear text; Back/Escape restores
+  row focus and terminal selection/layout stays unchanged. Decisions,
+  authority, delivery, durable provenance, multi-item parsing, conflict
+  detection, and semantic field extraction remain PC-047 onward.
 
 ### PC-047 Implement immutable local decisions
 
