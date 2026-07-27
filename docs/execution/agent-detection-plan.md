@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `7f18c70`
 - Target milestone: Milestone 2
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -138,6 +138,19 @@ process state. No attention field or “working” label is introduced.
 - Provider-native capability and version evidence remains Milestone 4.
 - Process-observed classification for adopted commands remains a later
   explicitly scoped contract.
+
+## Result
+
+Protocol 4 now carries strict classification evidence on every terminal
+session. Fixed server launch definitions classify Shell, Codex CLI, and Claude
+Code CLI with confirmed launch-preset evidence, and the session creation
+timestamp is reused as the observation time.
+
+The existing inspector consumes the classification in a compact evidence card,
+and session rows expose classification plus process state to assistive
+technology. Copy explicitly says that launch evidence does not confirm current
+activity or attention. The full repository gate passes with 29 test files and
+114 tests, and all four Chromium workflows continue to pass.
 
 ## Approval
 

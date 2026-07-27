@@ -42,18 +42,18 @@ evidence and explicitly separates it from activity or attention claims.
 
 ## Acceptance criteria
 
-- [ ] Every new session includes a strict classification with type, label,
+- [x] Every new session includes a strict classification with type, label,
       source, confidence, and observation time.
-- [ ] Shell, Codex, and Claude Code fixed presets map deterministically to their
+- [x] Shell, Codex, and Claude Code fixed presets map deterministically to their
       matching types.
-- [ ] Initial classification is labelled `launch_preset` and `confirmed`.
-- [ ] A live process is never labelled “working” by this feature.
-- [ ] The inspector exposes classification source and confidence without
+- [x] Initial classification is labelled `launch_preset` and `confirmed`.
+- [x] A live process is never labelled “working” by this feature.
+- [x] The inspector exposes classification source and confidence without
       relying on color.
-- [ ] Session-row accessible names include classification and process state.
-- [ ] Unknown or extra classification fields fail protocol validation.
-- [ ] Protocol compatibility changes are explicit and tested.
-- [ ] The full repository verification gate passes.
+- [x] Session-row accessible names include classification and process state.
+- [x] Unknown or extra classification fields fail protocol validation.
+- [x] Protocol compatibility changes are explicit and tested.
+- [x] The full repository verification gate passes.
 
 ## User experience
 
@@ -123,3 +123,20 @@ the same classification and current process state.
 
 - Process-observed classification for adopted or user-defined commands belongs
   to a future slice with an explicit evidence contract.
+
+## Implementation evidence
+
+- `AgentClassificationSchema` strictly bounds type, label, source, confidence,
+  and observation time; protocol version 4 requires it on every session
+  summary.
+- Fixed launch-definition tests prove deterministic Shell, Codex CLI, and
+  Claude Code CLI mappings without exposing commands through capabilities.
+- Session-manager and WebSocket integration tests prove that server-created
+  evidence uses the session creation time and survives the existing message
+  flow.
+- Presentation and server-rendered component tests prove source/confidence copy,
+  accessible row naming, and the absence of a false “working” label.
+- `pnpm verify` passes with 29 test files and 114 tests; `pnpm test:e2e` passes
+  all four existing Chromium workflows against protocol 4.
+- Verification ran on Node.js 26.4.0 with the known engine warning; Node.js
+  24.18.x remains a release matrix gate.
