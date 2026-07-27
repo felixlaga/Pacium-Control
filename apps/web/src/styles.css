@@ -555,10 +555,50 @@ kbd {
   font-size: 8px;
 }
 
+.pacium-queue-source > div > .pacium-queue-classification {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.pacium-queue-source.classification-question
+  > div
+  > .pacium-queue-classification,
+.pacium-queue-source.classification-review
+  > div
+  > .pacium-queue-classification {
+  color: var(--accent-strong);
+}
+
+.pacium-queue-source.classification-approval
+  > div
+  > .pacium-queue-classification {
+  color: var(--amber);
+}
+
+.pacium-queue-source.classification-failure
+  > div
+  > .pacium-queue-classification {
+  color: var(--red);
+}
+
+.pacium-queue-source.classification-unknown
+  > div
+  > .pacium-queue-classification,
+.pacium-queue-source.classification-none
+  > div
+  > .pacium-queue-classification {
+  color: var(--text-muted);
+}
+
 .pacium-queue-source small {
   color: var(--text-faint);
   font-family: "SFMono-Regular", "SF Mono", monospace;
   font-size: 7px;
+}
+
+.pacium-queue-source small.pacium-queue-diagnostic {
+  line-height: 1.25;
+  white-space: normal;
 }
 
 .pacium-queue-source.status-stable .pacium-queue-source-indicator,
