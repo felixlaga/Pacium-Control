@@ -102,6 +102,17 @@ describe("Git porcelain-v2 status parsing", () => {
       parsePorcelainV2("x".repeat(MAX_GIT_CHANGES_OUTPUT_BYTES + 1)),
     ).toThrow("exceeded");
   });
+
+  it("rejects absolute and repository-escaping status paths", () => {
+    expect(() => parsePorcelainV2("? /private/escape\0")).toThrow(
+      "invalid path",
+    );
+    expect(() => parsePorcelainV2("? ../escape\0")).toThrow("invalid path");
+    expect(() => parsePorcelainV2("? nested\\..\\escape\0")).toThrow(
+      "invalid path",
+    );
+    expect(() => parsePorcelainV2("? C:\\escape\0")).toThrow("invalid path");
+  });
 });
 
 describe("Git numstat and changed-file aggregation", () => {
@@ -205,5 +216,6 @@ describe("Git numstat and changed-file aggregation", () => {
     expect(() =>
       parseNumstat("x".repeat(MAX_GIT_CHANGES_OUTPUT_BYTES + 1)),
     ).toThrow("exceeded");
+    expect(() => parseNumstat("1\t1\t../../escape\0")).toThrow("invalid path");
   });
 });

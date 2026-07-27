@@ -303,7 +303,15 @@ function changeRank(file: GitChangedFile): number {
 }
 
 function boundedPath(value: string): string {
-  if (value.length === 0 || value.length > 4096 || value.includes("\0")) {
+  const segments = value.split(/[\\/]/);
+  if (
+    value.length === 0 ||
+    value.length > 4096 ||
+    value.includes("\0") ||
+    value.startsWith("/") ||
+    /^[A-Za-z]:[\\/]/.test(value) ||
+    segments.includes("..")
+  ) {
     throw new Error("Git status returned an invalid path.");
   }
   return value;
