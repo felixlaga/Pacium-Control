@@ -9,6 +9,7 @@ import {
   decodeTerminalDataFrame,
   DirectoryListingSchema,
   ServerMessageSchema,
+  type PaciumWorkspace,
   type ServerMessage,
   type TerminalDataFrame,
 } from "@pacium/contracts";
@@ -155,6 +156,130 @@ describe("localhost HTTP and WebSocket boundary", () => {
 
     second.socket.close();
     await once(second.socket, "close");
+  });
+
+  it("gets, replaces, conflicts, and preserves Pacium config over the socket", async () => {
+    const setup = await startTestServer(new FakePtyFactory());
+    application = setup.application;
+    manager = setup.manager;
+
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.config.get",
+        requestId: "277c794b-df60-43ed-a5c5-b7329a7b4f13",
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "pacium.config" &&
+          message.requestId === "277c794b-df60-43ed-a5c5-b7329a7b4f13",
+      ),
+    ).resolves.toMatchObject({
+      observation: {
+        status: "unconfigured",
+        revision: null,
+        workspace: null,
+      },
+    });
+
+    const initial = paciumWorkspace("Pacium");
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.config.replace",
+        requestId: "80d267b6-2c5e-477c-afd6-51b28af9eaa5",
+        expectedRevision: 0,
+        workspace: initial,
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "pacium.config" &&
+          message.requestId === "80d267b6-2c5e-477c-afd6-51b28af9eaa5",
+      ),
+    ).resolves.toMatchObject({
+      observation: {
+        status: "ready",
+        revision: 1,
+        workspace: {
+          label: "Pacium",
+          repositories: [{ root: process.cwd() }],
+        },
+      },
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.config.replace",
+        requestId: "51d4b195-705e-4f07-a36a-90260e991692",
+        expectedRevision: 1,
+        workspace: { ...initial, label: "Agent workspace" },
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "pacium.config" &&
+          message.requestId === "51d4b195-705e-4f07-a36a-90260e991692",
+      ),
+    ).resolves.toMatchObject({
+      observation: {
+        status: "ready",
+        revision: 2,
+        workspace: { label: "Agent workspace" },
+      },
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.config.replace",
+        requestId: "6434062c-a6f3-4de5-a36f-60f94b6af106",
+        expectedRevision: 1,
+        workspace: initial,
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "error" &&
+          message.requestId === "6434062c-a6f3-4de5-a36f-60f94b6af106",
+      ),
+    ).resolves.toMatchObject({
+      code: "PACIUM_CONFIG_CONFLICT",
+      retryable: true,
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.config.get",
+        requestId: "f612a94f-8de5-4c41-8f26-ee3dcfa0410f",
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "pacium.config" &&
+          message.requestId === "f612a94f-8de5-4c41-8f26-ee3dcfa0410f",
+      ),
+    ).resolves.toMatchObject({
+      observation: {
+        status: "ready",
+        revision: 2,
+        workspace: { label: "Agent workspace" },
+      },
+    });
+
+    client.socket.close();
+    await once(client.socket, "close");
   });
 
   it("subscribes one browser transport to multiple terminal streams", async () => {
@@ -915,6 +1040,33 @@ async function startTestServer(
     manager,
     config,
     url: `ws://${config.host}:${address.port}`,
+  };
+}
+
+function paciumWorkspace(label: string): PaciumWorkspace {
+  return {
+    id: "primary",
+    label,
+    repositories: [
+      {
+        id: "pacium",
+        label: "Pacium Control",
+        root: process.cwd(),
+        verificationPresetIds: [],
+      },
+    ],
+    roles: {
+      meta: {
+        type: "launch_preset",
+        launchPreset: "shell",
+        repositoryId: "pacium",
+      },
+      orchestrator: null,
+    },
+    workers: [],
+    queueSources: [],
+    deliveryMethods: [],
+    context: { objective: null, plan: null },
   };
 }
 
