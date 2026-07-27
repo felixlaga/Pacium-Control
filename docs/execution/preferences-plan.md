@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `1c58a15cb637d11cafe2ee3712a01fdec5aea706`
 - Target milestone: Milestone 1
-- Status: In progress
+- Status: Implemented; rendered browser validation pending
 
 ## Objective
 
@@ -122,3 +122,16 @@ A modal settings surface edits a draft. Apply persists one record and updates cu
 - Product: matches PC-027 while keeping notification delivery with its real consumer.
 - Architecture: browser-owned local view preferences match `ARCHITECTURE.md`; no ADR change.
 - Security: bounded enum/numeric record only; no secret or shell surface.
+
+## Result
+
+- One strict version-1 browser-local record stores only controlled enums and bounded numeric view preferences.
+- Invalid, oversized, unknown, extra-key, out-of-range, and unavailable-storage states fall back or report failure without compromising the active workspace.
+- Effective system/dark/light theme and compact/comfortable density apply through root attributes.
+- Mounted xterm surfaces receive controlled font, size, line-height, scrollback, and light/dark theme updates in place, followed by a fit rather than PTY recreation.
+- `Cmd/Ctrl ,`, the top-bar control, and command palette open one focus-contained draft settings surface with Cancel, Restore defaults, and Apply.
+- The saved launch default is resolved against live host capabilities before each new-terminal flow.
+- Notification level is stored with copy explicitly deferring delivery to PC-032.
+- `pnpm verify` passed on 2026-07-27 with 23 test files and 94 tests.
+- Both loopback development services passed direct HTTP smoke checks.
+- Rendered theme, density, live terminal, keyboard, focus, responsive, and refresh validation remains open because the browser runtime reported no available backend.
