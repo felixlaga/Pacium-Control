@@ -5291,9 +5291,24 @@ html[data-density="comfortable"] .terminal-panel {
   }
 
   .pacium-queue-source > div,
-  .pacium-queue-sources > footer,
   .queue-row-chevron {
     display: none;
+  }
+
+  .pacium-queue-sources > footer {
+    justify-content: center;
+    padding: 5px 8px 0;
+  }
+
+  .pacium-queue-sources > footer span {
+    display: none;
+  }
+
+  .pacium-queue-sources > footer button {
+    width: 48px;
+    padding-right: 2px;
+    padding-left: 2px;
+    font-size: 7px;
   }
 
   .pacium-queue-item .pacium-queue-source-indicator {
