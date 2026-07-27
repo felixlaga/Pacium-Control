@@ -1,5 +1,5 @@
 import { Buffer } from "node:buffer";
-import { access, rm } from "node:fs/promises";
+import { access, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -17,11 +17,15 @@ import {
 
 describe("verification process runner", () => {
   const runners: VerificationRunner[] = [];
+  const temporaryFiles: string[] = [];
 
-  afterEach(() => {
+  afterEach(async () => {
     for (const runner of runners.splice(0)) {
       runner.shutdown();
     }
+    await Promise.all(
+      temporaryFiles.splice(0).map((path) => rm(path, { force: true })),
+    );
   });
 
   it("runs exact arguments without an implicit shell or full environment", async () => {
@@ -99,6 +103,7 @@ describe("verification process runner", () => {
       tmpdir(),
       `pacium-verification-ready-${crypto.randomUUID()}`,
     );
+    temporaryFiles.push(readyPath);
     const completed = terminalRun(runner, "session-1");
     const active = await runner.start(
       "session-1",
@@ -119,7 +124,6 @@ describe("verification process runner", () => {
       signal: "SIGKILL",
       terminationForced: true,
     });
-    await rm(readyPath, { force: true });
   });
 
   it("times out and terminates a long-running process", async () => {
@@ -214,6 +218,30 @@ describe("verification process runner", () => {
     });
   });
 
+  it("terminates tracked process groups during runner shutdown", async () => {
+    const runner = createRunner();
+    const pidPath = join(
+      tmpdir(),
+      `pacium-verification-pid-${crypto.randomUUID()}`,
+    );
+    temporaryFiles.push(pidPath);
+    await runner.start(
+      "session-1",
+      process.cwd(),
+      nodePreset(
+        `require('node:fs').writeFileSync(${JSON.stringify(
+          pidPath,
+        )}, String(process.pid));` + "setInterval(() => {}, 1000)",
+      ),
+    );
+    await waitForFile(pidPath);
+    const pid = Number.parseInt(await readFile(pidPath, "utf8"), 10);
+
+    runner.shutdown();
+
+    await expect(waitForProcessExit(pid)).resolves.toBeUndefined();
+  });
+
   function createRunner(
     options: Partial<ConstructorParameters<typeof VerificationRunner>[0]> = {},
   ): VerificationRunner {
@@ -251,6 +279,18 @@ async function waitForFile(path: string): Promise<void> {
     }
   }
   throw new Error("Verification fixture did not become ready.");
+}
+
+async function waitForProcessExit(pid: number): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      process.kill(pid, 0);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    } catch {
+      return;
+    }
+  }
+  throw new Error("Verification fixture survived runner shutdown.");
 }
 
 function terminalRun(
