@@ -103,15 +103,15 @@ parallel runtime, inferred role state, command endpoint, or workflow engine.
 | Config unconfigured                            | Setup needed           | Assign                          |
 | Config error                                   | Configuration error    | Retry                           |
 | Config replacement pending with prior evidence | Saving, prior retained | No duplicate mutation           |
-| Connection not connected                       | Disconnected            | Open local view only if present |
+| Connection not connected                       | Disconnected           | Open local view only if present |
 | Ready, role null                               | Not assigned           | Assign                          |
-| Session binding, live current summary           | Connected              | Open, Change                    |
-| Session binding, ended current summary          | Ended                  | Change                          |
-| Session binding, no current summary             | Missing                | Change                          |
-| Preset binding, available capability            | Ready to launch        | Launch, Change                  |
-| Preset binding, unavailable capability          | Preset unavailable     | Change                          |
-| Matching launch request pending                 | Starting terminal      | Wait                            |
-| Created terminal, config replacing              | Binding terminal       | Wait; terminal stays visible    |
+| Session binding, live current summary          | Connected              | Open, Change                    |
+| Session binding, ended current summary         | Ended                  | Change                          |
+| Session binding, no current summary            | Missing                | Change                          |
+| Preset binding, available capability           | Ready to launch        | Launch, Change                  |
+| Preset binding, unavailable capability         | Preset unavailable     | Change                          |
+| Matching launch request pending                | Starting terminal      | Wait                            |
+| Created terminal, config replacing             | Binding terminal       | Wait; terminal stays visible    |
 
 Cards pair all color with text and status glyph. Primary work remains the
 terminal; role cards use compact density and restrained Pacium accent.
@@ -180,20 +180,20 @@ The editor:
 
 ## Failure model
 
-| Failure point                    | Expected state                                      | Recovery                                  |
-| -------------------------------- | --------------------------------------------------- | ----------------------------------------- |
-| No config                         | No file created by read; both roles Setup needed    | Assign one role explicitly                |
-| Invalid config                    | Role mutation blocked; terminals unchanged          | Repair externally, then Retry             |
-| Disconnected                      | Mutations disabled; current PTY evidence retained   | Reconnect and accept fresh config/list    |
-| Preset unavailable                | No create request; binding remains visible          | Change binding or install/restart         |
-| Invalid/removed repository        | Server rejects config or config becomes error        | Refresh and explicitly choose valid input |
-| Session create rejected           | No config replacement; current binding unchanged     | Correct local cause and retry explicitly  |
-| Disconnect before created reply   | Launch outcome unknown; no replay                   | Inspect fresh session list                |
-| Config conflict after PTY create  | New terminal survives; role shows accepted old state | Get fresh config, bind explicitly         |
-| Config response lost after replace| Pending cleared on reconnect; evidence reread       | Trust fresh get, never blind retry         |
-| Bound process exits               | Role becomes Ended from session summary              | Change to another session/preset          |
-| Server restarts                   | Direct session ID becomes Missing                    | Explicitly change/relaunch                |
-| Browser refresh                   | PTYs survive; config/list re-resolve role cards      | No input replay                           |
+| Failure point                      | Expected state                                       | Recovery                                  |
+| ---------------------------------- | ---------------------------------------------------- | ----------------------------------------- |
+| No config                          | No file created by read; both roles Setup needed     | Assign one role explicitly                |
+| Invalid config                     | Role mutation blocked; terminals unchanged           | Repair externally, then Retry             |
+| Disconnected                       | Mutations disabled; current PTY evidence retained    | Reconnect and accept fresh config/list    |
+| Preset unavailable                 | No create request; binding remains visible           | Change binding or install/restart         |
+| Invalid/removed repository         | Server rejects config or config becomes error        | Refresh and explicitly choose valid input |
+| Session create rejected            | No config replacement; current binding unchanged     | Correct local cause and retry explicitly  |
+| Disconnect before created reply    | Launch outcome unknown; no replay                    | Inspect fresh session list                |
+| Config conflict after PTY create   | New terminal survives; role shows accepted old state | Get fresh config, bind explicitly         |
+| Config response lost after replace | Pending cleared on reconnect; evidence reread        | Trust fresh get, never blind retry        |
+| Bound process exits                | Role becomes Ended from session summary              | Change to another session/preset          |
+| Server restarts                    | Direct session ID becomes Missing                    | Explicitly change/relaunch                |
+| Browser refresh                    | PTYs survive; config/list re-resolve role cards      | No input replay                           |
 
 ## Compatibility
 

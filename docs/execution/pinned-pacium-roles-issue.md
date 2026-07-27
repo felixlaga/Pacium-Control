@@ -112,16 +112,16 @@ Primary roles
 
 Role state and primary action:
 
-| Evidence                                      | Visible state        | Primary action |
-| --------------------------------------------- | -------------------- | -------------- |
-| Accepted live session binding                 | Connected            | Open           |
-| Accepted ended session binding                | Ended                | Change         |
-| Accepted session ID absent from registry      | Missing after restart| Change         |
-| Accepted available launch-preset binding      | Ready to launch      | Launch         |
-| Accepted unavailable launch-preset binding    | Preset unavailable   | Change         |
-| Null role in a ready workspace                | Not assigned         | Assign         |
-| Unconfigured workspace                        | Setup needed         | Assign         |
-| Loading/replacing/disconnected/config error   | Exact bounded state  | Retry or wait  |
+| Evidence                                    | Visible state         | Primary action |
+| ------------------------------------------- | --------------------- | -------------- |
+| Accepted live session binding               | Connected             | Open           |
+| Accepted ended session binding              | Ended                 | Change         |
+| Accepted session ID absent from registry    | Missing after restart | Change         |
+| Accepted available launch-preset binding    | Ready to launch       | Launch         |
+| Accepted unavailable launch-preset binding  | Preset unavailable    | Change         |
+| Null role in a ready workspace              | Not assigned          | Assign         |
+| Unconfigured workspace                      | Setup needed          | Assign         |
+| Loading/replacing/disconnected/config error | Exact bounded state   | Retry or wait  |
 
 The Change/Assign dialog edits one role. “Running session” choices display
 process, command, and compact directory evidence. “Launch preset” choices show
