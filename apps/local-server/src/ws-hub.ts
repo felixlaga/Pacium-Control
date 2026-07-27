@@ -295,6 +295,21 @@ export class WebSocketHub {
         );
         return;
       }
+      case "repository.history": {
+        const observation = await this.sessions.repositoryHistory(
+          message.sessionId,
+        );
+        this.send(
+          client.socket,
+          boundRepositoryHistoryResponse({
+            type: "repository.history",
+            requestId: message.requestId,
+            sessionId: message.sessionId,
+            observation,
+          }),
+        );
+        return;
+      }
       case "session.close":
         this.sessions.close(
           message.sessionId,
@@ -372,6 +387,34 @@ export function boundRepositoryDiffResponse(
       patchBytes: 0,
       patchLines: 0,
       error: null,
+    },
+  };
+}
+
+type RepositoryHistoryResponse = Extract<
+  ServerMessage,
+  { type: "repository.history" }
+>;
+
+export function boundRepositoryHistoryResponse(
+  message: RepositoryHistoryResponse,
+): RepositoryHistoryResponse {
+  if (
+    Buffer.byteLength(JSON.stringify(message)) <= MAX_APPLICATION_MESSAGE_BYTES
+  ) {
+    return message;
+  }
+  return {
+    ...message,
+    observation: {
+      ...message.observation,
+      status: "error",
+      commits: [],
+      truncated: false,
+      error: {
+        code: "invalid_output",
+        message: "Git returned invalid or excessive commit history.",
+      },
     },
   };
 }
