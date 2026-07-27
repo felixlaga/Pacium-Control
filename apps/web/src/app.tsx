@@ -91,6 +91,16 @@ import {
   type PaciumPromptTargetId,
   type PaciumPromptTargetProjection,
 } from "./pacium-prompt-target-model.js";
+import {
+  IDLE_PACIUM_QUEUE,
+  acceptPaciumQueueResponse,
+  acceptPaciumQueueUpdate,
+  beginPaciumQueueRequest,
+  buildPaciumQueueProjection,
+  interruptPaciumQueueRequest,
+  type PaciumQueueViewState,
+} from "./pacium-queue-model.js";
+import { PaciumQueueSources } from "./pacium-queue-sources.js";
 import { PaciumRoleBindingDialog } from "./pacium-role-binding.js";
 import {
   buildPaciumRoleBindingOptions,
@@ -340,6 +350,9 @@ export function App() {
     message: "Reading configured prompt targets.",
     targets: [],
   });
+  const [paciumQueue, setPaciumQueue] =
+    useState<PaciumQueueViewState>(IDLE_PACIUM_QUEUE);
+  const paciumQueueRef = useRef(paciumQueue);
   const [editingPaciumRole, setEditingPaciumRole] =
     useState<PaciumRoleId | null>(null);
   const roleSaveRequestRef = useRef<{
@@ -363,6 +376,7 @@ export function App() {
   repositoryVerificationRef.current = repositoryVerificationBySession;
   paciumConfigRef.current = paciumConfig;
   paciumPromptRef.current = paciumPrompt;
+  paciumQueueRef.current = paciumQueue;
   pendingPaciumRoleLaunchRef.current = pendingPaciumRoleLaunch;
   workspaceModeRef.current = workspaceMode;
 
@@ -465,6 +479,13 @@ export function App() {
             );
           }
         }
+        const interruptedQueue = interruptPaciumQueueRequest(
+          paciumQueueRef.current,
+        );
+        if (interruptedQueue !== paciumQueueRef.current) {
+          paciumQueueRef.current = interruptedQueue;
+          setPaciumQueue(interruptedQueue);
+        }
       }
       return;
     }
@@ -505,6 +526,29 @@ export function App() {
       }
       return;
     }
+    if (event.message.type === "pacium.queue.sources") {
+      const accepted = acceptPaciumQueueResponse(
+        paciumQueueRef.current,
+        event.message.requestId,
+        event.message.observation,
+      );
+      if (accepted !== paciumQueueRef.current) {
+        paciumQueueRef.current = accepted;
+        setPaciumQueue(accepted);
+      }
+      return;
+    }
+    if (event.message.type === "pacium.queue.sources.updated") {
+      const accepted = acceptPaciumQueueUpdate(
+        paciumQueueRef.current,
+        event.message.observation,
+      );
+      if (accepted !== paciumQueueRef.current) {
+        paciumQueueRef.current = accepted;
+        setPaciumQueue(accepted);
+      }
+      return;
+    }
     if (event.message.type === "pacium.config") {
       const accepted = acceptPaciumConfigResponse(
         paciumConfigRef.current,
@@ -514,6 +558,16 @@ export function App() {
       if (accepted !== paciumConfigRef.current) {
         paciumConfigRef.current = accepted;
         setPaciumConfig(accepted);
+        const transport = transportRef.current;
+        if (transport !== null) {
+          const requestId = transport.requestQueueObservation();
+          const queueRequest = beginPaciumQueueRequest(
+            paciumQueueRef.current,
+            requestId,
+          );
+          paciumQueueRef.current = queueRequest;
+          setPaciumQueue(queueRequest);
+        }
       }
       const savedRole = roleSaveRequestRef.current;
       if (savedRole?.requestId === event.message.requestId) {
@@ -704,6 +758,18 @@ export function App() {
         setPaciumPrompt(rejectedPrompt);
         setNotice(
           `Prompt was not delivered. ${event.message.message} Pacium did not retry it.`,
+        );
+        return;
+      }
+      const interruptedQueue = interruptPaciumQueueRequest(
+        paciumQueueRef.current,
+        event.message.requestId,
+      );
+      if (interruptedQueue !== paciumQueueRef.current) {
+        paciumQueueRef.current = interruptedQueue;
+        setPaciumQueue(interruptedQueue);
+        setNotice(
+          `Queue source refresh failed. ${event.message.message} Terminals and source files are unchanged.`,
         );
         return;
       }
@@ -1317,6 +1383,15 @@ export function App() {
       }),
     [connection, paciumConfig, sessions],
   );
+  const paciumQueueProjection = useMemo(
+    () =>
+      buildPaciumQueueProjection({
+        config: paciumConfig,
+        queue: paciumQueue,
+        connection,
+      }),
+    [connection, paciumConfig, paciumQueue],
+  );
   paciumPromptTargetsRef.current = paciumPromptTargets;
   useEffect(() => {
     const reconciled = reconcilePaciumPromptTarget(
@@ -1749,6 +1824,24 @@ export function App() {
     paciumPromptRef.current = next;
     setPaciumPrompt(next);
     setNotice(`Sending terminal input to ${target.label}…`);
+  };
+
+  const refreshPaciumQueue = () => {
+    const transport = transportRef.current;
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      paciumQueueRef.current.requestId !== null
+    ) {
+      setNotice(
+        "Queue source evidence needs a live Pacium connection. Terminals and source files are unchanged.",
+      );
+      return;
+    }
+    const requestId = transport.requestQueueObservation();
+    const next = beginPaciumQueueRequest(paciumQueueRef.current, requestId);
+    paciumQueueRef.current = next;
+    setPaciumQueue(next);
   };
 
   const openCreateDialog = () => {
@@ -2250,6 +2343,10 @@ export function App() {
                 onOpen={selectSession}
                 onRetry={() => transportRef.current?.requestPaciumConfig()}
                 roles={paciumRoleModels}
+              />
+              <PaciumQueueSources
+                onRefresh={refreshPaciumQueue}
+                projection={paciumQueueProjection}
               />
             </>
           )}
