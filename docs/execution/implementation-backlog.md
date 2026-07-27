@@ -99,6 +99,7 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-023 Implement split panes
 
 - Horizontal/vertical split, resize, focus ring, move session, collapse, and responsive minimum sizes.
+- Current status: bounded nested splits, explicit focus, move/swap, pointer and keyboard resize, maximize/restore, view-only close, local restoration, and simultaneous terminal subscriptions are implemented. Rendered browser and accessibility validation remain pending because no browser backend was available.
 
 ### PC-024 Implement session actions
 
