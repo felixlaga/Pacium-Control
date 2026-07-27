@@ -131,6 +131,15 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 - Token-protected host directory browsing, breadcrumbs, parent/home navigation, repository markers, filtering, recent choices, hidden-folder control, typed-path fallback, bounded results, and remote-safe behavior.
 - Current status: implemented with resolver, contract, HTTP-boundary, transport, and state tests. Rendered browser and accessibility validation remain pending because no browser backend was available.
 
+### PC-078 Refresh host working-directory picker
+
+- Add in-picker absolute-path navigation, compact keyboard traversal,
+  first-load default recovery, failure-safe browser-local recents, and complete
+  rendered workflow evidence without changing the read-only filesystem or
+  PC-077 request-authority boundary.
+- Current status: in progress on `codex/directory-picker-refresh`; issue and
+  implementation plan are committed before code changes.
+
 ## Epic 3 — Agent attention and Git
 
 ### PC-030 Detect process and agent type
