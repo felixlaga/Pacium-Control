@@ -8,6 +8,9 @@ const verificationDirectory = mkdtempSync(
   join(tmpdir(), "pacium-playwright-verification-"),
 );
 const verificationConfigPath = join(verificationDirectory, "verification.json");
+const paciumStateDirectory = mkdtempSync(
+  join(tmpdir(), "pacium-playwright-state-"),
+);
 writeFileSync(
   verificationConfigPath,
   JSON.stringify({
@@ -38,7 +41,9 @@ writeFileSync(
   }),
 );
 process.env.PACIUM_E2E_CONFIG_DIRECTORY = verificationDirectory;
+process.env.PACIUM_E2E_STATE_DIRECTORY = paciumStateDirectory;
 process.env.PACIUM_VERIFICATION_CONFIG = verificationConfigPath;
+process.env.PACIUM_DATA_DIR = paciumStateDirectory;
 
 export default defineConfig({
   testDir: "./tests/e2e",
