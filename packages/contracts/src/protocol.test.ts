@@ -963,6 +963,24 @@ describe("agent classification contract", () => {
     confidence: "confirmed",
     observedAt: "2026-07-27T10:00:00.000Z",
   };
+  const providerObservation = {
+    contractVersion: 1,
+    provider: "codex",
+    adapterVersion: "1",
+    providerVersion: null,
+    health: {
+      state: "unavailable",
+      source: "none",
+      confidence: "low",
+      detail: "No provider observer is connected.",
+    },
+    capabilities: [],
+    attention: null,
+    activities: [],
+    diagnostics: [],
+    observedAt: "2026-07-27T10:00:00.000Z",
+    staleAfter: "2026-07-27T10:05:00.000Z",
+  };
 
   it("accepts bounded launch evidence and rejects unknown fields", () => {
     expect(AgentClassificationSchema.safeParse(classification).success).toBe(
@@ -992,7 +1010,7 @@ describe("agent classification contract", () => {
       launchPreset: "codex",
       commandLabel: "Codex",
       agentClassification: classification,
-      providerObservation: null,
+      providerObservation,
       repository: {
         status: "not_repository",
         root: null,
@@ -1028,6 +1046,35 @@ describe("agent classification contract", () => {
         providerObservation: undefined,
       }).success,
     ).toBe(false);
+    expect(
+      SessionSummarySchema.safeParse({
+        ...session,
+        providerObservation: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      SessionSummarySchema.safeParse({
+        ...session,
+        providerObservation: {
+          ...providerObservation,
+          provider: "claude",
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      SessionSummarySchema.safeParse({
+        ...session,
+        shell: "/bin/zsh",
+        launchPreset: "shell",
+        commandLabel: "Shell",
+        agentClassification: {
+          ...classification,
+          type: "shell",
+          label: "Shell",
+        },
+        providerObservation: null,
+      }).success,
+    ).toBe(true);
   });
 });
 

@@ -1076,27 +1076,43 @@ export type VerificationObservation = z.infer<
   typeof VerificationObservationSchema
 >;
 
-export const SessionSummarySchema = z.object({
-  id: SessionIdSchema,
-  epoch: z.number().int().positive(),
-  displayName: z.string().min(1).max(120),
-  cwd: z.string().min(1).max(4096),
-  shell: z.string().min(1).max(4096),
-  launchPreset: LaunchPresetIdSchema,
-  commandLabel: z.string().min(1).max(40),
-  agentClassification: AgentClassificationSchema,
-  providerObservation: ProviderObservationSnapshotSchema.nullable(),
-  repository: RepositoryObservationSchema,
-  runtime: z.literal("pty"),
-  processState: ProcessStateSchema,
-  pid: z.number().int().positive().nullable(),
-  cols: z.number().int().min(2).max(500),
-  rows: z.number().int().min(1).max(300),
-  createdAt: z.string().datetime(),
-  exitedAt: z.string().datetime().nullable(),
-  exitCode: z.number().int().nullable(),
-  exitSignal: z.number().int().nullable(),
-});
+export const SessionSummarySchema = z
+  .object({
+    id: SessionIdSchema,
+    epoch: z.number().int().positive(),
+    displayName: z.string().min(1).max(120),
+    cwd: z.string().min(1).max(4096),
+    shell: z.string().min(1).max(4096),
+    launchPreset: LaunchPresetIdSchema,
+    commandLabel: z.string().min(1).max(40),
+    agentClassification: AgentClassificationSchema,
+    providerObservation: ProviderObservationSnapshotSchema.nullable(),
+    repository: RepositoryObservationSchema,
+    runtime: z.literal("pty"),
+    processState: ProcessStateSchema,
+    pid: z.number().int().positive().nullable(),
+    cols: z.number().int().min(2).max(500),
+    rows: z.number().int().min(1).max(300),
+    createdAt: z.string().datetime(),
+    exitedAt: z.string().datetime().nullable(),
+    exitCode: z.number().int().nullable(),
+    exitSignal: z.number().int().nullable(),
+  })
+  .superRefine((session, context) => {
+    if (
+      (session.launchPreset === "shell" &&
+        session.providerObservation !== null) ||
+      (session.launchPreset !== "shell" &&
+        session.providerObservation?.provider !== session.launchPreset)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "Provider observation must match the server-owned launch preset.",
+        path: ["providerObservation"],
+      });
+    }
+  });
 
 export type SessionSummary = z.infer<typeof SessionSummarySchema>;
 export type ProcessState = z.infer<typeof ProcessStateSchema>;
