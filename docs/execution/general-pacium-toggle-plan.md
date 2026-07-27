@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `b0090b5f3eeac91acc84bf6fe827212a7bac2b1e`
 - Target milestone: Milestone 3
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -261,3 +261,18 @@ mechanisms and config reconnect get independently.
   configuration and all existing systems of record.
 - Security: adds no authority; shortcut ownership and config evidence remain
   bounded, typed, and text-only.
+
+## Completion result
+
+- The functional mode switch, browser-only versioned preference, bounded
+  shortcut, command-palette action, config summary, and accessibility states
+  were delivered without a protocol or PTY lifecycle change.
+- `pnpm verify` passed 68 test files and 353 tests; `pnpm test:e2e` passed all
+  eight Chromium workflows.
+- Switching by pointer, chord, palette, and reload preserves the selected
+  terminal and active inspector evidence. Responsive, zoom, forced-color, and
+  focus states are covered in the browser suite.
+- PC-042 remains responsible for resolving configured bindings into honest
+  pinned Meta and Orchestrator role rows.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x, and
+  the web bundle retains Vite's existing 500 kB size warning.
