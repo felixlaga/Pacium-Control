@@ -12,6 +12,7 @@ import {
   repositoryVerificationInspectMessage,
   repositoryVerificationRunMessage,
   sessionCreateMessage,
+  terminalInputMessage,
 } from "./transport.js";
 
 describe("repository transport", () => {
@@ -178,6 +179,23 @@ describe("session create correlation", () => {
       launchPreset: "shell",
       cols: 80,
       rows: 24,
+    });
+  });
+});
+
+describe("terminal input correlation", () => {
+  it("preserves the exact caller request, session, and terminal bytes", () => {
+    expect(
+      terminalInputMessage(
+        "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+        "Review the failing tests\r",
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ),
+    ).toEqual({
+      type: "terminal.input",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+      data: "Review the failing tests\r",
     });
   });
 });

@@ -81,13 +81,10 @@ export class PaciumTransport {
     });
   }
 
-  public input(sessionId: string, data: string): void {
-    this.send({
-      type: "terminal.input",
-      requestId: crypto.randomUUID(),
-      sessionId,
-      data,
-    });
+  public input(sessionId: string, data: string): string {
+    const requestId = crypto.randomUUID();
+    this.send(terminalInputMessage(sessionId, data, requestId));
+    return requestId;
   }
 
   public resize(sessionId: string, cols: number, rows: number): void {
@@ -487,6 +484,19 @@ export function sessionCreateMessage(
     type: "session.create",
     requestId,
     payload,
+  };
+}
+
+export function terminalInputMessage(
+  sessionId: string,
+  data: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "terminal.input" }> {
+  return {
+    type: "terminal.input",
+    requestId,
+    sessionId,
+    data,
   };
 }
 
