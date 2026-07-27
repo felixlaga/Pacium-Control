@@ -2,6 +2,53 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.32.0 — optional Tailscale Serve access — 2026-07-28
+
+### Added
+
+- Optional all-or-nothing startup configuration for one canonical
+  `https://*.ts.net` Serve Origin and a bounded exact operator-login allowlist,
+  while the Pacium server remains bound only to `127.0.0.1`.
+- A single request-authority classifier for local and proxied HTTP/WebSocket
+  traffic with exact Host and Origin checks, strict
+  `Tailscale-User-Login` handling, explicit Funnel denial, and the existing
+  ephemeral-token requirement on protected transport.
+- Protocol 18 connection evidence that exposes only Local or the accepted
+  Tailscale login for the current socket, plus a compact accessible connection
+  badge that clears stale identity when the connection is no longer live.
+- Secure same-origin POST reads for remote bootstrap and directory browsing,
+  exact configured `wss://` CSP support, and canonical loopback-only custom
+  local Origins.
+- An operator runbook covering loopback setup, grants, Serve activation,
+  canary and denial checks, Funnel/public checks, revocation, rollback, and the
+  evidence boundary.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 114 test
+  files and 701 tests, plus the 903.24 kB web JavaScript, 107.74 kB stylesheet,
+  and 335.82 kB local-server production bundles.
+- `pnpm test:e2e` passed all 11 Chromium workflows, including persistent Local
+  connection evidence, reconnect, narrow layout, forced colors, and reduced
+  motion.
+- Startup, HTTP, WebSocket, CSP, protocol, transport, reducer, semantic-render,
+  and accessibility tests covered partial configuration, non-loopback direct
+  access, malformed or duplicate identity, unlisted users, tagged-device
+  missing identity, Funnel requests, local spoofing, exact remote authority,
+  token enforcement, and stale-identity clearing.
+
+### Known limitations
+
+- Tests use proxy-shaped requests; they do not prove the owner's real
+  Tailscale installation, MagicDNS/certificate state, deployed grants,
+  revocation propagation, or the absence of alternate LAN, tailnet, Funnel,
+  and public ingress. The manual runbook canary remains a release gate.
+- Runtime environment changes require a server restart. Immediate ingress
+  revocation should happen at Tailscale Serve or the tailnet policy layer so
+  the local Pacium process and its PTYs can remain running.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's existing chunk-size warning.
+
 ## 0.31.0 — worker and control context — 2026-07-27
 
 ### Added
