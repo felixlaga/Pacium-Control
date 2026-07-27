@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PROTOCOL_VERSION = 8 as const;
+export const PROTOCOL_VERSION = 9 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -12,6 +12,10 @@ export const MAX_GIT_HISTORY_COMMITS = 50;
 export const MAX_GIT_HISTORY_AUTHOR_CHARS = 200;
 export const MAX_GIT_HISTORY_SUBJECT_CHARS = 500;
 export const MAX_GIT_HISTORY_PARENTS = 16;
+export const MAX_VERIFICATION_PRESETS = 16;
+export const MAX_VERIFICATION_ARGUMENTS = 32;
+export const MAX_VERIFICATION_ARGUMENT_CHARS = 512;
+export const MAX_VERIFICATION_OUTPUT_BYTES = 24 * 1024;
 
 const RequestIdSchema = z.string().uuid();
 const SessionIdSchema = z.string().uuid();
@@ -700,6 +704,326 @@ export const GitHistoryObservationSchema = z
   });
 export type GitHistoryObservation = z.infer<typeof GitHistoryObservationSchema>;
 
+const VerificationPresetIdSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/);
+const VerificationDisplayTextSchema = (maximum: number) =>
+  z
+    .string()
+    .min(1)
+    .max(maximum)
+    .refine((value) => !hasLayoutControlCharacter(value));
+const VerificationArgumentSchema = z
+  .string()
+  .max(MAX_VERIFICATION_ARGUMENT_CHARS)
+  .refine((value) => !hasLayoutControlCharacter(value));
+const VerificationOutputSchema = z
+  .string()
+  .refine(
+    (value) => utf8ByteLength(value) <= MAX_VERIFICATION_OUTPUT_BYTES,
+    "Verification output exceeds its UTF-8 byte bound.",
+  );
+
+export const VerificationPresetSchema = z
+  .object({
+    id: VerificationPresetIdSchema,
+    label: VerificationDisplayTextSchema(80),
+    description: VerificationDisplayTextSchema(240),
+    executable: z
+      .string()
+      .min(1)
+      .max(4096)
+      .startsWith("/")
+      .refine((value) => !hasLayoutControlCharacter(value)),
+    args: z.array(VerificationArgumentSchema).max(MAX_VERIFICATION_ARGUMENTS),
+    timeoutMs: z
+      .number()
+      .int()
+      .min(1000)
+      .max(10 * 60 * 1000),
+  })
+  .strict();
+export type VerificationPreset = z.infer<typeof VerificationPresetSchema>;
+
+export const VerificationRunStatusSchema = z.enum([
+  "running",
+  "cancelling",
+  "passed",
+  "failed",
+  "timed_out",
+  "cancelled",
+  "error",
+]);
+export const VerificationHeadComparisonSchema = z.enum([
+  "same",
+  "changed",
+  "unavailable",
+]);
+export const VerificationRunErrorCodeSchema = z.enum([
+  "spawn_failed",
+  "process_error",
+  "invalid_result",
+]);
+
+export const VerificationRunSchema = z
+  .object({
+    runId: z.string().uuid(),
+    presetId: VerificationPresetIdSchema,
+    status: VerificationRunStatusSchema,
+    startedAt: z.string().datetime(),
+    completedAt: z.string().datetime().nullable(),
+    durationMs: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(15 * 60 * 1000)
+      .nullable(),
+    headCommitAtStart: GitObjectIdSchema.nullable(),
+    headCommitAtEnd: GitObjectIdSchema.nullable(),
+    headComparison: VerificationHeadComparisonSchema.nullable(),
+    exitCode: z.number().int().nullable(),
+    signal: z
+      .string()
+      .regex(/^SIG[A-Z0-9]+$/)
+      .max(32)
+      .nullable(),
+    terminationForced: z.boolean(),
+    stdout: VerificationOutputSchema,
+    stderr: VerificationOutputSchema,
+    stdoutTruncated: z.boolean(),
+    stderrTruncated: z.boolean(),
+    error: z
+      .object({
+        code: VerificationRunErrorCodeSchema,
+        message: z.string().min(1).max(200),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict()
+  .superRefine((run, context) => {
+    const active = run.status === "running" || run.status === "cancelling";
+    if (active) {
+      if (
+        run.completedAt !== null ||
+        run.durationMs !== null ||
+        run.headCommitAtEnd !== null ||
+        run.headComparison !== null ||
+        run.exitCode !== null ||
+        run.signal !== null ||
+        run.terminationForced ||
+        run.stdout.length > 0 ||
+        run.stderr.length > 0 ||
+        run.stdoutTruncated ||
+        run.stderrTruncated ||
+        run.error !== null
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "An active verification run cannot contain result evidence.",
+        });
+      }
+      return;
+    }
+
+    if (
+      run.completedAt === null ||
+      run.durationMs === null ||
+      run.headComparison === null
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "A completed verification run requires completion evidence.",
+      });
+      return;
+    }
+
+    const bothHeadsKnown =
+      run.headCommitAtStart !== null && run.headCommitAtEnd !== null;
+    if (
+      (bothHeadsKnown && run.headComparison === "unavailable") ||
+      (!bothHeadsKnown && run.headComparison !== "unavailable") ||
+      (bothHeadsKnown &&
+        run.headComparison === "same" &&
+        run.headCommitAtStart !== run.headCommitAtEnd) ||
+      (bothHeadsKnown &&
+        run.headComparison === "changed" &&
+        run.headCommitAtStart === run.headCommitAtEnd)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "HEAD comparison must match the observed commits.",
+      });
+    }
+
+    if (
+      run.status === "passed" &&
+      (run.exitCode !== 0 ||
+        run.signal !== null ||
+        run.terminationForced ||
+        run.error !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "A passing run requires a clean zero exit.",
+      });
+    }
+    if (
+      run.status === "failed" &&
+      ((run.exitCode === null && run.signal === null) ||
+        run.exitCode === 0 ||
+        run.terminationForced ||
+        run.error !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "A failed run requires nonzero exit or signal evidence.",
+      });
+    }
+    if (
+      (run.status === "timed_out" || run.status === "cancelled") &&
+      run.error !== null
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Termination outcomes cannot contain execution errors.",
+      });
+    }
+    if (
+      run.status === "error" &&
+      (run.error === null || run.terminationForced)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "An execution error requires bounded error evidence.",
+      });
+    }
+    if (run.status !== "error" && run.error !== null) {
+      context.addIssue({
+        code: "custom",
+        message: "Only execution errors carry error evidence.",
+      });
+    }
+  });
+export type VerificationRun = z.infer<typeof VerificationRunSchema>;
+
+export const VerificationObservationStatusSchema = z.enum([
+  "unconfigured",
+  "not_repository",
+  "no_presets",
+  "ready",
+  "error",
+]);
+export const VerificationObservationSchema = z
+  .object({
+    status: VerificationObservationStatusSchema,
+    configured: z.boolean(),
+    root: z.string().min(1).max(4096).nullable(),
+    observedAt: z.string().datetime(),
+    presets: z.array(VerificationPresetSchema).max(MAX_VERIFICATION_PRESETS),
+    run: VerificationRunSchema.nullable(),
+    error: z
+      .object({
+        code: z.enum(["repository_unavailable", "invalid_state"]),
+        message: z.string().min(1).max(200),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict()
+  .superRefine((observation, context) => {
+    const presetIds = observation.presets.map(({ id }) => id);
+    if (new Set(presetIds).size !== presetIds.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Verification preset IDs must be unique.",
+      });
+    }
+    if (
+      observation.run !== null &&
+      !presetIds.includes(observation.run.presetId)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Verification run must reference an advertised preset.",
+      });
+    }
+
+    if (observation.status === "unconfigured") {
+      if (
+        observation.configured ||
+        observation.root !== null ||
+        observation.presets.length > 0 ||
+        observation.run !== null ||
+        observation.error !== null
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "Unconfigured verification cannot contain repository state.",
+        });
+      }
+      return;
+    }
+    if (observation.status === "not_repository") {
+      if (
+        observation.root !== null ||
+        observation.presets.length > 0 ||
+        observation.run !== null ||
+        observation.error !== null
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "Non-repository verification cannot contain run evidence.",
+        });
+      }
+      return;
+    }
+    if (observation.status === "no_presets") {
+      if (
+        !observation.configured ||
+        observation.root === null ||
+        observation.presets.length > 0 ||
+        observation.run !== null ||
+        observation.error !== null
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "A no-presets state requires one configured repository.",
+        });
+      }
+      return;
+    }
+    if (observation.status === "ready") {
+      if (
+        !observation.configured ||
+        observation.root === null ||
+        observation.presets.length === 0 ||
+        observation.error !== null
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "Ready verification requires configured presets and a root.",
+        });
+      }
+      return;
+    }
+    if (
+      observation.presets.length > 0 ||
+      observation.run !== null ||
+      observation.error === null
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Verification errors contain only bounded failure evidence.",
+      });
+    }
+  });
+export type VerificationObservation = z.infer<
+  typeof VerificationObservationSchema
+>;
+
 export const SessionSummarySchema = z.object({
   id: SessionIdSchema,
   epoch: z.number().int().positive(),
@@ -809,6 +1133,29 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
       sessionId: SessionIdSchema,
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("repository.verification.inspect"),
+      requestId: RequestIdSchema,
+      sessionId: SessionIdSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("repository.verification.run"),
+      requestId: RequestIdSchema,
+      sessionId: SessionIdSchema,
+      presetId: VerificationPresetIdSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("repository.verification.cancel"),
+      requestId: RequestIdSchema,
+      sessionId: SessionIdSchema,
+      runId: z.string().uuid(),
+    })
+    .strict(),
   z.object({
     type: z.literal("session.close"),
     requestId: RequestIdSchema,
@@ -869,6 +1216,21 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
       requestId: RequestIdSchema,
       sessionId: SessionIdSchema,
       observation: GitHistoryObservationSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("repository.verification"),
+      requestId: RequestIdSchema,
+      sessionId: SessionIdSchema,
+      observation: VerificationObservationSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("repository.verification.updated"),
+      sessionId: SessionIdSchema,
+      observation: VerificationObservationSchema,
     })
     .strict(),
   z.object({
