@@ -124,6 +124,7 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-028 Implement responsive layout and accessibility baseline
 
 - Focus order, labels, live regions, contrast, reduced motion, panel collapse, and minimum supported viewport.
+- Current status: implemented with named landmarks and modals, skip navigation, connection/selection/keyboard-owner status, browser-local panel visibility, visible and keyboard panel controls, narrow drawers, modal Escape/focus containment/restoration, reduced-motion and forced-colors rules, and deterministic semantic/browser coverage at 320 px and 200% zoom. Manual screen-reader and visual contrast review remains a release evidence item.
 
 ### PC-029 Implement host working-directory picker
 
