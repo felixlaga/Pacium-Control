@@ -1,5 +1,7 @@
 import { buildChildEnvironment, loadServerConfig } from "./config.js";
 import { ClaudeObserver, detectClaudeVersion } from "./claude-observer.js";
+import { CodexObserver, detectCodexRuntime } from "./codex-observer.js";
+import { CodexRuntimeBridge } from "./codex-runtime-bridge.js";
 import { createPaciumHttpServer } from "./http-server.js";
 import { createHostActions } from "./host-actions.js";
 import { createPaciumConfigStore } from "./pacium-config-service.js";
@@ -12,6 +14,8 @@ const config = loadServerConfig();
 const childEnvironment = buildChildEnvironment(config.environmentKeys);
 const claudeExecutable =
   config.launchPresets.find(({ id }) => id === "claude")?.executable ?? null;
+const codexExecutable =
+  config.launchPresets.find(({ id }) => id === "codex")?.executable ?? null;
 const claudeObserver = new ClaudeObserver({
   baseUrl: `http://${config.host}:${config.port}`,
   providerVersion:
@@ -19,6 +23,19 @@ const claudeObserver = new ClaudeObserver({
       ? null
       : detectClaudeVersion(claudeExecutable, childEnvironment),
 });
+const codexObserver =
+  codexExecutable === null
+    ? undefined
+    : new CodexObserver({
+        baseUrl: `http://${config.host}:${config.port}`,
+        executable: codexExecutable,
+        environment: childEnvironment,
+        capability: detectCodexRuntime(codexExecutable, childEnvironment),
+      });
+const codexRuntimeBridge =
+  codexObserver === undefined
+    ? undefined
+    : new CodexRuntimeBridge(codexObserver);
 const verificationRunner = new VerificationRunner({
   environment: childEnvironment,
 });
@@ -33,6 +50,7 @@ const sessions = new SessionManager(
   config.verificationCatalog,
   verificationRunner,
   claudeObserver,
+  codexObserver,
 );
 const paciumConfig = createPaciumConfigStore(config, sessions);
 const queueObserver = new QueueObserver();
@@ -43,6 +61,7 @@ const application = createPaciumHttpServer(
   paciumConfig,
   queueObserver,
   claudeObserver,
+  codexRuntimeBridge,
 );
 
 application.server.listen(config.port, config.host, () => {
