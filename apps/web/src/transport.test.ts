@@ -4,6 +4,7 @@ import {
   fetchDirectoryListing,
   paciumConfigGetMessage,
   paciumConfigReplaceMessage,
+  paciumContextInspectMessage,
   queueApprovalDecisionMessage,
   queueDecisionDeliveryMessage,
   queueDecisionResolutionMessage,
@@ -115,6 +116,20 @@ describe("Pacium config transport", () => {
       type: "pacium.config.get",
       requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
     });
+  });
+
+  it("requests control context without path, revision, or query authority", () => {
+    const message = paciumContextInspectMessage(
+      "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+    );
+    expect(message).toEqual({
+      type: "pacium.context.inspect",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+    });
+    expect(message).not.toHaveProperty("path");
+    expect(message).not.toHaveProperty("workspaceRevision");
+    expect(message).not.toHaveProperty("count");
+    expect(message).not.toHaveProperty("command");
   });
 
   it("sends one complete revisioned workspace replacement", () => {
