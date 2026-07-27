@@ -15,6 +15,8 @@ import type {
   GitChangedFile,
   LaunchPresetCapability,
   LaunchPresetId,
+  PaciumBinding,
+  PaciumRoleId,
   ServerMessage,
   SessionSummary,
   TerminalDataFrame,
@@ -67,10 +69,23 @@ import {
   acceptPaciumConfigResponse,
   beginPaciumConfigRequest,
   interruptPaciumConfigRequest,
+  visiblePaciumConfig,
   type PaciumConfigViewState,
 } from "./pacium-config-model.js";
 import { buildPaciumModeSummary } from "./pacium-mode-summary-model.js";
 import { PaciumModeSummaryCard } from "./pacium-mode-summary.js";
+import { PaciumRoleBindingDialog } from "./pacium-role-binding.js";
+import {
+  buildPaciumRoleBindingOptions,
+  createMinimalPaciumWorkspace,
+  replacePaciumRoleBinding,
+} from "./pacium-role-binding-model.js";
+import { PaciumRoleGroup } from "./pacium-role-card.js";
+import {
+  buildPaciumRoleModels,
+  roleLabel,
+  type PendingPaciumRoleLaunch,
+} from "./pacium-role-model.js";
 import {
   TERMINAL_FONT_STACKS,
   loadPreferences,
@@ -218,6 +233,7 @@ export function App() {
   const paletteInvokerRef = useRef<HTMLElement | null>(null);
   const panelViewRef = useRef<ReturnType<typeof loadPanelView> | null>(null);
   const renameInvokerRef = useRef<HTMLElement | null>(null);
+  const roleEditorInvokerRef = useRef<HTMLElement | null>(null);
   const settingsInvokerRef = useRef<HTMLElement | null>(null);
   const transportRef = useRef<PaciumTransport | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() =>
@@ -299,6 +315,17 @@ export function App() {
   const [paciumConfig, setPaciumConfig] =
     useState<PaciumConfigViewState>(IDLE_PACIUM_CONFIG);
   const paciumConfigRef = useRef(paciumConfig);
+  const [editingPaciumRole, setEditingPaciumRole] =
+    useState<PaciumRoleId | null>(null);
+  const roleSaveRequestRef = useRef<{
+    role: PaciumRoleId;
+    requestId: string;
+  } | null>(null);
+  const [pendingPaciumRoleLaunch, setPendingPaciumRoleLaunch] =
+    useState<PendingPaciumRoleLaunch | null>(null);
+  const pendingPaciumRoleLaunchRef = useRef<PendingPaciumRoleLaunch | null>(
+    null,
+  );
 
   panelViewRef.current = panelView;
   selectedIdRef.current = selectedId;
@@ -310,6 +337,7 @@ export function App() {
   repositoryHistoryRef.current = repositoryHistoryBySession;
   repositoryVerificationRef.current = repositoryVerificationBySession;
   paciumConfigRef.current = paciumConfig;
+  pendingPaciumRoleLaunchRef.current = pendingPaciumRoleLaunch;
   workspaceModeRef.current = workspaceMode;
 
   const effectiveTheme = resolveEffectiveTheme(
@@ -331,6 +359,22 @@ export function App() {
     if (event.type === "connection") {
       setConnection(event.state);
       if (event.state !== "connected") {
+        const pendingRoleLaunch = pendingPaciumRoleLaunchRef.current;
+        if (pendingRoleLaunch !== null) {
+          pendingPaciumRoleLaunchRef.current = null;
+          setPendingPaciumRoleLaunch(null);
+          setNotice(
+            pendingRoleLaunch.stage === "launching"
+              ? `${roleLabel(pendingRoleLaunch.role)} launch outcome is unknown after disconnect. Inspect the refreshed terminal list before retrying.`
+              : `The new terminal remains available, but ${roleLabel(pendingRoleLaunch.role)} binding outcome is unknown after disconnect. Fresh configuration will be read before another action.`,
+          );
+        }
+        if (roleSaveRequestRef.current !== null) {
+          roleSaveRequestRef.current = null;
+          setNotice(
+            "Role assignment outcome is unknown after disconnect. The editor remains open and fresh configuration will be read before another save.",
+          );
+        }
         const interruptedPaciumConfig = interruptPaciumConfigRequest(
           paciumConfigRef.current,
         );
@@ -413,7 +457,90 @@ export function App() {
         paciumConfigRef.current = accepted;
         setPaciumConfig(accepted);
       }
+      const savedRole = roleSaveRequestRef.current;
+      if (savedRole?.requestId === event.message.requestId) {
+        roleSaveRequestRef.current = null;
+        if (event.message.observation.status === "ready") {
+          setEditingPaciumRole(null);
+          setNotice(`${roleLabel(savedRole.role)} binding saved.`);
+          window.requestAnimationFrame(() => {
+            roleEditorInvokerRef.current?.focus();
+          });
+        } else {
+          setNotice(
+            `${roleLabel(savedRole.role)} binding was not accepted. The editor remains open and terminals are unchanged.`,
+          );
+        }
+      }
+      const pendingRoleLaunch = pendingPaciumRoleLaunchRef.current;
+      const acceptedRoleBinding =
+        pendingRoleLaunch?.stage === "binding" &&
+        event.message.observation.status === "ready"
+          ? event.message.observation.workspace?.roles[pendingRoleLaunch.role]
+          : null;
+      const matchingBindingResponse =
+        pendingRoleLaunch?.stage === "binding" &&
+        pendingRoleLaunch.requestId === event.message.requestId;
+      if (
+        matchingBindingResponse &&
+        acceptedRoleBinding?.type === "session" &&
+        acceptedRoleBinding.sessionId === pendingRoleLaunch.sessionId
+      ) {
+        pendingPaciumRoleLaunchRef.current = null;
+        setPendingPaciumRoleLaunch(null);
+        setNotice(
+          `${roleLabel(pendingRoleLaunch.role)} is bound to the new terminal.`,
+        );
+      } else if (matchingBindingResponse) {
+        pendingPaciumRoleLaunchRef.current = null;
+        setPendingPaciumRoleLaunch(null);
+        setNotice(
+          `The new terminal is running, but ${roleLabel(pendingRoleLaunch.role)} was not bound. Refresh configuration and assign it explicitly.`,
+        );
+      }
       return;
+    }
+    if (event.message.type === "session.created") {
+      const pendingRoleLaunch = pendingPaciumRoleLaunchRef.current;
+      if (
+        pendingRoleLaunch?.stage === "launching" &&
+        pendingRoleLaunch.requestId === event.message.requestId
+      ) {
+        const observation = visiblePaciumConfig(paciumConfigRef.current);
+        const transport = transportRef.current;
+        if (
+          observation?.status === "ready" &&
+          observation.revision === pendingRoleLaunch.sourceRevision &&
+          observation.workspace !== null &&
+          transport !== null
+        ) {
+          const requestId = transport.replacePaciumConfig(
+            observation.revision,
+            replacePaciumRoleBinding(
+              observation.workspace,
+              pendingRoleLaunch.role,
+              {
+                type: "session",
+                sessionId: event.message.session.id,
+              },
+            ),
+          );
+          const bindingLaunch: PendingPaciumRoleLaunch = {
+            ...pendingRoleLaunch,
+            requestId,
+            stage: "binding",
+            sessionId: event.message.session.id,
+          };
+          pendingPaciumRoleLaunchRef.current = bindingLaunch;
+          setPendingPaciumRoleLaunch(bindingLaunch);
+        } else {
+          pendingPaciumRoleLaunchRef.current = null;
+          setPendingPaciumRoleLaunch(null);
+          setNotice(
+            `${roleLabel(pendingRoleLaunch.role)} terminal started, but the workspace definition changed before it could be bound. The terminal remains available; refresh and bind it explicitly.`,
+          );
+        }
+      }
     }
     if (event.message.type === "repository.changes") {
       const current =
@@ -517,6 +644,25 @@ export function App() {
       if (interruptedPaciumConfig !== paciumConfigRef.current) {
         paciumConfigRef.current = interruptedPaciumConfig;
         setPaciumConfig(interruptedPaciumConfig);
+      }
+      const pendingRoleLaunch = pendingPaciumRoleLaunchRef.current;
+      if (pendingRoleLaunch?.requestId === event.message.requestId) {
+        pendingPaciumRoleLaunchRef.current = null;
+        setPendingPaciumRoleLaunch(null);
+        setNotice(
+          pendingRoleLaunch.stage === "launching"
+            ? `${roleLabel(pendingRoleLaunch.role)} terminal was not started. ${event.message.message}`
+            : `The new terminal is running, but ${roleLabel(pendingRoleLaunch.role)} was not bound. ${event.message.message}`,
+        );
+        return;
+      }
+      const savedRole = roleSaveRequestRef.current;
+      if (savedRole?.requestId === event.message.requestId) {
+        roleSaveRequestRef.current = null;
+        setNotice(
+          `${roleLabel(savedRole.role)} binding was not changed. ${event.message.message}`,
+        );
+        return;
       }
       let changed = false;
       const next = new Map(repositoryVerificationRef.current);
@@ -1073,6 +1219,46 @@ export function App() {
     () => buildPaciumModeSummary(paciumConfig, connection),
     [connection, paciumConfig],
   );
+  const paciumRoleModels = useMemo(
+    () =>
+      buildPaciumRoleModels({
+        config: paciumConfig,
+        connection,
+        sessions,
+        launchPresets,
+        defaultCwd,
+        pendingLaunch: pendingPaciumRoleLaunch,
+      }),
+    [
+      connection,
+      defaultCwd,
+      launchPresets,
+      paciumConfig,
+      pendingPaciumRoleLaunch,
+      sessions,
+    ],
+  );
+  const visiblePaciumObservation = visiblePaciumConfig(paciumConfig);
+  const readyPaciumWorkspace =
+    visiblePaciumObservation?.status === "ready"
+      ? visiblePaciumObservation.workspace
+      : null;
+  const editingPaciumRoleBinding =
+    editingPaciumRole === null
+      ? null
+      : (readyPaciumWorkspace?.roles[editingPaciumRole] ?? null);
+  const paciumRoleBindingOptions = useMemo(
+    () =>
+      editingPaciumRole === null
+        ? null
+        : buildPaciumRoleBindingOptions({
+            role: editingPaciumRole,
+            workspace: readyPaciumWorkspace,
+            sessions,
+            launchPresets,
+          }),
+    [editingPaciumRole, launchPresets, readyPaciumWorkspace, sessions],
+  );
   const attentionBySession = useMemo(() => {
     const observedAt = new Date().toISOString();
     return new Map(
@@ -1310,6 +1496,116 @@ export function App() {
       rows: 30,
     });
     closeCreateDialog();
+  };
+
+  const openPaciumRoleEditor = (role: PaciumRoleId) => {
+    if (pendingPaciumRoleLaunchRef.current !== null) {
+      setNotice(
+        "Finish the current role launch before changing another binding.",
+      );
+      return;
+    }
+    roleEditorInvokerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setCapturedPaneId(null);
+    setEditingPaciumRole(role);
+  };
+
+  const closePaciumRoleEditor = () => {
+    if (roleSaveRequestRef.current !== null) {
+      return;
+    }
+    setEditingPaciumRole(null);
+    window.requestAnimationFrame(() => {
+      roleEditorInvokerRef.current?.focus();
+    });
+  };
+
+  const savePaciumRoleBinding = (
+    role: PaciumRoleId,
+    binding: PaciumBinding,
+  ) => {
+    const transport = transportRef.current;
+    const observation = visiblePaciumConfig(paciumConfigRef.current);
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      roleSaveRequestRef.current !== null
+    ) {
+      setNotice(
+        "Reconnect and accept fresh Pacium configuration before saving a role. Terminals are unchanged.",
+      );
+      return;
+    }
+
+    let expectedRevision: number;
+    let workspace;
+    if (observation?.status === "unconfigured") {
+      expectedRevision = 0;
+      workspace = createMinimalPaciumWorkspace(role, binding);
+    } else if (
+      observation?.status === "ready" &&
+      observation.revision !== null &&
+      observation.workspace !== null
+    ) {
+      expectedRevision = observation.revision;
+      workspace = replacePaciumRoleBinding(
+        observation.workspace,
+        role,
+        binding,
+      );
+    } else {
+      setNotice(
+        "Role assignment needs a valid current Pacium definition. Retry configuration first.",
+      );
+      return;
+    }
+
+    const requestId = transport.replacePaciumConfig(
+      expectedRevision,
+      workspace,
+    );
+    roleSaveRequestRef.current = { role, requestId };
+    setNotice(`Saving ${roleLabel(role)} binding…`);
+  };
+
+  const launchPaciumRole = (role: PaciumRoleId) => {
+    const transport = transportRef.current;
+    const model = paciumRoleModels.find((candidate) => candidate.role === role);
+    const observation = visiblePaciumConfig(paciumConfigRef.current);
+    if (
+      transport === null ||
+      connection !== "connected" ||
+      pendingPaciumRoleLaunchRef.current !== null ||
+      model?.canLaunch !== true ||
+      model.launchPreset === null ||
+      model.launchCwd === null ||
+      observation?.status !== "ready" ||
+      observation.revision === null
+    ) {
+      setNotice(
+        `${roleLabel(role)} cannot launch until its fixed preset, working directory, connection, and current config are ready.`,
+      );
+      return;
+    }
+    const requestId = transport.createSession({
+      cwd: model.launchCwd,
+      displayName: roleLabel(role),
+      launchPreset: model.launchPreset,
+      cols: 100,
+      rows: 30,
+    });
+    const pending: PendingPaciumRoleLaunch = {
+      role,
+      requestId,
+      sourceRevision: observation.revision,
+      stage: "launching",
+    };
+    pendingPaciumRoleLaunchRef.current = pending;
+    setPendingPaciumRoleLaunch(pending);
+    setNotice(`Starting ${roleLabel(role)} from its fixed preset…`);
   };
 
   const openCreateDialog = () => {
@@ -1625,6 +1921,7 @@ export function App() {
     createOpen ||
     actionSession !== null ||
     renameSession !== null ||
+    editingPaciumRole !== null ||
     paletteView !== null ||
     settingsOpen;
 
@@ -1795,10 +2092,19 @@ export function App() {
 
         <nav aria-label="Terminal sessions" className="session-navigation">
           {workspaceMode === "pacium" && (
-            <PaciumModeSummaryCard
-              onRetry={() => transportRef.current?.requestPaciumConfig()}
-              summary={paciumModeSummary}
-            />
+            <>
+              <PaciumModeSummaryCard
+                onRetry={() => transportRef.current?.requestPaciumConfig()}
+                summary={paciumModeSummary}
+              />
+              <PaciumRoleGroup
+                onConfigure={openPaciumRoleEditor}
+                onLaunch={launchPaciumRole}
+                onOpen={selectSession}
+                onRetry={() => transportRef.current?.requestPaciumConfig()}
+                roles={paciumRoleModels}
+              />
+            </>
           )}
           <div className="section-heading">
             <span>
@@ -2438,6 +2744,23 @@ export function App() {
           loadDirectories={loadDirectories}
           onCancel={closeCreateDialog}
           onCreate={createSession}
+        />
+      )}
+      {editingPaciumRole !== null && paciumRoleBindingOptions !== null && (
+        <PaciumRoleBindingDialog
+          binding={editingPaciumRoleBinding}
+          connected={connection === "connected"}
+          key={editingPaciumRole}
+          onCancel={closePaciumRoleEditor}
+          onSave={(binding) =>
+            savePaciumRoleBinding(editingPaciumRole, binding)
+          }
+          options={paciumRoleBindingOptions}
+          role={editingPaciumRole}
+          saving={
+            roleSaveRequestRef.current?.role === editingPaciumRole &&
+            paciumConfig.status === "replacing"
+          }
         />
       )}
       {settingsOpen && (
