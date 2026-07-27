@@ -1303,30 +1303,86 @@ kbd {
   text-transform: uppercase;
 }
 
-.planned-card {
-  display: flex;
-  gap: 10px;
-  padding: 11px;
+.agent-classification-card {
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 7px;
   background: var(--panel-raised);
 }
 
-.planned-icon {
-  color: var(--accent-strong);
+.agent-classification-card > header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
 }
 
-.planned-card strong {
+.agent-classification-glyph {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.agent-classification-card > header > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.agent-classification-card strong {
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 550;
+  font-weight: 600;
 }
 
-.planned-card p {
-  margin: 5px 0 0;
+.agent-classification-card small {
   color: var(--text-faint);
-  font-size: 10px;
-  line-height: 1.5;
+  font-size: 9px;
+}
+
+.agent-classification-card dl {
+  margin: 0;
+  padding: 6px 10px;
+}
+
+.agent-classification-card dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 9px;
+}
+
+.agent-classification-card dt {
+  color: var(--text-faint);
+}
+
+.agent-classification-card dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  text-align: right;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.agent-classification-card > p {
+  margin: 0;
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: 9px;
+  line-height: 1.45;
 }
 
 .dialog-backdrop {
