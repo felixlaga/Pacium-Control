@@ -90,11 +90,7 @@ describe("split workspace rendering", () => {
       id: "1e6da255-7c44-4199-b284-ee903712890a",
       displayName: "Orchestrator",
     };
-    const filled = assignSessionToPane(
-      split,
-      "pane-worker",
-      secondSession.id,
-    );
+    const filled = assignSessionToPane(split, "pane-worker", secondSession.id);
     const layout = toggleMaximizedPane(filled, "pane-worker");
     const markup = renderToStaticMarkup(
       <SplitWorkspace
