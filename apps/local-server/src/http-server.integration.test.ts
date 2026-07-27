@@ -898,7 +898,158 @@ describe("localhost HTTP and WebSocket boundary", () => {
         state: { status: "delivered" },
       },
     });
-    await expect(readFile(answerPath, "utf8")).resolves.toBe(answerBytes);
+
+    if (
+      delivered.type !== "pacium.queue.delivery" ||
+      delivered.result.state.delivery === null
+    ) {
+      throw new Error("Expected an immutable answer-file delivery record");
+    }
+    const deliveryRecord = delivered.result.state.delivery;
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.item.inspect",
+        requestId: "c0703144-566d-43eb-a956-1d2fdd56790d",
+        ...questionIdentity,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.item" &&
+          message.requestId === "c0703144-566d-43eb-a956-1d2fdd56790d",
+        "delivered reconciliation inspection",
+      ),
+    ).resolves.toMatchObject({
+      reconciliation: {
+        decisionId: recorded.result.decision.decisionId,
+        attempts: [{ deliveryId: deliveryRecord.deliveryId }],
+        artifact: {
+          status: "transport_artifact_present",
+          source: "filesystem_observed",
+        },
+        lifecycle: {
+          status: "awaiting_evidence",
+          current: null,
+          history: [],
+        },
+        retry: { status: "not_applicable" },
+      },
+    });
+
+    for (const [requestId, action] of [
+      ["3f3918c6-2732-4a65-97d1-3485a6f4d101", "acknowledged"],
+      ["e6d4a816-052b-42f1-b8ff-f4a71e44cc4d", "applied"],
+    ] as const) {
+      client.socket.send(
+        JSON.stringify({
+          type: "pacium.queue.decision.resolve",
+          requestId,
+          decisionId: recorded.result.decision.decisionId,
+          decisionHash: recorded.result.decision.decisionHash,
+          action,
+          delivery: {
+            deliveryId: deliveryRecord.deliveryId,
+            deliveryHash: deliveryRecord.deliveryHash,
+          },
+          relatedDecision: null,
+          note:
+            action === "acknowledged"
+              ? "Verified acknowledgement outside Pacium."
+              : "Verified application outside Pacium.",
+        }),
+      );
+      await expect(
+        nextMessageWithin(
+          client,
+          (message) =>
+            message.type === "pacium.queue.resolution" &&
+            message.requestId === requestId,
+          `${action} lifecycle response`,
+        ),
+      ).resolves.toMatchObject({
+        result: {
+          status: "recorded",
+          decisionId: recorded.result.decision.decisionId,
+          resolution: {
+            action,
+            actor: {
+              kind: "local_operator",
+              label: "Local operator",
+            },
+            source: "human_labelled",
+          },
+          error: null,
+        },
+      });
+    }
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.decision.resolve",
+        requestId: "cb5df184-d434-4285-996a-aafcc736ba4e",
+        decisionId: recorded.result.decision.decisionId,
+        decisionHash: recorded.result.decision.decisionHash,
+        action: "confirmed_not_delivered",
+        delivery: {
+          deliveryId: deliveryRecord.deliveryId,
+          deliveryHash: deliveryRecord.deliveryHash,
+        },
+        relatedDecision: null,
+        note: null,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.resolution" &&
+          message.requestId === "cb5df184-d434-4285-996a-aafcc736ba4e",
+        "invalid non-delivery lifecycle response",
+      ),
+    ).resolves.toMatchObject({
+      result: {
+        status: "rejected",
+        resolution: null,
+        error: { code: "RESOLUTION_TRANSITION_INVALID" },
+      },
+    });
+
+    const externalAnswerText = "Externally changed answer target\n";
+    await writeFile(answerPath, externalAnswerText, {
+      mode: 0o600,
+    });
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.item.inspect",
+        requestId: "3a9a29a2-ed0c-455a-b918-567ad4e55106",
+        ...questionIdentity,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.item" &&
+          message.requestId === "3a9a29a2-ed0c-455a-b918-567ad4e55106",
+        "changed artifact reconciliation inspection",
+      ),
+    ).resolves.toMatchObject({
+      reconciliation: {
+        artifact: {
+          status: "target_conflict",
+          reason: "answer_file_changed",
+        },
+        lifecycle: {
+          status: "applied",
+          history: [{ action: "acknowledged" }, { action: "applied" }],
+        },
+      },
+    });
+    await expect(readFile(answerPath, "utf8")).resolves.toBe(
+      externalAnswerText,
+    );
     await expect(
       readFile(join(setup.config.dataDirectory, "pacium.json")),
     ).resolves.toEqual(configBefore);
@@ -906,6 +1057,172 @@ describe("localhost HTTP and WebSocket boundary", () => {
 
     client.socket.close();
     await once(client.socket, "close");
+
+    await setup.application.close();
+    setup.manager.shutdown();
+    application = undefined;
+    manager = undefined;
+
+    const restarted = await startTestServer(
+      new FakePtyFactory(),
+      undefined,
+      undefined,
+      setup.config.dataDirectory,
+    );
+    application = restarted.application;
+    manager = restarted.manager;
+    const restartedClient = await connect(restarted.url, restarted.config);
+    await nextMessage(
+      restartedClient,
+      (message) => message.type === "server.welcome",
+    );
+    restartedClient.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.observe",
+        requestId: "af68163e-2ac2-43ee-a26c-6da095733ba6",
+      }),
+    );
+    const restartedInitial = await nextMessageWithin(
+      restartedClient,
+      (message) =>
+        message.type === "pacium.queue.sources" &&
+        message.requestId === "af68163e-2ac2-43ee-a26c-6da095733ba6",
+      "restarted queue observation",
+    );
+    if (restartedInitial.type !== "pacium.queue.sources") {
+      throw new Error("Expected restarted queue observation");
+    }
+    const firstStableRestartedObservation =
+      restartedInitial.observation.sources[0]?.classification?.candidate != null
+        ? restartedInitial
+        : await nextMessageWithin(
+            restartedClient,
+            (message) =>
+              message.type === "pacium.queue.sources.updated" &&
+              message.observation.sources[0]?.classification?.candidate != null,
+            "stable restarted queue observation",
+          );
+    if (
+      firstStableRestartedObservation.type !== "pacium.queue.sources" &&
+      firstStableRestartedObservation.type !== "pacium.queue.sources.updated"
+    ) {
+      throw new Error("Expected stable restarted queue evidence");
+    }
+    expect(
+      firstStableRestartedObservation.observation.sources[0]?.classification
+        ?.candidate,
+    ).not.toBeNull();
+    restartedClient.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.observe",
+        requestId: "6c12f7bf-b81c-481b-bf6d-917ee1d7ea42",
+      }),
+    );
+    const restartedObservation = await nextMessageWithin(
+      restartedClient,
+      (message) =>
+        message.type === "pacium.queue.sources" &&
+        message.requestId === "6c12f7bf-b81c-481b-bf6d-917ee1d7ea42" &&
+        message.observation.sources[0]?.classification?.candidate != null,
+      "settled restarted queue observation",
+    );
+    if (restartedObservation.type !== "pacium.queue.sources") {
+      throw new Error("Expected settled restarted queue observation");
+    }
+    const restartedSource = restartedObservation.observation.sources[0];
+    const restartedCandidate =
+      restartedSource?.classification?.candidate ?? null;
+    if (
+      restartedObservation.observation.workspaceRevision === null ||
+      restartedSource?.contentHash === null ||
+      restartedSource === undefined ||
+      restartedCandidate === null
+    ) {
+      throw new Error("Expected restarted exact queue identity");
+    }
+    const restartedIdentity = {
+      workspaceRevision: restartedObservation.observation.workspaceRevision,
+      sourceId: restartedSource.sourceId,
+      observationRevision: restartedSource.observationRevision,
+      contentHash: restartedSource.contentHash,
+      itemId: restartedCandidate.itemId,
+    };
+    restartedClient.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.item.inspect",
+        requestId: "0154f7ac-e930-492d-b4cb-0570ece2a02e",
+        ...restartedIdentity,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        restartedClient,
+        (message) =>
+          message.type === "pacium.queue.item" &&
+          message.requestId === "0154f7ac-e930-492d-b4cb-0570ece2a02e",
+        "restarted reconciliation inspection",
+      ),
+    ).resolves.toMatchObject({
+      decisionState: {
+        status: "decided",
+        decision: {
+          decisionId: recorded.result.decision.decisionId,
+        },
+      },
+      deliveryState: {
+        status: "delivered",
+        delivery: { deliveryId: deliveryRecord.deliveryId },
+      },
+      reconciliation: {
+        artifact: {
+          status: "target_conflict",
+          reason: "answer_file_changed",
+        },
+        lifecycle: {
+          status: "applied",
+          history: [{ action: "acknowledged" }, { action: "applied" }],
+        },
+      },
+    });
+
+    const replacementQueueText = "Approval request: Replace the decision\n";
+    await writeFile(queuePath, replacementQueueText, { mode: 0o600 });
+    restartedClient.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.observe",
+        requestId: "2f525c11-c46f-45dd-9d26-d7a4b3ae554d",
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        restartedClient,
+        (message) =>
+          ((message.type === "pacium.queue.sources" &&
+            message.requestId === "2f525c11-c46f-45dd-9d26-d7a4b3ae554d") ||
+            message.type === "pacium.queue.sources.updated") &&
+          (message.observation.sources[0]?.observationRevision ?? 0) >
+            restartedSource.observationRevision,
+        "source conflict after restart",
+      ),
+    ).resolves.toMatchObject({
+      observation: {
+        sources: [
+          {
+            conflicts: [
+              {
+                kind: "source_changed_after_decision",
+                decisionCount: 1,
+              },
+            ],
+          },
+        ],
+      },
+    });
+    await expect(readFile(queuePath, "utf8")).resolves.toBe(
+      replacementQueueText,
+    );
+    restartedClient.socket.close();
+    await once(restartedClient.socket, "close");
   });
 
   it("delivers one shell-safe line to only the configured live role PTY", async () => {
@@ -1663,6 +1980,7 @@ async function startTestServer(
     catalog: VerificationCatalog;
     runner: VerificationRunner;
   },
+  dataDirectory?: string,
 ): Promise<{
   application: PaciumHttpServer;
   manager: SessionManager;
@@ -1679,7 +1997,7 @@ async function startTestServer(
     serverId: "d5805287-d2b0-41f4-b80f-56c77d892cbc",
     defaultCwd: process.cwd(),
     homeDirectory: process.env.HOME ?? process.cwd(),
-    dataDirectory: join(fixtureRoot, "data"),
+    dataDirectory: dataDirectory ?? join(fixtureRoot, "data"),
     shell: "/bin/zsh",
     environmentKeys: [],
     verificationCatalog: verification?.catalog ?? {
