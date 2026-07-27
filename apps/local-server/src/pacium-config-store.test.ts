@@ -3,6 +3,7 @@ import {
   lstat,
   mkdir,
   mkdtemp,
+  readdir,
   readFile,
   rm,
   symlink,
@@ -123,6 +124,113 @@ describe("Pacium config store reads", () => {
   });
 });
 
+describe("Pacium config atomic replacement", () => {
+  it("creates private state and increments a complete revision", async () => {
+    const parent = await temporaryDirectory();
+    const dataDirectory = join(parent, "new-state");
+    const store = new PaciumConfigStore(dataDirectory, {
+      randomId: () => "create",
+    });
+
+    await expect(store.replace(0, workspace("First"))).resolves.toMatchObject({
+      status: "ready",
+      revision: 1,
+      workspace: { label: "First" },
+    });
+    expect((await lstat(dataDirectory)).mode & 0o777).toBe(0o700);
+    expect((await lstat(store.configPath)).mode & 0o777).toBe(0o600);
+    expect(JSON.parse(await readFile(store.configPath, "utf8"))).toMatchObject({
+      schemaVersion: 1,
+      revision: 1,
+      workspace: { label: "First" },
+    });
+  });
+
+  it("serializes concurrent writes and rejects stale revisions", async () => {
+    const fixture = await configFixture();
+    const store = fixture.store;
+    const first = store.replace(0, workspace("First"));
+    const duplicate = store.replace(0, workspace("Duplicate"));
+
+    await expect(first).resolves.toMatchObject({ revision: 1 });
+    await expect(duplicate).rejects.toMatchObject({ code: "conflict" });
+    await expect(store.replace(1, workspace("Second"))).resolves.toMatchObject({
+      revision: 2,
+      workspace: { label: "Second" },
+    });
+    await expect(store.replace(1, workspace("Stale"))).rejects.toMatchObject({
+      code: "conflict",
+    });
+    await expect(store.inspect()).resolves.toMatchObject({
+      revision: 2,
+      workspace: { label: "Second" },
+    });
+  });
+
+  it("validates before creating a data directory", async () => {
+    const parent = await temporaryDirectory();
+    const dataDirectory = join(parent, "missing");
+    const store = new PaciumConfigStore(dataDirectory, {
+      normalizeWorkspace: () => {
+        throw new Error("invalid references");
+      },
+    });
+
+    await expect(store.replace(0, workspace("Invalid"))).rejects.toMatchObject({
+      code: "invalid_workspace",
+    });
+    await expect(lstat(dataDirectory)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("keeps the prior file authoritative when rename fails", async () => {
+    const fixture = await configFixture();
+    await writeFile(fixture.configPath, JSON.stringify(configDocument()), {
+      mode: 0o600,
+    });
+    const store = new PaciumConfigStore(fixture.dataDirectory, {
+      io: {
+        rename: async () => {
+          throw new Error("injected rename failure");
+        },
+      },
+      randomId: () => "rename-failure",
+    });
+
+    await expect(
+      store.replace(3, workspace("Replacement")),
+    ).rejects.toMatchObject({
+      code: "write_failed",
+    });
+    await expect(store.inspect()).resolves.toMatchObject({
+      revision: 3,
+      workspace: { label: "Pacium" },
+    });
+    expect(await readdir(fixture.dataDirectory)).toEqual(["pacium.json"]);
+  });
+
+  it("reports unknown durability after rename and requires inspection", async () => {
+    const fixture = await configFixture();
+    const store = new PaciumConfigStore(fixture.dataDirectory, {
+      io: {
+        syncDirectory: async () => {
+          throw new Error("injected directory sync failure");
+        },
+      },
+      randomId: () => "sync-failure",
+    });
+
+    await expect(store.replace(0, workspace("Written"))).rejects.toMatchObject({
+      code: "durability_unknown",
+    });
+    await expect(store.inspect()).resolves.toMatchObject({
+      revision: 1,
+      workspace: { label: "Written" },
+    });
+  });
+});
+
 async function temporaryDirectory(): Promise<string> {
   const path = await mkdtemp(join(tmpdir(), "pacium-config-store-"));
   temporaryDirectories.push(path);
@@ -155,5 +263,12 @@ function configDocument(): PaciumConfigDocument {
       deliveryMethods: [],
       context: { objective: null, plan: null },
     },
+  };
+}
+
+function workspace(label: string): PaciumConfigDocument["workspace"] {
+  return {
+    ...configDocument().workspace,
+    label,
   };
 }
