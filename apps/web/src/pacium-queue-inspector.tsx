@@ -207,7 +207,14 @@ function QueueMeaning({
           No terminal or Git evidence is linked yet
         </QueueMetadata>
         <QueueMetadata label="Conflict state">
-          Conflict detection is not implemented yet
+          {state.reconciliation === null ||
+          state.reconciliation.conflicts.length === 0
+            ? "No current conflict signal"
+            : `${state.reconciliation.conflicts.length} current conflict ${
+                state.reconciliation.conflicts.length === 1
+                  ? "signal"
+                  : "signals"
+              }`}
         </QueueMetadata>
       </dl>
     </section>

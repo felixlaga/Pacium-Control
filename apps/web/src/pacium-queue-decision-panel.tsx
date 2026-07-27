@@ -9,6 +9,7 @@ import {
 
 import type { PaciumQueueInspectionState } from "./pacium-queue-inspection-model.js";
 import { PaciumQueueDeliveryPanel } from "./pacium-queue-delivery-panel.js";
+import { PaciumQueueReconciliationPanel } from "./pacium-queue-reconciliation-panel.js";
 
 export function PaciumQueueDecisionPanel({
   onDeliver,
@@ -46,6 +47,11 @@ export function PaciumQueueDecisionPanel({
     return (
       <>
         <ImmutableDecision decision={state.decisionState.decision} />
+        {state.reconciliation !== null && (
+          <PaciumQueueReconciliationPanel
+            reconciliation={state.reconciliation}
+          />
+        )}
         <PaciumQueueDeliveryPanel
           decision={state.decisionState.decision}
           errorMessage={state.deliveryErrorMessage}

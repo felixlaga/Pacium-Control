@@ -2023,6 +2023,7 @@ kbd {
 .queue-meaning,
 .queue-decision-panel,
 .queue-delivery-panel,
+.queue-reconciliation-panel,
 .queue-provenance {
   padding: 14px;
   border-bottom: 1px solid var(--border);
@@ -2231,6 +2232,72 @@ kbd {
   border-bottom: 1px solid var(--border);
   border-left: 2px solid var(--border-strong);
   background: color-mix(in srgb, var(--panel-soft) 35%, transparent);
+}
+
+.queue-reconciliation-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--panel-soft) 35%, transparent);
+}
+
+.queue-reconciliation-panel .inspector-section-heading {
+  margin: 0;
+}
+
+.queue-reconciliation-panel > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.queue-reconciliation-summary {
+  padding: 0;
+}
+
+.queue-reconciliation-evidence {
+  display: grid;
+  gap: 5px;
+}
+
+.queue-reconciliation-evidence h4 {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.queue-reconciliation-evidence ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.queue-reconciliation-evidence li {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--panel-raised);
+  font-size: 8px;
+}
+
+.queue-reconciliation-evidence li strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.queue-reconciliation-evidence li span {
+  overflow-wrap: anywhere;
+  color: var(--text-faint);
+  line-height: 1.4;
 }
 
 .queue-delivery-panel .inspector-section-heading {
