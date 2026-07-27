@@ -41,7 +41,15 @@ export function validatePaciumPrompt(draft: string): PaciumPromptValidation {
       error: `Keep the prompt to ${MAX_PACIUM_PROMPT_CHARACTERS.toLocaleString()} characters.`,
     };
   }
-  if (/[\u0000-\u001f\u007f-\u009f]/u.test(draft)) {
+  if (
+    Array.from(draft).some((character) => {
+      const codePoint = character.codePointAt(0);
+      return (
+        codePoint !== undefined &&
+        (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f))
+      );
+    })
+  ) {
     return {
       valid: false,
       normalized: null,
