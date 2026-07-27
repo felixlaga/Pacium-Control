@@ -287,6 +287,7 @@ export class PaciumTransport {
       const response = await fetch("/api/bootstrap", {
         credentials: "same-origin",
         headers: { accept: "application/json" },
+        method: browserReadMethod(window.location.protocol),
       });
       if (!response.ok) {
         throw new Error(`Bootstrap failed with HTTP ${response.status}`);
@@ -657,6 +658,7 @@ export async function fetchDirectoryListing(input: {
   accessToken: string;
   path?: string;
   fetcher?: typeof fetch;
+  secure?: boolean;
 }): Promise<DirectoryListing> {
   const fetcher = input.fetcher ?? fetch;
   const query =
@@ -667,6 +669,15 @@ export async function fetchDirectoryListing(input: {
       accept: "application/json",
       authorization: `Bearer ${input.accessToken}`,
     },
+    method: browserReadMethod(
+      input.secure === undefined
+        ? typeof window === "undefined"
+          ? "http:"
+          : window.location.protocol
+        : input.secure
+          ? "https:"
+          : "http:",
+    ),
   });
   if (!response.ok) {
     let message = `Host folder browsing failed with HTTP ${response.status}`;
@@ -690,4 +701,8 @@ export async function fetchDirectoryListing(input: {
     throw new Error("The Pacium host returned an invalid directory listing.");
   }
   return parsed.data;
+}
+
+export function browserReadMethod(protocol: string): "GET" | "POST" {
+  return protocol === "https:" ? "POST" : "GET";
 }

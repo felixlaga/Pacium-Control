@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  browserReadMethod,
   fetchDirectoryListing,
   paciumConfigGetMessage,
   paciumConfigReplaceMessage,
@@ -372,9 +373,39 @@ describe("directory transport", () => {
     const call = fetcher.mock.calls[0];
     expect(call?.[0]).toBe("/api/directories?path=%2Fwork");
     expect(call?.[1]?.credentials).toBe("same-origin");
+    expect(call?.[1]?.method).toBe("GET");
     expect(new Headers(call?.[1]?.headers).get("authorization")).toBe(
       "Bearer secret",
     );
+  });
+
+  it("uses same-origin POST through HTTPS so the browser supplies Origin", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          currentPath: "/work",
+          parentPath: "/",
+          homePath: "/Users/operator",
+          defaultPath: "/work",
+          entries: [],
+          truncated: false,
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+
+    await fetchDirectoryListing({
+      accessToken: "secret",
+      secure: true,
+      fetcher,
+    });
+
+    expect(fetcher.mock.calls[0]?.[1]?.method).toBe("POST");
+    expect(browserReadMethod("https:")).toBe("POST");
+    expect(browserReadMethod("http:")).toBe("GET");
   });
 
   it("surfaces a bounded server error", async () => {
