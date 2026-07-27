@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { deriveProcessAttention } from "./attention-model.js";
 import {
   buildRecentActivity,
+  MAX_RECENT_ACTIVITY_FACTS,
   type RecentActivityInput,
 } from "./recent-activity-model.js";
 
@@ -114,6 +115,13 @@ describe("recent activity process facts", () => {
     expect(activity.facts[0]?.detail).toContain("signal 15");
     expect(activity.current.processDetail).toContain(
       "task outcome is unverified",
+    );
+  });
+
+  it("keeps a fixed total fact ceiling", () => {
+    expect(MAX_RECENT_ACTIVITY_FACTS).toBe(7);
+    expect(buildRecentActivity(input()).facts.length).toBeLessThanOrEqual(
+      MAX_RECENT_ACTIVITY_FACTS,
     );
   });
 });

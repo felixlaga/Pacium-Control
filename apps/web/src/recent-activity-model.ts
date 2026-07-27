@@ -15,7 +15,7 @@ import {
 } from "./repository-verification-model.js";
 
 export const MAX_RECENT_ACTIVITY_COMMITS = 3;
-export const MAX_RECENT_ACTIVITY_FACTS = 8;
+export const MAX_RECENT_ACTIVITY_FACTS = 7;
 
 export type ActivityFactSource = "process" | "git" | "verification";
 export type ActivityTimestampMeaning = "occurred" | "observed";
