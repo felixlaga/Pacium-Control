@@ -238,12 +238,12 @@ Do not extrapolate from the working terminal slice to any capability in this lis
 
 ## Current evidence
 
-Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
+Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 111 test files and 675 tests,
-  plus the 901.71 kB web JavaScript, 107.52 kB stylesheet, and 328.37 kB
+- `pnpm verify`: formatting, lint, type checking, 114 test files and 701 tests,
+  plus the 903.24 kB web JavaScript, 107.74 kB stylesheet, and 335.82 kB
   local-server production builds passed.
 - `pnpm test:e2e`: eleven Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
@@ -252,6 +252,9 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
   run/reload/cancel without terminal reselection. General/Pacium coverage
   proved pointer, chord, palette, reload persistence, unchanged selected PTY
   and inspector context, configured-state presentation, and narrow layouts.
+- PC-077 browser evidence kept the exact current connection authority visible
+  as Local through ordinary operation, reload, narrow layout, forced colors,
+  and reduced motion without promoting terminal or provider output to identity.
 - PC-050 browser evidence projected one exact live worker and one preset-only
   worker without launching or inferring either, selected only the existing
   worker PTY, opened/refreshed/closed Control context with focus return,
@@ -332,7 +335,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 901.71 kB before gzip and emits Vite's chunk-size
+- The current web bundle is 903.24 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
 - Proxy-shaped Serve application tests do not prove the owner's real Tailscale
   installation, DNS/certificate, deployed grants, Funnel/public/LAN state, or
