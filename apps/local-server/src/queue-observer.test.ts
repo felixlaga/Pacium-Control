@@ -132,7 +132,7 @@ describe("queue observer", () => {
     observer.dispose();
   });
 
-  it("withholds item text while queue evidence is unavailable", async () => {
+  it("withholds item text while queue evidence is unavailable", () => {
     const observer = new QueueObserver({
       now: () => now,
       watchDirectory: inertWatcher,
