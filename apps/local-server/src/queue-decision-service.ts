@@ -4,6 +4,7 @@ import {
   MAX_QUEUE_DECISIONS,
   QueueApprovalDecisionPayloadSchema,
   QueueApprovalDecisionSchema,
+  QueueDecisionRequestIdentitySchema,
   QueueQuestionAnswerDecisionSchema,
   QueueQuestionAnswerPayloadSchema,
   queueDecisionError,
@@ -59,7 +60,8 @@ export class QueueDecisionService {
   public async inspect(
     identity: QueueDecisionRequestIdentity,
   ): Promise<QueueItemDecisionState> {
-    const source = this.sourceReader.decisionSourceIdentity(identity);
+    const parsedIdentity = QueueDecisionRequestIdentitySchema.parse(identity);
+    const source = this.sourceReader.decisionSourceIdentity(parsedIdentity);
     if (source === null) {
       return unavailableDecisionState("DECISION_STATE_UNAVAILABLE");
     }
@@ -93,7 +95,7 @@ export class QueueDecisionService {
     payload: QueueQuestionAnswerPayload,
   ): Promise<QueueDecisionResult> {
     return this.record(
-      identity,
+      QueueDecisionRequestIdentitySchema.parse(identity),
       "question",
       QueueQuestionAnswerPayloadSchema.parse(payload),
     );
@@ -104,7 +106,7 @@ export class QueueDecisionService {
     payload: QueueApprovalDecisionPayload,
   ): Promise<QueueDecisionResult> {
     return this.record(
-      identity,
+      QueueDecisionRequestIdentitySchema.parse(identity),
       "approval",
       QueueApprovalDecisionPayloadSchema.parse(payload),
     );

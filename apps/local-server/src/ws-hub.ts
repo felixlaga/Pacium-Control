@@ -4,6 +4,7 @@ import {
   PROTOCOL_VERSION,
   encodeTerminalDataFrame,
   type ClientMessage,
+  type QueueDecisionRequestIdentity,
   type ServerMessage,
 } from "@pacium/contracts";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
@@ -435,12 +436,13 @@ export class WebSocketHub {
         return;
       }
       case "pacium.queue.item.inspect": {
-        let inspection = this.queueObserver.inspectItem(message);
+        const identity = queueDecisionIdentity(message);
+        let inspection = this.queueObserver.inspectItem(identity);
         const decisionState =
           inspection.status === "ready"
-            ? await this.queueDecisions.inspect(message)
+            ? await this.queueDecisions.inspect(identity)
             : null;
-        inspection = this.queueObserver.inspectItem(message);
+        inspection = this.queueObserver.inspectItem(identity);
         this.send(client.socket, {
           type: "pacium.queue.item",
           requestId: message.requestId,
@@ -450,24 +452,30 @@ export class WebSocketHub {
         return;
       }
       case "pacium.queue.question.answer":
-        this.send(client.socket, {
-          type: "pacium.queue.decision",
-          requestId: message.requestId,
-          result: await this.queueDecisions.recordQuestionAnswer(
-            message,
-            message.payload,
-          ),
-        });
+        {
+          const identity = queueDecisionIdentity(message);
+          this.send(client.socket, {
+            type: "pacium.queue.decision",
+            requestId: message.requestId,
+            result: await this.queueDecisions.recordQuestionAnswer(
+              identity,
+              message.payload,
+            ),
+          });
+        }
         return;
       case "pacium.queue.approval.decide":
-        this.send(client.socket, {
-          type: "pacium.queue.decision",
-          requestId: message.requestId,
-          result: await this.queueDecisions.recordApprovalDecision(
-            message,
-            message.payload,
-          ),
-        });
+        {
+          const identity = queueDecisionIdentity(message);
+          this.send(client.socket, {
+            type: "pacium.queue.decision",
+            requestId: message.requestId,
+            result: await this.queueDecisions.recordApprovalDecision(
+              identity,
+              message.payload,
+            ),
+          });
+        }
         return;
       case "session.close":
         this.sessions.close(
@@ -608,6 +616,18 @@ export function boundVerificationResponse<T extends VerificationResponse>(
           "Verification configuration or output exceeds the application message bound.",
       },
     },
+  };
+}
+
+function queueDecisionIdentity(
+  message: QueueDecisionRequestIdentity,
+): QueueDecisionRequestIdentity {
+  return {
+    workspaceRevision: message.workspaceRevision,
+    sourceId: message.sourceId,
+    observationRevision: message.observationRevision,
+    contentHash: message.contentHash,
+    itemId: message.itemId,
   };
 }
 
