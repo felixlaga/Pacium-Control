@@ -75,10 +75,16 @@ test("configured checks run, reconnect, cancel, and fit the narrow inspector", a
   const reconnectedChecksTab = page.getByRole("tab", { name: "Checks" });
   await reconnectedChecksTab.focus();
   await reconnectedChecksTab.press("ArrowRight");
+  const activityTab = page.getByRole("tab", { name: "Activity" });
+  await expect(activityTab).toBeFocused();
+  await expect(activityTab).toHaveAttribute("aria-selected", "true");
+  await activityTab.press("ArrowRight");
   const overviewTab = page.getByRole("tab", { name: "Overview" });
   await expect(overviewTab).toBeFocused();
   await expect(overviewTab).toHaveAttribute("aria-selected", "true");
   await overviewTab.press("End");
+  await expect(activityTab).toBeFocused();
+  await activityTab.press("ArrowLeft");
   await expect(reconnectedChecksTab).toBeFocused();
 
   await page.setViewportSize({ width: 320, height: 720 });
