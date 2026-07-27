@@ -1,6 +1,24 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { fetchDirectoryListing } from "./transport.js";
+import {
+  fetchDirectoryListing,
+  repositoryRefreshMessage,
+} from "./transport.js";
+
+describe("repository transport", () => {
+  it("sends only request and session identity for refresh", () => {
+    expect(
+      repositoryRefreshMessage(
+        "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ),
+    ).toEqual({
+      type: "session.refreshRepository",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+    });
+  });
+});
 
 describe("directory transport", () => {
   it("sends the ephemeral token and validates the response", async () => {

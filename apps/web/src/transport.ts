@@ -130,6 +130,10 @@ export class PaciumTransport {
     });
   }
 
+  public refreshRepository(sessionId: string): void {
+    this.send(repositoryRefreshMessage(sessionId, crypto.randomUUID()));
+  }
+
   public closeSession(sessionId: string, force: boolean): void {
     this.send({
       type: "session.close",
@@ -288,6 +292,17 @@ export class PaciumTransport {
       void this.connect();
     }, delay);
   }
+}
+
+export function repositoryRefreshMessage(
+  sessionId: string,
+  requestId: string,
+): ClientMessage {
+  return {
+    type: "session.refreshRepository",
+    requestId,
+    sessionId,
+  };
 }
 
 export async function fetchDirectoryListing(input: {
