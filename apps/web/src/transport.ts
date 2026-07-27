@@ -67,21 +67,10 @@ export class PaciumTransport {
     launchPreset: LaunchPresetId;
     cols: number;
     rows: number;
-  }): void {
-    const payload =
-      input.displayName === undefined
-        ? {
-            cwd: input.cwd,
-            launchPreset: input.launchPreset,
-            cols: input.cols,
-            rows: input.rows,
-          }
-        : input;
-    this.send({
-      type: "session.create",
-      requestId: crypto.randomUUID(),
-      payload,
-    });
+  }): string {
+    const requestId = crypto.randomUUID();
+    this.send(sessionCreateMessage(input, requestId));
+    return requestId;
   }
 
   public attach(sessionId: string): void {
@@ -472,6 +461,32 @@ export function paciumConfigReplaceMessage(
     requestId,
     expectedRevision,
     workspace,
+  };
+}
+
+export function sessionCreateMessage(
+  input: {
+    cwd: string;
+    displayName?: string;
+    launchPreset: LaunchPresetId;
+    cols: number;
+    rows: number;
+  },
+  requestId: string,
+): Extract<ClientMessage, { type: "session.create" }> {
+  const payload =
+    input.displayName === undefined
+      ? {
+          cwd: input.cwd,
+          launchPreset: input.launchPreset,
+          cols: input.cols,
+          rows: input.rows,
+        }
+      : input;
+  return {
+    type: "session.create",
+    requestId,
+    payload,
   };
 }
 

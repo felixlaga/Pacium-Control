@@ -11,6 +11,7 @@ import {
   repositoryVerificationCancelMessage,
   repositoryVerificationInspectMessage,
   repositoryVerificationRunMessage,
+  sessionCreateMessage,
 } from "./transport.js";
 
 describe("repository transport", () => {
@@ -131,6 +132,52 @@ describe("Pacium config transport", () => {
       requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
       expectedRevision: 4,
       workspace,
+    });
+  });
+});
+
+describe("session create correlation", () => {
+  it("builds the existing fixed-preset request with an exact caller request ID", () => {
+    expect(
+      sessionCreateMessage(
+        {
+          cwd: "/work/pacium",
+          displayName: "Meta",
+          launchPreset: "codex",
+          cols: 100,
+          rows: 30,
+        },
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ),
+    ).toEqual({
+      type: "session.create",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      payload: {
+        cwd: "/work/pacium",
+        displayName: "Meta",
+        launchPreset: "codex",
+        cols: 100,
+        rows: 30,
+      },
+    });
+  });
+
+  it("does not manufacture an optional display name", () => {
+    expect(
+      sessionCreateMessage(
+        {
+          cwd: "/work",
+          launchPreset: "shell",
+          cols: 80,
+          rows: 24,
+        },
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ).payload,
+    ).toEqual({
+      cwd: "/work",
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
     });
   });
 });
