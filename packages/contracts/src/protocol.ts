@@ -30,6 +30,37 @@ export const ProcessStateSchema = z.enum([
   "failed",
 ]);
 
+export const AgentTypeSchema = z.enum(["shell", "codex", "claude", "unknown"]);
+export type AgentType = z.infer<typeof AgentTypeSchema>;
+
+export const AgentClassificationSourceSchema = z.enum([
+  "launch_preset",
+  "process_observed",
+  "human_labelled",
+]);
+export type AgentClassificationSource = z.infer<
+  typeof AgentClassificationSourceSchema
+>;
+
+export const EvidenceConfidenceSchema = z.enum([
+  "confirmed",
+  "high",
+  "medium",
+  "low",
+]);
+export type EvidenceConfidence = z.infer<typeof EvidenceConfidenceSchema>;
+
+export const AgentClassificationSchema = z
+  .object({
+    type: AgentTypeSchema,
+    label: z.string().min(1).max(40),
+    source: AgentClassificationSourceSchema,
+    confidence: EvidenceConfidenceSchema,
+    observedAt: z.string().datetime(),
+  })
+  .strict();
+export type AgentClassification = z.infer<typeof AgentClassificationSchema>;
+
 export const SessionSummarySchema = z.object({
   id: SessionIdSchema,
   epoch: z.number().int().positive(),

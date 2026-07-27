@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  AgentClassificationSchema,
   ClientMessageSchema,
   decodeTerminalDataFrame,
   encodeTerminalDataFrame,
@@ -127,6 +128,56 @@ describe("client protocol", () => {
       ClientMessageSchema.safeParse({
         ...message,
         path: "/tmp/browser-controlled",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("never accepts browser-supplied classification on create", () => {
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "session.create",
+        requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+        payload: {
+          cwd: "/tmp",
+          cols: 80,
+          rows: 24,
+          launchPreset: "codex",
+          agentClassification: {
+            type: "claude",
+            label: "Fake",
+            source: "human_labelled",
+            confidence: "confirmed",
+            observedAt: "2026-07-27T10:00:00.000Z",
+          },
+        },
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("agent classification contract", () => {
+  const classification = {
+    type: "codex",
+    label: "Codex CLI",
+    source: "launch_preset",
+    confidence: "confirmed",
+    observedAt: "2026-07-27T10:00:00.000Z",
+  };
+
+  it("accepts bounded launch evidence and rejects unknown fields", () => {
+    expect(AgentClassificationSchema.safeParse(classification).success).toBe(
+      true,
+    );
+    expect(
+      AgentClassificationSchema.safeParse({
+        ...classification,
+        terminalOutput: "Working...",
+      }).success,
+    ).toBe(false);
+    expect(
+      AgentClassificationSchema.safeParse({
+        ...classification,
+        confidence: "certain",
       }).success,
     ).toBe(false);
   });
