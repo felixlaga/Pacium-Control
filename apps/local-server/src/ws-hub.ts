@@ -15,6 +15,7 @@ import {
   PaciumConfigStoreError,
   type PaciumConfigStore,
 } from "./pacium-config-store.js";
+import { PaciumContextService } from "./pacium-context-service.js";
 import { presetCapabilities } from "./launch-presets.js";
 import {
   createQueueDecisionService,
@@ -68,6 +69,13 @@ export class WebSocketHub {
       sessions,
     ),
     private readonly queueReconciliation: QueueReconciliationService = new QueueReconciliationService(
+      queueState,
+      {
+        isDeliveryActive: (deliveryId) => queueDeliveries.isActive(deliveryId),
+      },
+    ),
+    private readonly paciumContext: PaciumContextService = new PaciumContextService(
+      paciumConfig,
       queueState,
       {
         isDeliveryActive: (deliveryId) => queueDeliveries.isActive(deliveryId),
@@ -448,6 +456,13 @@ export class WebSocketHub {
         await this.queueObserver.syncConfig(observation);
         return;
       }
+      case "pacium.context.inspect":
+        this.send(client.socket, {
+          type: "pacium.context",
+          requestId: message.requestId,
+          observation: await this.paciumContext.inspect(),
+        });
+        return;
       case "pacium.queue.observe": {
         const config = await this.paciumConfig.inspect();
         const observation = await this.queueObserver.syncConfig(config);
