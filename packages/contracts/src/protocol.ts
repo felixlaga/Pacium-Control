@@ -721,6 +721,9 @@ const VerificationArgumentSchema = z
   .refine((value) => !hasLayoutControlCharacter(value));
 const VerificationOutputSchema = z
   .string()
+  .refine((value) => !hasUnsafeOutputControlCharacter(value), {
+    message: "Verification output contains unsafe control characters.",
+  })
   .refine(
     (value) => utf8ByteLength(value) <= MAX_VERIFICATION_OUTPUT_BYTES,
     "Verification output exceeds its UTF-8 byte bound.",
@@ -1301,6 +1304,18 @@ function hasLayoutControlCharacter(value: string): boolean {
   return [...value].some((character) => {
     const codePoint = character.codePointAt(0);
     return codePoint !== undefined && (codePoint <= 0x1f || codePoint === 0x7f);
+  });
+}
+
+function hasUnsafeOutputControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const codePoint = character.codePointAt(0);
+    return (
+      codePoint !== undefined &&
+      codePoint !== 0x09 &&
+      codePoint !== 0x0a &&
+      (codePoint <= 0x1f || codePoint === 0x7f)
+    );
   });
 }
 

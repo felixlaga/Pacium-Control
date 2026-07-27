@@ -15,11 +15,15 @@ import {
   MAX_GIT_DIFF_LINE_CHARS,
   MAX_GIT_HISTORY_COMMITS,
   MAX_TERMINAL_INPUT_CHARS,
+  MAX_VERIFICATION_OUTPUT_BYTES,
   PROTOCOL_VERSION,
   RepositoryRelativePathSchema,
   RepositoryObservationSchema,
   ServerMessageSchema,
   SessionSummarySchema,
+  VerificationObservationSchema,
+  VerificationPresetSchema,
+  VerificationRunSchema,
 } from "./protocol.js";
 
 describe("terminal binary frames", () => {
@@ -43,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for bounded commit history", () => {
-    expect(PROTOCOL_VERSION).toBe(8);
+  it("advances the wire contract for explicit verification presets", () => {
+    expect(PROTOCOL_VERSION).toBe(9);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -165,6 +169,39 @@ describe("client protocol", () => {
         command: "git log",
       }).success,
     ).toBe(false);
+  });
+
+  it("accepts only server-owned verification and run identities", () => {
+    const inspect = {
+      type: "repository.verification.inspect",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+    };
+    const run = {
+      type: "repository.verification.run",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+      presetId: "verify",
+    };
+    const cancel = {
+      type: "repository.verification.cancel",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+      runId: "03c2723f-e87a-4707-86af-d6fdb1e60f47",
+    };
+
+    expect(ClientMessageSchema.safeParse(inspect).success).toBe(true);
+    expect(ClientMessageSchema.safeParse(run).success).toBe(true);
+    expect(ClientMessageSchema.safeParse(cancel).success).toBe(true);
+    for (const unsafe of [
+      { ...inspect, root: "/tmp/browser-root" },
+      { ...run, executable: "/bin/zsh" },
+      { ...run, args: ["-lc", "dangerous"] },
+      { ...run, timeoutMs: 600_000 },
+      { ...cancel, signal: "SIGKILL" },
+    ]) {
+      expect(ClientMessageSchema.safeParse(unsafe).success).toBe(false);
+    }
   });
 
   it("accepts a bounded terminal input command", () => {
@@ -840,5 +877,214 @@ describe("bounded commit-history observation contract", () => {
         headCommit: record.id,
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("verification preset contract", () => {
+  const preset = {
+    id: "verify",
+    label: "Project verification",
+    description: "Run the local verification gate",
+    executable: "/opt/pacium/bin/pnpm",
+    args: ["verify", "--reporter=dot"],
+    timeoutMs: 600_000,
+  };
+  const activeRun = {
+    runId: "03c2723f-e87a-4707-86af-d6fdb1e60f47",
+    presetId: "verify",
+    status: "running",
+    startedAt: "2026-07-27T10:00:00.000Z",
+    completedAt: null,
+    durationMs: null,
+    headCommitAtStart: "a".repeat(40),
+    headCommitAtEnd: null,
+    headComparison: null,
+    exitCode: null,
+    signal: null,
+    terminationForced: false,
+    stdout: "",
+    stderr: "",
+    stdoutTruncated: false,
+    stderrTruncated: false,
+    error: null,
+  };
+  const passedRun = {
+    ...activeRun,
+    status: "passed",
+    completedAt: "2026-07-27T10:00:02.000Z",
+    durationMs: 2_000,
+    headCommitAtEnd: "a".repeat(40),
+    headComparison: "same",
+    exitCode: 0,
+    stdout: "51 files passed\n",
+  };
+  const ready = {
+    status: "ready",
+    configured: true,
+    root: "/work/pacium",
+    observedAt: "2026-07-27T10:00:02.000Z",
+    presets: [preset],
+    run: passedRun,
+    error: null,
+  };
+
+  it("accepts bounded public presets and rejects executable controls", () => {
+    expect(VerificationPresetSchema.safeParse(preset).success).toBe(true);
+    for (const invalid of [
+      { ...preset, executable: "pnpm" },
+      { ...preset, id: "Verify now" },
+      { ...preset, args: ["safe", "unsafe\nargument"] },
+      { ...preset, shell: true },
+    ]) {
+      expect(VerificationPresetSchema.safeParse(invalid).success).toBe(false);
+    }
+  });
+
+  it("keeps active runs free of invented result evidence", () => {
+    expect(VerificationRunSchema.safeParse(activeRun).success).toBe(true);
+    expect(
+      VerificationRunSchema.safeParse({
+        ...activeRun,
+        status: "cancelling",
+      }).success,
+    ).toBe(true);
+    for (const invalid of [
+      { ...activeRun, stdout: "partial output" },
+      { ...activeRun, completedAt: "2026-07-27T10:00:01.000Z" },
+      { ...activeRun, signal: "SIGTERM" },
+      { ...activeRun, terminationForced: true },
+    ]) {
+      expect(VerificationRunSchema.safeParse(invalid).success).toBe(false);
+    }
+  });
+
+  it("distinguishes terminal outcomes and exact HEAD relationships", () => {
+    expect(VerificationRunSchema.safeParse(passedRun).success).toBe(true);
+    expect(
+      VerificationRunSchema.safeParse({
+        ...passedRun,
+        status: "failed",
+        exitCode: 1,
+      }).success,
+    ).toBe(true);
+    expect(
+      VerificationRunSchema.safeParse({
+        ...passedRun,
+        status: "timed_out",
+        exitCode: null,
+        signal: "SIGTERM",
+      }).success,
+    ).toBe(true);
+    expect(
+      VerificationRunSchema.safeParse({
+        ...passedRun,
+        status: "cancelled",
+        exitCode: null,
+        signal: "SIGKILL",
+        terminationForced: true,
+      }).success,
+    ).toBe(true);
+    expect(
+      VerificationRunSchema.safeParse({
+        ...passedRun,
+        status: "error",
+        exitCode: null,
+        error: {
+          code: "spawn_failed",
+          message: "The configured process could not be started.",
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      VerificationRunSchema.safeParse({
+        ...passedRun,
+        headCommitAtEnd: "b".repeat(40),
+        headComparison: "same",
+      }).success,
+    ).toBe(false);
+    expect(
+      VerificationRunSchema.safeParse({
+        ...passedRun,
+        headCommitAtEnd: null,
+        headComparison: "same",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("bounds UTF-8 output and rejects terminal control sequences", () => {
+    const maximumEmojiOutput = "🚀".repeat(MAX_VERIFICATION_OUTPUT_BYTES / 4);
+    expect(
+      VerificationRunSchema.safeParse({
+        ...passedRun,
+        stdout: maximumEmojiOutput,
+      }).success,
+    ).toBe(true);
+    expect(
+      VerificationRunSchema.safeParse({
+        ...passedRun,
+        stdout: `${maximumEmojiOutput}x`,
+      }).success,
+    ).toBe(false);
+    expect(
+      VerificationRunSchema.safeParse({
+        ...passedRun,
+        stdout: "\u001b]52;c;secret\u0007",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts only internally consistent observation states", () => {
+    expect(VerificationObservationSchema.safeParse(ready).success).toBe(true);
+    expect(
+      VerificationObservationSchema.safeParse({
+        status: "unconfigured",
+        configured: false,
+        root: null,
+        observedAt: ready.observedAt,
+        presets: [],
+        run: null,
+        error: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      VerificationObservationSchema.safeParse({
+        ...ready,
+        status: "no_presets",
+        presets: [],
+        run: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      VerificationObservationSchema.safeParse({
+        ...ready,
+        run: { ...passedRun, presetId: "other" },
+      }).success,
+    ).toBe(false);
+    expect(
+      VerificationObservationSchema.safeParse({
+        ...ready,
+        status: "error",
+        presets: [],
+        run: null,
+        error: null,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts bounded verification responses and server updates", () => {
+    const response = {
+      type: "repository.verification",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+      observation: ready,
+    };
+    expect(ServerMessageSchema.safeParse(response).success).toBe(true);
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "repository.verification.updated",
+        sessionId: response.sessionId,
+        observation: ready,
+      }).success,
+    ).toBe(true);
   });
 });
