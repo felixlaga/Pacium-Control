@@ -27,6 +27,7 @@ interface SplitWorkspaceProps {
   onClosePane: (paneId: string) => void;
   onFocusPane: (paneId: string) => void;
   onInput: (sessionId: string, data: string) => void;
+  onOpenActions: (sessionId: string) => void;
   onResize: (sessionId: string, cols: number, rows: number) => void;
   onSetRatio: (splitId: string, ratio: number) => void;
   onSplit: (paneId: string, direction: SplitDirection) => void;
@@ -276,6 +277,14 @@ function TerminalPane(
                 type="button"
               >
                 {maximized ? "↙" : "↗"}
+              </button>
+              <button
+                aria-label={`Open ${session.displayName} session actions`}
+                onClick={() => props.onOpenActions(session.id)}
+                title="Session actions"
+                type="button"
+              >
+                •••
               </button>
               <button
                 aria-label={`Close ${session.displayName} pane; terminal keeps running`}
