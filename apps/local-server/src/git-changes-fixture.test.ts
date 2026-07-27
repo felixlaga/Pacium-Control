@@ -5,6 +5,7 @@ import {
   mkdtemp,
   rename,
   rm,
+  symlink,
   unlink,
   writeFile,
 } from "node:fs/promises";
@@ -35,6 +36,8 @@ describe("changed-file inspection against a Git fixture", () => {
         writeFile(join(root, "mixed.txt"), "base\n"),
         writeFile(join(root, "deleted.txt"), "base\n"),
         writeFile(join(root, "old-name.txt"), "base\n"),
+        writeFile(join(root, "type-change.txt"), "type source\n"),
+        writeFile(join(root, "conflict.txt"), "base\n"),
         writeFile(join(root, "binary.bin"), Buffer.from([0, 1, 2, 3])),
       ]);
       await runGitOk(root, ["add", "--all"]);
@@ -48,6 +51,36 @@ describe("changed-file inspection against a Git fixture", () => {
         "fixture base",
       ]);
 
+      await runGitOk(root, ["switch", "-c", "fixture-conflict"]);
+      await writeFile(join(root, "conflict.txt"), "other\n");
+      await runGitOk(root, ["add", "conflict.txt"]);
+      await runGitOk(root, [
+        "-c",
+        "user.name=Pacium Test",
+        "-c",
+        "user.email=pacium@example.invalid",
+        "commit",
+        "-m",
+        "other conflict",
+      ]);
+      await runGitOk(root, ["switch", "main"]);
+      await writeFile(join(root, "conflict.txt"), "ours\n");
+      await runGitOk(root, ["add", "conflict.txt"]);
+      await runGitOk(root, [
+        "-c",
+        "user.name=Pacium Test",
+        "-c",
+        "user.email=pacium@example.invalid",
+        "commit",
+        "-m",
+        "main conflict",
+      ]);
+      const mergeResult = await runGitProcess(root, [
+        "merge",
+        "fixture-conflict",
+      ]);
+      expect(mergeResult.exitCode).not.toBe(0);
+
       await writeFile(join(root, "staged.txt"), "base\nstaged\n");
       await runGitOk(root, ["add", "staged.txt"]);
       await writeFile(join(root, "unstaged.txt"), "base\nunstaged\n");
@@ -57,6 +90,8 @@ describe("changed-file inspection against a Git fixture", () => {
       await unlink(join(root, "deleted.txt"));
       await rename(join(root, "old-name.txt"), join(root, "renamed.txt"));
       await runGitOk(root, ["add", "old-name.txt", "renamed.txt"]);
+      await unlink(join(root, "type-change.txt"));
+      await symlink("staged.txt", join(root, "type-change.txt"));
       await appendFile(join(root, "binary.bin"), Buffer.from([0, 4, 5]));
       await writeFile(join(root, "untracked.txt"), "new\n");
       await writeFile(join(root, "large.dat"), Buffer.alloc(1024 * 1024 + 1));
@@ -102,6 +137,13 @@ describe("changed-file inspection against a Git fixture", () => {
       expect(byPath.get("renamed.txt")).toMatchObject({
         kind: "renamed",
         previousPath: "old-name.txt",
+      });
+      expect(byPath.get("type-change.txt")).toMatchObject({
+        kind: "type_changed",
+      });
+      expect(byPath.get("conflict.txt")).toMatchObject({
+        kind: "conflicted",
+        conflicted: true,
       });
       expect(byPath.get("binary.bin")).toMatchObject({
         binary: true,
