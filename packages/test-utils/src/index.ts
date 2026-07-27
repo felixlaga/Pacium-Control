@@ -68,6 +68,7 @@ export class FakePtyFactory {
     cwd: string;
     cols: number;
     rows: number;
+    environment?: Readonly<Record<string, string>>;
   }> = [];
 
   public create(options: {
@@ -76,6 +77,7 @@ export class FakePtyFactory {
     cwd: string;
     cols: number;
     rows: number;
+    environment?: Readonly<Record<string, string>>;
   }): FakePty {
     this.createCalls.push(options);
     const process = new FakePty(41_000 + this.processes.length);

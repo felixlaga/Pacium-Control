@@ -22,6 +22,7 @@ export interface PtyCreateOptions {
   cwd: string;
   cols: number;
   rows: number;
+  environment?: Readonly<Record<string, string>>;
 }
 
 export interface PtyFactory {
@@ -37,7 +38,10 @@ export class NodePtyFactory implements PtyFactory {
       cols: options.cols,
       rows: options.rows,
       cwd: options.cwd,
-      env: buildChildEnvironment(this.config.environmentKeys),
+      env: mergePtyEnvironment(
+        buildChildEnvironment(this.config.environmentKeys),
+        options.environment,
+      ),
     });
     return {
       pid: pty.pid,
@@ -63,4 +67,27 @@ export class NodePtyFactory implements PtyFactory {
       },
     };
   }
+}
+
+export function mergePtyEnvironment(
+  base: Readonly<Record<string, string>>,
+  additions: Readonly<Record<string, string>> | undefined,
+): Record<string, string> {
+  if (additions === undefined) {
+    return { ...base };
+  }
+  const entries = Object.entries(additions);
+  if (
+    entries.length > 8 ||
+    entries.some(
+      ([key, value]) =>
+        !/^PACIUM_[A-Z0-9_]{1,80}$/.test(key) ||
+        key === "PACIUM_SESSION" ||
+        Buffer.byteLength(value) > 8_192 ||
+        /[\u0000-\u001f\u007f]/.test(value),
+    )
+  ) {
+    throw new Error("Invalid server-owned PTY environment additions.");
+  }
+  return { ...base, ...additions };
 }
