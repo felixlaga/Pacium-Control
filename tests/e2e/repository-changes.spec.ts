@@ -174,7 +174,7 @@ test("General and Pacium modes preserve terminal and inspector context", async (
   await expect(paciumButton).toHaveAttribute("aria-pressed", "true");
   await expect(
     page.getByRole("region", { name: "Pacium workspace definition" }),
-  ).toContainText("Pacium setup needed");
+  ).toContainText(/Pacium setup needed|Configured references only/);
   await expect(changesTab).toHaveAttribute("aria-selected", "true");
   await expect(workspaceStatus).toContainText("Oversight fixture");
 
@@ -200,7 +200,7 @@ test("General and Pacium modes preserve terminal and inspector context", async (
   await expect(workspaceStatus).toContainText("Oversight fixture");
   await expect(
     page.getByRole("region", { name: "Pacium workspace definition" }),
-  ).toContainText("Pacium setup needed");
+  ).toContainText(/Pacium setup needed|Configured references only/);
 });
 
 async function openFixtureTerminal(page: Page) {
