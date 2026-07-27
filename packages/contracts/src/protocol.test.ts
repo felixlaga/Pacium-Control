@@ -10,6 +10,7 @@ import {
   MAX_TERMINAL_INPUT_CHARS,
   PROTOCOL_VERSION,
   RepositoryObservationSchema,
+  ServerMessageSchema,
   SessionSummarySchema,
 } from "./protocol.js";
 
@@ -35,7 +36,7 @@ describe("terminal binary frames", () => {
 
 describe("client protocol", () => {
   it("advances the wire contract for required agent classification", () => {
-    expect(PROTOCOL_VERSION).toBe(5);
+    expect(PROTOCOL_VERSION).toBe(6);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -89,6 +90,22 @@ describe("client protocol", () => {
     expect(
       ClientMessageSchema.safeParse({
         ...message,
+        command: "git status",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts only a session identity for changed-file inspection", () => {
+    const message = {
+      type: "repository.changes",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+    };
+    expect(ClientMessageSchema.safeParse(message).success).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        ...message,
+        root: "/tmp/browser-controlled",
         command: "git status",
       }).success,
     ).toBe(false);
@@ -456,5 +473,14 @@ describe("changed-file observation contract", () => {
         error: null,
       }).success,
     ).toBe(false);
+
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "repository.changes",
+        requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+        sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+        observation: empty,
+      }).success,
+    ).toBe(true);
   });
 });
