@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   fetchDirectoryListing,
   repositoryChangesMessage,
+  repositoryDiffMessage,
   repositoryRefreshMessage,
 } from "./transport.js";
 
@@ -30,6 +31,21 @@ describe("repository transport", () => {
       type: "repository.changes",
       requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
       sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+    });
+  });
+
+  it("sends one bounded changed-file selector for diff inspection", () => {
+    expect(
+      repositoryDiffMessage(
+        "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+        "src/file.ts",
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ),
+    ).toEqual({
+      type: "repository.diff",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+      path: "src/file.ts",
     });
   });
 });

@@ -140,6 +140,12 @@ export class PaciumTransport {
     return requestId;
   }
 
+  public requestRepositoryDiff(sessionId: string, path: string): string {
+    const requestId = crypto.randomUUID();
+    this.send(repositoryDiffMessage(sessionId, path, requestId));
+    return requestId;
+  }
+
   public closeSession(sessionId: string, force: boolean): void {
     this.send({
       type: "session.close",
@@ -319,6 +325,19 @@ export function repositoryChangesMessage(
     type: "repository.changes",
     requestId,
     sessionId,
+  };
+}
+
+export function repositoryDiffMessage(
+  sessionId: string,
+  path: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "repository.diff" }> {
+  return {
+    type: "repository.diff",
+    requestId,
+    sessionId,
+    path,
   };
 }
 
