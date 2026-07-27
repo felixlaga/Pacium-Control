@@ -5,6 +5,7 @@ import type { HostActions } from "./host-actions.js";
 import type { LaunchPresetDefinition } from "./launch-presets.js";
 import type { GitChangesInspector } from "./git-changes.js";
 import type { GitDiffInspector } from "./git-diff.js";
+import type { GitHistoryInspector } from "./git-history.js";
 import type { RepositoryInspector } from "./repository-context.js";
 import { SessionError, SessionManager } from "./session-manager.js";
 
@@ -62,6 +63,8 @@ function createManager(
     Promise.resolve(emptyChanges(repository.root, observedAt)),
   gitDiffInspector: GitDiffInspector = (repository, path, observedAt) =>
     Promise.resolve(emptyDiff(repository.root, path, observedAt)),
+  gitHistoryInspector: GitHistoryInspector = (repository, observedAt) =>
+    Promise.resolve(emptyHistory(repository.root, observedAt)),
 ): SessionManager {
   return new SessionManager(
     factory,
@@ -70,6 +73,7 @@ function createManager(
     inspectRepository,
     gitChangesInspector,
     gitDiffInspector,
+    gitHistoryInspector,
   );
 }
 
@@ -121,6 +125,18 @@ function emptyDiff(root: string | null, path: string, observedAt?: string) {
     sections: [],
     patchBytes: 0,
     patchLines: 0,
+    error: null,
+  };
+}
+
+function emptyHistory(root: string | null, observedAt?: string) {
+  return {
+    status: root === null ? ("not_repository" as const) : ("empty" as const),
+    root,
+    headCommit: null,
+    observedAt: observedAt ?? "2026-07-27T10:00:00.000Z",
+    commits: [],
+    truncated: false,
     error: null,
   };
 }
@@ -386,6 +402,58 @@ describe("SessionManager", () => {
     expect(inspectDiff).toHaveBeenCalledWith(
       session.repository,
       "src/new.ts",
+      expect.any(String),
+    );
+    expect(factory.processes[0]).toBe(ptyProcess);
+    expect(ptyProcess?.signals).toEqual([]);
+    manager.shutdown();
+  });
+
+  it("reads history from server-owned session evidence without changing the PTY", async () => {
+    const factory = new FakePtyFactory();
+    const inspectHistory = vi
+      .fn<GitHistoryInspector>()
+      .mockImplementation((repository, observedAt) =>
+        Promise.resolve({
+          status: "ready",
+          root: repository.root,
+          headCommit: "c".repeat(40),
+          observedAt: observedAt ?? "2026-07-27T11:00:00.000Z",
+          commits: [
+            {
+              id: "c".repeat(40),
+              parents: ["b".repeat(40)],
+              authorName: "Pacium Agent",
+              authoredAt: "2026-07-27T11:00:00+02:00",
+              subject: "Bounded history",
+            },
+          ],
+          truncated: false,
+          error: null,
+        }),
+      );
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      inspectHistory,
+    );
+    const session = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+    const ptyProcess = factory.processes[0];
+
+    await expect(manager.repositoryHistory(session.id)).resolves.toMatchObject({
+      status: "ready",
+      commits: [{ subject: "Bounded history" }],
+    });
+    expect(inspectHistory).toHaveBeenCalledWith(
+      session.repository,
       expect.any(String),
     );
     expect(factory.processes[0]).toBe(ptyProcess);
