@@ -2,6 +2,67 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.19.0 — explicit verification presets — 2026-07-27
+
+### Added
+
+- Protocol-9 verification inspect, run, cancel, response, and update contracts
+  with strict state-specific invariants and no browser command, argument, cwd,
+  environment, timeout, or signal fields.
+- An optional strict version-1 external JSON catalog with a 64 KiB file cap,
+  canonical repository roots, absolute executable/argument definitions, at
+  most 32 repositories and 16 presets each, and fail-closed validation outside
+  configured repositories.
+- A shell-free local process owner with one active run per session, two active
+  runs globally, bounded allowlisted environment, required timeout, process
+  groups, graceful cancellation, two-second forced-termination fallback, and
+  graceful-shutdown cleanup.
+- Separate 24 KiB stdout/stderr retention with prefix/tail truncation,
+  UTF-8-safe control normalization, final serialized-message protection, and no
+  logging or persistence.
+- Honest pass, nonzero/signal failure, timeout, cancellation, spawn/error,
+  forced-termination, duration, exit/signal, and fresh start/end HEAD evidence.
+- A lazy fourth Checks inspector tab with exact argv and local-authority
+  disclosure, explicit Run/Cancel, elapsed state, bounded output, truncation,
+  changed/unavailable HEAD warnings, stale-response rejection, reconnect
+  inspection, error recovery, and compact narrow layouts.
+- Operator documentation for configuration, security, result scope, and
+  restart behavior.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, type checking, 58 test files and 277
+  tests, and both production bundles.
+- `pnpm test:e2e` passed all seven Chromium workflows; the configured-check
+  workflow verified exact catalog presentation, pass evidence, browser reload
+  during a live run, recovered cancellation, final signal evidence, four-tab
+  keyboard navigation, unchanged terminal selection, and 320 CSS px layout.
+- Real child-process coverage passed for exact argv/cwd, bounded environment,
+  pass, nonzero exit, stderr, timeout, graceful and forced cancellation,
+  per-session/global concurrency, output truncation, spawn failure, changed
+  HEAD, WebSocket lifecycle, shutdown suppression, and PTY survival.
+
+### Known limitations
+
+- Verification configuration is startup-only and intentionally external; there
+  is no browser editor, automatic discovery, scheduling, retry, pipeline, CI
+  provider, artifact, or durable run history.
+- Output becomes visible when a process completes; live output streaming is
+  deferred.
+- HEAD association does not freeze or fingerprint the live working tree.
+- Browser refresh is recoverable while the same local server remains alive.
+  Results disappear on restart, and a hard server crash leaves the prior
+  process/outcome unknown until inspected at the OS level.
+- Configured executables are trusted operator code and run with local user
+  authority without a sandbox.
+- Recent activity remains PC-038; Pacium mode remains upcoming.
+- The connected in-app browser backend was unavailable; automated headless
+  Chromium evidence passed, while independent manual visual and screen-reader
+  review remain release gates.
+- The current machine ran verification on Node.js 26.4.0, not pinned Node.js
+  24.18.x.
+- The web bundle is 748 kB before gzip and retains the tracked warning.
+
 ## 0.18.0 — bounded local commit history — 2026-07-27
 
 ### Added
