@@ -1,8 +1,9 @@
 # Project status
 
 **Current phase:** Core terminal workspace, bounded Git oversight, server-owned
-Pacium configuration, and the General/Pacium presentation toggle are complete
-enough for continued slicing; pinned Meta and Orchestrator roles are next.
+Pacium configuration, the General/Pacium toggle, and pinned Meta/Orchestrator
+roles are complete enough for continued slicing; explicit prompt targeting is
+next.
 
 Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
 
@@ -89,6 +90,16 @@ The secondary product is **Pacium mode**:
 - Pacium navigation that keeps the same terminal groups and shows only accepted
   loading, unconfigured, ready configured-reference counts, or bounded error
   evidence with read-only Retry.
+- Stable Meta and Orchestrator cards above ordinary Pacium sessions with exact
+  session-ID resolution; live/starting/ending/ended/failed/missing/disconnected
+  evidence; existing-PTY Open; and no display-name, preset, repository, or
+  terminal-output inference.
+- A role-scoped Assign/Change dialog that can preserve the complete accepted
+  workspace while selecting only eligible live sessions or fixed server launch
+  capabilities, including an intentionally minimal first workspace.
+- Fixed-preset role launch through the existing direct-PTY operation, exact
+  `session.created` request correlation, optimistic one-role binding, and
+  explicit partial-failure behavior that preserves an unbound created terminal.
 - Mode changes and reload preserve selected PTY, terminal tabs/splits,
   inspector context, panel state, terminal sync/input ownership, and existing
   Git/check evidence.
@@ -111,11 +122,12 @@ The secondary product is **Pacium mode**:
 - No packaged `pacium` launcher or release artifact.
 - No durable session restoration after local-server restart.
 - No completed manual screen-reader, visual contrast, or full terminal-lifecycle browser review.
-- No browser editor/setup flow for the server-owned Pacium workspace
-  configuration and no shortcut customization.
+- No general browser editor for workspace identity, repositories, workers,
+  queue sources, delivery methods, context sources, or verification references,
+  and no shortcut customization.
 - No Claude or Codex observer.
-- No pinned/launchable Meta or Orchestrator roles, prompt targeting, queue
-  observation, decisions, delivery, or objective/plan content presentation.
+- No prompt targeting, queue observation, decisions, delivery, worker role
+  surface, or objective/plan content presentation.
 - No queue integration.
 - No tmux adapter.
 
@@ -127,15 +139,21 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 68 test files and 353 tests,
+- `pnpm verify`: formatting, lint, type checking, 72 test files and 380 tests,
   plus web and local-server production builds passed.
-- `pnpm test:e2e`: eight Chromium workflows passed for skip navigation, panel
+- `pnpm test:e2e`: nine Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
   changed-file/diff/history/Activity inspection, and configured verification
   run/reload/cancel without terminal reselection. General/Pacium coverage
   proved pointer, chord, palette, reload persistence, unchanged selected PTY
   and inspector context, configured-state presentation, and narrow layouts.
+- PC-042 browser evidence assigned an existing PTY to Meta, opened it without
+  duplication, configured an Orchestrator fixed preset, launched one direct
+  PTY, bound its exact created session ID, and restored both bindings after
+  refresh. Responsive coverage proved both role cards and the assignment
+  dialog at 320 CSS px, 200% zoom, forced colors, reduced motion, and focus
+  return.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
 - The protocol-version-10 boundary passed strict contract, atomic-store,
@@ -155,7 +173,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 770.96 kB before gzip and emits Vite's chunk-size
+- The current web bundle is 787.01 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
 - Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
@@ -185,8 +203,8 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Begin PC-042 with configured Meta and Orchestrator role rows that resolve
-explicit session/preset bindings honestly, show missing/disconnected states,
-and launch or attach without changing the underlying terminal-first model.
+Begin PC-043 with an explicit Meta, Orchestrator, or selected-worker prompt
+target that never carries scope accidentally and sends input only through a
+deliberate, visible action.
 Complete the pinned Node.js 24 clean-install, CI, broader browser/security,
 manual accessibility, and sustained-output gates before release.
