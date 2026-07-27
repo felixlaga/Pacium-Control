@@ -279,6 +279,22 @@ export class WebSocketHub {
         });
         return;
       }
+      case "repository.diff": {
+        const observation = await this.sessions.repositoryDiff(
+          message.sessionId,
+          message.path,
+        );
+        this.send(
+          client.socket,
+          boundRepositoryDiffResponse({
+            type: "repository.diff",
+            requestId: message.requestId,
+            sessionId: message.sessionId,
+            observation,
+          }),
+        );
+        return;
+      }
       case "session.close":
         this.sessions.close(
           message.sessionId,
@@ -330,6 +346,34 @@ export class WebSocketHub {
       socket.send(frame, { binary: true });
     }
   }
+}
+
+type RepositoryDiffResponse = Extract<
+  ServerMessage,
+  { type: "repository.diff" }
+>;
+
+export function boundRepositoryDiffResponse(
+  message: RepositoryDiffResponse,
+): RepositoryDiffResponse {
+  if (
+    Buffer.byteLength(JSON.stringify(message)) <=
+      MAX_APPLICATION_MESSAGE_BYTES ||
+    message.observation.root === null
+  ) {
+    return message;
+  }
+  return {
+    ...message,
+    observation: {
+      ...message.observation,
+      status: "too_large",
+      sections: [],
+      patchBytes: 0,
+      patchLines: 0,
+      error: null,
+    },
+  };
 }
 
 function rawByteLength(raw: RawData): number {
