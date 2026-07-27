@@ -9,6 +9,7 @@ import {
   parseStoredPreferences,
   resolveDefaultLaunchPreset,
   resolveEffectiveTheme,
+  savePreferences,
   serializePreferences,
 } from "./preferences-model.js";
 
@@ -34,6 +35,19 @@ describe("workspace preferences", () => {
         },
       }),
     ).toBe(DEFAULT_WORKSPACE_PREFERENCES);
+  });
+
+  it("reports unavailable browser storage without throwing", () => {
+    expect(
+      savePreferences(
+        {
+          setItem() {
+            throw new Error("Quota exceeded");
+          },
+        },
+        DEFAULT_WORKSPACE_PREFERENCES,
+      ),
+    ).toBe(false);
   });
 
   it("rejects extra keys and out-of-range or wrong-shaped fields", () => {

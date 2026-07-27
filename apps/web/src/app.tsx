@@ -31,12 +31,11 @@ import {
 } from "./command-palette-model.js";
 import { DirectoryPicker } from "./directory-picker.js";
 import {
-  PREFERENCES_STORAGE_KEY,
   TERMINAL_FONT_STACKS,
   loadPreferences,
   resolveDefaultLaunchPreset,
   resolveEffectiveTheme,
-  serializePreferences,
+  savePreferences,
   type WorkspacePreferences,
 } from "./preferences-model.js";
 import { PreferencesDialog } from "./preferences.js";
@@ -607,17 +606,13 @@ export function App() {
   const applyPreferences = (next: WorkspacePreferences) => {
     setPreferences(next);
     setSettingsOpen(false);
-    try {
-      window.localStorage.setItem(
-        PREFERENCES_STORAGE_KEY,
-        serializePreferences(next),
-      );
+    if (savePreferences(window.localStorage, next)) {
       setNotice("Workspace settings applied and saved in this browser.");
-    } catch {
-      setNotice(
-        "Workspace settings are active, but this browser could not save them for refresh.",
-      );
+      return;
     }
+    setNotice(
+      "Workspace settings are active, but this browser could not save them for refresh.",
+    );
   };
 
   const executePaletteCommand = (command: PaletteCommand) => {

@@ -99,6 +99,18 @@ export function serializePreferences(
   );
 }
 
+export function savePreferences(
+  storage: Pick<Storage, "setItem">,
+  preferences: WorkspacePreferences,
+): boolean {
+  try {
+    storage.setItem(PREFERENCES_STORAGE_KEY, serializePreferences(preferences));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function resolveEffectiveTheme(
   preference: ThemePreference,
   systemPrefersDark: boolean,
