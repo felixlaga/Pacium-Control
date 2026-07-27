@@ -3,6 +3,7 @@ import type {
   PaciumWorkspace,
   QueueDecisionRecord,
   QueueDeliveryRecord,
+  QueueResolutionRecord,
   SessionSummary,
 } from "@pacium/contracts";
 import { describe, expect, it, vi } from "vitest";
@@ -151,7 +152,7 @@ describe("queue delivery service", () => {
     expect(fixture.store.beginDelivery).toHaveBeenCalledTimes(1);
   });
 
-  it("records an unknown answer-file outcome and never retries it", async () => {
+  it("records an unknown answer-file outcome without retrying automatically", async () => {
     const fixture = serviceFixture();
     fixture.publishAnswer.mockRejectedValueOnce(
       new AnswerFileDeliveryError("unknown"),
@@ -175,6 +176,48 @@ describe("queue delivery service", () => {
     });
     expect(second.status).toBe("existing");
     expect(fixture.publishAnswer).toHaveBeenCalledTimes(1);
+  });
+
+  it("permits one explicit retry after exact non-delivery confirmation", async () => {
+    const fixture = serviceFixture();
+    fixture.publishAnswer.mockRejectedValueOnce(
+      new AnswerFileDeliveryError("unknown"),
+    );
+
+    const first = await fixture.service.deliver(
+      decision.decisionId,
+      decision.decisionHash,
+    );
+    if (first.state.delivery === null) {
+      throw new Error("Expected a durable first delivery attempt.");
+    }
+    fixture.resolutions.push(confirmedNotDelivered(first.state.delivery));
+
+    await expect(
+      fixture.service.inspect(decision.decisionId, decision.decisionHash),
+    ).resolves.toMatchObject({
+      status: "ready_retry",
+      delivery: {
+        deliveryId: first.state.delivery.deliveryId,
+        outcome: { status: "unknown" },
+      },
+    });
+    await expect(
+      fixture.service.deliver(decision.decisionId, decision.decisionHash),
+    ).resolves.toMatchObject({
+      status: "delivered",
+      state: { status: "delivered" },
+    });
+    await expect(
+      fixture.service.deliver(decision.decisionId, decision.decisionHash),
+    ).resolves.toMatchObject({
+      status: "existing",
+      state: { status: "delivered" },
+    });
+
+    expect(fixture.deliveries).toHaveLength(2);
+    expect(fixture.publishAnswer).toHaveBeenCalledTimes(2);
+    expect(fixture.store.beginDelivery).toHaveBeenCalledTimes(2);
   });
 
   it("sends one fixed role-prompt line to the exact live session", async () => {
@@ -306,26 +349,52 @@ interface FixtureOptions {
 
 function serviceFixture(options: FixtureOptions = {}) {
   const deliveries: QueueDeliveryRecord[] = [];
+  const resolutions: QueueResolutionRecord[] = [];
+  const deliveryIds = [
+    "7d0f22b4-1a28-42a4-88bf-f712b8e4abcb",
+    "8d0f22b4-1a28-42a4-88bf-f712b8e4abcb",
+  ];
   const inspect = vi.fn<QueueDeliveryStateStore["inspect"]>(() =>
     Promise.resolve({
       status: "ready",
       revision: 1 + deliveries.length,
       decisions: [decision],
       deliveries,
-      resolutions: [],
+      resolutions,
       error: null,
     }),
   );
   const beginDelivery = vi.fn<QueueDeliveryStateStore["beginDelivery"]>(
     (delivery) => {
-      const existing = deliveries.find(
+      const attempts = deliveries.filter(
         (candidate) => candidate.decisionId === delivery.decisionId,
       );
-      if (existing !== undefined) {
+      const duplicate = attempts.find(
+        (candidate) =>
+          candidate.deliveryId === delivery.deliveryId ||
+          candidate.deliveryHash === delivery.deliveryHash,
+      );
+      if (duplicate !== undefined) {
         return Promise.resolve({
           status: "existing",
           revision: 1,
-          delivery: existing,
+          delivery: duplicate,
+        });
+      }
+      const first = attempts[0];
+      const retryUnlocked =
+        first !== undefined &&
+        resolutions.some(
+          (resolution) =>
+            resolution.action === "confirmed_not_delivered" &&
+            resolution.delivery?.deliveryId === first.deliveryId &&
+            resolution.delivery.deliveryHash === first.deliveryHash,
+        );
+      if (attempts.length >= 2 || (attempts.length === 1 && !retryUnlocked)) {
+        return Promise.resolve({
+          status: "existing",
+          revision: 1,
+          delivery: attempts.at(-1) ?? delivery,
         });
       }
       deliveries.push(delivery);
@@ -384,7 +453,8 @@ function serviceFixture(options: FixtureOptions = {}) {
       inspectAnswerTarget,
       now: () => "2026-07-27T14:30:00.000Z",
       publishAnswer,
-      randomId: () => "7d0f22b4-1a28-42a4-88bf-f712b8e4abcb",
+      randomId: () =>
+        deliveryIds.shift() ?? "9d0f22b4-1a28-42a4-88bf-f712b8e4abcb",
     },
   );
   return {
@@ -392,8 +462,33 @@ function serviceFixture(options: FixtureOptions = {}) {
     input,
     inspectAnswerTarget,
     publishAnswer,
+    resolutions,
     service,
     store,
+  };
+}
+
+function confirmedNotDelivered(
+  delivery: QueueDeliveryRecord,
+): QueueResolutionRecord {
+  return {
+    resolutionId: "253a4e0e-d606-4438-9e7e-c27b0021994c",
+    decisionId: delivery.decisionId,
+    decisionHash: delivery.decisionHash,
+    action: "confirmed_not_delivered",
+    delivery: {
+      deliveryId: delivery.deliveryId,
+      deliveryHash: delivery.deliveryHash,
+    },
+    relatedDecision: null,
+    actor: {
+      kind: "local_operator",
+      label: "Local operator",
+    },
+    source: "human_labelled",
+    recordedAt: "2026-07-27T14:31:00.000Z",
+    note: "The operator verified that the first attempt did not arrive.",
+    resolutionHash: "9".repeat(64),
   };
 }
 

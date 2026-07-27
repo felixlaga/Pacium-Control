@@ -67,6 +67,7 @@ export interface QueueDeliveryServiceOptions {
 
 interface ReadyDelivery {
   decision: QueueDecisionRecord;
+  retryOf: QueueDeliveryRecord | null;
   target: QueueDeliveryTarget;
 }
 
@@ -251,16 +252,39 @@ export class QueueDeliveryService {
         ),
       };
     }
-    const existing = observation.deliveries.find(
+    const attempts = observation.deliveries.filter(
       (delivery) => delivery.decisionId === decisionId,
     );
-    if (existing !== undefined) {
+    const latest = attempts.at(-1);
+    if (attempts.length >= 2 && latest !== undefined) {
       return {
         state: stateFromDelivery(
-          existing,
-          this.activeDeliveries.has(existing.deliveryId),
+          latest,
+          this.activeDeliveries.has(latest.deliveryId),
         ),
       };
+    }
+    const first = attempts[0];
+    let retryOf: QueueDeliveryRecord | null = null;
+    if (first !== undefined) {
+      const retryUnlocked =
+        first.outcome?.status !== "delivered" &&
+        observation.resolutions.some(
+          (resolution) =>
+            resolution.decisionId === decisionId &&
+            resolution.action === "confirmed_not_delivered" &&
+            resolution.delivery?.deliveryId === first.deliveryId &&
+            resolution.delivery.deliveryHash === first.deliveryHash,
+        );
+      if (!retryUnlocked) {
+        return {
+          state: stateFromDelivery(
+            first,
+            this.activeDeliveries.has(first.deliveryId),
+          ),
+        };
+      }
+      retryOf = first;
     }
 
     const currentSource = this.sourceReader.decisionSourceIdentity(
@@ -340,16 +364,18 @@ export class QueueDeliveryService {
         path: method.path,
       };
       const status = await this.inspectAnswerTarget(method.path);
-      return status === "ready"
-        ? { decision, target }
+      return status === "ready" && sameTarget(target, retryOf?.target ?? target)
+        ? { decision, retryOf, target }
         : {
             state: unavailableState(
               decisionId,
               decisionHash,
               target,
-              status === "occupied"
-                ? "DELIVERY_TARGET_OCCUPIED"
-                : "DELIVERY_TARGET_UNAVAILABLE",
+              status === "ready"
+                ? "DELIVERY_CONFIG_UNAVAILABLE"
+                : status === "occupied"
+                  ? "DELIVERY_TARGET_OCCUPIED"
+                  : "DELIVERY_TARGET_UNAVAILABLE",
             ),
           };
     }
@@ -371,17 +397,24 @@ export class QueueDeliveryService {
         ),
       };
     }
-    return {
-      decision,
-      target: {
-        type: "role_prompt",
-        methodId: method.id,
-        methodLabel: method.label,
-        role: method.role,
-        sessionId: session.id,
-        sessionEpoch: session.epoch,
-      },
+    const target: QueueDeliveryTarget = {
+      type: "role_prompt",
+      methodId: method.id,
+      methodLabel: method.label,
+      role: method.role,
+      sessionId: session.id,
+      sessionEpoch: session.epoch,
     };
+    return sameTarget(target, retryOf?.target ?? target)
+      ? { decision, retryOf, target }
+      : {
+          state: unavailableState(
+            decisionId,
+            decisionHash,
+            target,
+            "DELIVERY_CONFIG_UNAVAILABLE",
+          ),
+        };
   }
 
   private async invoke(
@@ -463,9 +496,9 @@ export class QueueDeliveryService {
     const current = await this.store.inspect();
     const recovered =
       current.status === "ready"
-        ? current.deliveries.find(
-            (delivery) => delivery.decisionId === decisionId,
-          )
+        ? current.deliveries
+            .filter((delivery) => delivery.decisionId === decisionId)
+            .at(-1)
         : undefined;
     if (recovered !== undefined) {
       return {
@@ -502,14 +535,23 @@ function payloadFor(
 }
 
 function readyState(resolved: ReadyDelivery): QueueDeliveryState {
-  return {
-    status: "ready",
-    decisionId: resolved.decision.decisionId,
-    decisionHash: resolved.decision.decisionHash,
-    target: resolved.target,
-    delivery: null,
-    error: null,
-  };
+  return resolved.retryOf === null
+    ? {
+        status: "ready",
+        decisionId: resolved.decision.decisionId,
+        decisionHash: resolved.decision.decisionHash,
+        target: resolved.target,
+        delivery: null,
+        error: null,
+      }
+    : {
+        status: "ready_retry",
+        decisionId: resolved.decision.decisionId,
+        decisionHash: resolved.decision.decisionHash,
+        target: resolved.target,
+        delivery: resolved.retryOf,
+        error: null,
+      };
 }
 
 function unavailableState(
@@ -592,4 +634,11 @@ function sameSourceIdentity(
     left.itemId === right.itemId &&
     left.itemType === right.itemType
   );
+}
+
+function sameTarget(
+  left: QueueDeliveryTarget,
+  right: QueueDeliveryTarget,
+): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
