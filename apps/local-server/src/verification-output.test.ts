@@ -41,6 +41,18 @@ describe("verification output capture", () => {
     );
   });
 
+  it("preserves every byte at the exact non-truncated limit", () => {
+    const capture = new VerificationOutputCapture();
+    const exact = `${"a".repeat(MAX_VERIFICATION_OUTPUT_BYTES - 2)}\nZ`;
+    capture.append(exact.slice(0, 13_000));
+    capture.append(exact.slice(13_000));
+
+    expect(capture.finish()).toEqual({
+      text: exact,
+      truncated: false,
+    });
+  });
+
   it("keeps the final UTF-8 result within the byte contract", () => {
     const capture = new VerificationOutputCapture();
     capture.append("🚀".repeat(MAX_VERIFICATION_OUTPUT_BYTES));
