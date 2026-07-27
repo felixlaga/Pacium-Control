@@ -241,6 +241,97 @@ kbd {
   overflow: auto;
 }
 
+.pacium-mode-summary {
+  display: grid;
+  gap: 8px;
+  margin: 0 8px 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-raised);
+}
+
+.pacium-mode-summary-heading {
+  display: grid;
+  gap: 5px;
+}
+
+.pacium-mode-summary-heading > div {
+  display: grid;
+  gap: 2px;
+}
+
+.pacium-mode-summary-heading span {
+  color: var(--text-faint);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pacium-mode-summary-heading strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pacium-mode-summary p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.pacium-mode-summary dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+}
+
+.pacium-mode-summary dl > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 5px 3px;
+  border-radius: 4px;
+  background: var(--bg);
+  text-align: center;
+}
+
+.pacium-mode-summary dt {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.pacium-mode-summary dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pacium-mode-summary > button {
+  min-height: 25px;
+  justify-self: start;
+  padding: 3px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--bg);
+  font-size: 9px;
+}
+
+.pacium-mode-summary.status-error {
+  border-color: color-mix(in srgb, var(--red) 38%, var(--border));
+}
+
 .section-heading {
   display: flex;
   justify-content: space-between;

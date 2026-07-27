@@ -69,6 +69,8 @@ import {
   interruptPaciumConfigRequest,
   type PaciumConfigViewState,
 } from "./pacium-config-model.js";
+import { buildPaciumModeSummary } from "./pacium-mode-summary-model.js";
+import { PaciumModeSummaryCard } from "./pacium-mode-summary.js";
 import {
   TERMINAL_FONT_STACKS,
   loadPreferences,
@@ -1067,6 +1069,10 @@ export function App() {
     }
   }, [connection, renderedSessionIds]);
   const sessionGroups = useMemo(() => groupSessions(sessions), [sessions]);
+  const paciumModeSummary = useMemo(
+    () => buildPaciumModeSummary(paciumConfig, connection),
+    [connection, paciumConfig],
+  );
   const attentionBySession = useMemo(() => {
     const observedAt = new Date().toISOString();
     return new Map(
@@ -1788,6 +1794,12 @@ export function App() {
         </button>
 
         <nav aria-label="Terminal sessions" className="session-navigation">
+          {workspaceMode === "pacium" && (
+            <PaciumModeSummaryCard
+              onRetry={() => transportRef.current?.requestPaciumConfig()}
+              summary={paciumModeSummary}
+            />
+          )}
           <div className="section-heading">
             <span>
               {workspaceMode === "pacium" ? "Pacium sessions" : "Terminals"}
