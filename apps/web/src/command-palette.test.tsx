@@ -52,6 +52,9 @@ describe("command palette markup", () => {
     expect(markup).toContain('aria-selected="true"');
     expect(markup).toContain("Relaunch is available only");
     expect(markup).toContain("Review terminating “Meta”");
+    expect(markup).toContain('role="dialog"');
+    expect(markup).toContain('aria-modal="true"');
+    expect(markup).toContain('aria-labelledby="command-palette-title"');
   });
 
   it("renders a helpful empty search state", () => {

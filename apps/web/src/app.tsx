@@ -1313,25 +1313,11 @@ export function App() {
             />
           )}
         </section>
-        <footer
-          aria-atomic="true"
-          aria-live="polite"
-          className="workspace-status"
-          role="status"
-        >
-          <span>
-            {workspaceStatusText({
-              connection,
-              selectedSessionName: selectedSession?.displayName ?? null,
-              terminalCaptured: capturedPaneId !== null,
-            })}
-          </span>
-          <span>
-            {capturedPaneId !== null
-              ? "Ctrl+Shift+. returns to application controls"
-              : "Click a terminal to enter capture"}
-          </span>
-        </footer>
+        <WorkspaceStatus
+          connection={connection}
+          selectedSessionName={selectedSession?.displayName ?? null}
+          terminalCaptured={capturedPaneId !== null}
+        />
       </main>
 
       <aside
@@ -1598,7 +1584,7 @@ function upsertSession(
   );
 }
 
-function CreateTerminalDialog({
+export function CreateTerminalDialog({
   defaultCwd,
   defaultLaunchPreset,
   launchPresets,
@@ -1762,6 +1748,38 @@ function CreateTerminalDialog({
         </div>
       </form>
     </div>
+  );
+}
+
+export function WorkspaceStatus({
+  connection,
+  selectedSessionName,
+  terminalCaptured,
+}: {
+  connection: ConnectionState;
+  selectedSessionName: string | null;
+  terminalCaptured: boolean;
+}) {
+  return (
+    <footer
+      aria-atomic="true"
+      aria-live="polite"
+      className="workspace-status"
+      role="status"
+    >
+      <span>
+        {workspaceStatusText({
+          connection,
+          selectedSessionName,
+          terminalCaptured,
+        })}
+      </span>
+      <span>
+        {terminalCaptured
+          ? "Ctrl+Shift+. returns to application controls"
+          : "Click a terminal to enter capture"}
+      </span>
+    </footer>
   );
 }
 

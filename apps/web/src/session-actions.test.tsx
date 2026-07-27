@@ -48,6 +48,9 @@ describe("session action surfaces", () => {
     expect(markup).toContain("Opens on the Pacium host");
     expect(markup).toContain("Relaunch ended session");
     expect(markup).toMatch(/disabled=""[\s\S]*?Relaunch ended session/);
+    expect(markup).toContain('role="dialog"');
+    expect(markup).toContain('aria-modal="true"');
+    expect(markup).toContain('aria-labelledby="session-actions-title"');
   });
 
   it("offers relaunch for an ended session and explains missing Git context", () => {
@@ -80,5 +83,8 @@ describe("session action surfaces", () => {
     expect(markup).toContain('maxLength="120"');
     expect(markup).toContain('value="Meta"');
     expect(markup).toContain("does not rename the shell process");
+    expect(markup).toContain('role="dialog"');
+    expect(markup).toContain('aria-modal="true"');
+    expect(markup).toContain('aria-labelledby="rename-session-title"');
   });
 });
