@@ -36,6 +36,7 @@ describe("queue observation revision model", () => {
     );
     expect(first.changed).toBe(true);
     expect(first.state.observation.observationRevision).toBe(2);
+    expect(first.state.observation.candidateFirstObservedAt).toBe(firstTime);
 
     const repeated = applyQueueFileRead(
       first.state,
@@ -46,6 +47,7 @@ describe("queue observation revision model", () => {
     expect(repeated.changed).toBe(false);
     expect(repeated.state.observation.observationRevision).toBe(2);
     expect(repeated.state.observation.observedAt).toBe(secondTime);
+    expect(repeated.state.observation.candidateFirstObservedAt).toBe(firstTime);
 
     const changed = applyQueueFileRead(
       repeated.state,
@@ -55,6 +57,7 @@ describe("queue observation revision model", () => {
     );
     expect(changed.changed).toBe(true);
     expect(changed.state.observation.observationRevision).toBe(3);
+    expect(changed.state.observation.candidateFirstObservedAt).toBe(secondTime);
   });
 
   it("clears prior text and hash when current evidence degrades", () => {
@@ -83,6 +86,7 @@ describe("queue observation revision model", () => {
       observation: {
         status: "missing",
         contentHash: null,
+        candidateFirstObservedAt: null,
         observationRevision: 3,
       },
       text: null,
@@ -186,6 +190,7 @@ describe("queue observation config projection", () => {
       status: "ready",
       workspaceRevision: 2,
       observedAt: secondTime,
+      sources: [{ candidateFirstObservedAt: firstTime }],
     });
   });
 });

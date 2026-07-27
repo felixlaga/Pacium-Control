@@ -39,6 +39,7 @@ export function pendingQueueSource(
       byteLength: null,
       modifiedAt: null,
       contentHash: null,
+      candidateFirstObservedAt: null,
       error: null,
     },
     classification: null,
@@ -52,6 +53,15 @@ export function applyQueueFileRead(
   observedAt: string,
   classification: QueueSourceClassification | null,
 ): QueueReadTransition {
+  const currentCandidate = current.classification?.candidate ?? null;
+  const nextCandidate = classification?.candidate ?? null;
+  const candidateFirstObservedAt =
+    nextCandidate === null
+      ? null
+      : currentCandidate?.itemId === nextCandidate.itemId &&
+          current.observation.candidateFirstObservedAt !== null
+        ? current.observation.candidateFirstObservedAt
+        : observedAt;
   const candidate: QueueSourceRuntimeState = {
     definition: current.definition,
     observation: {
@@ -62,6 +72,7 @@ export function applyQueueFileRead(
       byteLength: result.byteLength,
       modifiedAt: result.modifiedAt,
       contentHash: result.contentHash,
+      candidateFirstObservedAt,
       error: result.error,
     },
     classification,
@@ -179,6 +190,8 @@ function sameQueueEvidence(
     left.observation.byteLength === right.observation.byteLength &&
     left.observation.modifiedAt === right.observation.modifiedAt &&
     left.observation.contentHash === right.observation.contentHash &&
+    left.observation.candidateFirstObservedAt ===
+      right.observation.candidateFirstObservedAt &&
     left.observation.error?.code === right.observation.error?.code &&
     left.observation.error?.message === right.observation.error?.message &&
     sameClassification(left.classification, right.classification) &&

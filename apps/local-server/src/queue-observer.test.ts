@@ -32,6 +32,7 @@ describe("queue observer", () => {
           sourceId: "needs-felix",
           status: "stable",
           observationRevision: 2,
+          candidateFirstObservedAt: now,
           classification: {
             status: "candidate",
             candidate: {
