@@ -1,5 +1,5 @@
 import { once } from "node:events";
-import { lstat, mkdtemp, rm } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -324,6 +324,125 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await expect(lstat(setup.config.dataDirectory)).rejects.toMatchObject({
       code: "ENOENT",
     });
+
+    client.socket.close();
+    await once(client.socket, "close");
+  });
+
+  it("observes configured queue files without sending content or mutating files", async () => {
+    const queueDirectory = await mkdtemp(join(tmpdir(), "pacium-queue-http-"));
+    temporaryDirectories.push(queueDirectory);
+    const queuePath = join(queueDirectory, "NEEDS-FELIX");
+    await writeFile(queuePath, "First private question\n", { mode: 0o600 });
+
+    const setup = await startTestServer(new FakePtyFactory());
+    application = setup.application;
+    manager = setup.manager;
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    const workspace = {
+      ...paciumWorkspace("Queue workspace"),
+      queueSources: [
+        {
+          id: "needs-felix",
+          label: "Needs Felix",
+          path: queuePath,
+          format: "plain_text" as const,
+          requestingRole: "meta" as const,
+          deliveryMethodId: null,
+        },
+      ],
+    };
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.config.replace",
+        requestId: "10331219-4e3c-4ceb-b302-98aab38e0fe0",
+        expectedRevision: 0,
+        workspace,
+      }),
+    );
+    await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.config" &&
+        message.requestId === "10331219-4e3c-4ceb-b302-98aab38e0fe0",
+      "queue config response",
+    );
+    const configBefore = await readFile(
+      join(setup.config.dataDirectory, "pacium.json"),
+    );
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.observe",
+        requestId: "917b6e44-62d7-48e0-bf16-bb52161172e5",
+      }),
+    );
+    const observed = await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.queue.sources" &&
+        message.requestId === "917b6e44-62d7-48e0-bf16-bb52161172e5",
+      "queue observation response",
+    );
+    expect(observed).toMatchObject({
+      observation: {
+        status: "ready",
+        workspaceRevision: 1,
+        sources: [
+          {
+            sourceId: "needs-felix",
+            status: "stable",
+            byteLength: 23,
+          },
+        ],
+      },
+    });
+    expect(JSON.stringify(observed)).not.toContain("First private question");
+    if (observed.type !== "pacium.queue.sources") {
+      throw new Error("Expected queue source observation");
+    }
+    expect(observed.observation.sources[0]?.contentHash).toMatch(
+      /^[0-9a-f]{64}$/,
+    );
+    const firstRevision =
+      observed.observation.sources[0]?.observationRevision ?? 0;
+
+    await writeFile(queuePath, "Second private question\n", { mode: 0o600 });
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.observe",
+        requestId: "cb4106cc-cf02-4cc3-8ce8-90280247739e",
+      }),
+    );
+    const updated = await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.queue.sources" &&
+        message.requestId === "cb4106cc-cf02-4cc3-8ce8-90280247739e" &&
+        (message.observation.sources[0]?.observationRevision ?? 0) >
+          firstRevision,
+      "refreshed queue observation",
+    );
+    expect(updated).toMatchObject({
+      observation: {
+        sources: [
+          {
+            sourceId: "needs-felix",
+            status: "stable",
+            byteLength: 24,
+          },
+        ],
+      },
+    });
+    expect(JSON.stringify(updated)).not.toContain("Second private question");
+    await expect(readFile(queuePath, "utf8")).resolves.toBe(
+      "Second private question\n",
+    );
+    await expect(
+      readFile(join(setup.config.dataDirectory, "pacium.json")),
+    ).resolves.toEqual(configBefore);
 
     client.socket.close();
     await once(client.socket, "close");
@@ -1199,6 +1318,29 @@ async function nextMessage(
   return new Promise<ServerMessage>((resolve) => {
     client.pending.push({ predicate, resolve });
   });
+}
+
+async function nextMessageWithin(
+  client: TestClient,
+  predicate: (message: ServerMessage) => boolean,
+  label: string,
+): Promise<ServerMessage> {
+  return Promise.race([
+    nextMessage(client, predicate),
+    new Promise<never>((_resolve, reject) => {
+      setTimeout(
+        () =>
+          reject(
+            new Error(
+              `Timed out waiting for ${label}; buffered messages: ${JSON.stringify(
+                client.messages,
+              )}`,
+            ),
+          ),
+        2_000,
+      );
+    }),
+  ]);
 }
 
 async function nextFrame(
