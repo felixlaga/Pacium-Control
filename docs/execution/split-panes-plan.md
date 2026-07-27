@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `8e7157b`
 - Target milestone: Milestone 1
-- Status: In progress
+- Status: Implemented; rendered validation pending
 
 ## Objective
 
@@ -110,3 +110,12 @@ Each visible session gets its own terminal handle and reconnect cursor. The curr
 - Product: PC-023 is the next dependency-ordered task and directly supports Meta/Orchestrator oversight.
 - Architecture: browser layout state preserves server PTY authority.
 - Security: no new process or filesystem capability is introduced.
+
+## Completion evidence
+
+- `pnpm verify` passed on 2026-07-27: formatting, lint, type checking, 15 test files with 55 tests, and both production builds.
+- Pure layout tests cover every state transition and malformed/stale restoration.
+- Server-rendered component tests cover focused, empty, split, separator, action, and maximized structures.
+- A WebSocket integration test proves one connection can subscribe to and receive snapshots and binary output for two PTYs.
+- The development web root and direct `/api/health` endpoint returned HTTP 200.
+- No browser backend was available, so pointer workflow, screenshots, zoom, and hands-on accessibility validation remain explicitly open.

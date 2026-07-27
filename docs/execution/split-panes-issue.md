@@ -34,19 +34,19 @@ The operator can arrange up to four live terminal sessions in a compact horizont
 
 ## Acceptance criteria
 
-- [ ] The focused pane can split right or down through visible controls and keyboard shortcuts.
-- [ ] An empty pane clearly offers available running sessions without creating a duplicate terminal surface.
-- [ ] Selecting a tab or sidebar session assigns it to the focused pane, or focuses its existing pane.
-- [ ] Every visible live pane receives its own snapshot, ordered terminal output, input, and resize path.
-- [ ] Pane focus is visually and textually distinguishable from tab/sidebar selection.
-- [ ] A separator resizes adjacent panes within safe minimum ratios.
-- [ ] Maximize and restore preserve the nested layout.
-- [ ] Closing a pane keeps its terminal process and tab alive.
-- [ ] Moving a session to an occupied pane swaps the two pane assignments deterministically.
-- [ ] Stale or malformed stored layouts recover without affecting PTYs.
-- [ ] Closing a server session removes it from the layout and recovers focus.
-- [ ] Pure layout behavior has deterministic unit tests.
-- [ ] The full repository verification gate passes.
+- [x] The focused pane can split right or down through visible controls and keyboard shortcuts.
+- [x] An empty pane clearly offers available running sessions without creating a duplicate terminal surface.
+- [x] Selecting a tab or sidebar session assigns it to the focused pane, or focuses its existing pane.
+- [x] Every visible live pane receives its own snapshot, ordered terminal output, input, and resize path.
+- [x] Pane focus is visually and textually distinguishable from tab/sidebar selection.
+- [x] A separator resizes adjacent panes within safe minimum ratios.
+- [x] Maximize and restore preserve the nested layout.
+- [x] Closing a pane keeps its terminal process and tab alive.
+- [x] Moving a session to an occupied pane swaps the two pane assignments deterministically.
+- [x] Stale or malformed stored layouts recover without affecting PTYs.
+- [x] Closing a server session removes it from the layout and recovers focus.
+- [x] Pure layout behavior has deterministic unit tests.
+- [x] The full repository verification gate passes.
 
 ## User experience
 
@@ -101,3 +101,12 @@ The application caps the initial layout at four panes. This keeps the workspace 
 ## Open questions
 
 - None blocking this bounded first layout.
+
+## Evidence
+
+- `pnpm verify` passed on 2026-07-27 with 15 test files, 55 tests, and both production bundles.
+- Seven pure layout tests cover bounds, focus, assignment, move/swap, resize ratios, maximize/restore, view closure, stale reconciliation, validation, and persistence.
+- Two server-rendered component tests cover the focused/empty and maximized workspace structures.
+- The local-server integration suite proves that one browser transport receives independent snapshots and terminal frames for two subscribed PTYs.
+- The development web root and direct local-server health endpoint returned HTTP 200.
+- Rendered browser interaction and accessibility evidence remain pending because no browser backend was available.
