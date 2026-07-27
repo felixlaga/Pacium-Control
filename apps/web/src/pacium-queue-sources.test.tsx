@@ -35,6 +35,7 @@ describe("Pacium queue list semantics", () => {
       contentHash: null,
       classification: null,
       candidateFirstObservedAt: null,
+      conflicts: [],
       error: {
         code: "WATCH_FAILED",
         message: "The source parent could not be watched.",
@@ -67,6 +68,7 @@ describe("Pacium queue list semantics", () => {
       contentHash: null,
       classification: null,
       candidateFirstObservedAt: null,
+      conflicts: [],
       error: {
         code: "READ_FAILED",
         message: "</small><script>read()</script>",
@@ -149,6 +151,7 @@ function ready(): PaciumQueueProjection {
             ],
           },
           candidateFirstObservedAt: "2026-07-27T11:58:00.000Z",
+          conflicts: [],
           error: null,
         },
       },

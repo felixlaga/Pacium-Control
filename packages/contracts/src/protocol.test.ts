@@ -208,6 +208,7 @@ describe("client protocol", () => {
           contentHash: null,
           classification: null,
           candidateFirstObservedAt: null,
+          conflicts: [],
           error: null,
         },
         {
@@ -229,6 +230,7 @@ describe("client protocol", () => {
             diagnostics: [],
           },
           candidateFirstObservedAt: "2026-07-27T11:58:00.000Z",
+          conflicts: [],
           error: null,
         },
       ],

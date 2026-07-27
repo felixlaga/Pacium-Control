@@ -398,6 +398,7 @@ function observation() {
       ],
     },
     candidateFirstObservedAt: firstObservedAt,
+    conflicts: [],
     error: null,
   };
 }

@@ -5,6 +5,7 @@ import {
   PaciumIdentifierSchema,
 } from "./pacium-config.js";
 import { QueueSourceClassificationSchema } from "./queue-classification.js";
+import { QueueSourceConflictsSchema } from "./queue-reconciliation.js";
 
 export const MAX_QUEUE_SOURCE_BYTES = 64 * 1024;
 export const MAX_QUEUE_OBSERVATION_ERROR_CHARS = 240;
@@ -51,6 +52,7 @@ export const QueueSourceObservationSchema = z
       .nullable(),
     classification: QueueSourceClassificationSchema.nullable(),
     candidateFirstObservedAt: z.string().datetime().nullable(),
+    conflicts: QueueSourceConflictsSchema,
     error: QueueObservationErrorSchema.nullable(),
   })
   .strict()
