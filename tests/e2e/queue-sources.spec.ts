@@ -1,8 +1,28 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
 
 const queuePath = process.env.PACIUM_E2E_QUEUE_PATH;
+const stateDirectory = process.env.PACIUM_E2E_STATE_DIRECTORY;
+
+test.beforeEach(async ({ page }) => {
+  if (stateDirectory !== undefined) {
+    await rm(join(stateDirectory, "pacium.json"), { force: true });
+  }
+  await page.goto("/");
+  await terminateAllSessions(page);
+});
+
+test.afterEach(async ({ page }) => {
+  try {
+    await terminateAllSessions(page);
+  } finally {
+    if (stateDirectory !== undefined) {
+      await rm(join(stateDirectory, "pacium.json"), { force: true });
+    }
+  }
+});
 
 test("observes a real queue source without exposing content or changing the terminal", async ({
   page,
@@ -11,7 +31,6 @@ test("observes a real queue source without exposing content or changing the term
     throw new Error("The disposable queue fixture path is unavailable.");
   }
   await writeFile(queuePath, "Initial private queue\n", { mode: 0o600 });
-  await page.goto("/");
   await openTerminal(page, "Queue observer terminal");
   await configureQueueWorkspace(page, queuePath);
   await page.reload();
@@ -154,4 +173,42 @@ async function openTerminal(page: Page, displayName: string): Promise<void> {
   await page.getByPlaceholder("Project shell").fill(displayName);
   await page.getByRole("button", { name: "Open terminal" }).click();
   await expect(workspaceStatus).toContainText(displayName);
+}
+
+async function terminateAllSessions(page: Page): Promise<void> {
+  if (page.isClosed()) {
+    return;
+  }
+  const openDialog = page.getByRole("dialog");
+  if ((await openDialog.count()) > 0) {
+    await page.keyboard.press("Escape");
+    if (await openDialog.isVisible().catch(() => false)) {
+      await page.reload();
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const sidebar = page.getByRole("complementary", {
+    name: "Session navigation",
+  });
+  if (!(await sidebar.isVisible().catch(() => false))) {
+    const showSidebar = page.getByRole("button", {
+      name: "Show session sidebar",
+    });
+    if ((await showSidebar.count()) > 0) {
+      await showSidebar.click();
+    }
+  }
+
+  const sessions = sidebar.locator(".session-item");
+  while ((await sessions.count()) > 0) {
+    const previousCount = await sessions.count();
+    await sessions.first().click({ button: "right" });
+    page.once("dialog", (dialog) => dialog.accept());
+    await page
+      .getByRole("button", { name: /Terminate process and close/ })
+      .click();
+    await expect
+      .poll(() => sessions.count(), { timeout: 10_000 })
+      .toBeLessThan(previousCount);
+  }
 }
