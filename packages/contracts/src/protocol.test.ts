@@ -47,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for immutable queue decisions", () => {
-    expect(PROTOCOL_VERSION).toBe(14);
+  it("advances the wire contract for explicit decision delivery", () => {
+    expect(PROTOCOL_VERSION).toBe(15);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -304,6 +304,59 @@ describe("client protocol", () => {
           decision: null,
           error: null,
         },
+        deliveryState: null,
+      }).success,
+    ).toBe(true);
+    const decided = {
+      decisionId: "28c9142a-8986-43c7-9451-445fd8c13c3e",
+      kind: "question_answer",
+      source: {
+        workspaceId: "primary",
+        ...identity,
+        boundary: "whole_source_v1",
+        itemType: "question",
+      },
+      payload: {
+        answer: "Use the smaller verified slice.",
+        note: null,
+      },
+      actor: {
+        kind: "local_operator",
+        label: "Local operator",
+      },
+      decidedAt: "2026-07-27T14:00:00.000Z",
+      decisionHash: "c".repeat(64),
+    };
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.queue.item",
+        requestId,
+        inspection: {
+          status: "ready",
+          ...identity,
+          sourceObservedAt: "2026-07-27T12:00:00.000Z",
+          firstObservedAt: "2026-07-27T11:58:00.000Z",
+          byteLength: 7,
+          encoding: "utf8_base64",
+          originalTextBase64: "UmV2aWV3",
+          error: null,
+        },
+        decisionState: {
+          status: "decided",
+          decision: decided,
+          error: null,
+        },
+        deliveryState: {
+          status: "not_configured",
+          decisionId: decided.decisionId,
+          decisionHash: decided.decisionHash,
+          target: null,
+          delivery: null,
+          error: {
+            code: "DELIVERY_NOT_CONFIGURED",
+            message: "This queue source has no configured delivery method.",
+          },
+        },
       }).success,
     ).toBe(true);
     expect(
@@ -326,6 +379,7 @@ describe("client protocol", () => {
           decision: null,
           error: null,
         },
+        deliveryState: null,
       }).success,
     ).toBe(false);
     expect(
@@ -351,6 +405,7 @@ describe("client protocol", () => {
           decision: null,
           error: null,
         },
+        deliveryState: null,
       }).success,
     ).toBe(false);
   });
@@ -425,6 +480,49 @@ describe("client protocol", () => {
             code: "ITEM_STALE",
             message:
               "This queue item is no longer current. No decision was recorded or delivered.",
+          },
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts only decision identity for explicit delivery", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    const delivery = {
+      type: "pacium.queue.decision.deliver",
+      requestId,
+      decisionId: "28c9142a-8986-43c7-9451-445fd8c13c3e",
+      decisionHash: "c".repeat(64),
+    };
+    expect(ClientMessageSchema.safeParse(delivery).success).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        ...delivery,
+        path: "/tmp/answers",
+        role: "orchestrator",
+        payload: "approve",
+        retry: true,
+      }).success,
+    ).toBe(false);
+
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.queue.delivery",
+        requestId,
+        result: {
+          status: "rejected",
+          decisionId: delivery.decisionId,
+          decisionHash: delivery.decisionHash,
+          state: {
+            status: "not_configured",
+            decisionId: delivery.decisionId,
+            decisionHash: delivery.decisionHash,
+            target: null,
+            delivery: null,
+            error: {
+              code: "DELIVERY_NOT_CONFIGURED",
+              message: "This queue source has no configured delivery method.",
+            },
           },
         },
       }).success,
