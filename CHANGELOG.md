@@ -2,6 +2,53 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.33.0 — host directory-picker refresh — 2026-07-28
+
+### Added
+
+- A compact in-picker absolute host-path editor opened by the visible toolbar
+  action or `Cmd/Ctrl+L`; Enter navigates without launching a terminal and
+  Escape returns to breadcrumbs.
+- `Cmd/Ctrl+Enter` current-folder confirmation, filter-to-result ArrowDown,
+  result ArrowUp/ArrowDown/Home/End traversal, and authoritative post-navigation
+  focus restoration.
+- True server-owned default recovery when an initial typed path is missing or
+  inaccessible, while Retry, known Home, recents, Back, and the parent
+  absolute-path field remain available.
+- Failure-safe version-1 browser-local recent reads and writes. Storage denial
+  or quota failure cannot prevent opening the picker or returning the selected
+  canonical path.
+- Scrollable 200%-zoom terminal-launch presentation, explicit keyboard focus
+  rings, light-theme picker surfaces, and retained compact desktop/320px
+  hierarchy.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 114 test
+  files and 705 tests, plus the 906.13 kB web JavaScript, 109.71 kB stylesheet,
+  and 335.82 kB local-server production bundles.
+- `pnpm test:e2e` passed all 14 Chromium workflows. The three new PC-078
+  workflows cover invalid-first-path recovery, direct exact-path navigation,
+  filtering, keyboard traversal, canonical selection without premature PTY
+  launch, recent reuse, storage denial, focus return, 320 CSS px, 200% zoom,
+  forced colors, and reduced motion.
+- Before/after desktop and final 320px screenshots were inspected from the
+  localhost application. Existing local and proxy-shaped Serve protected-read
+  tests remained green.
+
+### Known limitations
+
+- The picker remains read-only and non-recursive. It does not create folders,
+  clone repositories, index the filesystem, or persist server-side favorites.
+- Recents are best-effort browser-local path references and are revalidated
+  only when chosen. Filtering applies only to the server's bounded returned
+  entries.
+- The connected interactive browser was unavailable, so rendered automation
+  used the repository's installed Playwright Chromium. Manual screen-reader
+  review and the real Tailscale canary remain release gates.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's existing chunk-size warning.
+
 ## 0.32.0 — optional Tailscale Serve access — 2026-07-28
 
 ### Added
