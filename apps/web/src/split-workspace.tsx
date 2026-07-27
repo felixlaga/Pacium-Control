@@ -49,11 +49,7 @@ export function SplitWorkspace(props: SplitWorkspaceProps) {
         maximizedPane === undefined ? "" : "is-maximized"
       }`}
     >
-      <SplitNode
-        {...props}
-        node={renderedRoot}
-        paneCount={panes.length}
-      />
+      <SplitNode {...props} node={renderedRoot} paneCount={panes.length} />
     </div>
   );
 }
@@ -146,6 +142,21 @@ function SplitDivider({
       aria-valuemin={20}
       aria-valuenow={Math.round(ratio * 100)}
       className="split-divider"
+      onKeyDown={(event) => {
+        const decreasingKey =
+          direction === "horizontal" ? "ArrowLeft" : "ArrowUp";
+        const increasingKey =
+          direction === "horizontal" ? "ArrowRight" : "ArrowDown";
+        if (event.key === decreasingKey || event.key === increasingKey) {
+          event.preventDefault();
+          onRatio(ratio + (event.key === decreasingKey ? -0.05 : 0.05));
+          return;
+        }
+        if (event.key === "Home" || event.key === "End") {
+          event.preventDefault();
+          onRatio(event.key === "Home" ? 0.2 : 0.8);
+        }
+      }}
       onPointerDown={startResize}
       role="separator"
       tabIndex={0}
@@ -232,7 +243,9 @@ function TerminalPane(
             </div>
             <div className="terminal-pane-state">
               {focused && <span className="focused-label">Focused</span>}
-              <span>{captured ? "Capture · Ctrl Shift ." : session.processState}</span>
+              <span>
+                {captured ? "Capture · Ctrl Shift ." : session.processState}
+              </span>
             </div>
             <div className="terminal-pane-actions">
               <button
@@ -322,7 +335,9 @@ function EmptyPane({
     <div className="empty-pane">
       <div className="empty-pane-heading">
         <div>
-          <span className="eyebrow">{focused ? "Focused pane" : "Empty split"}</span>
+          <span className="eyebrow">
+            {focused ? "Focused pane" : "Empty split"}
+          </span>
           <h2>Choose a running terminal</h2>
           <p>Move a session here without stopping or duplicating its PTY.</p>
         </div>
