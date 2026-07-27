@@ -17,6 +17,9 @@ import {
   type LaunchPresetId,
   type RepositoryObservation,
   type SessionSummary,
+  VerificationObservationSchema,
+  type VerificationObservation,
+  type VerificationRun,
 } from "@pacium/contracts";
 
 import type { LaunchPresetDefinition } from "./launch-presets.js";
@@ -29,6 +32,15 @@ import {
   inspectRepositoryContext,
   type RepositoryInspector,
 } from "./repository-context.js";
+import {
+  verificationPresetsForRepository,
+  type VerificationCatalog,
+  type VerificationPresetDefinition,
+} from "./verification-config.js";
+import {
+  VerificationRunner,
+  VerificationRunnerError,
+} from "./verification-runner.js";
 
 type SerializeAddonConstructor = new () => SerializeAddonInstance;
 type HeadlessTerminalConstructor = new (
@@ -82,7 +94,12 @@ export interface TerminalDataEvent {
 export type SessionEvent =
   | { type: "updated"; session: SessionSummary }
   | { type: "exited"; session: SessionSummary }
-  | { type: "closed"; sessionId: string; requestId?: string };
+  | { type: "closed"; sessionId: string; requestId?: string }
+  | {
+      type: "verification";
+      sessionId: string;
+      observation: VerificationObservation;
+    };
 
 export class SessionError extends Error {
   public constructor(
@@ -100,6 +117,8 @@ export class SessionManager {
     (event: TerminalDataEvent) => void
   >();
   private readonly sessionListeners = new Set<(event: SessionEvent) => void>();
+  private readonly verificationRuns = new Map<string, VerificationRun>();
+  private readonly unsubscribeVerification: (() => void) | undefined;
 
   public constructor(
     private readonly ptyFactory: PtyFactory,
@@ -134,7 +153,25 @@ export class SessionManager {
       observedAt === undefined
         ? inspectGitHistory(repository)
         : inspectGitHistory(repository, { observedAt }),
-  ) {}
+    private readonly verificationCatalog: VerificationCatalog = {
+      configured: false,
+      repositories: [],
+    },
+    private readonly verificationRunner?: VerificationRunner,
+  ) {
+    this.unsubscribeVerification = verificationRunner?.onUpdate((event) => {
+      const session = this.sessions.get(event.ownerId);
+      if (session === undefined) {
+        return;
+      }
+      this.verificationRuns.set(event.ownerId, event.run);
+      this.emitSession({
+        type: "verification",
+        sessionId: event.ownerId,
+        observation: this.buildVerificationObservation(session),
+      });
+    });
+  }
 
   public list(): SessionSummary[] {
     return [...this.sessions.values()]
@@ -361,6 +398,59 @@ export class SessionManager {
     );
   }
 
+  public repositoryVerification(sessionId: string): VerificationObservation {
+    return this.buildVerificationObservation(this.requireSession(sessionId));
+  }
+
+  public async runRepositoryVerification(
+    sessionId: string,
+    presetId: string,
+  ): Promise<VerificationObservation> {
+    const session = this.requireSession(sessionId);
+    const { root, presets } = this.requireVerificationRepository(session);
+    const preset = presets.find((candidate) => candidate.id === presetId);
+    if (preset === undefined) {
+      throw new SessionError(
+        "VERIFICATION_PRESET_UNAVAILABLE",
+        "The selected verification preset is not configured for this repository.",
+      );
+    }
+    if (this.verificationRunner === undefined) {
+      throw new SessionError(
+        "VERIFICATION_UNAVAILABLE",
+        "Verification execution is not available on this Pacium server.",
+      );
+    }
+
+    try {
+      const run = await this.verificationRunner.start(sessionId, root, preset);
+      this.verificationRuns.set(sessionId, run);
+      return this.buildVerificationObservation(session);
+    } catch (error) {
+      throw mapVerificationRunnerError(error);
+    }
+  }
+
+  public cancelRepositoryVerification(
+    sessionId: string,
+    runId: string,
+  ): VerificationObservation {
+    const session = this.requireSession(sessionId);
+    if (this.verificationRunner === undefined) {
+      throw new SessionError(
+        "VERIFICATION_UNAVAILABLE",
+        "Verification execution is not available on this Pacium server.",
+      );
+    }
+    try {
+      const run = this.verificationRunner.cancel(sessionId, runId);
+      this.verificationRuns.set(sessionId, run);
+      return this.buildVerificationObservation(session);
+    } catch (error) {
+      throw mapVerificationRunnerError(error);
+    }
+  }
+
   public close(sessionId: string, force: boolean, requestId: string): void {
     const session = this.requireSession(sessionId);
 
@@ -405,6 +495,8 @@ export class SessionManager {
   }
 
   public shutdown(): void {
+    this.unsubscribeVerification?.();
+    this.verificationRunner?.shutdown();
     for (const session of this.sessions.values()) {
       if (session.forceTimer !== undefined) {
         clearTimeout(session.forceTimer);
@@ -497,6 +589,20 @@ export class SessionManager {
     if (session.forceTimer !== undefined) {
       clearTimeout(session.forceTimer);
     }
+    const verificationRun = this.verificationRunner?.activeRun(
+      session.summary.id,
+    );
+    if (verificationRun !== null && verificationRun !== undefined) {
+      try {
+        this.verificationRunner?.cancel(
+          session.summary.id,
+          verificationRun.runId,
+        );
+      } catch {
+        // Session removal remains authoritative if the run exited concurrently.
+      }
+    }
+    this.verificationRuns.delete(session.summary.id);
     session.terminal.dispose();
     this.sessions.delete(session.summary.id);
     const event: SessionEvent =
@@ -535,6 +641,111 @@ export class SessionManager {
     return { ...preset, executable: preset.executable };
   }
 
+  private requireVerificationRepository(session: ManagedSession): {
+    root: string;
+    presets: readonly VerificationPresetDefinition[];
+  } {
+    if (!this.verificationCatalog.configured) {
+      throw new SessionError(
+        "VERIFICATION_UNCONFIGURED",
+        "No verification configuration was supplied to this Pacium server.",
+      );
+    }
+    const repository = session.summary.repository;
+    if (repository.status !== "ready" || repository.root === null) {
+      throw new SessionError(
+        "VERIFICATION_REPOSITORY_UNAVAILABLE",
+        "The selected terminal does not have ready repository evidence.",
+        true,
+      );
+    }
+    const presets = verificationPresetsForRepository(
+      this.verificationCatalog,
+      repository.root,
+    );
+    if (presets.length === 0) {
+      throw new SessionError(
+        "VERIFICATION_PRESET_UNAVAILABLE",
+        "No verification presets are configured for this repository.",
+      );
+    }
+    return { root: repository.root, presets };
+  }
+
+  private buildVerificationObservation(
+    session: ManagedSession,
+  ): VerificationObservation {
+    const observedAt = new Date().toISOString();
+    if (!this.verificationCatalog.configured) {
+      return VerificationObservationSchema.parse({
+        status: "unconfigured",
+        configured: false,
+        root: null,
+        observedAt,
+        presets: [],
+        run: null,
+        error: null,
+      });
+    }
+
+    const repository = session.summary.repository;
+    if (repository.status === "not_repository") {
+      return VerificationObservationSchema.parse({
+        status: "not_repository",
+        configured: true,
+        root: null,
+        observedAt,
+        presets: [],
+        run: null,
+        error: null,
+      });
+    }
+    if (repository.status === "error" || repository.root === null) {
+      return VerificationObservationSchema.parse({
+        status: "error",
+        configured: true,
+        root: repository.root,
+        observedAt,
+        presets: [],
+        run: null,
+        error: {
+          code: "repository_unavailable",
+          message: "Repository evidence is unavailable for verification.",
+        },
+      });
+    }
+
+    const presets = verificationPresetsForRepository(
+      this.verificationCatalog,
+      repository.root,
+    );
+    if (presets.length === 0) {
+      return VerificationObservationSchema.parse({
+        status: "no_presets",
+        configured: true,
+        root: repository.root,
+        observedAt,
+        presets: [],
+        run: null,
+        error: null,
+      });
+    }
+    const presetIds = new Set(presets.map(({ id }) => id));
+    const latestRun = this.verificationRuns.get(session.summary.id) ?? null;
+    return VerificationObservationSchema.parse({
+      status: "ready",
+      configured: true,
+      root: repository.root,
+      observedAt,
+      presets: presets.map(publicVerificationPreset),
+      run:
+        latestRun !== null && presetIds.has(latestRun.presetId)
+          ? latestRun
+          : null,
+      error: null,
+    });
+  }
+
   private requireLiveSession(sessionId: string): ManagedSession {
     const session = this.requireSession(sessionId);
     if (session.summary.processState !== "live") {
@@ -551,6 +762,30 @@ export class SessionManager {
       listener(event);
     }
   }
+}
+
+function publicVerificationPreset(
+  preset: VerificationPresetDefinition,
+): VerificationPresetDefinition {
+  return {
+    id: preset.id,
+    label: preset.label,
+    description: preset.description,
+    executable: preset.executable,
+    args: [...preset.args],
+    timeoutMs: preset.timeoutMs,
+  };
+}
+
+function mapVerificationRunnerError(error: unknown): SessionError {
+  if (error instanceof VerificationRunnerError) {
+    return new SessionError(error.code, error.message, error.retryable);
+  }
+  return new SessionError(
+    "VERIFICATION_START_FAILED",
+    "The configured verification process could not be started.",
+    true,
+  );
 }
 
 function splitTerminalData(data: string): string[] {
