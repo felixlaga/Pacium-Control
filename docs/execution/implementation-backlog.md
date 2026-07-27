@@ -173,6 +173,12 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-034 Implement changed-files inspector
 
 - Status, grouped files, additions/deletions, binary/large/renamed/deleted handling.
+- Current status: protocol 6 exposes lazy, session-owned changed-file evidence
+  from fixed bounded porcelain-v2 and numstat reads. The inspector presents
+  deterministic conflict/mixed/staged/unstaged/untracked order, known line
+  totals, rename/copy/type/delete states, binary/large labels, freshness,
+  truncation, and honest degraded states without reading content or affecting
+  PTYs. Diff text remains assigned to PC-035.
 
 ### PC-035 Implement diff viewer
 
