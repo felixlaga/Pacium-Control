@@ -2469,6 +2469,10 @@ describe("localhost HTTP and WebSocket boundary", () => {
         ...withoutHeader(valid, "tailscale-user-login"),
         "tailscale-app-capabilities": '{"example/cap":[]}',
       },
+      {
+        ...valid,
+        "tailscale-funnel-request": "?1",
+      },
     ];
 
     for (const headers of deniedHeaders) {

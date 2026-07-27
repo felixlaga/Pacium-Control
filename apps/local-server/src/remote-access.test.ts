@@ -172,6 +172,16 @@ describe("request access classification", () => {
         "protected",
       ),
     ).toBeNull();
+    expect(
+      classify(
+        {
+          ...base,
+          "tailscale-user-login": ALLOWED_LOGIN,
+          "tailscale-funnel-request": "?1",
+        },
+        "protected",
+      ),
+    ).toBeNull();
   });
 
   it("does not trust remote-shaped traffic when remote mode is disabled", () => {

@@ -26,6 +26,7 @@ export function classifyRequestAccess(
   if (
     tailscale === null ||
     request.headers.host !== tailscale.hostname ||
+    request.headers["tailscale-funnel-request"] !== undefined ||
     !hasRemoteBrowserAuthority(request, tailscale.origin, purpose)
   ) {
     return null;
