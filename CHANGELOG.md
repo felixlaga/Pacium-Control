@@ -2,6 +2,58 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.35.0 — Claude Code observer — 2026-07-28
+
+### Added
+
+- Protocol 20 bounded Claude status extensions for model, context use, total
+  input/output tokens, and cost, with the same strict provider-matched snapshot
+  boundary.
+- One process-local Claude observer registration per Pacium-launched Claude
+  PTY, including installed-version detection, a random 256-bit URL-safe token,
+  fixed observation-only HTTP hook settings, and bounded server-owned
+  environment additions.
+- Strict loopback hook/status ingress requiring POST, exact Host, no Origin,
+  JSON content type, a canonical session UUID, bearer authentication, a 64 KiB
+  body ceiling, provider-session correlation, and typed normalization.
+- Deduplicated SessionStart, prompt, tool, permission, question, completion,
+  failure, and SessionEnd evidence with source/confidence/freshness and
+  capability transitions. Successful hooks receive only an empty `204` and
+  cannot approve, deny, block, retry, or otherwise decide for Claude.
+- Activity details for bounded Claude model/context/token/cost evidence while
+  discarding prompts, transcripts, tool inputs/outputs, environments,
+  credentials, status titles, and raw payloads.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 118 test
+  files and 743 tests, plus the 913.94 kB web JavaScript, 109.81 kB stylesheet,
+  and 368.49 kB local-server production bundles.
+- `pnpm test:e2e` passed all 14 Chromium workflows after the required
+  unsandboxed macOS launch. The first sandboxed attempt was blocked before page
+  creation by Chromium Mach-port permission denial, not an application
+  assertion.
+- A 139-test focused contract/observer/PTY/session/HTTP/WebSocket/attention/
+  Activity gate passed. Security cases cover wrong method, Host, Origin, token,
+  content type, malformed/oversized input, provider-session drift, duplicate
+  delivery, released tokens, raw-field exclusion, and no decision response.
+
+### Known limitations
+
+- Only Claude sessions launched by Pacium are observed. Existing external
+  Claude processes are not adopted, and observations/tokens disappear with the
+  local server.
+- Pacium does not edit user/project settings or replace the operator's single
+  Claude status-line command. The strict status receiver exists, but a
+  companion command is not packaged; managed HTTP-hook allowlists can leave
+  the observer unavailable while the PTY continues working.
+- Current evidence is fixture and local integration coverage, not a
+  manual real-provider Claude canary. Codex native observation remains PC-062.
+- Questions and approvals remain observation-only. No browser or server action
+  answers, approves, prompts, steers, interrupts, or executes for Claude.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's existing chunk-size warning.
+
 ## 0.34.0 — provider observation contract — 2026-07-28
 
 ### Added
