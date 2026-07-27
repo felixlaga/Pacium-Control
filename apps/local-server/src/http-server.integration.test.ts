@@ -501,13 +501,34 @@ describe("localhost HTTP and WebSocket boundary", () => {
         requestId: "917b6e44-62d7-48e0-bf16-bb52161172e5",
       }),
     );
-    const observed = await nextMessageWithin(
+    let observed = await nextMessageWithin(
       client,
       (message) =>
         message.type === "pacium.queue.sources" &&
         message.requestId === "917b6e44-62d7-48e0-bf16-bb52161172e5",
       "queue observation response",
     );
+    for (const requestId of [
+      "8e5df0ed-b491-4268-9d4a-315c43966e3f",
+      "7f96593b-8144-47ac-ad5f-8d174f94eb73",
+    ]) {
+      if (
+        observed.type === "pacium.queue.sources" &&
+        observed.observation.sources[0]?.status === "stable"
+      ) {
+        break;
+      }
+      client.socket.send(
+        JSON.stringify({ type: "pacium.queue.observe", requestId }),
+      );
+      observed = await nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.sources" &&
+          message.requestId === requestId,
+        "settled queue observation response",
+      );
+    }
     expect(observed).toMatchObject({
       observation: {
         status: "ready",
