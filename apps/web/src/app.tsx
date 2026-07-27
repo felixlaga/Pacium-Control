@@ -601,7 +601,7 @@ export function App() {
             interruptSession(session);
             return;
           case "review-session-termination":
-            setActionSessionId(session.id);
+            terminateSession(session);
             return;
         }
       }
@@ -807,6 +807,7 @@ export function App() {
           <div className="header-actions">
             <ConnectionBadge state={connection} />
             <button
+              aria-keyshortcuts="Meta+K Control+K"
               id="command-palette-trigger"
               onClick={() => openPalette("commands")}
               title="Command palette (Cmd/Ctrl K)"
