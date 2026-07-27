@@ -41,7 +41,7 @@ Node local server
         └── Pacium queue adapter
 ```
 
-The application is localhost-only and single-user initially. It has no database, separate broker, Tailscale dependency, or multi-host protocol.
+The application is loopback-bound and single-user. Optional Tailscale Serve access proxies tailnet-only HTTPS to the same host without adding a database, separate broker, membership model, or multi-host protocol.
 
 ## Design direction
 
@@ -62,4 +62,4 @@ The first release succeeds when the operator can:
 
 ## Current status
 
-The repository contains the build-ready blueprint only. Implementation has not started.
+The repository contains the working direct-PTY foundation, fixed CLI launch presets, repository grouping, and terminal tabs. Agent oversight, Pacium mode, Tailscale operation, and release hardening remain in progress.

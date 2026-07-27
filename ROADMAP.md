@@ -123,6 +123,7 @@ See [Milestone 4](docs/execution/milestone-4-agent-integrations.md).
 Deliverables:
 
 - optional tmux attachment and keep-alive mode;
+- optional Tailscale Serve access with verified operator identity;
 - startup recovery and honest ended-session handling;
 - bounded diagnostic export;
 - macOS packaging first, with Linux according to the supported-platform decision;
@@ -135,14 +136,13 @@ Exit criteria:
 - repeated daily use does not leak processes or unbounded memory;
 - a packaged clean install reproduces the core workflow;
 - optional tmux sessions reconnect after server restart;
+- allowed tailnet devices can reach Pacium without exposing its server beyond loopback;
 - all limitations are documented.
 
 See [Milestone 5](docs/execution/milestone-5-polish.md).
 
 ## Explicitly deferred
 
-- remote access;
-- Tailscale ingress;
 - multi-user memberships and roles;
 - multi-host control;
 - public hosting;

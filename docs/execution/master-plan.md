@@ -191,7 +191,7 @@ Every pull request provides:
 
 Do not begin with:
 
-- remote access;
+- direct network binding or a generalized remote control plane;
 - authentication and team roles;
 - multi-host coordination;
 - a generalized workflow engine;

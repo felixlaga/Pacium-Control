@@ -73,4 +73,43 @@ describe("launch preset catalog", () => {
       },
     ]);
   });
+
+  it("classifies only the exact server-owned launch preset", () => {
+    const definitions = buildLaunchPresetDefinitions("/bin/zsh", { PATH: "" });
+
+    expect(
+      definitions.map(({ id, classification }) => ({
+        id,
+        classification,
+      })),
+    ).toEqual([
+      {
+        id: "shell",
+        classification: {
+          type: "shell",
+          label: "Shell",
+          source: "launch_preset",
+          confidence: "confirmed",
+        },
+      },
+      {
+        id: "codex",
+        classification: {
+          type: "codex",
+          label: "Codex CLI",
+          source: "launch_preset",
+          confidence: "confirmed",
+        },
+      },
+      {
+        id: "claude",
+        classification: {
+          type: "claude",
+          label: "Claude Code CLI",
+          source: "launch_preset",
+          confidence: "confirmed",
+        },
+      },
+    ]);
+  });
 });

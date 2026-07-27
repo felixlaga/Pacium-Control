@@ -141,19 +141,25 @@ The first queue adapter observes existing files, tracks provenance, presents que
 
 ## State
 
-Pacium stores only application-owned metadata in a configurable local data directory:
+The current server-owned durable state is intentionally limited to one
+versioned file in a configurable local data directory:
 
 ```text
-config.json
-workspaces.json
-sessions.json
 pacium.json
-queue-state.json
-activity/*.jsonl
-cache/
 ```
 
-Writes are validated and atomic. Caches are disposable. Terminal history is bounded and ephemeral by default. Provider credentials and complete environment data are excluded.
+`pacium.json` owns only the future Pacium-mode workspace definition: explicit
+role/preset bindings, repositories, worker slots, and path metadata for queue,
+delivery, objective, and plan consumers. It owns no live process, terminal,
+Git, provider, verification-command, or file-content truth.
+
+Writes use complete schema/reference validation, optimistic revisions, a
+private same-directory temporary file, atomic rename, and directory sync.
+Invalid state is preserved and degrades Pacium configuration only. Browser
+tabs, splits, settings, and attention cursors remain browser-owned; terminal
+history is bounded and ephemeral. Queue provenance state and caches remain
+future slices, not current files. Provider credentials and complete environment
+data are excluded.
 
 ## Security boundary
 
@@ -165,7 +171,9 @@ Writes are validated and atomic. Caches are disposable. Terminal history is boun
 - Repository paths are canonicalized against configured roots.
 - The process runs with the invoking user’s privileges; no privilege escalation is introduced.
 
-Remote access, multi-user authorization, and a separate privilege broker require a future ADR.
+Optional remote access follows ADR-0016: Tailscale Serve terminates tailnet-only HTTPS and proxies to this same loopback process. Remote bootstrap requires an exact HTTPS Origin, verified Tailscale user identity, an explicit operator allowlist, and the existing ephemeral token.
+
+Pacium remains on the same host as the PTYs and files it controls. Multi-user roles, another ingress mechanism, cross-host aggregation, or a separate privilege broker require a future ADR.
 
 ## Failure behavior
 

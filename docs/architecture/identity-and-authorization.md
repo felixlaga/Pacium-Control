@@ -29,6 +29,14 @@ PTY processes run as the invoking user. Pacium does not elevate privileges, requ
 - Symlink and traversal behavior is tested.
 - Reusable presets store typed command/arguments rather than shell-parsed strings where practical.
 
-## Future remote access
+## Optional Tailscale access
 
-Remote, shared-machine, or multi-user use requires authentication, authorization, privilege separation, and a new ADR. Local tokens are not a remote security architecture.
+ADR-0016 permits one remote shape:
+
+- Tailscale Serve proxies HTTPS and WebSockets to loopback Pacium.
+- Tailscale grants restrict network reachability.
+- Verified Serve user headers identify the requesting operator.
+- An explicit login allowlist denies other tailnet users.
+- The ephemeral Pacium token still protects the application transport.
+
+This remains a single-operator application on the same host as its PTYs. Shared input, multiple application users, another proxy, public ingress, or cross-host control requires a new ADR.

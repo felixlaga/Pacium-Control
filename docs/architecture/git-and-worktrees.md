@@ -48,7 +48,8 @@ Verification commands are explicit local presets. Results include:
 - observed branch/commit/worktree state;
 - cancellation or timeout.
 
-A result applies only to the recorded repository state.
+A result records fresh start/end HEAD observations. It does not claim that the
+live working tree was frozen while the command ran.
 
 ## Mutations
 

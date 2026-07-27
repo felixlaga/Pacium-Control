@@ -1,14 +1,36 @@
-import { loadServerConfig } from "./config.js";
+import { buildChildEnvironment, loadServerConfig } from "./config.js";
 import { createPaciumHttpServer } from "./http-server.js";
+import { createHostActions } from "./host-actions.js";
+import { createPaciumConfigStore } from "./pacium-config-service.js";
 import { NodePtyFactory } from "./pty-adapter.js";
+import { QueueObserver } from "./queue-observer.js";
 import { SessionManager } from "./session-manager.js";
+import { VerificationRunner } from "./verification-runner.js";
 
 const config = loadServerConfig();
+const verificationRunner = new VerificationRunner({
+  environment: buildChildEnvironment(config.environmentKeys),
+});
 const sessions = new SessionManager(
   new NodePtyFactory(config),
   config.launchPresets,
+  createHostActions(),
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  config.verificationCatalog,
+  verificationRunner,
 );
-const application = createPaciumHttpServer(config, sessions);
+const paciumConfig = createPaciumConfigStore(config, sessions);
+const queueObserver = new QueueObserver();
+await queueObserver.syncConfig(await paciumConfig.inspect());
+const application = createPaciumHttpServer(
+  config,
+  sessions,
+  paciumConfig,
+  queueObserver,
+);
 
 application.server.listen(config.port, config.host, () => {
   process.stdout.write(

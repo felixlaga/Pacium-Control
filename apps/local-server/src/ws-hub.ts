@@ -4,12 +4,23 @@ import {
   PROTOCOL_VERSION,
   encodeTerminalDataFrame,
   type ClientMessage,
+  type QueueDecisionRequestIdentity,
   type ServerMessage,
 } from "@pacium/contracts";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
 
 import type { ServerConfig } from "./config.js";
+import {
+  PaciumConfigStoreError,
+  type PaciumConfigStore,
+} from "./pacium-config-store.js";
 import { presetCapabilities } from "./launch-presets.js";
+import {
+  createQueueDecisionService,
+  type QueueDecisionService,
+} from "./queue-decision-service.js";
+import { QueueDecisionStore } from "./queue-decision-store.js";
+import { QueueObserver } from "./queue-observer.js";
 import { SessionError, type SessionManager } from "./session-manager.js";
 
 interface ConnectedClient {
@@ -32,10 +43,17 @@ export class WebSocketHub {
   private readonly clients = new Set<ConnectedClient>();
   private readonly unsubscribeData: () => void;
   private readonly unsubscribeSessions: () => void;
+  private readonly unsubscribeQueue: () => void;
 
   public constructor(
     private readonly config: ServerConfig,
     private readonly sessions: SessionManager,
+    private readonly paciumConfig: PaciumConfigStore,
+    private readonly queueObserver: QueueObserver = new QueueObserver(),
+    private readonly queueDecisions: QueueDecisionService = createQueueDecisionService(
+      queueObserver,
+      new QueueDecisionStore(config.dataDirectory),
+    ),
   ) {
     this.server.on("connection", (socket) => {
       this.handleConnection(socket);
@@ -64,6 +82,16 @@ export class WebSocketHub {
         this.broadcast({ type: "session.exited", session: event.session });
         return;
       }
+      if (event.type === "verification") {
+        this.broadcast(
+          boundVerificationResponse({
+            type: "repository.verification.updated",
+            sessionId: event.sessionId,
+            observation: event.observation,
+          }),
+        );
+        return;
+      }
 
       for (const client of this.clients) {
         client.subscriptions.delete(event.sessionId);
@@ -78,11 +106,20 @@ export class WebSocketHub {
             };
       this.broadcast(message);
     });
+
+    this.unsubscribeQueue = queueObserver.subscribe((observation) => {
+      this.broadcast({
+        type: "pacium.queue.sources.updated",
+        observation,
+      });
+    });
   }
 
   public dispose(): void {
     this.unsubscribeData();
     this.unsubscribeSessions();
+    this.unsubscribeQueue();
+    this.queueObserver.dispose();
     for (const client of this.clients) {
       client.socket.close(1001, "Pacium server is shutting down");
     }
@@ -181,6 +218,19 @@ export class WebSocketHub {
         );
         return;
       }
+      if (error instanceof PaciumConfigStoreError) {
+        this.sendError(
+          client.socket,
+          parsed.data.requestId,
+          `PACIUM_CONFIG_${error.code.toUpperCase()}`,
+          error.message,
+          error.code === "conflict" ||
+            error.code === "write_failed" ||
+            error.code === "durability_unknown" ||
+            error.code === "invalid_result",
+        );
+        return;
+      }
       this.sendError(
         client.socket,
         parsed.data.requestId,
@@ -255,6 +305,178 @@ export class WebSocketHub {
         this.sessions.interrupt(message.sessionId);
         this.sendResult(client.socket, message.requestId);
         return;
+      case "session.rename":
+        this.sessions.rename(message.sessionId, message.displayName);
+        this.sendResult(client.socket, message.requestId);
+        return;
+      case "session.revealRepository":
+        await this.sessions.revealRepository(message.sessionId);
+        this.sendResult(client.socket, message.requestId);
+        return;
+      case "session.refreshRepository":
+        await this.sessions.refreshRepository(message.sessionId);
+        this.sendResult(client.socket, message.requestId);
+        return;
+      case "repository.changes": {
+        const observation = await this.sessions.repositoryChanges(
+          message.sessionId,
+        );
+        this.send(client.socket, {
+          type: "repository.changes",
+          requestId: message.requestId,
+          sessionId: message.sessionId,
+          observation,
+        });
+        return;
+      }
+      case "repository.diff": {
+        const observation = await this.sessions.repositoryDiff(
+          message.sessionId,
+          message.path,
+        );
+        this.send(
+          client.socket,
+          boundRepositoryDiffResponse({
+            type: "repository.diff",
+            requestId: message.requestId,
+            sessionId: message.sessionId,
+            observation,
+          }),
+        );
+        return;
+      }
+      case "repository.history": {
+        const observation = await this.sessions.repositoryHistory(
+          message.sessionId,
+        );
+        this.send(
+          client.socket,
+          boundRepositoryHistoryResponse({
+            type: "repository.history",
+            requestId: message.requestId,
+            sessionId: message.sessionId,
+            observation,
+          }),
+        );
+        return;
+      }
+      case "repository.verification.inspect":
+        this.send(
+          client.socket,
+          boundVerificationResponse({
+            type: "repository.verification",
+            requestId: message.requestId,
+            sessionId: message.sessionId,
+            observation: this.sessions.repositoryVerification(
+              message.sessionId,
+            ),
+          }),
+        );
+        return;
+      case "repository.verification.run":
+        this.send(
+          client.socket,
+          boundVerificationResponse({
+            type: "repository.verification",
+            requestId: message.requestId,
+            sessionId: message.sessionId,
+            observation: await this.sessions.runRepositoryVerification(
+              message.sessionId,
+              message.presetId,
+            ),
+          }),
+        );
+        return;
+      case "repository.verification.cancel":
+        this.send(
+          client.socket,
+          boundVerificationResponse({
+            type: "repository.verification",
+            requestId: message.requestId,
+            sessionId: message.sessionId,
+            observation: this.sessions.cancelRepositoryVerification(
+              message.sessionId,
+              message.runId,
+            ),
+          }),
+        );
+        return;
+      case "pacium.config.get":
+        {
+          const observation = await this.paciumConfig.inspect();
+          this.send(client.socket, {
+            type: "pacium.config",
+            requestId: message.requestId,
+            observation,
+          });
+          await this.queueObserver.syncConfig(observation);
+        }
+        return;
+      case "pacium.config.replace": {
+        const observation = await this.paciumConfig.replace(
+          message.expectedRevision,
+          message.workspace,
+        );
+        this.send(client.socket, {
+          type: "pacium.config",
+          requestId: message.requestId,
+          observation,
+        });
+        await this.queueObserver.syncConfig(observation);
+        return;
+      }
+      case "pacium.queue.observe": {
+        const config = await this.paciumConfig.inspect();
+        const observation = await this.queueObserver.syncConfig(config);
+        this.send(client.socket, {
+          type: "pacium.queue.sources",
+          requestId: message.requestId,
+          observation,
+        });
+        return;
+      }
+      case "pacium.queue.item.inspect": {
+        const identity = queueDecisionIdentity(message);
+        let inspection = this.queueObserver.inspectItem(identity);
+        const decisionState =
+          inspection.status === "ready"
+            ? await this.queueDecisions.inspect(identity)
+            : null;
+        inspection = this.queueObserver.inspectItem(identity);
+        this.send(client.socket, {
+          type: "pacium.queue.item",
+          requestId: message.requestId,
+          inspection,
+          decisionState: inspection.status === "ready" ? decisionState : null,
+        });
+        return;
+      }
+      case "pacium.queue.question.answer":
+        {
+          const identity = queueDecisionIdentity(message);
+          this.send(client.socket, {
+            type: "pacium.queue.decision",
+            requestId: message.requestId,
+            result: await this.queueDecisions.recordQuestionAnswer(
+              identity,
+              message.payload,
+            ),
+          });
+        }
+        return;
+      case "pacium.queue.approval.decide":
+        {
+          const identity = queueDecisionIdentity(message);
+          this.send(client.socket, {
+            type: "pacium.queue.decision",
+            requestId: message.requestId,
+            result: await this.queueDecisions.recordApprovalDecision(
+              identity,
+              message.payload,
+            ),
+          });
+        }
+        return;
       case "session.close":
         this.sessions.close(
           message.sessionId,
@@ -306,6 +528,107 @@ export class WebSocketHub {
       socket.send(frame, { binary: true });
     }
   }
+}
+
+type RepositoryDiffResponse = Extract<
+  ServerMessage,
+  { type: "repository.diff" }
+>;
+
+export function boundRepositoryDiffResponse(
+  message: RepositoryDiffResponse,
+): RepositoryDiffResponse {
+  if (
+    Buffer.byteLength(JSON.stringify(message)) <=
+      MAX_APPLICATION_MESSAGE_BYTES ||
+    message.observation.root === null
+  ) {
+    return message;
+  }
+  return {
+    ...message,
+    observation: {
+      ...message.observation,
+      status: "too_large",
+      sections: [],
+      patchBytes: 0,
+      patchLines: 0,
+      error: null,
+    },
+  };
+}
+
+type RepositoryHistoryResponse = Extract<
+  ServerMessage,
+  { type: "repository.history" }
+>;
+
+export function boundRepositoryHistoryResponse(
+  message: RepositoryHistoryResponse,
+): RepositoryHistoryResponse {
+  if (
+    Buffer.byteLength(JSON.stringify(message)) <= MAX_APPLICATION_MESSAGE_BYTES
+  ) {
+    return message;
+  }
+  return {
+    ...message,
+    observation: {
+      ...message.observation,
+      status: "error",
+      commits: [],
+      truncated: false,
+      error: {
+        code: "invalid_output",
+        message: "Git returned invalid or excessive commit history.",
+      },
+    },
+  };
+}
+
+type VerificationResponse = Extract<
+  ServerMessage,
+  {
+    type: "repository.verification" | "repository.verification.updated";
+  }
+>;
+
+export function boundVerificationResponse<T extends VerificationResponse>(
+  message: T,
+): T {
+  if (
+    Buffer.byteLength(JSON.stringify(message)) <= MAX_APPLICATION_MESSAGE_BYTES
+  ) {
+    return message;
+  }
+  return {
+    ...message,
+    observation: {
+      status: "error",
+      configured: message.observation.configured,
+      root: message.observation.root,
+      observedAt: message.observation.observedAt,
+      presets: [],
+      run: null,
+      error: {
+        code: "invalid_state",
+        message:
+          "Verification configuration or output exceeds the application message bound.",
+      },
+    },
+  };
+}
+
+function queueDecisionIdentity(
+  message: QueueDecisionRequestIdentity,
+): QueueDecisionRequestIdentity {
+  return {
+    workspaceRevision: message.workspaceRevision,
+    sourceId: message.sourceId,
+    observationRevision: message.observationRevision,
+    contentHash: message.contentHash,
+    itemId: message.itemId,
+  };
 }
 
 function rawByteLength(raw: RawData): number {

@@ -1,9 +1,15 @@
 import {
+  DirectoryListingSchema,
   PROTOCOL_VERSION,
   ServerMessageSchema,
   decodeTerminalDataFrame,
   type ClientMessage,
+  type DirectoryListing,
   type LaunchPresetId,
+  type QueueApprovalDecisionPayload,
+  type QueueItemInspectionIdentity,
+  type PaciumWorkspace,
+  type QueueQuestionAnswerPayload,
   type ServerMessage,
   type TerminalDataFrame,
 } from "@pacium/contracts";
@@ -13,6 +19,12 @@ export type ConnectionState =
 
 export type TransportEvent =
   | { type: "connection"; state: ConnectionState }
+  | {
+      type: "pacium.config.requested";
+      requestId: string;
+      intent: "get" | "replace";
+    }
+  | { type: "pacium.queue.requested"; requestId: string }
   | { type: "message"; message: ServerMessage }
   | { type: "terminal.data"; frame: TerminalDataFrame }
   | { type: "transport.error"; message: string };
@@ -25,6 +37,7 @@ interface BootstrapResponse {
 
 export class PaciumTransport {
   private socket: WebSocket | null = null;
+  private accessToken: string | null = null;
   private stopped = false;
   private retryAttempt = 0;
   private retryTimer: number | undefined;
@@ -44,6 +57,7 @@ export class PaciumTransport {
     }
     this.socket?.close(1000, "Pacium browser closed");
     this.socket = null;
+    this.accessToken = null;
     this.emit({ type: "connection", state: "disconnected" });
   }
 
@@ -57,21 +71,10 @@ export class PaciumTransport {
     launchPreset: LaunchPresetId;
     cols: number;
     rows: number;
-  }): void {
-    const payload =
-      input.displayName === undefined
-        ? {
-            cwd: input.cwd,
-            launchPreset: input.launchPreset,
-            cols: input.cols,
-            rows: input.rows,
-          }
-        : input;
-    this.send({
-      type: "session.create",
-      requestId: crypto.randomUUID(),
-      payload,
-    });
+  }): string {
+    const requestId = crypto.randomUUID();
+    this.send(sessionCreateMessage(input, requestId));
+    return requestId;
   }
 
   public attach(sessionId: string): void {
@@ -82,13 +85,10 @@ export class PaciumTransport {
     });
   }
 
-  public input(sessionId: string, data: string): void {
-    this.send({
-      type: "terminal.input",
-      requestId: crypto.randomUUID(),
-      sessionId,
-      data,
-    });
+  public input(sessionId: string, data: string): string {
+    const requestId = crypto.randomUUID();
+    this.send(terminalInputMessage(sessionId, data, requestId));
+    return requestId;
   }
 
   public resize(sessionId: string, cols: number, rows: number): void {
@@ -109,12 +109,147 @@ export class PaciumTransport {
     });
   }
 
+  public renameSession(sessionId: string, displayName: string): void {
+    this.send({
+      type: "session.rename",
+      requestId: crypto.randomUUID(),
+      sessionId,
+      displayName,
+    });
+  }
+
+  public revealRepository(sessionId: string): void {
+    this.send({
+      type: "session.revealRepository",
+      requestId: crypto.randomUUID(),
+      sessionId,
+    });
+  }
+
+  public refreshRepository(sessionId: string): void {
+    this.send(repositoryRefreshMessage(sessionId, crypto.randomUUID()));
+  }
+
+  public requestRepositoryChanges(sessionId: string): string {
+    const requestId = crypto.randomUUID();
+    this.send(repositoryChangesMessage(sessionId, requestId));
+    return requestId;
+  }
+
+  public requestRepositoryDiff(sessionId: string, path: string): string {
+    const requestId = crypto.randomUUID();
+    this.send(repositoryDiffMessage(sessionId, path, requestId));
+    return requestId;
+  }
+
+  public requestRepositoryHistory(sessionId: string): string {
+    const requestId = crypto.randomUUID();
+    this.send(repositoryHistoryMessage(sessionId, requestId));
+    return requestId;
+  }
+
+  public requestRepositoryVerification(sessionId: string): string {
+    const requestId = crypto.randomUUID();
+    this.send(repositoryVerificationInspectMessage(sessionId, requestId));
+    return requestId;
+  }
+
+  public runRepositoryVerification(
+    sessionId: string,
+    presetId: string,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(repositoryVerificationRunMessage(sessionId, presetId, requestId));
+    return requestId;
+  }
+
+  public cancelRepositoryVerification(
+    sessionId: string,
+    runId: string,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(repositoryVerificationCancelMessage(sessionId, runId, requestId));
+    return requestId;
+  }
+
+  public requestPaciumConfig(): string {
+    const requestId = crypto.randomUUID();
+    this.emit({
+      type: "pacium.config.requested",
+      requestId,
+      intent: "get",
+    });
+    this.send(paciumConfigGetMessage(requestId));
+    return requestId;
+  }
+
+  public replacePaciumConfig(
+    expectedRevision: number,
+    workspace: PaciumWorkspace,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.emit({
+      type: "pacium.config.requested",
+      requestId,
+      intent: "replace",
+    });
+    this.send(
+      paciumConfigReplaceMessage(expectedRevision, workspace, requestId),
+    );
+    return requestId;
+  }
+
+  public requestQueueObservation(): string {
+    const requestId = crypto.randomUUID();
+    this.emit({ type: "pacium.queue.requested", requestId });
+    this.send(queueObserveMessage(requestId));
+    return requestId;
+  }
+
+  public requestQueueItemInspection(
+    identity: QueueItemInspectionIdentity,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(queueItemInspectMessage(identity, requestId));
+    return requestId;
+  }
+
+  public recordQueueQuestionAnswer(
+    identity: QueueItemInspectionIdentity,
+    payload: QueueQuestionAnswerPayload,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(queueQuestionAnswerMessage(identity, payload, requestId));
+    return requestId;
+  }
+
+  public recordQueueApprovalDecision(
+    identity: QueueItemInspectionIdentity,
+    payload: QueueApprovalDecisionPayload,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(queueApprovalDecisionMessage(identity, payload, requestId));
+    return requestId;
+  }
+
   public closeSession(sessionId: string, force: boolean): void {
     this.send({
       type: "session.close",
       requestId: crypto.randomUUID(),
       sessionId,
       force,
+    });
+  }
+
+  public async listDirectories(path?: string): Promise<DirectoryListing> {
+    if (this.accessToken === null) {
+      throw new Error(
+        "Pacium is still connecting. Try browsing host folders again.",
+      );
+    }
+    return fetchDirectoryListing({
+      accessToken: this.accessToken,
+      ...(path === undefined ? {} : { path }),
     });
   }
 
@@ -136,6 +271,7 @@ export class PaciumTransport {
       if (bootstrap.protocolVersion !== PROTOCOL_VERSION) {
         throw new Error("Browser and local server protocol versions differ");
       }
+      this.accessToken = bootstrap.accessToken;
 
       const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
       const url = `${scheme}//${window.location.host}${bootstrap.webSocketPath}`;
@@ -150,6 +286,8 @@ export class PaciumTransport {
         this.retryAttempt = 0;
         this.emit({ type: "connection", state: "connected" });
         this.listSessions();
+        this.requestPaciumConfig();
+        this.requestQueueObservation();
       });
       socket.addEventListener("message", (event) => {
         const data: unknown = event.data;
@@ -254,4 +392,245 @@ export class PaciumTransport {
       void this.connect();
     }, delay);
   }
+}
+
+export function repositoryRefreshMessage(
+  sessionId: string,
+  requestId: string,
+): ClientMessage {
+  return {
+    type: "session.refreshRepository",
+    requestId,
+    sessionId,
+  };
+}
+
+export function repositoryChangesMessage(
+  sessionId: string,
+  requestId: string,
+): ClientMessage {
+  return {
+    type: "repository.changes",
+    requestId,
+    sessionId,
+  };
+}
+
+export function repositoryDiffMessage(
+  sessionId: string,
+  path: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "repository.diff" }> {
+  return {
+    type: "repository.diff",
+    requestId,
+    sessionId,
+    path,
+  };
+}
+
+export function repositoryHistoryMessage(
+  sessionId: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "repository.history" }> {
+  return {
+    type: "repository.history",
+    requestId,
+    sessionId,
+  };
+}
+
+export function repositoryVerificationInspectMessage(
+  sessionId: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "repository.verification.inspect" }> {
+  return {
+    type: "repository.verification.inspect",
+    requestId,
+    sessionId,
+  };
+}
+
+export function repositoryVerificationRunMessage(
+  sessionId: string,
+  presetId: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "repository.verification.run" }> {
+  return {
+    type: "repository.verification.run",
+    requestId,
+    sessionId,
+    presetId,
+  };
+}
+
+export function repositoryVerificationCancelMessage(
+  sessionId: string,
+  runId: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "repository.verification.cancel" }> {
+  return {
+    type: "repository.verification.cancel",
+    requestId,
+    sessionId,
+    runId,
+  };
+}
+
+export function paciumConfigGetMessage(
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.config.get" }> {
+  return {
+    type: "pacium.config.get",
+    requestId,
+  };
+}
+
+export function paciumConfigReplaceMessage(
+  expectedRevision: number,
+  workspace: PaciumWorkspace,
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.config.replace" }> {
+  return {
+    type: "pacium.config.replace",
+    requestId,
+    expectedRevision,
+    workspace,
+  };
+}
+
+export function queueObserveMessage(
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.queue.observe" }> {
+  return {
+    type: "pacium.queue.observe",
+    requestId,
+  };
+}
+
+export function queueItemInspectMessage(
+  identity: QueueItemInspectionIdentity,
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.queue.item.inspect" }> {
+  return {
+    type: "pacium.queue.item.inspect",
+    requestId,
+    workspaceRevision: identity.workspaceRevision,
+    sourceId: identity.sourceId,
+    observationRevision: identity.observationRevision,
+    contentHash: identity.contentHash,
+    itemId: identity.itemId,
+  };
+}
+
+export function queueQuestionAnswerMessage(
+  identity: QueueItemInspectionIdentity,
+  payload: QueueQuestionAnswerPayload,
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.queue.question.answer" }> {
+  return {
+    type: "pacium.queue.question.answer",
+    requestId,
+    workspaceRevision: identity.workspaceRevision,
+    sourceId: identity.sourceId,
+    observationRevision: identity.observationRevision,
+    contentHash: identity.contentHash,
+    itemId: identity.itemId,
+    payload,
+  };
+}
+
+export function queueApprovalDecisionMessage(
+  identity: QueueItemInspectionIdentity,
+  payload: QueueApprovalDecisionPayload,
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.queue.approval.decide" }> {
+  return {
+    type: "pacium.queue.approval.decide",
+    requestId,
+    workspaceRevision: identity.workspaceRevision,
+    sourceId: identity.sourceId,
+    observationRevision: identity.observationRevision,
+    contentHash: identity.contentHash,
+    itemId: identity.itemId,
+    payload,
+  };
+}
+
+export function sessionCreateMessage(
+  input: {
+    cwd: string;
+    displayName?: string;
+    launchPreset: LaunchPresetId;
+    cols: number;
+    rows: number;
+  },
+  requestId: string,
+): Extract<ClientMessage, { type: "session.create" }> {
+  const payload =
+    input.displayName === undefined
+      ? {
+          cwd: input.cwd,
+          launchPreset: input.launchPreset,
+          cols: input.cols,
+          rows: input.rows,
+        }
+      : input;
+  return {
+    type: "session.create",
+    requestId,
+    payload,
+  };
+}
+
+export function terminalInputMessage(
+  sessionId: string,
+  data: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "terminal.input" }> {
+  return {
+    type: "terminal.input",
+    requestId,
+    sessionId,
+    data,
+  };
+}
+
+export async function fetchDirectoryListing(input: {
+  accessToken: string;
+  path?: string;
+  fetcher?: typeof fetch;
+}): Promise<DirectoryListing> {
+  const fetcher = input.fetcher ?? fetch;
+  const query =
+    input.path === undefined ? "" : `?path=${encodeURIComponent(input.path)}`;
+  const response = await fetcher(`/api/directories${query}`, {
+    credentials: "same-origin",
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${input.accessToken}`,
+    },
+  });
+  if (!response.ok) {
+    let message = `Host folder browsing failed with HTTP ${response.status}`;
+    try {
+      const body = (await response.json()) as unknown;
+      if (
+        typeof body === "object" &&
+        body !== null &&
+        "error" in body &&
+        typeof body.error === "string"
+      ) {
+        message = body.error;
+      }
+    } catch {
+      // Keep the bounded HTTP status message when no JSON error exists.
+    }
+    throw new Error(message);
+  }
+  const parsed = DirectoryListingSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    throw new Error("The Pacium host returned an invalid directory listing.");
+  }
+  return parsed.data;
 }

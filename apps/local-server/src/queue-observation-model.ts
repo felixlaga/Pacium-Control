@@ -1,0 +1,222 @@
+import type {
+  PaciumConfigObservation,
+  PaciumQueueSource,
+  QueueSourceObservation,
+  QueueSourceClassification,
+  QueueSourceObservationStatus,
+  QueueSourcesObservation,
+} from "@pacium/contracts";
+
+import type { QueueFileReadResult } from "./queue-file-reader.js";
+
+export interface QueueSourceRuntimeState {
+  definition: PaciumQueueSource;
+  observation: Omit<QueueSourceObservation, "classification">;
+  classification: QueueSourceClassification | null;
+  text: string | null;
+}
+
+export interface QueueReadTransition {
+  state: QueueSourceRuntimeState;
+  changed: boolean;
+}
+
+type QueueRuntimeResult = Omit<QueueFileReadResult, "status"> & {
+  status: Exclude<QueueSourceObservationStatus, "pending">;
+};
+
+export function pendingQueueSource(
+  definition: PaciumQueueSource,
+  observedAt: string,
+): QueueSourceRuntimeState {
+  return {
+    definition,
+    observation: {
+      sourceId: definition.id,
+      observationRevision: 1,
+      status: "pending",
+      observedAt,
+      byteLength: null,
+      modifiedAt: null,
+      contentHash: null,
+      candidateFirstObservedAt: null,
+      error: null,
+    },
+    classification: null,
+    text: null,
+  };
+}
+
+export function applyQueueFileRead(
+  current: QueueSourceRuntimeState,
+  result: QueueRuntimeResult,
+  observedAt: string,
+  classification: QueueSourceClassification | null,
+): QueueReadTransition {
+  const currentCandidate = current.classification?.candidate ?? null;
+  const nextCandidate = classification?.candidate ?? null;
+  const candidateFirstObservedAt =
+    nextCandidate === null
+      ? null
+      : currentCandidate?.itemId === nextCandidate.itemId &&
+          current.observation.candidateFirstObservedAt !== null
+        ? current.observation.candidateFirstObservedAt
+        : observedAt;
+  const candidate: QueueSourceRuntimeState = {
+    definition: current.definition,
+    observation: {
+      sourceId: current.definition.id,
+      observationRevision: current.observation.observationRevision,
+      status: result.status,
+      observedAt,
+      byteLength: result.byteLength,
+      modifiedAt: result.modifiedAt,
+      contentHash: result.contentHash,
+      candidateFirstObservedAt,
+      error: result.error,
+    },
+    classification,
+    text: result.text,
+  };
+  if (sameQueueEvidence(current, candidate)) {
+    return { state: candidate, changed: false };
+  }
+  return {
+    state: {
+      ...candidate,
+      observation: {
+        ...candidate.observation,
+        observationRevision: current.observation.observationRevision + 1,
+      },
+    },
+    changed: true,
+  };
+}
+
+export function queueWatchFailure(
+  current: QueueSourceRuntimeState,
+  observedAt: string,
+): QueueReadTransition {
+  return applyQueueFileRead(
+    current,
+    {
+      status: "watch_error",
+      byteLength: null,
+      modifiedAt: null,
+      contentHash: null,
+      text: null,
+      error: {
+        code: "WATCH_FAILED",
+        message: "The configured queue source parent could not be watched.",
+      },
+    },
+    observedAt,
+    null,
+  );
+}
+
+export function queueSourcesFromConfig(
+  observation: PaciumConfigObservation,
+  observedAt: string,
+): {
+  aggregate: QueueSourcesObservation;
+  states: QueueSourceRuntimeState[];
+} {
+  if (observation.status === "unconfigured") {
+    return {
+      aggregate: {
+        status: "unconfigured",
+        workspaceRevision: null,
+        observedAt,
+        sources: [],
+        error: null,
+      },
+      states: [],
+    };
+  }
+  if (
+    observation.status === "error" ||
+    observation.workspace === null ||
+    observation.revision === null
+  ) {
+    return {
+      aggregate: {
+        status: "config_error",
+        workspaceRevision: null,
+        observedAt,
+        sources: [],
+        error: {
+          code: "CONFIG_UNAVAILABLE",
+          message:
+            observation.error?.message ??
+            "Queue observation requires a valid Pacium configuration.",
+        },
+      },
+      states: [],
+    };
+  }
+  const states = observation.workspace.queueSources.map((source) =>
+    pendingQueueSource(source, observedAt),
+  );
+  return {
+    aggregate: readyQueueSources(observation.revision, states, observedAt),
+    states,
+  };
+}
+
+export function readyQueueSources(
+  workspaceRevision: number,
+  states: readonly QueueSourceRuntimeState[],
+  observedAt: string,
+): QueueSourcesObservation {
+  return {
+    status: "ready",
+    workspaceRevision,
+    observedAt,
+    sources: states.map(({ classification, observation }) => ({
+      ...observation,
+      classification,
+    })),
+    error: null,
+  };
+}
+
+function sameQueueEvidence(
+  left: QueueSourceRuntimeState,
+  right: QueueSourceRuntimeState,
+): boolean {
+  return (
+    left.observation.status === right.observation.status &&
+    left.observation.byteLength === right.observation.byteLength &&
+    left.observation.modifiedAt === right.observation.modifiedAt &&
+    left.observation.contentHash === right.observation.contentHash &&
+    left.observation.candidateFirstObservedAt ===
+      right.observation.candidateFirstObservedAt &&
+    left.observation.error?.code === right.observation.error?.code &&
+    left.observation.error?.message === right.observation.error?.message &&
+    sameClassification(left.classification, right.classification) &&
+    left.text === right.text
+  );
+}
+
+function sameClassification(
+  left: QueueSourceClassification | null,
+  right: QueueSourceClassification | null,
+): boolean {
+  if (left === null || right === null) {
+    return left === right;
+  }
+  return (
+    left.status === right.status &&
+    left.boundary === right.boundary &&
+    left.candidate?.itemId === right.candidate?.itemId &&
+    left.candidate?.type === right.candidate?.type &&
+    left.candidate?.confidence === right.candidate?.confidence &&
+    left.diagnostics.length === right.diagnostics.length &&
+    left.diagnostics.every(
+      (diagnostic, index) =>
+        diagnostic.code === right.diagnostics[index]?.code &&
+        diagnostic.message === right.diagnostics[index]?.message,
+    )
+  );
+}

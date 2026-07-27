@@ -19,6 +19,7 @@ ADRs record durable decisions and their consequences. They are not implementatio
 | [0013](ADR-0013-local-pty-runtime.md)           | Local PTYs are the primary terminal runtime         | Accepted               |
 | [0014](ADR-0014-localhost-single-process.md)    | Localhost-only single-user application              | Accepted               |
 | [0015](ADR-0015-minimal-local-state.md)         | Minimal local filesystem state                      | Accepted               |
+| [0016](ADR-0016-tailscale-serve-access.md)      | Optional Tailscale Serve access to loopback Pacium  | Accepted               |
 
 ## Status meanings
 

@@ -34,7 +34,7 @@ Do not infer architecture from filenames. Several retained documents describe su
 
 ## Non-negotiable constraints
 
-1. **Localhost first.** Bind to `127.0.0.1`; remote access is out of initial scope.
+1. **Loopback-bound core.** Bind Pacium to `127.0.0.1`; optional remote access uses the accepted Tailscale Serve proxy contract and never a direct public or tailnet bind.
 2. **Terminal first.** A polished terminal workspace is the primary product experience.
 3. **Direct PTY default.** Pacium launches and owns local PTYs; tmux is optional.
 4. **Browser lifecycle is not process lifecycle.** Refreshing or closing the browser must not terminate running PTYs.
@@ -74,7 +74,6 @@ A change to these constraints requires an ADR and explicit owner approval.
 
 ### Deferred
 
-- remote access and Tailscale;
 - multi-user authorization;
 - multi-host control;
 - public deployment;
@@ -159,6 +158,7 @@ Avoid building a generalized state engine, workflow platform, or provider abstra
 ## Security rules
 
 - Validate loopback binding at startup.
+- In remote mode, require an exact Tailscale Serve Origin, verified identity headers, and an explicit operator-login allowlist.
 - Reject untrusted HTTP and WebSocket origins.
 - Require a local token for terminal and mutating connections.
 - Self-host terminal assets.
@@ -166,7 +166,7 @@ Avoid building a generalized state engine, workflow platform, or provider abstra
 - Treat repository and queue content as untrusted data.
 - Never execute commands parsed from queue text.
 - Avoid logging terminal bytes and environment contents.
-- Remote access requires a new ADR and security review.
+- Remote access must follow ADR-0016; another ingress mechanism requires a new ADR and security review.
 
 ## Testing expectations
 
@@ -214,7 +214,7 @@ Use [docs/templates/agent-handoff.md](docs/templates/agent-handoff.md) for hando
 ## Prohibited behavior
 
 - Do not claim unimplemented behavior works.
-- Do not reintroduce the superseded remote control-plane plan without approval.
+- Do not turn Tailscale access into the superseded multi-user remote control plane.
 - Do not make tmux mandatory.
 - Do not bind to all interfaces.
 - Do not add a database.

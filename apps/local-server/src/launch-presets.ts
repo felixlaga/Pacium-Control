@@ -1,11 +1,16 @@
 import { accessSync, constants, realpathSync, statSync } from "node:fs";
 import { delimiter, isAbsolute, join } from "node:path";
 
-import type { LaunchPresetCapability, LaunchPresetId } from "@pacium/contracts";
+import type {
+  AgentClassification,
+  LaunchPresetCapability,
+  LaunchPresetId,
+} from "@pacium/contracts";
 
 export interface LaunchPresetDefinition extends LaunchPresetCapability {
   executable: string | null;
   args: readonly string[];
+  classification: Omit<AgentClassification, "observedAt">;
 }
 
 export function buildLaunchPresetDefinitions(
@@ -24,6 +29,12 @@ export function buildLaunchPresetDefinitions(
       unavailableReason: null,
       executable: shellExecutable,
       args: ["-l"],
+      classification: {
+        type: "shell",
+        label: "Shell",
+        source: "launch_preset",
+        confidence: "confirmed",
+      },
     },
     buildOptionalPreset("codex", "Codex", "codex", environment),
     buildOptionalPreset("claude", "Claude Code", "claude", environment),
@@ -79,6 +90,12 @@ function buildOptionalPreset(
       executable === null ? `${label} is not installed or not on PATH.` : null,
     executable,
     args: [],
+    classification: {
+      type: id,
+      label: id === "codex" ? "Codex CLI" : "Claude Code CLI",
+      source: "launch_preset",
+      confidence: "confirmed",
+    },
   };
 }
 

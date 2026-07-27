@@ -76,6 +76,6 @@ sequenceDiagram
 
 ## Process boundaries
 
-There is one local application process initially. A separate broker is not used. The local server has the same operating-system authority as the invoking user and must remain loopback-only.
+There is one local application process initially. A separate broker is not used. The local server has the same operating-system authority as the invoking user and remains loopback-bound.
 
-Remote access changes this boundary and requires a new ADR.
+ADR-0016 permits Tailscale Serve to proxy tailnet-only HTTPS to that loopback process. It does not add another application process, public binding, roles, or cross-host session control.
