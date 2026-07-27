@@ -2248,6 +2248,7 @@ kbd {
 }
 
 .queue-delivery-panel.state-ready,
+.queue-delivery-panel.state-ready-retry,
 .queue-delivery-panel.state-delivering {
   border-left-color: var(--amber);
   background: color-mix(in srgb, var(--amber) 4%, transparent);

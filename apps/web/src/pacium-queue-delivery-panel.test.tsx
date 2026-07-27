@@ -143,6 +143,43 @@ describe("Pacium queue delivery panel", () => {
     expect(html).toContain("will not retry");
     expect(html).not.toContain("Confirm delivery");
   });
+
+  it("labels the sole human-unlocked retry distinctly", () => {
+    const html = render({
+      status: "ready_retry",
+      decisionId: decision.decisionId,
+      decisionHash: decision.decisionHash,
+      target,
+      delivery: {
+        deliveryId: "4699b11f-94d3-430a-960e-1c574a03db41",
+        decisionId: decision.decisionId,
+        decisionHash: decision.decisionHash,
+        target,
+        payloadHash: "d".repeat(64),
+        payloadByteLength: 512,
+        requestedAt: "2026-07-27T12:06:00.000Z",
+        outcome: {
+          status: "unknown",
+          recordedAt: "2026-07-27T12:06:01.000Z",
+          evidence: null,
+          error: {
+            code: "DELIVERY_OUTCOME_UNKNOWN",
+            message:
+              "The delivery side effect may have occurred, but its durable outcome is unknown. Pacium will not retry it.",
+          },
+        },
+        deliveryHash: "e".repeat(64),
+      },
+      error: null,
+    });
+
+    expect(html).toContain("Ready for one retry");
+    expect(html).toContain("Retry 1 of 1");
+    expect(html).toContain("<summary>Review retry</summary>");
+    expect(html).toContain("Confirm retry");
+    expect(html).toContain("does not infer acknowledgement");
+    expect(html).not.toContain("Confirm delivery");
+  });
 });
 
 function render(

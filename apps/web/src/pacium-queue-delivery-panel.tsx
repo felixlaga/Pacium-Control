@@ -60,17 +60,28 @@ export function PaciumQueueDeliveryPanel({
     );
   }
 
-  if (state.status === "ready") {
+  if (state.status === "ready" || state.status === "ready_retry") {
+    const retry = state.status === "ready_retry";
     const submitting = status === "submitting";
     return (
-      <DeliverySection stateClass="state-ready" title="Ready for delivery">
+      <DeliverySection
+        stateClass={retry ? "state-ready-retry" : "state-ready"}
+        title={retry ? "Ready for one retry" : "Ready for delivery"}
+      >
         <TargetSummary target={state.target} />
+        {retry && (
+          <p role="status">
+            Retry 1 of 1 is unlocked by the recorded human confirmation that the
+            first attempt was not delivered. The target was checked again.
+          </p>
+        )}
         <details className="queue-delivery-confirmation">
-          <summary>Review delivery</summary>
+          <summary>{retry ? "Review retry" : "Review delivery"}</summary>
           <p>{confirmationCopy(state.target, decision)}</p>
           <p>
-            This sends the already-recorded decision only. It does not execute
-            queue text, approve another action, or choose a different target.
+            {retry
+              ? "This is the only permitted retry of the already-recorded decision. It preserves the first attempt and does not infer acknowledgement."
+              : "This sends the already-recorded decision only. It does not execute queue text, approve another action, or choose a different target."}
           </p>
           <div className="queue-delivery-actions">
             <button
@@ -83,7 +94,13 @@ export function PaciumQueueDeliveryPanel({
               Cancel
             </button>
             <button disabled={submitting} onClick={onDeliver} type="button">
-              {submitting ? "Delivering…" : "Confirm delivery"}
+              {submitting
+                ? retry
+                  ? "Retrying…"
+                  : "Delivering…"
+                : retry
+                  ? "Confirm retry"
+                  : "Confirm delivery"}
             </button>
           </div>
         </details>
