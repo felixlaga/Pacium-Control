@@ -60,6 +60,7 @@ import {
 
 interface TerminalSync {
   sessionId: string;
+  surface: TerminalSurfaceHandle;
   epoch: number | undefined;
   sequence: number;
   snapshotApplied: boolean;
@@ -268,17 +269,23 @@ export function App() {
       }
     }
     for (const sessionId of renderedSessionIds) {
-      if (syncRefs.current.has(sessionId)) {
+      const surface = terminalRefs.current.get(sessionId);
+      if (surface === undefined) {
+        continue;
+      }
+      const existing = syncRefs.current.get(sessionId);
+      if (existing?.surface === surface) {
         continue;
       }
       syncRefs.current.set(sessionId, {
         sessionId,
+        surface,
         epoch: undefined,
         sequence: 0,
         snapshotApplied: false,
         pending: [],
       });
-      terminalRefs.current.get(sessionId)?.clear();
+      surface.clear();
       transportRef.current?.attach(sessionId);
     }
   }, [connection, renderedSessionIds]);
