@@ -16,7 +16,7 @@ describe("Pacium queue list semantics", () => {
     expect(markup).toContain("Question from Needs Felix");
     expect(markup).toContain("Meta · high confidence");
     expect(markup).toContain("Seen");
-    expect(markup).toContain("inspection is read-only");
+    expect(markup).toContain("decisions stay local until explicit delivery");
     expect(markup).not.toContain("bbbbbbbb");
     expect(markup).not.toContain("A supported plain-text legacy marker");
     expect(markup).not.toContain("2 KiB");
@@ -109,7 +109,8 @@ function render(projection: PaciumQueueProjection = ready()) {
 function ready(): PaciumQueueProjection {
   return {
     status: "ready",
-    message: "1 current whole-source item · inspection is read-only.",
+    message:
+      "1 current whole-source item · decisions stay local until explicit delivery.",
     disconnected: false,
     canRefresh: true,
     workspaceRevision: 4,

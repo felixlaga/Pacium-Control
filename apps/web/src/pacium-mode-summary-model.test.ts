@@ -128,7 +128,7 @@ describe("Pacium mode configuration summary", () => {
       ],
     });
     expect(summary.detail).toContain(
-      "Primary roles and queue-source health resolve below",
+      "Primary roles, queue items, and immutable local decisions resolve below",
     );
   });
 });

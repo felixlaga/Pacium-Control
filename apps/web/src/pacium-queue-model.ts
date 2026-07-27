@@ -161,7 +161,7 @@ export function buildPaciumQueueProjection(input: {
           : evidenceCurrent
             ? `${itemCount} current whole-source ${
                 itemCount === 1 ? "item" : "items"
-              } · inspection is read-only.`
+              } · decisions stay local until explicit delivery.`
             : "Waiting for queue source evidence at this config revision.",
     sources,
   };
