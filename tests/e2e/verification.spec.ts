@@ -90,6 +90,15 @@ test("configured checks run, reconnect, cancel, and fit the narrow inspector", a
 
   await page.reload();
   await expect(page.locator(".workspace-status")).toContainText("Connected");
+  await page.getByRole("tab", { name: "Activity" }).click();
+  const reconnectedActivity = page.getByRole("tabpanel", {
+    name: "Activity",
+  });
+  await expect(reconnectedActivity).toContainText("Verification started");
+  await expect(reconnectedActivity).toContainText("Cancellation fixture");
+  await expect(reconnectedActivity).toContainText(
+    "assigned-task activity is unverified",
+  );
   await page.getByRole("tab", { name: "Checks" }).click();
   checksPanel = page.getByRole("tabpanel", { name: "Checks" });
   const reconnectedWaitCard = checksPanel
