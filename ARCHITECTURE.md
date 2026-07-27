@@ -141,19 +141,25 @@ The first queue adapter observes existing files, tracks provenance, presents que
 
 ## State
 
-Pacium stores only application-owned metadata in a configurable local data directory:
+The current server-owned durable state is intentionally limited to one
+versioned file in a configurable local data directory:
 
 ```text
-config.json
-workspaces.json
-sessions.json
 pacium.json
-queue-state.json
-activity/*.jsonl
-cache/
 ```
 
-Writes are validated and atomic. Caches are disposable. Terminal history is bounded and ephemeral by default. Provider credentials and complete environment data are excluded.
+`pacium.json` owns only the future Pacium-mode workspace definition: explicit
+role/preset bindings, repositories, worker slots, and path metadata for queue,
+delivery, objective, and plan consumers. It owns no live process, terminal,
+Git, provider, verification-command, or file-content truth.
+
+Writes use complete schema/reference validation, optimistic revisions, a
+private same-directory temporary file, atomic rename, and directory sync.
+Invalid state is preserved and degrades Pacium configuration only. Browser
+tabs, splits, settings, and attention cursors remain browser-owned; terminal
+history is bounded and ephemeral. Queue provenance state and caches remain
+future slices, not current files. Provider credentials and complete environment
+data are excluded.
 
 ## Security boundary
 
