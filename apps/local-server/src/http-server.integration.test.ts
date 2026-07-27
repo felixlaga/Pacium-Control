@@ -1325,22 +1325,30 @@ async function nextMessageWithin(
   predicate: (message: ServerMessage) => boolean,
   label: string,
 ): Promise<ServerMessage> {
-  return Promise.race([
-    nextMessage(client, predicate),
-    new Promise<never>((_resolve, reject) => {
-      setTimeout(
-        () =>
-          reject(
-            new Error(
-              `Timed out waiting for ${label}; buffered messages: ${JSON.stringify(
-                client.messages,
-              )}`,
-            ),
+  return new Promise<ServerMessage>((resolve, reject) => {
+    const deadline = setTimeout(
+      () =>
+        reject(
+          new Error(
+            `Timed out waiting for ${label}; buffered messages: ${JSON.stringify(
+              client.messages,
+            )}`,
           ),
-        2_000,
-      );
-    }),
-  ]);
+        ),
+      2_000,
+    );
+
+    void nextMessage(client, predicate).then(
+      (message) => {
+        clearTimeout(deadline);
+        resolve(message);
+      },
+      (error: unknown) => {
+        clearTimeout(deadline);
+        reject(error);
+      },
+    );
+  });
 }
 
 async function nextFrame(
