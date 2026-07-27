@@ -84,16 +84,16 @@ shows the current evidence and a refresh button.
 
 ## Failure model
 
-| Failure point             | Expected state                                | Recovery                  |
-| ------------------------- | --------------------------------------------- | ------------------------- |
-| Not a Git working tree    | `not_repository`; terminal starts             | Choose another cwd        |
-| Git executable missing    | Bounded `error`; terminal starts              | Install Git, then refresh |
-| Git command timeout       | Bounded `error`; no child left running         | Retry explicitly          |
-| Malformed/oversized output| Bounded `error`; output is not forwarded       | Inspect repository/Git    |
-| Detached HEAD             | Ready/detached with commit and no branch       | Informational only        |
-| Unborn branch             | Ready/unborn with branch and no commit         | Informational only        |
-| Refresh fails             | New bounded error observation; PTY is unchanged| Retry explicitly         |
-| Browser reconnect         | Current in-memory observation is listed        | Refresh if desired        |
+| Failure point              | Expected state                                  | Recovery                  |
+| -------------------------- | ----------------------------------------------- | ------------------------- |
+| Not a Git working tree     | `not_repository`; terminal starts               | Choose another cwd        |
+| Git executable missing     | Bounded `error`; terminal starts                | Install Git, then refresh |
+| Git command timeout        | Bounded `error`; no child left running          | Retry explicitly          |
+| Malformed/oversized output | Bounded `error`; output is not forwarded        | Inspect repository/Git    |
+| Detached HEAD              | Ready/detached with commit and no branch        | Informational only        |
+| Unborn branch              | Ready/unborn with branch and no commit          | Informational only        |
+| Refresh fails              | New bounded error observation; PTY is unchanged | Retry explicitly          |
+| Browser reconnect          | Current in-memory observation is listed         | Refresh if desired        |
 
 ## Compatibility
 
