@@ -158,6 +158,7 @@ describe("queue decision service", () => {
       revision: null,
       decisions: [],
       deliveries: [],
+      resolutions: [],
       error: {
         code: "invalid_file",
         message: "Synthetic invalid state.",
@@ -230,6 +231,7 @@ function serviceFixture(
               revision: 0,
               decisions: [],
               deliveries: [],
+              resolutions: [],
               error: null,
             }
           : {
@@ -237,6 +239,7 @@ function serviceFixture(
               revision: decisions.length,
               decisions,
               deliveries: [],
+              resolutions: [],
               error: null,
             },
       ),

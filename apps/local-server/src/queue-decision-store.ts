@@ -11,10 +11,11 @@ import {
   QueueDeliveryOutcomeSchema,
   QueueDeliveryRecordSchema,
   QueueStateDocumentSchema,
-  QueueStateV2DocumentSchema,
+  QueueStateV3DocumentSchema,
   type QueueDeliveryOutcome,
   type QueueDeliveryRecord,
   type QueueDecisionRecord,
+  type QueueResolutionRecord,
   queueDecisionIdentityKey,
 } from "@pacium/contracts";
 
@@ -23,6 +24,7 @@ import {
   computeQueueDeliveryHash,
   hasValidQueueDeliveryHash,
 } from "./queue-delivery-hash.js";
+import { hasValidQueueResolutionHash } from "./queue-resolution-hash.js";
 
 export interface QueueDecisionStoreIO {
   lstat: typeof lstat;
@@ -69,6 +71,7 @@ export type QueueDecisionStoreObservation =
       revision: 0;
       decisions: readonly [];
       deliveries: readonly [];
+      resolutions: readonly [];
       error: null;
     }
   | {
@@ -76,6 +79,7 @@ export type QueueDecisionStoreObservation =
       revision: number;
       decisions: readonly QueueDecisionRecord[];
       deliveries: readonly QueueDeliveryRecord[];
+      resolutions: readonly QueueResolutionRecord[];
       error: null;
     }
   | {
@@ -83,6 +87,7 @@ export type QueueDecisionStoreObservation =
       revision: null;
       decisions: readonly [];
       deliveries: readonly [];
+      resolutions: readonly [];
       error: {
         code: QueueDecisionStoreErrorCode;
         message: string;
@@ -199,6 +204,7 @@ export class QueueDecisionStore {
         isRecord(value) &&
         "schemaVersion" in value &&
         value.schemaVersion !== 1 &&
+        value.schemaVersion !== 2 &&
         value.schemaVersion !== QUEUE_STATE_SCHEMA_VERSION
       ) {
         return stateError(
@@ -211,7 +217,7 @@ export class QueueDecisionStore {
       if (!parsed.success) {
         return stateError(
           "invalid_file",
-          "Queue decision state does not match the complete version-1 schema.",
+          "Queue decision state does not match a complete supported schema.",
         );
       }
       if (
@@ -225,13 +231,25 @@ export class QueueDecisionStore {
         );
       }
       const deliveries =
-        parsed.data.schemaVersion === QUEUE_STATE_SCHEMA_VERSION
-          ? parsed.data.deliveries
-          : [];
+        parsed.data.schemaVersion === 1 ? [] : parsed.data.deliveries;
       if (deliveries.some((delivery) => !hasValidQueueDeliveryHash(delivery))) {
         return stateError(
           "invalid_file",
           "Queue decision state contains a delivery hash mismatch.",
+        );
+      }
+      const resolutions =
+        parsed.data.schemaVersion === QUEUE_STATE_SCHEMA_VERSION
+          ? parsed.data.resolutions
+          : [];
+      if (
+        resolutions.some(
+          (resolution) => !hasValidQueueResolutionHash(resolution),
+        )
+      ) {
+        return stateError(
+          "invalid_file",
+          "Queue decision state contains a lifecycle resolution hash mismatch.",
         );
       }
 
@@ -240,6 +258,7 @@ export class QueueDecisionStore {
         revision: parsed.data.revision,
         decisions: parsed.data.decisions,
         deliveries,
+        resolutions,
         error: null,
       };
     } catch {
@@ -338,11 +357,12 @@ export class QueueDecisionStore {
       );
     }
 
-    const document = QueueStateV2DocumentSchema.parse({
+    const document = QueueStateV3DocumentSchema.parse({
       schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
       revision: current.revision + 1,
       decisions: [...current.decisions, parsedDecision],
       deliveries: current.deliveries,
+      resolutions: current.resolutions,
     });
     const accepted = await this.persistDocument(document);
     const acceptedDecision = accepted.decisions.find(
@@ -409,11 +429,12 @@ export class QueueDecisionStore {
         "Queue delivery state reached its safe record bound.",
       );
     }
-    const document = QueueStateV2DocumentSchema.parse({
+    const document = QueueStateV3DocumentSchema.parse({
       schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
       revision: nextRevision(current.revision),
       decisions: current.decisions,
       deliveries: [...current.deliveries, parsedDelivery],
+      resolutions: current.resolutions,
     });
     const accepted = await this.persistDocument(document);
     const acceptedDelivery = accepted.deliveries.find(
@@ -486,11 +507,12 @@ export class QueueDecisionStore {
     };
     const deliveries = [...current.deliveries];
     deliveries[index] = updated;
-    const document = QueueStateV2DocumentSchema.parse({
+    const document = QueueStateV3DocumentSchema.parse({
       schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
       revision: nextRevision(current.revision),
       decisions: current.decisions,
       deliveries,
+      resolutions: current.resolutions,
     });
     const accepted = await this.persistDocument(document);
     const acceptedDelivery = accepted.deliveries.find(
@@ -513,10 +535,11 @@ export class QueueDecisionStore {
   }
 
   private async persistDocument(document: {
-    schemaVersion: 2;
+    schemaVersion: 3;
     revision: number;
     decisions: QueueDecisionRecord[];
     deliveries: QueueDeliveryRecord[];
+    resolutions: QueueResolutionRecord[];
   }): Promise<Extract<QueueDecisionStoreObservation, { status: "ready" }>> {
     const serialized = `${JSON.stringify(document, null, 2)}\n`;
     if (Buffer.byteLength(serialized) > MAX_QUEUE_STATE_BYTES) {
@@ -644,6 +667,7 @@ function emptyState(): QueueDecisionStoreObservation {
     revision: 0,
     decisions: [],
     deliveries: [],
+    resolutions: [],
     error: null,
   };
 }
@@ -657,6 +681,7 @@ function stateError(
     revision: null,
     decisions: [],
     deliveries: [],
+    resolutions: [],
     error: { code, message },
   };
 }

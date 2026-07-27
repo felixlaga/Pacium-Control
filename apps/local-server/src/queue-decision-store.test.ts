@@ -44,6 +44,7 @@ describe("queue decision store inspection", () => {
       revision: 0,
       decisions: [],
       deliveries: [],
+      resolutions: [],
       error: null,
     });
     await expect(lstat(dataDirectory)).rejects.toMatchObject({
@@ -59,6 +60,7 @@ describe("queue decision store inspection", () => {
       revision: 1,
       decisions: [decision],
       deliveries: [],
+      resolutions: [],
     });
 
     await expect(fixture.store.inspect()).resolves.toEqual({
@@ -66,6 +68,7 @@ describe("queue decision store inspection", () => {
       revision: 1,
       decisions: [decision],
       deliveries: [],
+      resolutions: [],
       error: null,
     });
     expect((await lstat(fixture.statePath)).mode & 0o777).toBe(0o600);
@@ -82,7 +85,7 @@ describe("queue decision store inspection", () => {
 
     const unsupported = await stateFixture();
     await writeState(unsupported.statePath, {
-      schemaVersion: 3,
+      schemaVersion: 4,
       revision: 1,
       decisions: [],
     });
@@ -106,6 +109,7 @@ describe("queue decision store inspection", () => {
         },
       ],
       deliveries: [],
+      resolutions: [],
     });
     await expect(tampered.store.inspect()).resolves.toMatchObject({
       status: "error",
@@ -120,6 +124,7 @@ describe("queue decision store inspection", () => {
       revision: 1,
       decisions: [sampleDecision()],
       deliveries: [],
+      resolutions: [],
     });
     await chmod(publicState.statePath, 0o644);
     await expect(publicState.store.inspect()).resolves.toMatchObject({
@@ -134,6 +139,7 @@ describe("queue decision store inspection", () => {
       revision: 1,
       decisions: [sampleDecision()],
       deliveries: [],
+      resolutions: [],
     });
     await symlink(outside, symlinked.statePath);
     await expect(symlinked.store.inspect()).resolves.toMatchObject({
@@ -159,6 +165,7 @@ describe("queue decision store append", () => {
       revision: 1,
       decisions: [first],
       deliveries: [],
+      resolutions: [],
     });
     expect(await readFile(fixture.statePath)).toEqual(before);
 
@@ -173,10 +180,51 @@ describe("queue decision store append", () => {
       await readFile(fixture.statePath, "utf8"),
     ) as Record<string, unknown>;
     expect(migrated).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       revision: 2,
       decisions: [first, second],
       deliveries: [],
+      resolutions: [],
+    });
+  });
+
+  it("reads version-2 delivery state and preserves it during migration", async () => {
+    const fixture = await stateFixture();
+    const first = sampleDecision();
+    const delivery = sampleDelivery(first);
+    await writeState(fixture.statePath, {
+      schemaVersion: 2,
+      revision: 2,
+      decisions: [first],
+      deliveries: [delivery],
+    });
+    const before = await readFile(fixture.statePath);
+
+    await expect(fixture.store.inspect()).resolves.toMatchObject({
+      status: "ready",
+      revision: 2,
+      decisions: [first],
+      deliveries: [delivery],
+      resolutions: [],
+    });
+    expect(await readFile(fixture.statePath)).toEqual(before);
+
+    const second = sampleDecision({
+      sourceId: "orchestrator-queue",
+      itemId: "d".repeat(64),
+      contentHash: "e".repeat(64),
+      decisionId: "bd88be3b-56f5-4a38-ab4c-c8321dfb60c3",
+    });
+    await fixture.store.append(second);
+    const migrated = JSON.parse(
+      await readFile(fixture.statePath, "utf8"),
+    ) as Record<string, unknown>;
+    expect(migrated).toMatchObject({
+      schemaVersion: 3,
+      revision: 3,
+      decisions: [first, second],
+      deliveries: [delivery],
+      resolutions: [],
     });
   });
 

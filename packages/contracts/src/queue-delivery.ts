@@ -18,8 +18,8 @@ import {
   QueueResolutionRecordSchema,
 } from "./queue-reconciliation.js";
 
-export const QUEUE_STATE_SCHEMA_VERSION = 2 as const;
-export const QUEUE_STATE_SCHEMA_VERSION_V3 = 3 as const;
+export const QUEUE_STATE_SCHEMA_VERSION_V2 = 2 as const;
+export const QUEUE_STATE_SCHEMA_VERSION = 3 as const;
 export const MAX_QUEUE_DELIVERIES = 4096;
 export const MAX_QUEUE_DELIVERIES_V3 = MAX_QUEUE_DELIVERIES * 2;
 export const MAX_QUEUE_DELIVERY_PAYLOAD_BYTES = 16 * 1024;
@@ -204,7 +204,7 @@ export type QueueDeliveryRecord = z.infer<typeof QueueDeliveryRecordSchema>;
 
 export const QueueStateV2DocumentSchema = z
   .object({
-    schemaVersion: z.literal(QUEUE_STATE_SCHEMA_VERSION),
+    schemaVersion: z.literal(QUEUE_STATE_SCHEMA_VERSION_V2),
     revision: z.number().int().positive().safe(),
     decisions: z.array(QueueDecisionRecordSchema).max(MAX_QUEUE_DECISIONS),
     deliveries: z.array(QueueDeliveryRecordSchema).max(MAX_QUEUE_DELIVERIES),
@@ -251,7 +251,7 @@ export type QueueStateV2Document = z.infer<typeof QueueStateV2DocumentSchema>;
 
 export const QueueStateV3DocumentSchema = z
   .object({
-    schemaVersion: z.literal(QUEUE_STATE_SCHEMA_VERSION_V3),
+    schemaVersion: z.literal(QUEUE_STATE_SCHEMA_VERSION),
     revision: z.number().int().positive().safe(),
     decisions: z.array(QueueDecisionRecordSchema).max(MAX_QUEUE_DECISIONS),
     deliveries: z.array(QueueDeliveryRecordSchema).max(MAX_QUEUE_DELIVERIES_V3),

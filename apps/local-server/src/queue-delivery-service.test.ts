@@ -312,6 +312,7 @@ function serviceFixture(options: FixtureOptions = {}) {
       revision: 1 + deliveries.length,
       decisions: [decision],
       deliveries,
+      resolutions: [],
       error: null,
     }),
   );
