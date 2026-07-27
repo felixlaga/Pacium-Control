@@ -3,6 +3,7 @@ import {
   lstat,
   mkdtemp,
   readFile,
+  realpath,
   rm,
   unlink,
   writeFile,
@@ -332,6 +333,117 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await expect(lstat(setup.config.dataDirectory)).rejects.toMatchObject({
       code: "ENOENT",
     });
+
+    client.socket.close();
+    await once(client.socket, "close");
+  });
+
+  it("reads only the accepted objective and plan over the authenticated socket", async () => {
+    const contextDirectory = await mkdtemp(
+      join(tmpdir(), "pacium-context-http-"),
+    );
+    temporaryDirectories.push(contextDirectory);
+    const objectivePath = join(contextDirectory, "OBJECTIVE");
+    const planPath = join(contextDirectory, "PLAN");
+    const objectiveText = "Keep terminal supervision simple.\n";
+    const planText = "Inspect evidence before claiming progress.\n";
+    await writeFile(objectivePath, objectiveText, { mode: 0o600 });
+    await writeFile(planPath, planText, { mode: 0o600 });
+    const objectiveCanonicalPath = await realpath(objectivePath);
+    const planCanonicalPath = await realpath(planPath);
+
+    const setup = await startTestServer(new FakePtyFactory());
+    application = setup.application;
+    manager = setup.manager;
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    const workspace: PaciumWorkspace = {
+      ...paciumWorkspace("Context workspace"),
+      context: {
+        objective: { path: objectivePath, format: "plain_text" },
+        plan: { path: planPath, format: "plain_text" },
+      },
+    };
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.config.replace",
+        requestId: "bb786ceb-3346-4a6b-b815-c5286a555ba0",
+        expectedRevision: 0,
+        workspace,
+      }),
+    );
+    await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.config" &&
+        message.requestId === "bb786ceb-3346-4a6b-b815-c5286a555ba0",
+      "context config response",
+    );
+    const configBefore = await readFile(
+      join(setup.config.dataDirectory, "pacium.json"),
+    );
+    const objectiveBefore = await readFile(objectivePath);
+    const planBefore = await readFile(planPath);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.context.inspect",
+        requestId: "05548142-ef4e-4a41-a3e2-01061cbb3281",
+      }),
+    );
+    const response = await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.context" &&
+        message.requestId === "05548142-ef4e-4a41-a3e2-01061cbb3281",
+      "context inspection response",
+    );
+    expect(response).toMatchObject({
+      observation: {
+        status: "ready",
+        workspaceId: "primary",
+        workspaceRevision: 1,
+        objective: {
+          status: "ready",
+          path: objectiveCanonicalPath,
+          byteLength: Buffer.byteLength(objectiveText),
+        },
+        plan: {
+          status: "ready",
+          path: planCanonicalPath,
+          byteLength: Buffer.byteLength(planText),
+        },
+        recentDecisions: {
+          status: "ready",
+          decisions: [],
+          truncated: false,
+        },
+      },
+    });
+    if (
+      response.type !== "pacium.context" ||
+      response.observation.status === "unavailable"
+    ) {
+      throw new Error("Expected ready context evidence.");
+    }
+    expect(
+      Buffer.from(
+        response.observation.objective.contentBase64 ?? "",
+        "base64",
+      ).toString("utf8"),
+    ).toBe(objectiveText);
+    expect(
+      Buffer.from(
+        response.observation.plan.contentBase64 ?? "",
+        "base64",
+      ).toString("utf8"),
+    ).toBe(planText);
+    await expect(readFile(objectivePath)).resolves.toEqual(objectiveBefore);
+    await expect(readFile(planPath)).resolves.toEqual(planBefore);
+    await expect(
+      readFile(join(setup.config.dataDirectory, "pacium.json")),
+    ).resolves.toEqual(configBefore);
+    expect(manager.list()).toEqual([]);
 
     client.socket.close();
     await once(client.socket, "close");
