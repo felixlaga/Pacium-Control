@@ -400,6 +400,66 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await once(client.socket, "close");
   });
 
+  it("returns bounded session-owned history and rejects browser revisions", async () => {
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(factory);
+    application = setup.application;
+    manager = setup.manager;
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    const session = await createTestSession(client);
+    const requestId = "5e7a4d80-e316-4f4b-9dda-11b92f5da776";
+
+    client.socket.send(
+      JSON.stringify({
+        type: "repository.history",
+        requestId,
+        sessionId: session.id,
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "repository.history" &&
+          message.requestId === requestId,
+      ),
+    ).resolves.toMatchObject({
+      type: "repository.history",
+      sessionId: session.id,
+      observation: {
+        status: "ready",
+        headCommit: "a".repeat(40),
+        commits: [{ subject: "Bounded history fixture" }],
+        truncated: false,
+        error: null,
+      },
+    });
+
+    const invalidRequestId = "7f3b4313-9ba8-478f-8478-0d60515d8b2d";
+    client.socket.send(
+      JSON.stringify({
+        type: "repository.history",
+        requestId: invalidRequestId,
+        sessionId: session.id,
+        revision: "origin/main..HEAD",
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "error" && message.requestId === invalidRequestId,
+      ),
+    ).resolves.toMatchObject({
+      type: "error",
+      code: "INVALID_MESSAGE",
+    });
+    expect(factory.processes[0]?.signals).toEqual([]);
+    client.socket.close();
+    await once(client.socket, "close");
+  });
+
   it("rejects an invalid local access token", async () => {
     const setup = await startTestServer(new FakePtyFactory());
     application = setup.application;
@@ -595,6 +655,24 @@ async function startTestServer(
         ],
         patchBytes: TEST_DIFF_BYTES,
         patchLines: 3,
+        error: null,
+      }),
+    (repository, observedAt) =>
+      Promise.resolve({
+        status: "ready",
+        root: repository.root,
+        headCommit: "a".repeat(40),
+        observedAt: observedAt ?? "2026-07-27T11:00:00.000Z",
+        commits: [
+          {
+            id: "a".repeat(40),
+            parents: ["b".repeat(40)],
+            authorName: "Pacium Agent",
+            authoredAt: "2026-07-27T11:00:00+02:00",
+            subject: "Bounded history fixture",
+          },
+        ],
+        truncated: false,
         error: null,
       }),
   );
