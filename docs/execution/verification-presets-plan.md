@@ -158,23 +158,23 @@ input.
 
 ## Failure model
 
-| Failure point | Expected state | Recovery |
-| ------------- | -------------- | -------- |
-| No config | Unconfigured Checks guidance; terminals survive | Start Pacium with an explicit config |
-| Invalid config | Startup fails closed with bounded path-neutral reason | Fix local config and restart |
-| No matching root | No presets for selected repository | Configure its canonical root |
-| Repository changed/lost | Run rejected before spawn; terminal survives | Restore/select repository and refresh |
-| Global/session busy | Bounded busy response; existing run unchanged | Wait or cancel the active run |
-| HEAD unavailable | Run proceeds with honest null association | Inspect repository state |
-| Spawn failure | `error`; no false exit result | Fix executable/permissions |
-| Nonzero exit | `failed` with exact bounded evidence | Inspect output and retry explicitly |
-| Timeout | terminate group, force if needed, `timed_out` | Increase configured timeout or fix check |
-| Cancel race | Existing terminal result wins or cancel is acknowledged | Inspect final state |
-| Output overflow | Retain bounded prefix/tail and mark truncation | Run directly for full output |
-| Browser disconnect | Server process and run continue | Reconnect and inspect |
-| Graceful server stop | Active groups terminate; no PTY implication | Restart and run again |
-| Hard server crash | Prior run outcome/process is unknown | Inspect OS processes before retry |
-| Final message overflow | Bounded error snapshot | Run directly and inspect config |
+| Failure point           | Expected state                                          | Recovery                                 |
+| ----------------------- | ------------------------------------------------------- | ---------------------------------------- |
+| No config               | Unconfigured Checks guidance; terminals survive         | Start Pacium with an explicit config     |
+| Invalid config          | Startup fails closed with bounded path-neutral reason   | Fix local config and restart             |
+| No matching root        | No presets for selected repository                      | Configure its canonical root             |
+| Repository changed/lost | Run rejected before spawn; terminal survives            | Restore/select repository and refresh    |
+| Global/session busy     | Bounded busy response; existing run unchanged           | Wait or cancel the active run            |
+| HEAD unavailable        | Run proceeds with honest null association               | Inspect repository state                 |
+| Spawn failure           | `error`; no false exit result                           | Fix executable/permissions               |
+| Nonzero exit            | `failed` with exact bounded evidence                    | Inspect output and retry explicitly      |
+| Timeout                 | terminate group, force if needed, `timed_out`           | Increase configured timeout or fix check |
+| Cancel race             | Existing terminal result wins or cancel is acknowledged | Inspect final state                      |
+| Output overflow         | Retain bounded prefix/tail and mark truncation          | Run directly for full output             |
+| Browser disconnect      | Server process and run continue                         | Reconnect and inspect                    |
+| Graceful server stop    | Active groups terminate; no PTY implication             | Restart and run again                    |
+| Hard server crash       | Prior run outcome/process is unknown                    | Inspect OS processes before retry        |
+| Final message overflow  | Bounded error snapshot                                  | Run directly and inspect config          |
 
 ## Compatibility
 
