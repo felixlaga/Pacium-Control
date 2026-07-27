@@ -257,6 +257,13 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
       sessionId: SessionIdSchema,
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("session.refreshRepository"),
+      requestId: RequestIdSchema,
+      sessionId: SessionIdSchema,
+    })
+    .strict(),
   z.object({
     type: z.literal("session.close"),
     requestId: RequestIdSchema,

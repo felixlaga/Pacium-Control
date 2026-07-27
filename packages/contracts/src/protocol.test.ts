@@ -77,6 +77,21 @@ describe("client protocol", () => {
     expect(fixedPreset.success).toBe(false);
   });
 
+  it("accepts only a session identity for repository refresh", () => {
+    const message = {
+      type: "session.refreshRepository",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+    };
+    expect(ClientMessageSchema.safeParse(message).success).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        ...message,
+        command: "git status",
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts a bounded terminal input command", () => {
     const result = ClientMessageSchema.safeParse({
       type: "terminal.input",

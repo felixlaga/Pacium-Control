@@ -3,6 +3,7 @@ import { FakePtyFactory } from "@pacium/test-utils";
 
 import type { HostActions } from "./host-actions.js";
 import type { LaunchPresetDefinition } from "./launch-presets.js";
+import type { RepositoryInspector } from "./repository-context.js";
 import { SessionError, SessionManager } from "./session-manager.js";
 
 const testPresets: readonly LaunchPresetDefinition[] = [
@@ -53,24 +54,33 @@ const testPresets: readonly LaunchPresetDefinition[] = [
 function createManager(
   factory: FakePtyFactory,
   hostActions?: HostActions,
+  inspectRepository: RepositoryInspector = (cwd, observedAt) =>
+    Promise.resolve(repositoryObservation(cwd, "dev", observedAt)),
 ): SessionManager {
   return new SessionManager(
     factory,
     testPresets,
     hostActions,
-    (cwd, observedAt) =>
-      Promise.resolve({
-        status: "ready",
-        root: cwd,
-        name: cwd.split("/").at(-1) ?? cwd,
-        branch: "dev",
-        headCommit: "a".repeat(40),
-        headState: "branch",
-        worktreeKind: "main",
-        observedAt: observedAt ?? "2026-07-27T10:00:00.000Z",
-        error: null,
-      }),
+    inspectRepository,
   );
+}
+
+function repositoryObservation(
+  cwd: string,
+  branch: string,
+  observedAt?: string,
+) {
+  return {
+    status: "ready" as const,
+    root: cwd,
+    name: cwd.split("/").at(-1) ?? cwd,
+    branch,
+    headCommit: branch === "dev" ? "a".repeat(40) : "b".repeat(40),
+    headState: "branch" as const,
+    worktreeKind: "main" as const,
+    observedAt: observedAt ?? "2026-07-27T10:00:00.000Z",
+    error: null,
+  };
 }
 
 describe("SessionManager", () => {
@@ -194,6 +204,40 @@ describe("SessionManager", () => {
 
     await manager.revealRepository(session.id);
     expect(revealPath).toHaveBeenCalledWith(session.repository.root);
+    manager.shutdown();
+  });
+
+  it("refreshes repository evidence without replacing or signalling the PTY", async () => {
+    const factory = new FakePtyFactory();
+    const inspectRepository = vi
+      .fn<RepositoryInspector>()
+      .mockImplementationOnce((cwd, observedAt) =>
+        Promise.resolve(repositoryObservation(cwd, "dev", observedAt)),
+      )
+      .mockImplementationOnce((cwd, observedAt) =>
+        Promise.resolve(repositoryObservation(cwd, "feature", observedAt)),
+      );
+    const manager = createManager(factory, undefined, inspectRepository);
+    const session = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+    const updates: string[] = [];
+    manager.onSessionEvent((event) => {
+      if (event.type === "updated") {
+        updates.push(event.session.repository.branch ?? "none");
+      }
+    });
+
+    await expect(manager.refreshRepository(session.id)).resolves.toMatchObject({
+      branch: "feature",
+      headCommit: "b".repeat(40),
+    });
+    expect(manager.list()[0]?.id).toBe(session.id);
+    expect(factory.processes[0]?.signals).toEqual([]);
+    expect(updates).toEqual(["feature"]);
     manager.shutdown();
   });
 

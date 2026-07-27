@@ -12,6 +12,7 @@ import type {
 import {
   MAX_TERMINAL_SNAPSHOT_CHARS,
   type LaunchPresetId,
+  type RepositoryObservation,
   type SessionSummary,
 } from "@pacium/contracts";
 
@@ -289,6 +290,19 @@ export class SessionManager {
         true,
       );
     }
+  }
+
+  public async refreshRepository(
+    sessionId: string,
+  ): Promise<RepositoryObservation> {
+    const session = this.requireSession(sessionId);
+    const repository = await this.inspectRepository(
+      session.summary.cwd,
+      new Date().toISOString(),
+    );
+    session.summary = { ...session.summary, repository };
+    this.emitSession({ type: "updated", session: { ...session.summary } });
+    return repository;
   }
 
   public close(sessionId: string, force: boolean, requestId: string): void {
