@@ -47,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for connection authority evidence", () => {
-    expect(PROTOCOL_VERSION).toBe(18);
+  it("advances the wire contract for provider observations", () => {
+    expect(PROTOCOL_VERSION).toBe(19);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -982,7 +982,7 @@ describe("agent classification contract", () => {
     ).toBe(false);
   });
 
-  it("requires classification on every session summary", () => {
+  it("requires classification and provider state on every session summary", () => {
     const session = {
       id: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
       epoch: 1,
@@ -992,6 +992,7 @@ describe("agent classification contract", () => {
       launchPreset: "codex",
       commandLabel: "Codex",
       agentClassification: classification,
+      providerObservation: null,
       repository: {
         status: "not_repository",
         root: null,
@@ -1019,6 +1020,12 @@ describe("agent classification contract", () => {
       SessionSummarySchema.safeParse({
         ...session,
         agentClassification: undefined,
+      }).success,
+    ).toBe(false);
+    expect(
+      SessionSummarySchema.safeParse({
+        ...session,
+        providerObservation: undefined,
       }).success,
     ).toBe(false);
   });

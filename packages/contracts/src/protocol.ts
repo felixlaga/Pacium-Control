@@ -5,6 +5,7 @@ import {
   PaciumWorkspaceSchema,
 } from "./pacium-config.js";
 import { PaciumContextObservationSchema } from "./pacium-context.js";
+import { ProviderObservationSnapshotSchema } from "./provider-observation.js";
 import {
   QueueApprovalDecisionPayloadSchema,
   QueueDecisionResultSchema,
@@ -26,7 +27,7 @@ import {
   QueueResolutionResultSchema,
 } from "./queue-reconciliation.js";
 
-export const PROTOCOL_VERSION = 18 as const;
+export const PROTOCOL_VERSION = 19 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -1084,6 +1085,7 @@ export const SessionSummarySchema = z.object({
   launchPreset: LaunchPresetIdSchema,
   commandLabel: z.string().min(1).max(40),
   agentClassification: AgentClassificationSchema,
+  providerObservation: ProviderObservationSnapshotSchema.nullable(),
   repository: RepositoryObservationSchema,
   runtime: z.literal("pty"),
   processState: ProcessStateSchema,
