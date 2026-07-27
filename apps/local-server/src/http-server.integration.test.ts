@@ -455,6 +455,11 @@ describe("localhost HTTP and WebSocket boundary", () => {
         encoding: "utf8_base64",
         error: null,
       },
+      decisionState: {
+        status: "open",
+        decision: null,
+        error: null,
+      },
     });
     if (
       inspected.type !== "pacium.queue.item" ||
@@ -533,6 +538,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
         originalTextBase64: null,
         error: { code: "ITEM_STALE" },
       },
+      decisionState: null,
     });
     await expect(readFile(queuePath, "utf8")).resolves.toBe(
       "Approval request: Run exact migration\n",
@@ -540,6 +546,234 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await expect(
       readFile(join(setup.config.dataDirectory, "pacium.json")),
     ).resolves.toEqual(configBefore);
+
+    client.socket.close();
+    await once(client.socket, "close");
+  });
+
+  it("records immutable queue decisions without delivery or process side effects", async () => {
+    const queueDirectory = await mkdtemp(
+      join(tmpdir(), "pacium-decision-http-"),
+    );
+    temporaryDirectories.push(queueDirectory);
+    const queuePath = join(queueDirectory, "NEEDS-FELIX");
+    const answerPath = join(queueDirectory, "PACIUM-ANSWERS");
+    const questionText = "Question: Choose the implementation boundary\n";
+    const answerTargetText = "Existing operator notes\n";
+    await writeFile(queuePath, questionText, { mode: 0o600 });
+    await writeFile(answerPath, answerTargetText, { mode: 0o600 });
+
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(factory);
+    application = setup.application;
+    manager = setup.manager;
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    const liveSession = await createTestSession(client);
+    const workspace = {
+      ...paciumWorkspace("Decision workspace"),
+      queueSources: [
+        {
+          id: "needs-felix",
+          label: "Needs Felix",
+          path: queuePath,
+          format: "plain_text" as const,
+          requestingRole: "meta" as const,
+          deliveryMethodId: "answers",
+        },
+      ],
+      deliveryMethods: [
+        {
+          id: "answers",
+          label: "Pacium answers",
+          type: "answer_file" as const,
+          path: answerPath,
+        },
+      ],
+    };
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.config.replace",
+        requestId: "2dfebc76-f76c-463a-baca-c867cececf78",
+        expectedRevision: 0,
+        workspace,
+      }),
+    );
+    await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.config" &&
+        message.requestId === "2dfebc76-f76c-463a-baca-c867cececf78",
+      "decision config response",
+    );
+    const configBefore = await readFile(
+      join(setup.config.dataDirectory, "pacium.json"),
+    );
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.observe",
+        requestId: "b9e011fd-ce02-4cf1-b03c-806dc753efdc",
+      }),
+    );
+    const observed = await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.queue.sources" &&
+        message.requestId === "b9e011fd-ce02-4cf1-b03c-806dc753efdc",
+      "decision queue observation",
+    );
+    if (observed.type !== "pacium.queue.sources") {
+      throw new Error("Expected decision queue observation");
+    }
+    const questionSource = observed.observation.sources[0];
+    const questionCandidate = questionSource?.classification?.candidate;
+    if (
+      observed.observation.workspaceRevision === null ||
+      questionSource?.contentHash === null ||
+      questionSource === undefined ||
+      questionCandidate == null
+    ) {
+      throw new Error("Expected a complete question identity");
+    }
+    const questionIdentity = {
+      workspaceRevision: observed.observation.workspaceRevision,
+      sourceId: questionSource.sourceId,
+      observationRevision: questionSource.observationRevision,
+      contentHash: questionSource.contentHash,
+      itemId: questionCandidate.itemId,
+    };
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.question.answer",
+        requestId: "00c9b93f-2d00-4be7-b822-5833f5eb9a83",
+        ...questionIdentity,
+        payload: {
+          answer: "Keep the first slice narrow.",
+          note: "Confirmed from exact source evidence.",
+        },
+      }),
+    );
+    const recorded = await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.queue.decision" &&
+        message.requestId === "00c9b93f-2d00-4be7-b822-5833f5eb9a83",
+      "recorded question decision",
+    );
+    expect(recorded).toMatchObject({
+      result: {
+        status: "recorded",
+        ...questionIdentity,
+        decision: {
+          kind: "question_answer",
+          source: {
+            workspaceId: "primary",
+            itemType: "question",
+          },
+          payload: {
+            answer: "Keep the first slice narrow.",
+            note: "Confirmed from exact source evidence.",
+          },
+          actor: {
+            kind: "local_operator",
+            label: "Local operator",
+          },
+          decisionHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+        },
+        error: null,
+      },
+    });
+    const statePath = join(setup.config.dataDirectory, "queue-state.json");
+    const firstState = await readFile(statePath);
+    expect((await lstat(statePath)).mode & 0o777).toBe(0o600);
+    expect(firstState.toString("utf8")).not.toContain(questionText.trim());
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.question.answer",
+        requestId: "33477608-02ca-480c-94b3-b56ac33572fb",
+        ...questionIdentity,
+        payload: {
+          answer: "Keep the first slice narrow.",
+          note: "Confirmed from exact source evidence.",
+        },
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.decision" &&
+          message.requestId === "33477608-02ca-480c-94b3-b56ac33572fb",
+        "existing question decision",
+      ),
+    ).resolves.toMatchObject({
+      result: { status: "existing", error: null },
+    });
+    expect(await readFile(statePath)).toEqual(firstState);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.question.answer",
+        requestId: "5a175a7f-2bb0-4b7a-a839-ed22daf82ed0",
+        ...questionIdentity,
+        payload: {
+          answer: "Use a competing answer.",
+          note: null,
+        },
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.decision" &&
+          message.requestId === "5a175a7f-2bb0-4b7a-a839-ed22daf82ed0",
+        "competing question decision",
+      ),
+    ).resolves.toMatchObject({
+      result: {
+        status: "rejected",
+        decision: null,
+        error: { code: "ITEM_ALREADY_DECIDED" },
+      },
+    });
+    expect(await readFile(statePath)).toEqual(firstState);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.item.inspect",
+        requestId: "74201cfb-d98a-4ec6-aedd-81022cfcbb78",
+        ...questionIdentity,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.item" &&
+          message.requestId === "74201cfb-d98a-4ec6-aedd-81022cfcbb78",
+        "decided item inspection",
+      ),
+    ).resolves.toMatchObject({
+      inspection: { status: "ready" },
+      decisionState: {
+        status: "decided",
+        decision: {
+          kind: "question_answer",
+          payload: { answer: "Keep the first slice narrow." },
+        },
+      },
+    });
+
+    await expect(readFile(queuePath, "utf8")).resolves.toBe(questionText);
+    await expect(readFile(answerPath, "utf8")).resolves.toBe(answerTargetText);
+    await expect(
+      readFile(join(setup.config.dataDirectory, "pacium.json")),
+    ).resolves.toEqual(configBefore);
+    expect(manager.hasSession(liveSession.id)).toBe(true);
 
     client.socket.close();
     await once(client.socket, "close");
