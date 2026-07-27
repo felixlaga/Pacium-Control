@@ -2535,12 +2535,15 @@ describe("localhost HTTP and WebSocket boundary", () => {
         sessionId: session.id,
       }),
     );
-    await expect(
-      nextMessage(local, (message) => message.type === "terminal.snapshot"),
-    ).resolves.toMatchObject({
-      sessionId: session.id,
-      data: expect.stringContaining("remote canary remains local"),
-    });
+    const snapshot = await nextMessage(
+      local,
+      (message) => message.type === "terminal.snapshot",
+    );
+    if (snapshot.type !== "terminal.snapshot") {
+      throw new Error("Expected a terminal snapshot");
+    }
+    expect(snapshot.sessionId).toBe(session.id);
+    expect(snapshot.data).toContain("remote canary remains local");
     local.socket.close();
     await once(local.socket, "close");
   });
