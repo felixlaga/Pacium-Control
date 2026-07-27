@@ -119,7 +119,8 @@ executed by PC-040.
 ### Limits
 
 - one workspace;
-- 128 KiB serialized file and WebSocket-safe normalized response;
+- 96 KiB serialized file, leaving deterministic room in the 128 KiB
+  application-message envelope;
 - 64-character lowercase identifiers;
 - 120-character labels;
 - 4,096-character absolute paths without controls;
@@ -312,7 +313,7 @@ reconstructs server truth. No UI reads or mutates this state until PC-041/42.
 - Security: Origin/token, one resolved state target, canonical paths, source/
   answer separation, repository containment, no command/terminal/content
   fields, no logging, message bound, and PTY survival.
-- Performance: 128 KiB file ceiling, fixed record ceilings, no polling/watchers,
+- Performance: 96 KiB file ceiling, fixed record ceilings, no polling/watchers,
   one complete reread per operation, one complete atomic write per accepted
   replacement, and no effect on terminal I/O.
 

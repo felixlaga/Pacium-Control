@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const PACIUM_CONFIG_SCHEMA_VERSION = 1 as const;
-export const MAX_PACIUM_CONFIG_BYTES = 128 * 1024;
+export const MAX_PACIUM_CONFIG_BYTES = 96 * 1024;
 export const MAX_PACIUM_IDENTIFIER_CHARS = 64;
 export const MAX_PACIUM_LABEL_CHARS = 120;
 export const MAX_PACIUM_PATH_CHARS = 4096;
