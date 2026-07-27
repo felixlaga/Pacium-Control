@@ -4,6 +4,7 @@ import {
   MAX_PACIUM_QUEUE_SOURCES,
   PaciumIdentifierSchema,
 } from "./pacium-config.js";
+import { QueueSourceClassificationSchema } from "./queue-classification.js";
 
 export const MAX_QUEUE_SOURCE_BYTES = 64 * 1024;
 export const MAX_QUEUE_OBSERVATION_ERROR_CHARS = 240;
@@ -48,6 +49,7 @@ export const QueueSourceObservationSchema = z
       .string()
       .regex(/^[0-9a-f]{64}$/)
       .nullable(),
+    classification: QueueSourceClassificationSchema.nullable(),
     error: QueueObservationErrorSchema.nullable(),
   })
   .strict()
@@ -81,6 +83,16 @@ export const QueueSourceObservationSchema = z
       context.addIssue({
         code: "custom",
         message: "Only complete queue observations can contain a content hash.",
+      });
+    }
+    if (
+      (observation.status === "stable") !==
+      (observation.classification !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "Only stable nonempty queue observations contain classification evidence.",
       });
     }
     const errorExpected =

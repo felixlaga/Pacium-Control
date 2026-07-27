@@ -172,6 +172,21 @@ function observation(workspaceRevision: number) {
         byteLength: 42,
         modifiedAt: observedAt,
         contentHash: "a".repeat(64),
+        classification: {
+          status: "candidate" as const,
+          boundary: "whole_source_v1" as const,
+          candidate: {
+            itemId: "b".repeat(64),
+            type: "question" as const,
+            confidence: "high" as const,
+          },
+          diagnostics: [
+            {
+              code: "legacy_marker" as const,
+              message: "A supported plain-text legacy marker was used.",
+            },
+          ],
+        },
         error: null,
       },
     ],

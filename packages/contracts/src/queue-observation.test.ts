@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import type { QueueSourceClassification } from "./queue-classification.js";
+import { queueClassificationDiagnostic } from "./queue-classification.js";
 import {
   QueueSourceObservationSchema,
   QueueSourcesObservationSchema,
@@ -8,6 +10,16 @@ import {
 const observedAt = "2026-07-27T12:00:00.000Z";
 const emptyHash =
   "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+const questionClassification: QueueSourceClassification = {
+  status: "candidate",
+  boundary: "whole_source_v1",
+  candidate: {
+    itemId: "a".repeat(64),
+    type: "question",
+    confidence: "high",
+  },
+  diagnostics: [queueClassificationDiagnostic("legacy_marker")],
+};
 
 describe("queue source observation contract", () => {
   it("accepts complete stable and empty provenance", () => {
@@ -19,6 +31,7 @@ describe("queue source observation contract", () => {
           modifiedAt: observedAt,
           contentHash:
             "d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d9c39fd6f9d",
+          classification: questionClassification,
         }),
       ).success,
     ).toBe(true);
@@ -46,6 +59,30 @@ describe("queue source observation contract", () => {
           status: "stable",
           byteLength: 1,
           modifiedAt: observedAt,
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("keeps classification exclusive to stable nonempty evidence", () => {
+    expect(
+      QueueSourceObservationSchema.safeParse(
+        source({
+          status: "stable",
+          byteLength: 14,
+          modifiedAt: observedAt,
+          contentHash: "d".repeat(64),
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      QueueSourceObservationSchema.safeParse(
+        source({
+          status: "empty",
+          byteLength: 0,
+          modifiedAt: observedAt,
+          contentHash: emptyHash,
+          classification: questionClassification,
         }),
       ).success,
     ).toBe(false);
@@ -162,6 +199,7 @@ function source(
     byteLength: number | null;
     modifiedAt: string | null;
     contentHash: string | null;
+    classification: QueueSourceClassification | null;
     error: { code: string; message: string } | null;
   }> = {},
 ) {
@@ -173,6 +211,7 @@ function source(
     byteLength: null,
     modifiedAt: null,
     contentHash: null,
+    classification: null,
     error: null,
     ...overrides,
   };

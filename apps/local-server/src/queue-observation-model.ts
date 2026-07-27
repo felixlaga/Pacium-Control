@@ -11,7 +11,7 @@ import type { QueueFileReadResult } from "./queue-file-reader.js";
 
 export interface QueueSourceRuntimeState {
   definition: PaciumQueueSource;
-  observation: QueueSourceObservation;
+  observation: Omit<QueueSourceObservation, "classification">;
   classification: QueueSourceClassification | null;
   text: string | null;
 }
@@ -50,7 +50,7 @@ export function applyQueueFileRead(
   current: QueueSourceRuntimeState,
   result: QueueRuntimeResult,
   observedAt: string,
-  classification: QueueSourceClassification | null = null,
+  classification: QueueSourceClassification | null,
 ): QueueReadTransition {
   const candidate: QueueSourceRuntimeState = {
     definition: current.definition,
@@ -100,6 +100,7 @@ export function queueWatchFailure(
       },
     },
     observedAt,
+    null,
   );
 }
 
@@ -161,7 +162,10 @@ export function readyQueueSources(
     status: "ready",
     workspaceRevision,
     observedAt,
-    sources: states.map(({ observation }) => observation),
+    sources: states.map(({ classification, observation }) => ({
+      ...observation,
+      classification,
+    })),
     error: null,
   };
 }

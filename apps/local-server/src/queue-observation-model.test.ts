@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { classifyQueueItem } from "./queue-item-classifier.js";
 import {
   applyQueueFileRead,
   pendingQueueSource,
@@ -31,6 +32,7 @@ describe("queue observation revision model", () => {
       pending,
       stable("Question one"),
       firstTime,
+      classification("Question one"),
     );
     expect(first.changed).toBe(true);
     expect(first.state.observation.observationRevision).toBe(2);
@@ -39,6 +41,7 @@ describe("queue observation revision model", () => {
       first.state,
       stable("Question one"),
       secondTime,
+      classification("Question one"),
     );
     expect(repeated.changed).toBe(false);
     expect(repeated.state.observation.observationRevision).toBe(2);
@@ -48,6 +51,7 @@ describe("queue observation revision model", () => {
       repeated.state,
       { ...stable("Question two"), contentHash: "b".repeat(64) },
       secondTime,
+      classification("Question two", "b".repeat(64)),
     );
     expect(changed.changed).toBe(true);
     expect(changed.state.observation.observationRevision).toBe(3);
@@ -58,6 +62,7 @@ describe("queue observation revision model", () => {
       pendingQueueSource(source(), firstTime),
       stable("Question"),
       firstTime,
+      classification("Question"),
     ).state;
     const missing = applyQueueFileRead(
       stableState,
@@ -70,6 +75,7 @@ describe("queue observation revision model", () => {
         error: null,
       },
       secondTime,
+      null,
     );
 
     expect(missing.changed).toBe(true);
@@ -171,6 +177,7 @@ describe("queue observation config projection", () => {
       pendingQueueSource(source(), firstTime),
       stable("Question"),
       firstTime,
+      classification("Question"),
     ).state;
     const aggregate = readyQueueSources(2, [state], secondTime);
 
@@ -207,4 +214,12 @@ function stable(text: string) {
     text,
     error: null,
   };
+}
+
+function classification(text: string, contentHash = hash) {
+  return classifyQueueItem({
+    sourceId: "needs-felix",
+    contentHash,
+    text,
+  });
 }

@@ -27,6 +27,7 @@ describe("Pacium queue source semantics", () => {
       byteLength: null,
       modifiedAt: null,
       contentHash: null,
+      classification: null,
       error: {
         code: "WATCH_FAILED",
         message: "The source parent could not be watched.",
@@ -50,6 +51,7 @@ describe("Pacium queue source semantics", () => {
       byteLength: null,
       modifiedAt: null,
       contentHash: null,
+      classification: null,
       error: {
         code: "READ_FAILED",
         message: "</small><script>read()</script>",
@@ -107,6 +109,21 @@ function ready(): PaciumQueueProjection {
           byteLength: 2_048,
           modifiedAt: "2026-07-27T12:00:00.000Z",
           contentHash: "a".repeat(64),
+          classification: {
+            status: "candidate",
+            boundary: "whole_source_v1",
+            candidate: {
+              itemId: "b".repeat(64),
+              type: "question",
+              confidence: "high",
+            },
+            diagnostics: [
+              {
+                code: "legacy_marker",
+                message: "A supported plain-text legacy marker was used.",
+              },
+            ],
+          },
           error: null,
         },
       },

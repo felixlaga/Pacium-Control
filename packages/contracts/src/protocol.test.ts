@@ -48,7 +48,7 @@ describe("terminal binary frames", () => {
 
 describe("client protocol", () => {
   it("advances the wire contract for queue observation", () => {
-    expect(PROTOCOL_VERSION).toBe(11);
+    expect(PROTOCOL_VERSION).toBe(12);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -206,6 +206,27 @@ describe("client protocol", () => {
           byteLength: null,
           modifiedAt: null,
           contentHash: null,
+          classification: null,
+          error: null,
+        },
+        {
+          sourceId: "review",
+          observationRevision: 2,
+          status: "stable",
+          observedAt: "2026-07-27T12:00:00.000Z",
+          byteLength: 24,
+          modifiedAt: "2026-07-27T11:59:00.000Z",
+          contentHash: "a".repeat(64),
+          classification: {
+            status: "candidate",
+            boundary: "whole_source_v1",
+            candidate: {
+              itemId: "b".repeat(64),
+              type: "review",
+              confidence: "confirmed",
+            },
+            diagnostics: [],
+          },
           error: null,
         },
       ],
