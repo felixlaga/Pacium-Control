@@ -7,8 +7,13 @@ import {
   encodeTerminalDataFrame,
   GitChangedFileSchema,
   GitChangesObservationSchema,
+  GitDiffObservationSchema,
+  GitDiffSectionSchema,
+  MAX_GIT_DIFF_BYTES,
+  MAX_GIT_DIFF_LINE_CHARS,
   MAX_TERMINAL_INPUT_CHARS,
   PROTOCOL_VERSION,
+  RepositoryRelativePathSchema,
   RepositoryObservationSchema,
   ServerMessageSchema,
   SessionSummarySchema,
@@ -35,8 +40,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for required agent classification", () => {
-    expect(PROTOCOL_VERSION).toBe(6);
+  it("advances the wire contract for bounded diff inspection", () => {
+    expect(PROTOCOL_VERSION).toBe(7);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -107,6 +112,36 @@ describe("client protocol", () => {
         ...message,
         root: "/tmp/browser-controlled",
         command: "git status",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts only a bounded changed-file selector for diff inspection", () => {
+    const message = {
+      type: "repository.diff",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+      path: "apps/web/src/app.tsx",
+    };
+    expect(ClientMessageSchema.safeParse(message).success).toBe(true);
+    for (const path of [
+      "/tmp/escape",
+      "../escape",
+      "nested\\..\\escape",
+      "C:\\escape",
+      "\\\\server\\share",
+      "x".repeat(4097),
+    ]) {
+      expect(ClientMessageSchema.safeParse({ ...message, path }).success).toBe(
+        false,
+      );
+    }
+    expect(
+      ClientMessageSchema.safeParse({
+        ...message,
+        root: "/tmp/browser-controlled",
+        revision: "main",
+        command: "git diff",
       }).success,
     ).toBe(false);
   });
@@ -482,5 +517,162 @@ describe("changed-file observation contract", () => {
         observation: empty,
       }).success,
     ).toBe(true);
+  });
+});
+
+describe("bounded diff observation contract", () => {
+  const patch = [
+    "diff --git a/file.ts b/file.ts",
+    "--- a/file.ts",
+    "+++ b/file.ts",
+    "@@ -1 +1 @@",
+    "-old",
+    "+new",
+    "",
+  ].join("\n");
+  const byteCount = new TextEncoder().encode(patch).byteLength;
+  const section = {
+    source: "combined",
+    patch,
+    byteCount,
+    lineCount: 6,
+  };
+  const ready = {
+    status: "ready",
+    root: "/work/pacium",
+    headCommit: "a".repeat(40),
+    path: "file.ts",
+    previousPath: null,
+    observedAt: "2026-07-27T10:00:00.000Z",
+    sections: [section],
+    patchBytes: byteCount,
+    patchLines: 6,
+    error: null,
+  };
+
+  it("accepts exact bounded patch sections and wire responses", () => {
+    expect(GitDiffSectionSchema.safeParse(section).success).toBe(true);
+    expect(GitDiffObservationSchema.safeParse(ready).success).toBe(true);
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "repository.diff",
+        requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+        sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+        observation: ready,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects mismatched counts, unsafe paths, lines, and section sources", () => {
+    expect(
+      GitDiffObservationSchema.safeParse({
+        ...ready,
+        patchBytes: byteCount + 1,
+      }).success,
+    ).toBe(false);
+    expect(
+      GitDiffObservationSchema.safeParse({
+        ...ready,
+        path: "../../secret",
+      }).success,
+    ).toBe(false);
+    expect(
+      GitDiffSectionSchema.safeParse({
+        ...section,
+        patch: "x".repeat(MAX_GIT_DIFF_BYTES + 1),
+        byteCount: MAX_GIT_DIFF_BYTES + 1,
+        lineCount: 1,
+      }).success,
+    ).toBe(false);
+    const longLine = "x".repeat(MAX_GIT_DIFF_LINE_CHARS + 1);
+    expect(
+      GitDiffSectionSchema.safeParse({
+        source: "combined",
+        patch: longLine,
+        byteCount: longLine.length,
+        lineCount: 1,
+      }).success,
+    ).toBe(false);
+    expect(
+      GitDiffObservationSchema.safeParse({
+        ...ready,
+        sections: [
+          { ...section, source: "combined" },
+          { ...section, source: "unstaged" },
+        ],
+        patchBytes: byteCount * 2,
+        patchLines: 12,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts honest empty, binary, large, missing, absent, and error states", () => {
+    const unavailable = {
+      ...ready,
+      status: "empty",
+      sections: [],
+      patchBytes: 0,
+      patchLines: 0,
+    };
+    for (const status of ["empty", "binary", "too_large", "not_found"]) {
+      expect(
+        GitDiffObservationSchema.safeParse({
+          ...unavailable,
+          status,
+        }).success,
+      ).toBe(true);
+    }
+    expect(
+      GitDiffObservationSchema.safeParse({
+        ...unavailable,
+        status: "not_repository",
+        root: null,
+        headCommit: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      GitDiffObservationSchema.safeParse({
+        ...unavailable,
+        status: "error",
+        error: {
+          code: "timeout",
+          message: "Git diff inspection timed out.",
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      GitDiffObservationSchema.safeParse({
+        ...unavailable,
+        status: "error",
+        root: null,
+        headCommit: "a".repeat(40),
+        error: {
+          code: "repository_unavailable",
+          message: "Repository evidence is unavailable.",
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      GitDiffObservationSchema.safeParse({
+        ...unavailable,
+        status: "binary",
+        error: {
+          code: "inspection_failed",
+          message: "Unexpected error.",
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("shares one strict safe repository path contract", () => {
+    expect(
+      RepositoryRelativePathSchema.safeParse("src/new\nline.ts").success,
+    ).toBe(true);
+    expect(
+      RepositoryRelativePathSchema.safeParse("nested/../escape").success,
+    ).toBe(false);
+    expect(
+      RepositoryRelativePathSchema.safeParse("\\\\server\\share").success,
+    ).toBe(false);
   });
 });

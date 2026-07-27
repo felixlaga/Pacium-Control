@@ -1,13 +1,23 @@
 import { z } from "zod";
 
-export const PROTOCOL_VERSION = 6 as const;
+export const PROTOCOL_VERSION = 7 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
 export const MAX_TERMINAL_SNAPSHOT_CHARS = 512 * 1024;
+export const MAX_GIT_DIFF_BYTES = 64 * 1024;
+export const MAX_GIT_DIFF_LINES = 2_000;
+export const MAX_GIT_DIFF_LINE_CHARS = 4_096;
 
 const RequestIdSchema = z.string().uuid();
 const SessionIdSchema = z.string().uuid();
+export const RepositoryRelativePathSchema = z
+  .string()
+  .min(1)
+  .max(4096)
+  .refine(isRepositoryRelativePath, {
+    message: "Repository path must be relative and contained.",
+  });
 
 export const LaunchPresetIdSchema = z.enum(["shell", "codex", "claude"]);
 export type LaunchPresetId = z.infer<typeof LaunchPresetIdSchema>;
@@ -190,17 +200,8 @@ export const GitChangeKindSchema = z.enum([
 
 export const GitChangedFileSchema = z
   .object({
-    path: z
-      .string()
-      .min(1)
-      .max(4096)
-      .refine((value) => !value.includes("\0")),
-    previousPath: z
-      .string()
-      .min(1)
-      .max(4096)
-      .refine((value) => !value.includes("\0"))
-      .nullable(),
+    path: RepositoryRelativePathSchema,
+    previousPath: RepositoryRelativePathSchema.nullable(),
     kind: GitChangeKindSchema,
     staged: z.boolean(),
     unstaged: z.boolean(),
@@ -365,6 +366,183 @@ export const GitChangesObservationSchema = z
   });
 export type GitChangesObservation = z.infer<typeof GitChangesObservationSchema>;
 
+export const GitDiffStatusSchema = z.enum([
+  "ready",
+  "empty",
+  "binary",
+  "too_large",
+  "not_found",
+  "not_repository",
+  "error",
+]);
+export const GitDiffSectionSourceSchema = z.enum([
+  "combined",
+  "staged",
+  "unstaged",
+  "untracked",
+]);
+export const GitDiffErrorCodeSchema = z.enum([
+  "git_unavailable",
+  "timeout",
+  "inspection_failed",
+  "invalid_output",
+  "repository_unavailable",
+  "unsafe_path",
+]);
+
+export const GitDiffSectionSchema = z
+  .object({
+    source: GitDiffSectionSourceSchema,
+    patch: z.string().min(1).max(MAX_GIT_DIFF_BYTES),
+    byteCount: z.number().int().positive().max(MAX_GIT_DIFF_BYTES),
+    lineCount: z.number().int().positive().max(MAX_GIT_DIFF_LINES),
+  })
+  .strict()
+  .superRefine((section, context) => {
+    if (
+      utf8ByteLength(section.patch) !== section.byteCount ||
+      patchLineCount(section.patch) !== section.lineCount ||
+      section.patch
+        .split("\n")
+        .some((line) => line.length > MAX_GIT_DIFF_LINE_CHARS)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Diff section counts and line bounds must match its patch.",
+      });
+    }
+  });
+export type GitDiffSection = z.infer<typeof GitDiffSectionSchema>;
+
+export const GitDiffObservationSchema = z
+  .object({
+    status: GitDiffStatusSchema,
+    root: z.string().min(1).max(4096).nullable(),
+    headCommit: z
+      .string()
+      .regex(/^[0-9a-f]{40,64}$/)
+      .nullable(),
+    path: RepositoryRelativePathSchema,
+    previousPath: RepositoryRelativePathSchema.nullable(),
+    observedAt: z.string().datetime(),
+    sections: z.array(GitDiffSectionSchema).max(2),
+    patchBytes: z.number().int().nonnegative().max(MAX_GIT_DIFF_BYTES),
+    patchLines: z.number().int().nonnegative().max(MAX_GIT_DIFF_LINES),
+    error: z
+      .object({
+        code: GitDiffErrorCodeSchema,
+        message: z.string().min(1).max(200),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict()
+  .superRefine((observation, context) => {
+    const patchBytes = observation.sections.reduce(
+      (sum, section) => sum + section.byteCount,
+      0,
+    );
+    const patchLines = observation.sections.reduce(
+      (sum, section) => sum + section.lineCount,
+      0,
+    );
+    if (
+      observation.patchBytes !== patchBytes ||
+      observation.patchLines !== patchLines
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Diff totals must match section evidence.",
+      });
+    }
+
+    const sources = observation.sections.map(({ source }) => source);
+    if (
+      new Set(sources).size !== sources.length ||
+      ((sources.includes("combined") || sources.includes("untracked")) &&
+        sources.length !== 1)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Diff section sources must form one valid comparison.",
+      });
+    }
+    if (
+      observation.root === null &&
+      (observation.headCommit !== null || observation.previousPath !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Diff repository evidence requires a known root.",
+      });
+    }
+
+    if (observation.status === "ready") {
+      if (
+        observation.root === null ||
+        observation.sections.length === 0 ||
+        observation.error !== null
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "Ready diff evidence requires patch sections and a root.",
+        });
+      }
+      if (
+        (observation.headCommit === null && sources.includes("combined")) ||
+        (observation.headCommit !== null &&
+          sources.some(
+            (source) => source === "staged" || source === "unstaged",
+          ))
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "Diff sections must match whether HEAD exists.",
+        });
+      }
+      return;
+    }
+
+    if (
+      observation.sections.length !== 0 ||
+      observation.patchBytes !== 0 ||
+      observation.patchLines !== 0
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "A non-ready diff cannot contain patch evidence.",
+      });
+    }
+    if ((observation.status === "error") !== (observation.error !== null)) {
+      context.addIssue({
+        code: "custom",
+        message: "Diff error evidence must match status.",
+      });
+    }
+    if (
+      observation.status === "not_repository" &&
+      (observation.root !== null ||
+        observation.headCommit !== null ||
+        observation.previousPath !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "A non-repository diff cannot contain repository evidence.",
+      });
+    }
+    if (
+      observation.status !== "not_repository" &&
+      observation.status !== "error" &&
+      observation.root === null
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Known diff states require a repository root.",
+      });
+    }
+  });
+export type GitDiffObservation = z.infer<typeof GitDiffObservationSchema>;
+
 export const SessionSummarySchema = z.object({
   id: SessionIdSchema,
   epoch: z.number().int().positive(),
@@ -459,6 +637,14 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
       sessionId: SessionIdSchema,
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("repository.diff"),
+      requestId: RequestIdSchema,
+      sessionId: SessionIdSchema,
+      path: RepositoryRelativePathSchema,
+    })
+    .strict(),
   z.object({
     type: z.literal("session.close"),
     requestId: RequestIdSchema,
@@ -505,6 +691,14 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
       observation: GitChangesObservationSchema,
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("repository.diff"),
+      requestId: RequestIdSchema,
+      sessionId: SessionIdSchema,
+      observation: GitDiffObservationSchema,
+    })
+    .strict(),
   z.object({
     type: z.literal("terminal.snapshot"),
     requestId: RequestIdSchema,
@@ -548,6 +742,26 @@ const SEQUENCE_BYTES = 4;
 const HEADER_BYTES = 1 + SESSION_ID_BYTES + EPOCH_BYTES + SEQUENCE_BYTES;
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
+
+function isRepositoryRelativePath(value: string): boolean {
+  const segments = value.split(/[\\/]/);
+  return (
+    !value.includes("\0") &&
+    !value.startsWith("/") &&
+    !value.startsWith("\\") &&
+    !/^[A-Za-z]:[\\/]/.test(value) &&
+    !segments.includes("..")
+  );
+}
+
+function utf8ByteLength(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
+}
+
+function patchLineCount(value: string): number {
+  const lines = value.split("\n");
+  return value.endsWith("\n") ? lines.length - 1 : lines.length;
+}
 
 export interface TerminalDataFrame {
   sessionId: string;
