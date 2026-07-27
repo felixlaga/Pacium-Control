@@ -187,8 +187,8 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 86 test files and 512 tests,
-  plus the 819.07 kB web and 201.10 kB local-server production builds passed.
+- `pnpm verify`: formatting, lint, type checking, 91 test files and 546 tests,
+  plus the 834.31 kB web and 227.62 kB local-server production builds passed.
 - `pnpm test:e2e`: ten Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
@@ -196,6 +196,12 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
   run/reload/cancel without terminal reselection. General/Pacium coverage
   proved pointer, chord, palette, reload persistence, unchanged selected PTY
   and inspector context, configured-state presentation, and narrow layouts.
+- PC-047 browser evidence recorded a bounded question answer, kept Escape in
+  the answer field, recovered the immutable record after reload, invalidated
+  exact text after a source rewrite, kept approval controls separate, cancelled
+  and then confirmed an approval, preserved source/config/terminal state, and
+  covered 320 CSS px, forced colors, and reduced motion. Store reconstruction
+  separately proves local-server restart recovery.
 - PC-042 browser evidence assigned an existing PTY to Meta, opened it without
   duplication, configured an Orchestrator fixed preset, launched one direct
   PTY, bound its exact created session ID, and restored both bindings after
@@ -279,7 +285,7 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Begin PC-047 with immutable local question/approval decisions that retain the
-strict authority boundary and do not yet imply delivery. Complete the pinned
+Begin PC-048 with explicit compatible decision delivery, idempotency, and
+honest delivered/unknown/failed state without blind retry. Complete the pinned
 Node.js 24 clean-install, CI, broader browser/security, manual accessibility,
 and sustained-output gates before release.
