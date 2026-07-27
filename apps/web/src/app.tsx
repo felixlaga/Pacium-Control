@@ -448,6 +448,46 @@ export function App() {
     setActionSessionId(null);
   };
 
+  const duplicateSession = (session: SessionSummary) => {
+    transportRef.current?.createSession(duplicateSessionInput(session));
+    setNotice(
+      `Starting a duplicate of ${session.displayName}. The original process is unchanged.`,
+    );
+    setActionSessionId(null);
+  };
+
+  const relaunchSession = (session: SessionSummary) => {
+    const input = relaunchSessionInput(session);
+    if (input !== null) {
+      transportRef.current?.createSession(input);
+      setNotice(
+        `Starting a new ${session.displayName} process from its retained preset and directory.`,
+      );
+    }
+    setActionSessionId(null);
+  };
+
+  const interruptSession = (session: SessionSummary) => {
+    transportRef.current?.interrupt(session.id);
+    setNotice(
+      `Sent SIGINT to ${session.displayName}. The process may continue running.`,
+    );
+    setActionSessionId(null);
+  };
+
+  const beginRenameSession = (session: SessionSummary) => {
+    setRenameSessionId(session.id);
+    setActionSessionId(null);
+  };
+
+  const revealSessionRepository = (session: SessionSummary) => {
+    transportRef.current?.revealRepository(session.id);
+    setNotice(
+      `Asked the Pacium host to reveal ${session.repositoryName ?? "the repository"}.`,
+    );
+    setActionSessionId(null);
+  };
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const shortcut = resolveWorkspaceShortcut({
@@ -976,43 +1016,11 @@ export function App() {
           onCopyDirectory={() => {
             void copySessionDirectory(actionSession);
           }}
-          onDuplicate={() => {
-            transportRef.current?.createSession(
-              duplicateSessionInput(actionSession),
-            );
-            setNotice(
-              `Starting a duplicate of ${actionSession.displayName}. The original process is unchanged.`,
-            );
-            setActionSessionId(null);
-          }}
-          onInterrupt={() => {
-            transportRef.current?.interrupt(actionSession.id);
-            setNotice(
-              `Sent SIGINT to ${actionSession.displayName}. The process may continue running.`,
-            );
-            setActionSessionId(null);
-          }}
-          onRelaunch={() => {
-            const input = relaunchSessionInput(actionSession);
-            if (input !== null) {
-              transportRef.current?.createSession(input);
-              setNotice(
-                `Starting a new ${actionSession.displayName} process from its retained preset and directory.`,
-              );
-            }
-            setActionSessionId(null);
-          }}
-          onRename={() => {
-            setRenameSessionId(actionSession.id);
-            setActionSessionId(null);
-          }}
-          onRevealRepository={() => {
-            transportRef.current?.revealRepository(actionSession.id);
-            setNotice(
-              `Asked the Pacium host to reveal ${actionSession.repositoryName ?? "the repository"}.`,
-            );
-            setActionSessionId(null);
-          }}
+          onDuplicate={() => duplicateSession(actionSession)}
+          onInterrupt={() => interruptSession(actionSession)}
+          onRelaunch={() => relaunchSession(actionSession)}
+          onRename={() => beginRenameSession(actionSession)}
+          onRevealRepository={() => revealSessionRepository(actionSession)}
           onTerminate={() => terminateSession(actionSession)}
           session={actionSession}
         />
