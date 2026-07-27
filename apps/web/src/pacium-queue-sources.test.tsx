@@ -134,6 +134,7 @@ function ready(): PaciumQueueProjection {
               },
             ],
           },
+          candidateFirstObservedAt: "2026-07-27T11:58:00.000Z",
           error: null,
         },
       },

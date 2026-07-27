@@ -139,6 +139,7 @@ describe("Pacium queue classification presentation", () => {
         status: "empty",
         byteLength: 0,
         classification: null,
+        candidateFirstObservedAt: null,
       }),
     ).toEqual({
       kind: "none",
@@ -159,6 +160,7 @@ describe("Pacium queue classification presentation", () => {
             },
           ],
         },
+        candidateFirstObservedAt: null,
       }),
     ).toEqual({
       kind: "none",
@@ -173,6 +175,7 @@ describe("Pacium queue classification presentation", () => {
         modifiedAt: null,
         contentHash: null,
         classification: null,
+        candidateFirstObservedAt: null,
       }),
     ).toBeNull();
   });
@@ -246,6 +249,7 @@ function observation(workspaceRevision: number) {
             },
           ],
         },
+        candidateFirstObservedAt: observedAt,
         error: null,
       },
     ],
