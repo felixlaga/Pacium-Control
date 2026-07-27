@@ -42,6 +42,7 @@ This directory specifies the local-first Pacium Control product.
 - [First 30 days](execution/first-30-days.md)
 - [Workstream map](execution/workstream-map.md)
 - [Implementation backlog](execution/implementation-backlog.md)
+- [Pacium workspace configuration](execution/pacium-workspace-configuration.md)
 - [First build issue](execution/first-build-issue.md)
 - [First build plan](execution/first-build-plan.md)
 - [Initial toolchain and platform](execution/toolchain-and-platform.md)

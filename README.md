@@ -34,7 +34,7 @@ pnpm start
 
 Then open `http://127.0.0.1:4174`.
 
-The current slice can launch available Shell, Codex, and Claude Code presets; browse host directories through a compact repository-aware picker; group sessions by repository; and arrange up to four live terminals in tabs and nested splits. A contextual command palette searches sessions, workspace commands, split controls, and session actions. Browser-local settings control system/dark/light appearance, workspace density, live terminal typography and scrollback, launch default, and quiet attention notifications. Important failure and completion evidence becomes unread until selected; explicit-permission browser alerts can notify once while Pacium is hidden, and each session can be muted without hiding its in-app state. The session sidebar and inspector can collapse into responsive drawers without changing terminal state, while the status bar always identifies connection, selection, and keyboard ownership. The inspector labels launch classification and attention evidence with source, confidence, and time, and shows refreshable Git-derived repository, branch or detached/unborn HEAD, commit, and main/linked worktree evidence. Its Changes view lazily reads bounded Git status and one freshly revalidated file patch without changing the PTY or exposing generic Git arguments. History reads the newest 50 commits reachable from local HEAD without accepting revisions or contacting a remote. Checks reads an explicit external server-owned preset catalog, displays exact argv, runs with bounded concurrency/time/output, supports cancellation, survives browser refresh, and shows pass/fail/timeout/cancel/error evidence with fresh start/end HEAD observations. Activity combines current attention, direct-PTY lifecycle, changed-file totals, three recent local commits, and the latest check into a seven-fact maximum with explicit observed/occurred labels; it does not parse terminal text or add agent narration. Until provider observers exist, live processes remain “Unknown”; clean and failed exits are process-derived facts, not proof of task completion. A shared session menu supports rename, duplicate, ended-session relaunch, directory copy, host repository reveal, interrupt, view closure, and confirmed termination. Tabs and panes are browser-owned views: closing either does not stop the underlying PTY. Sessions survive browser refresh but not local-server restart.
+The current slice can launch available Shell, Codex, and Claude Code presets; browse host directories through a compact repository-aware picker; group sessions by repository; and arrange up to four live terminals in tabs and nested splits. A contextual command palette searches sessions, workspace commands, split controls, and session actions. Browser-local settings control system/dark/light appearance, workspace density, live terminal typography and scrollback, launch default, and quiet attention notifications. Important failure and completion evidence becomes unread until selected; explicit-permission browser alerts can notify once while Pacium is hidden, and each session can be muted without hiding its in-app state. The session sidebar and inspector can collapse into responsive drawers without changing terminal state, while the status bar always identifies connection, selection, and keyboard ownership. The inspector labels launch classification and attention evidence with source, confidence, and time, and shows refreshable Git-derived repository, branch or detached/unborn HEAD, commit, and main/linked worktree evidence. Its Changes view lazily reads bounded Git status and one freshly revalidated file patch without changing the PTY or exposing generic Git arguments. History reads the newest 50 commits reachable from local HEAD without accepting revisions or contacting a remote. Checks reads an explicit external server-owned preset catalog, displays exact argv, runs with bounded concurrency/time/output, supports cancellation, survives browser refresh, and shows pass/fail/timeout/cancel/error evidence with fresh start/end HEAD observations. Activity combines current attention, direct-PTY lifecycle, changed-file totals, three recent local commits, and the latest check into a seven-fact maximum with explicit observed/occurred labels; it does not parse terminal text or add agent narration. Protocol 10 also provides one private, versioned, atomic server-owned Pacium workspace definition for future Meta, Orchestrator, worker, queue, and context consumers; no Pacium setup/editor or functional toggle is exposed yet. Until provider observers exist, live processes remain “Unknown”; clean and failed exits are process-derived facts, not proof of task completion. A shared session menu supports rename, duplicate, ended-session relaunch, directory copy, host repository reveal, interrupt, view closure, and confirmed termination. Tabs and panes are browser-owned views: closing either does not stop the underlying PTY. Sessions survive browser refresh but not local-server restart.
 
 ## Configure verification checks
 
@@ -50,6 +50,28 @@ text, arguments, cwd, environment, timeouts, or signals. Configured executables
 still run with your local user authority and are not sandboxed. See the
 [verification configuration contract](docs/execution/verification-configuration.md)
 for the schema, limits, security boundary, and restart behavior.
+
+## Configure Pacium workspace state
+
+Pacium workspace state is unconfigured by default and a read does not create
+files. The server uses this macOS-first data directory:
+
+```text
+<canonical home>/Library/Application Support/Pacium Control/pacium.json
+```
+
+An operator can select another dedicated absolute directory before startup:
+
+```bash
+PACIUM_DATA_DIR=/Users/operator/.local/state/pacium-control pnpm dev
+```
+
+The browser protocol can get or completely replace the versioned workspace,
+but the current UI does not expose those controls. Configured queue,
+objective/plan, and delivery paths are metadata only: this slice does not read,
+watch, execute, prompt, or write them. See the
+[Pacium workspace configuration contract](docs/execution/pacium-workspace-configuration.md)
+for the schema, bounds, atomic replacement, security boundary, and recovery.
 
 Session actions are available from the workspace header, each terminal pane, and a session or tab context menu. “Reveal repository” always opens Finder or the Linux file manager on the Pacium host, including when the browser connects through Tailscale Serve.
 
