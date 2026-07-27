@@ -32,6 +32,7 @@ const launchPresets: LaunchPresetCapability[] = [
 const callbacks = {
   onApply: vi.fn(),
   onCancel: vi.fn(),
+  onRequestNotificationPermission: vi.fn(),
 };
 
 describe("preferences dialog markup", () => {
@@ -40,6 +41,7 @@ describe("preferences dialog markup", () => {
       <PreferencesDialog
         {...callbacks}
         launchPresets={launchPresets}
+        notificationPermission="default"
         preferences={DEFAULT_WORKSPACE_PREFERENCES}
       />,
     );
@@ -53,6 +55,8 @@ describe("preferences dialog markup", () => {
     expect(markup).toContain('role="dialog"');
     expect(markup).toContain('aria-modal="true"');
     expect(markup).toContain('aria-labelledby="preferences-title"');
+    expect(markup).toContain("Not requested");
+    expect(markup).toContain("Allow browser alerts");
   });
 
   it("renders custom selections and unavailable host presets honestly", () => {
@@ -71,6 +75,7 @@ describe("preferences dialog markup", () => {
       <PreferencesDialog
         {...callbacks}
         launchPresets={launchPresets}
+        notificationPermission="granted"
         preferences={preferences}
       />,
     );
@@ -80,6 +85,8 @@ describe("preferences dialog markup", () => {
     expect(markup).toContain('value="jetbrains" selected=""');
     expect(markup).toContain('value="codex" selected=""');
     expect(markup).toContain('disabled="" value="claude"');
-    expect(markup).toContain("Delivery begins when PC-032");
+    expect(markup).toContain("Never normal progress");
+    expect(markup).toContain("Allowed");
+    expect(markup).not.toContain("Allow browser alerts");
   });
 });

@@ -154,6 +154,12 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-032 Add unread and notification policy
 
 - Meaningful activity cursor, needs-input/failure/completion notifications, quiet defaults, per-session mute.
+- Current status: implemented with a bounded versioned browser-local
+  seen/notified/mute cursor, important-only unread markers, visible-selection
+  acknowledgement, inspector mute control, settings-only permission request,
+  and duplicate-safe hidden-page delivery. Notification copy excludes session
+  names, paths, terminal bytes, prompts, and evidence reasons. Provider
+  observers remain responsible for supplying future needs-input evidence.
 
 ### PC-033 Detect repository context
 

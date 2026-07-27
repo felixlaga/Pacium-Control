@@ -21,6 +21,8 @@ interface PreferencesDialogProps {
   launchPresets: LaunchPresetCapability[];
   onApply: (preferences: WorkspacePreferences) => void;
   onCancel: () => void;
+  notificationPermission: NotificationPermission | "unsupported";
+  onRequestNotificationPermission: () => void;
   preferences: WorkspacePreferences;
 }
 
@@ -28,6 +30,8 @@ export function PreferencesDialog({
   launchPresets,
   onApply,
   onCancel,
+  notificationPermission,
+  onRequestNotificationPermission,
   preferences,
 }: PreferencesDialogProps) {
   const dialogRef = useRef<HTMLElement>(null);
@@ -201,7 +205,7 @@ export function PreferencesDialog({
                 </select>
               </PreferenceField>
               <PreferenceField
-                detail="Delivery begins when PC-032 agent-attention signals are implemented."
+                detail="Needs-input, failure, and completion only. Never normal progress."
                 label="Notifications"
               >
                 <select
@@ -217,6 +221,20 @@ export function PreferencesDialog({
                   <option value="attention">Important attention only</option>
                 </select>
               </PreferenceField>
+              <div className="notification-permission">
+                <span>
+                  Browser permission:{" "}
+                  {notificationPermissionLabel(notificationPermission)}
+                </span>
+                {notificationPermission === "default" && (
+                  <button
+                    onClick={onRequestNotificationPermission}
+                    type="button"
+                  >
+                    Allow browser alerts
+                  </button>
+                )}
+              </div>
             </PreferenceSection>
           </div>
 
@@ -248,6 +266,21 @@ export function PreferencesDialog({
       </section>
     </div>
   );
+}
+
+function notificationPermissionLabel(
+  permission: NotificationPermission | "unsupported",
+): string {
+  switch (permission) {
+    case "granted":
+      return "Allowed";
+    case "denied":
+      return "Blocked by browser";
+    case "default":
+      return "Not requested";
+    case "unsupported":
+      return "Unavailable";
+  }
 }
 
 function PreferenceSection({
