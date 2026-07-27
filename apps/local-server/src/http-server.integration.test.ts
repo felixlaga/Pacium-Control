@@ -2417,6 +2417,7 @@ async function startTestServer(
     host: "127.0.0.1",
     port: 4174,
     allowedOrigins: new Set(["http://127.0.0.1:4173"]),
+    tailscaleServe: null,
     accessToken: "test-access-token",
     serverId: "d5805287-d2b0-41f4-b80f-56c77d892cbc",
     defaultCwd: process.cwd(),
