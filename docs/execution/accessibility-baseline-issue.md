@@ -34,19 +34,19 @@ The terminal workspace has a predictable semantic structure and remains operable
 
 ## Acceptance criteria
 
-- [ ] A keyboard user can skip directly to the terminal workspace.
-- [ ] Sidebar, main, inspector, terminal, status, and modal landmarks have stable accessible names.
-- [ ] Sidebar and inspector toggle by visible controls and documented shortcuts without firing during terminal capture or text editing.
-- [ ] Panel visibility restores from a strict bounded browser-local record.
-- [ ] Narrow layouts keep reopen controls available and show requested context as drawers rather than permanently hiding it.
-- [ ] The status bar states connection, selected session, and current keyboard owner without relying on color.
-- [ ] Dynamic announcements are concise and do not reproduce terminal bytes.
-- [ ] Every current modal supports Escape, bounded focus containment, and invoking-focus restoration.
-- [ ] Icon-only and stateful controls expose names and state.
-- [ ] Forced-colors and reduced-motion styles preserve focus and remove nonessential effects.
-- [ ] The shell remains operable at 320 CSS px and at 200% zoom through responsive behavior.
-- [ ] Panel, shortcut, dialog, landmark, and status semantics have deterministic tests.
-- [ ] The full repository verification gate passes.
+- [x] A keyboard user can skip directly to the terminal workspace.
+- [x] Sidebar, main, inspector, terminal, status, and modal landmarks have stable accessible names.
+- [x] Sidebar and inspector toggle by visible controls and documented shortcuts without firing during terminal capture or text editing.
+- [x] Panel visibility restores from a strict bounded browser-local record.
+- [x] Narrow layouts keep reopen controls available and show requested context as drawers rather than permanently hiding it.
+- [x] The status bar states connection, selected session, and current keyboard owner without relying on color.
+- [x] Dynamic announcements are concise and do not reproduce terminal bytes.
+- [x] Every current modal supports Escape, bounded focus containment, and invoking-focus restoration.
+- [x] Icon-only and stateful controls expose names and state.
+- [x] Forced-colors and reduced-motion styles preserve focus and remove nonessential effects.
+- [x] The shell remains operable at 320 CSS px and at 200% zoom through responsive behavior.
+- [x] Panel, shortcut, dialog, landmark, and status semantics have deterministic tests.
+- [x] The full repository verification gate passes.
 
 ## User experience
 
@@ -102,4 +102,22 @@ Opening a modal records the invoking control. Escape or Cancel closes it and res
 
 ## Open questions
 
-- Final contrast and screen-reader spot checks require a rendered browser backend.
+- Manual screen-reader and visual contrast spot checks remain release evidence;
+  automated Chromium keyboard, narrow-width, 200% zoom, forced-colors, and
+  reduced-motion workflows pass.
+
+## Implementation evidence
+
+- `apps/web/src/panel-model.test.ts` covers strict versioned persistence,
+  responsive defaults, toggles, and bounded status copy.
+- `apps/web/src/modal-focus.test.ts` covers Escape, both Tab boundaries, and
+  focus recovery when the active element is outside a modal.
+- Server-rendered component tests cover every current modal plus terminal-pane
+  and workspace-status semantics.
+- `tests/e2e/accessibility.spec.ts` covers skip navigation, visible and shortcut
+  panel controls, nested directory-picker focus return, narrow drawers at
+  320 CSS px, 200% zoom, forced colors, and reduced motion.
+- `pnpm verify` passes with 27 test files and 106 tests; `pnpm test:e2e` passes
+  all four browser workflows.
+- Verification ran on Node.js 26.4.0 with the known engine warning. The
+  approved Node.js 24.18.x clean-runtime matrix remains a release gate.

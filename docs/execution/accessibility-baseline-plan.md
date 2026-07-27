@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `fa34577`
 - Target milestone: Milestone 1
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -113,7 +113,23 @@ Create a reusable modal focus hook/utility that records initial focus, contains 
 
 ## Open questions
 
-- Browser-backed contrast, screen-reader, forced-colors, zoom, and international-layout validation remains an external evidence gate.
+- Manual screen-reader, visual contrast, and international-layout checks remain
+  release evidence. Repository Playwright coverage now verifies keyboard
+  navigation, focus return, narrow drawers, 200% zoom, forced colors, and
+  reduced motion in Chromium.
+
+## Result
+
+The browser shell now exposes stable landmarks, skip navigation, explicit panel
+controls, versioned responsive view state, concise keyboard-owner status, and a
+shared modal focus contract. Narrow clients use dismissible side drawers while
+the terminal workspace and PTY ownership remain unchanged.
+
+Deterministic component and model tests cover semantic and state boundaries.
+Four Playwright workflows verify the rendered keyboard and responsive behavior.
+The full repository gate passes with 27 test files and 106 tests. Manual
+screen-reader and visual contrast review remains intentionally separate from
+the completed implementation claim.
 
 ## Approval
 
