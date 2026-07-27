@@ -2300,10 +2300,15 @@ kbd {
   line-height: 1.5;
 }
 
-.queue-delivery-confirmation button {
-  width: 100%;
-  min-height: 30px;
+.queue-delivery-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
   margin-top: 9px;
+}
+
+.queue-delivery-confirmation button {
+  min-height: 30px;
   border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border));
   border-radius: 6px;
   color: var(--text);
@@ -2311,6 +2316,12 @@ kbd {
   cursor: pointer;
   font-size: 9px;
   font-weight: 620;
+}
+
+.queue-delivery-confirmation button:first-child {
+  border-color: var(--border);
+  color: var(--text-muted);
+  background: var(--panel-raised);
 }
 
 .queue-delivery-confirmation button:disabled {

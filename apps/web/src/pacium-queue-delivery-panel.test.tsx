@@ -45,6 +45,7 @@ describe("Pacium queue delivery panel", () => {
 
     expect(html).toContain("Ready for delivery");
     expect(html).toContain("<summary>Review delivery</summary>");
+    expect(html).toContain("Cancel");
     expect(html).toContain("Confirm delivery");
     expect(html).toContain("/queue/PACIUM-ANSWERS");
     expect(html).toContain("will not be overwritten");

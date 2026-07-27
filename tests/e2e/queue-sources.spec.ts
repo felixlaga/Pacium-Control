@@ -131,6 +131,13 @@ test("records separate decisions and explicitly delivers one compatible answer",
     name: "Confirm delivery",
   });
   await expect(confirmDelivery).toBeVisible();
+  await questionInspector.getByRole("button", { name: "Cancel" }).click();
+  await expect(confirmDelivery).toBeHidden();
+  await expect(readFile(answerPath, "utf8")).rejects.toMatchObject({
+    code: "ENOENT",
+  });
+  await questionInspector.getByText("Review delivery").click();
+  await expect(confirmDelivery).toBeVisible();
   await confirmDelivery.click();
   await expect(questionInspector).toContainText("Delivered");
   await expect(questionInspector).toContainText(

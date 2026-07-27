@@ -72,9 +72,20 @@ export function PaciumQueueDeliveryPanel({
             This sends the already-recorded decision only. It does not execute
             queue text, approve another action, or choose a different target.
           </p>
-          <button disabled={submitting} onClick={onDeliver} type="button">
-            {submitting ? "Delivering…" : "Confirm delivery"}
-          </button>
+          <div className="queue-delivery-actions">
+            <button
+              disabled={submitting}
+              onClick={(event) =>
+                event.currentTarget.closest("details")?.removeAttribute("open")
+              }
+              type="button"
+            >
+              Cancel
+            </button>
+            <button disabled={submitting} onClick={onDeliver} type="button">
+              {submitting ? "Delivering…" : "Confirm delivery"}
+            </button>
+          </div>
         </details>
         {errorMessage !== null && (
           <div className="queue-delivery-error" role="alert">
