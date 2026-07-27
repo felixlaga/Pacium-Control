@@ -8,7 +8,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `016adf3921bfbdf03b29ad2498731dd1db31e3ca`
 - Target milestone: Milestone 3 — Pacium mode
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -238,6 +238,36 @@ queue age.
   recommendation, or exact approval action. PC-046 shows absence explicitly.
 - PC-047 owns question/approval controls and confirmation. PC-046 must remain
   incapable of producing a decision.
+
+## Completion evidence
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 86 test
+  files and 512 tests, plus the 819.07 kB web and 201.10 kB local-server
+  production bundles.
+- `pnpm test:e2e` passed all ten Chromium workflows in one run.
+- Protocol-13 contract tests accept only exact item identities and strict
+  ready/stale/unavailable responses; path/content/command/decision extras,
+  mismatched fixed diagnostics, invalid bounds, and content-bearing bulk
+  observations fail.
+- Queue observer tests prove candidate age retention/reset, exact-current text,
+  stale and unavailable withholding, unchanged-hash reuse, degradation
+  clearing, and a maximum control-heavy 64 KiB source within the 128 KiB
+  serialized response limit.
+- Authenticated real-file integration proves exact base64 text, old-identity
+  staleness after rewrite, content-free aggregate messages, unchanged queue
+  bytes, unchanged `pacium.json` bytes, and PTY survival.
+- Browser reducer and presentation tests prove correlation, exact identity,
+  fatal UTF-8 decoding, source/config drift clearing, inert hostile HTML/URL/
+  ANSI/control rendering, content-free row semantics, and no answer/approval
+  controls.
+- The Chromium workflow kept a live terminal selected, opened the exact
+  question, returned row focus with Escape, removed old text after rewrite,
+  opened the replacement explicit approval without authority, preserved the
+  source, and fit the inspector at 320 CSS px with forced colors/reduced
+  motion. Accessibility coverage kept queue Refresh reachable at 200% zoom.
+- Verification used Node.js 26.4.0 rather than pinned Node.js 24.18.x.
+  Chromium ran outside the managed sandbox under the required macOS Mach-port
+  boundary.
 
 ## Approval
 

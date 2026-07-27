@@ -52,31 +52,31 @@ degraded source removes text that can no longer be proven current.
 
 ## Acceptance criteria
 
-- [ ] Every current candidate is a distinct queue-list button labelled with
+- [x] Every current candidate is a distinct queue-list button labelled with
       type, source, requesting role, confidence, and process-local first-seen
       evidence.
-- [ ] The list sends no original text, excerpt, semantic title, command,
+- [x] The list sends no original text, excerpt, semantic title, command,
       decision, or authority field.
-- [ ] Opening a row requests only an exact current item identity; the browser
+- [x] Opening a row requests only an exact current item identity; the browser
       cannot request an arbitrary path or source text.
-- [ ] A ready inspection contains the exact bounded original UTF-8 text
+- [x] A ready inspection contains the exact bounded original UTF-8 text
       transported with bounded base64 encoding and matching
       workspace/source/observation/hash/item provenance.
-- [ ] Original text is rendered only as escaped text, with no HTML, link,
+- [x] Original text is rendered only as escaped text, with no HTML, link,
       terminal escape, clipboard, command, or queue execution behavior.
-- [ ] A source rewrite, degradation, config replacement, disconnect, stale
+- [x] A source rewrite, degradation, config replacement, disconnect, stale
       response, or identity mismatch removes the accepted text and explains
       that terminals and source files were untouched.
-- [ ] Queue inspection does not change the selected PTY, tabs, splits,
+- [x] Queue inspection does not change the selected PTY, tabs, splits,
       terminal focus ownership, running processes, or source/config files.
-- [ ] The inspector exposes no answer or approval control and explicitly says
+- [x] The inspector exposes no answer or approval control and explicitly says
       classification grants no authority.
-- [ ] A keyboard operator can open a row, review the inspector, and return with
+- [x] A keyboard operator can open a row, review the inspector, and return with
       Escape or Back to the same row; terminal capture continues to own its
       normal keys.
-- [ ] Empty, unconfigured, loading, disconnected, degraded, and narrow-screen
+- [x] Empty, unconfigured, loading, disconnected, degraded, and narrow-screen
       states explain the next safe action.
-- [ ] Focused, contract, integration, browser, security, full verification, and
+- [x] Focused, contract, integration, browser, security, full verification, and
       production-build evidence pass.
 
 ## User experience
