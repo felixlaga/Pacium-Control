@@ -1327,6 +1327,128 @@ kbd {
   text-transform: uppercase;
 }
 
+.inspector-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.inspector-section-heading h2 {
+  margin: 0;
+}
+
+.inspector-section-heading button {
+  min-height: 26px;
+  padding: 4px 7px;
+  font-size: 9px;
+}
+
+.repository-section {
+  border-bottom: 1px solid var(--border);
+}
+
+.repository-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-raised);
+}
+
+.repository-card > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.repository-card > header > span:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.repository-card strong {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repository-card small,
+.repository-card time {
+  color: var(--text-faint);
+  font-size: 9px;
+}
+
+.repository-worktree-kind {
+  flex: 0 0 auto;
+  color: var(--accent-strong);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.repository-card dl {
+  margin: 0;
+  padding: 5px 10px;
+}
+
+.repository-card dl > div {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 9px;
+}
+
+.repository-card dt {
+  color: var(--text-faint);
+}
+
+.repository-card dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repository-card > time {
+  display: block;
+  padding: 0 10px 9px;
+}
+
+.repository-card-empty,
+.repository-card-error {
+  padding: 10px;
+}
+
+.repository-card-empty p,
+.repository-card-error p {
+  margin: 5px 0 8px;
+  color: var(--text-faint);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.repository-card-error code {
+  display: block;
+  margin-bottom: 8px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .agent-classification-card {
   overflow: hidden;
   border: 1px solid var(--border);
