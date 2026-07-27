@@ -134,6 +134,12 @@ export class PaciumTransport {
     this.send(repositoryRefreshMessage(sessionId, crypto.randomUUID()));
   }
 
+  public requestRepositoryChanges(sessionId: string): string {
+    const requestId = crypto.randomUUID();
+    this.send(repositoryChangesMessage(sessionId, requestId));
+    return requestId;
+  }
+
   public closeSession(sessionId: string, force: boolean): void {
     this.send({
       type: "session.close",
@@ -300,6 +306,17 @@ export function repositoryRefreshMessage(
 ): ClientMessage {
   return {
     type: "session.refreshRepository",
+    requestId,
+    sessionId,
+  };
+}
+
+export function repositoryChangesMessage(
+  sessionId: string,
+  requestId: string,
+): ClientMessage {
+  return {
+    type: "repository.changes",
     requestId,
     sessionId,
   };
