@@ -2,6 +2,64 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.23.0 — pinned Meta and Orchestrator roles — 2026-07-27
+
+### Added
+
+- Stable Meta and Orchestrator cards above ordinary Pacium sessions with exact
+  accepted session-ID resolution and explicit
+  live/starting/ending/ended/failed/missing/disconnected evidence.
+- Existing-role Open through the unchanged browser tab, split, terminal attach,
+  snapshot, and input paths without creating or duplicating a PTY.
+- A role-scoped Assign/Change dialog limited to eligible live Pacium sessions,
+  fixed server launch capabilities, and already-configured repositories.
+- Strict minimal first-workspace construction and immutable one-role
+  replacement that preserves workspace identity, repositories, the other role,
+  workers, queue sources, delivery methods, and context.
+- Fixed-preset role launch with exact `session.created` request correlation,
+  optimistic protocol-10 binding to the created session ID, duplicate-action
+  suppression, and explicit partial-failure recovery that preserves the PTY.
+- Compact two-card hierarchy, responsive modal layout, deterministic first and
+  return focus, text-only hostile evidence, forced-color support, and reduced
+  motion behavior.
+- A disposable Playwright Pacium data directory so browser tests never use the
+  operator's real server-owned workspace state.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 72 test
+  files and 380 tests, plus the 787.01 kB web and 166.07 kB local-server
+  production bundles.
+- `pnpm test:e2e` passed all nine Chromium regression workflows.
+- The real browser workflow assigned an existing PTY to Meta, opened it without
+  duplication, configured an Orchestrator fixed preset, launched one direct
+  PTY, bound its exact created session ID, changed modes without losing
+  context, and restored both bindings after refresh.
+- Unit and semantic tests cover exact-ID resolution, every process/config
+  state, disconnect, unavailable capabilities, configured/default cwd,
+  occupied-slot filtering, minimal workspace creation, immutable replacement,
+  create correlation, hostile text, and bounded dialog actions.
+- Browser accessibility evidence covers both cards and the assignment dialog
+  at 320 CSS px, 200% zoom, forced colors, reduced motion, and keyboard focus.
+
+### Known limitations
+
+- PC-043 has not added prompt composition or explicit Meta, Orchestrator, or
+  worker targeting. Role cards never send terminal input.
+- Worker role UI, queue observation/classification/list/decisions/delivery,
+  acknowledgement/conflicts, and objective/plan content remain PC-044 through
+  PC-050.
+- The browser editor intentionally cannot edit workspace identity,
+  repositories, workers, queue sources, delivery methods, context sources, or
+  verification references.
+- Direct-session bindings become Missing after local-server restart and require
+  explicit change or relaunch; no name, preset, repository, or output inference
+  is used.
+- A PTY created before a binding conflict or lost response remains an ordinary
+  terminal and must be explicitly rebound after fresh config inspection.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x.
+- The web bundle remains above Vite's 500 kB warning threshold.
+
 ## 0.22.0 — functional General/Pacium workspace mode — 2026-07-27
 
 ### Added
