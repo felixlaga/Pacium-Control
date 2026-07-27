@@ -24,6 +24,11 @@ export type GitCommandRunner = (
   args: readonly string[],
 ) => Promise<GitCommandResult>;
 
+export interface GitCommandLimits {
+  maxOutputBytes: number;
+  timeoutMilliseconds: number;
+}
+
 export type RepositoryInspector = (
   canonicalCwd: string,
   observedAt?: string,
@@ -39,6 +44,11 @@ export class GitCommandFailure extends Error {
     super(code);
   }
 }
+
+const repositoryGitRunner = createGitCommandRunner({
+  maxOutputBytes: GIT_MAX_OUTPUT_BYTES,
+  timeoutMilliseconds: GIT_TIMEOUT_MILLISECONDS,
+});
 
 export interface RepositoryContext {
   root: string;
@@ -74,7 +84,7 @@ export async function inspectRepositoryContext(
   } = {},
 ): Promise<RepositoryObservation> {
   const observedAt = options.observedAt ?? new Date().toISOString();
-  const runGit = options.runGit ?? runGitCommand;
+  const runGit = options.runGit ?? repositoryGitRunner;
 
   let identity: GitCommandResult;
   try {
@@ -255,54 +265,54 @@ export async function inspectRepositoryContext(
 export const FIXED_GIT_TIMEOUT_MILLISECONDS = GIT_TIMEOUT_MILLISECONDS;
 export const FIXED_GIT_MAX_OUTPUT_BYTES = GIT_MAX_OUTPUT_BYTES;
 
-function runGitCommand(
-  cwd: string,
-  args: readonly string[],
-): Promise<GitCommandResult> {
-  return new Promise((resolve, reject) => {
-    execFile(
-      "git",
-      [...args],
-      {
-        cwd,
-        encoding: "utf8",
-        env: {
-          ...process.env,
-          GIT_OPTIONAL_LOCKS: "0",
-          GIT_TERMINAL_PROMPT: "0",
+export function createGitCommandRunner(
+  limits: GitCommandLimits,
+): GitCommandRunner {
+  return (cwd, args) =>
+    new Promise((resolve, reject) => {
+      execFile(
+        "git",
+        [...args],
+        {
+          cwd,
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            GIT_OPTIONAL_LOCKS: "0",
+            GIT_TERMINAL_PROMPT: "0",
+          },
+          maxBuffer: limits.maxOutputBytes,
+          timeout: limits.timeoutMilliseconds,
+          windowsHide: true,
         },
-        maxBuffer: GIT_MAX_OUTPUT_BYTES,
-        timeout: GIT_TIMEOUT_MILLISECONDS,
-        windowsHide: true,
-      },
-      (error, stdout, stderr) => {
-        if (error === null) {
-          resolve({ exitCode: 0, stdout, stderr });
-          return;
-        }
-        if ("code" in error && error.code === "ENOENT") {
-          reject(new GitCommandFailure("git_unavailable"));
-          return;
-        }
-        if (error.killed || error.signal !== null) {
-          reject(new GitCommandFailure("timeout"));
-          return;
-        }
-        if (
-          "code" in error &&
-          error.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
-        ) {
-          reject(new GitCommandFailure("invalid_output"));
-          return;
-        }
-        resolve({
-          exitCode: typeof error.code === "number" ? error.code : 1,
-          stdout,
-          stderr,
-        });
-      },
-    );
-  });
+        (error, stdout, stderr) => {
+          if (error === null) {
+            resolve({ exitCode: 0, stdout, stderr });
+            return;
+          }
+          if ("code" in error && error.code === "ENOENT") {
+            reject(new GitCommandFailure("git_unavailable"));
+            return;
+          }
+          if (error.killed || error.signal !== null) {
+            reject(new GitCommandFailure("timeout"));
+            return;
+          }
+          if (
+            "code" in error &&
+            error.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
+          ) {
+            reject(new GitCommandFailure("invalid_output"));
+            return;
+          }
+          resolve({
+            exitCode: typeof error.code === "number" ? error.code : 1,
+            stdout,
+            stderr,
+          });
+        },
+      );
+    });
 }
 
 async function canonicalGitPath(path: string): Promise<string> {
