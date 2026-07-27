@@ -16,7 +16,7 @@ describe("queue observer", () => {
   it("retains bounded text internally but publishes metadata only", async () => {
     const observer = new QueueObserver({
       now: () => now,
-      readFile: () => Promise.resolve(stable("Question")),
+      readFile: () => Promise.resolve(stable("Question: Private decision")),
       watchDirectory: inertWatcher,
     });
     const snapshots: unknown[] = [];
@@ -32,13 +32,25 @@ describe("queue observer", () => {
           sourceId: "needs-felix",
           status: "stable",
           observationRevision: 2,
+          classification: {
+            status: "candidate",
+            candidate: {
+              type: "question",
+              confidence: "high",
+            },
+          },
         },
       ],
     });
     expect(snapshot.sources[0]).not.toHaveProperty("text");
-    expect(observer.sourceText(4, "needs-felix")).toBe("Question");
+    expect(observer.sourceText(4, "needs-felix")).toBe(
+      "Question: Private decision",
+    );
+    expect(observer.sourceClassification(4, "needs-felix")).toEqual(
+      snapshot.sources[0]?.classification,
+    );
     expect(observer.sourceText(3, "needs-felix")).toBeNull();
-    expect(JSON.stringify(snapshots)).not.toContain("Question");
+    expect(JSON.stringify(snapshots)).not.toContain("Private decision");
     observer.dispose();
   });
 
