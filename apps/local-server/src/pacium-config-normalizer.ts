@@ -1,9 +1,38 @@
 import { lstatSync, realpathSync, statSync, type Stats } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 
-import { PaciumWorkspaceSchema, type PaciumWorkspace } from "@pacium/contracts";
+import {
+  PaciumWorkspaceSchema,
+  type LaunchPresetId,
+  type PaciumWorkspace,
+} from "@pacium/contracts";
+
+import {
+  verificationPresetsForRepository,
+  type VerificationCatalog,
+} from "./verification-config.js";
 
 export class PaciumConfigValidationError extends Error {}
+
+export interface PaciumWorkspaceValidationContext {
+  dataDirectory: string;
+  sessionExists(sessionId: string): boolean;
+  launchPresetExists(launchPreset: LaunchPresetId): boolean;
+  verificationCatalog: VerificationCatalog;
+}
+
+export function normalizePaciumWorkspace(
+  candidate: PaciumWorkspace,
+  context: PaciumWorkspaceValidationContext,
+): PaciumWorkspace {
+  const normalized = normalizePaciumWorkspacePaths(
+    candidate,
+    context.dataDirectory,
+  );
+  validateBindings(normalized, context);
+  validateVerificationReferences(normalized, context.verificationCatalog);
+  return normalized;
+}
 
 export function normalizePaciumWorkspacePaths(
   candidate: PaciumWorkspace,
@@ -70,6 +99,57 @@ export function normalizePaciumWorkspacePaths(
     );
   }
   return result.data;
+}
+
+function validateBindings(
+  workspace: PaciumWorkspace,
+  context: PaciumWorkspaceValidationContext,
+): void {
+  const bindings = [
+    workspace.roles.meta,
+    workspace.roles.orchestrator,
+    ...workspace.workers.map(({ binding }) => binding),
+  ].filter((binding) => binding !== null);
+  for (const binding of bindings) {
+    if (
+      binding.type === "session" &&
+      !context.sessionExists(binding.sessionId)
+    ) {
+      throw new PaciumConfigValidationError(
+        "Pacium binding references a session that is not live in this server.",
+      );
+    }
+    if (
+      binding.type === "launch_preset" &&
+      !context.launchPresetExists(binding.launchPreset)
+    ) {
+      throw new PaciumConfigValidationError(
+        "Pacium binding references an unknown launch preset.",
+      );
+    }
+  }
+}
+
+function validateVerificationReferences(
+  workspace: PaciumWorkspace,
+  catalog: VerificationCatalog,
+): void {
+  for (const repository of workspace.repositories) {
+    const knownIds = new Set(
+      verificationPresetsForRepository(catalog, repository.root).map(
+        ({ id }) => id,
+      ),
+    );
+    if (
+      repository.verificationPresetIds.some(
+        (presetId) => !knownIds.has(presetId),
+      )
+    ) {
+      throw new PaciumConfigValidationError(
+        "Pacium repository references an unknown verification preset.",
+      );
+    }
+  }
 }
 
 export function canonicalPotentialDirectory(path: string): string {

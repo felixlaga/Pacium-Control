@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   canonicalPotentialDirectory,
+  normalizePaciumWorkspace,
   normalizePaciumWorkspacePaths,
   PaciumConfigValidationError,
 } from "./pacium-config-normalizer.js";
@@ -109,6 +110,96 @@ describe("Pacium workspace path normalization", () => {
     ).toBe(join(fixture.dataParent, "missing", "pacium-data"));
     expect(() => canonicalPotentialDirectory("relative")).toThrow(
       PaciumConfigValidationError,
+    );
+  });
+});
+
+describe("Pacium workspace server-owned references", () => {
+  it("accepts live sessions, fixed launch presets, and exact-root checks", async () => {
+    const fixture = await createFixture();
+    const candidate = workspace(fixture);
+    candidate.roles.meta = {
+      type: "session",
+      sessionId: "03c2723f-e87a-4707-86af-d6fdb1e60f47",
+    };
+    candidate.roles.orchestrator = {
+      type: "launch_preset",
+      launchPreset: "codex",
+      repositoryId: "pacium",
+    };
+    candidate.repositories[0]!.verificationPresetIds = ["verify"];
+
+    expect(
+      normalizePaciumWorkspace(candidate, {
+        dataDirectory: join(fixture.dataParent, "pacium-data"),
+        sessionExists: (sessionId) =>
+          sessionId === "03c2723f-e87a-4707-86af-d6fdb1e60f47",
+        launchPresetExists: (preset) => preset === "codex",
+        verificationCatalog: {
+          configured: true,
+          repositories: [
+            {
+              root: fixture.repository,
+              presets: [
+                {
+                  id: "verify",
+                  label: "Verify",
+                  description: "Run checks",
+                  executable: "/bin/zsh",
+                  args: [],
+                  timeoutMs: 10_000,
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    ).toMatchObject({
+      roles: {
+        meta: { type: "session" },
+        orchestrator: { type: "launch_preset" },
+      },
+      repositories: [{ verificationPresetIds: ["verify"] }],
+    });
+  });
+
+  it("rejects missing live sessions, launch presets, and verification IDs", async () => {
+    const fixture = await createFixture();
+    const baseContext = {
+      dataDirectory: join(fixture.dataParent, "pacium-data"),
+      sessionExists: () => false,
+      launchPresetExists: () => true,
+      verificationCatalog: {
+        configured: false,
+        repositories: [],
+      },
+    };
+    const missingSession = workspace(fixture);
+    missingSession.roles.meta = {
+      type: "session",
+      sessionId: "03c2723f-e87a-4707-86af-d6fdb1e60f47",
+    };
+    expect(() => normalizePaciumWorkspace(missingSession, baseContext)).toThrow(
+      "not live",
+    );
+
+    const missingLaunch = workspace(fixture);
+    missingLaunch.roles.meta = {
+      type: "launch_preset",
+      launchPreset: "codex",
+      repositoryId: null,
+    };
+    expect(() =>
+      normalizePaciumWorkspace(missingLaunch, {
+        ...baseContext,
+        launchPresetExists: () => false,
+      }),
+    ).toThrow("unknown launch preset");
+
+    const missingCheck = workspace(fixture);
+    missingCheck.repositories[0]!.verificationPresetIds = ["verify"];
+    expect(() => normalizePaciumWorkspace(missingCheck, baseContext)).toThrow(
+      "unknown verification preset",
     );
   });
 });
