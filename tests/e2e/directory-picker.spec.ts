@@ -92,19 +92,19 @@ test("recent-directory storage denial never blocks canonical selection", async (
   page,
 }) => {
   await page.addInitScript(() => {
-    const originalGetItem = Storage.prototype.getItem;
-    const originalSetItem = Storage.prototype.setItem;
+    const originalGetItem = Storage.prototype.getItem.bind(window.localStorage);
+    const originalSetItem = Storage.prototype.setItem.bind(window.localStorage);
     Storage.prototype.getItem = function (key: string): string | null {
       if (key === "pacium.recentDirectories") {
         throw new DOMException("Storage denied", "SecurityError");
       }
-      return originalGetItem.call(this, key);
+      return originalGetItem(key);
     };
     Storage.prototype.setItem = function (key: string, value: string): void {
       if (key === "pacium.recentDirectories") {
         throw new DOMException("Storage denied", "SecurityError");
       }
-      originalSetItem.call(this, key, value);
+      originalSetItem(key, value);
     };
   });
 
