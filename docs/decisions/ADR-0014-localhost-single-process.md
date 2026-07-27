@@ -4,6 +4,7 @@
 - Date: 2026-07-26
 - Owner approval: Explicit product direction in the 2026-07-26 planning session
 - Supersedes: [ADR-0004](ADR-0004-privileged-broker.md), [ADR-0006](ADR-0006-tailnet-only.md)
+- Amended by: [ADR-0016](ADR-0016-tailscale-serve-access.md)
 
 ## Context
 
@@ -19,7 +20,7 @@ The old deployment and identity design adds services, authorization concepts, an
 - A local access token, strict Origin checks, and bounded WebSocket messages protect the local shell surface from unrelated browser pages and accidental exposure.
 - There is no separate broker in the initial architecture.
 - There are no memberships, roles, tailnet identity mapping, or multi-host protocols in the initial architecture.
-- Tailscale or another remote-access mechanism may be reconsidered later as a separate product milestone.
+- Optional remote access is provided only through the loopback-preserving Tailscale Serve design in ADR-0016.
 
 ## Consequences
 

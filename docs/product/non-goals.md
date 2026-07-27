@@ -2,8 +2,7 @@
 
 ## Initial non-goals
 
-- Remote access.
-- Tailscale deployment.
+- Public remote access or Tailscale Funnel.
 - Multi-user accounts, roles, or permissions.
 - Multi-host terminal management.
 - Public hosting or SaaS.
@@ -29,11 +28,11 @@ Pacium is not:
 - a provider runtime;
 - a container or process sandbox;
 - a secrets manager;
-- a remote administration tool;
+- a general-purpose remote administration tool;
 - an enterprise workflow system.
 
 It is a focused interface around local PTYs, coding-agent attention, Git inspection, and the Pacium workflow.
 
 ## Future proposals
 
-Remote, multi-user, public, or privileged features require new product evidence, an ADR, and a security redesign. Their possibility does not justify building their infrastructure now.
+The accepted remote scope is the narrow single-operator Tailscale Serve path in ADR-0016. Multi-user, public, cross-host, or privileged features require new product evidence, an ADR, and a security redesign.

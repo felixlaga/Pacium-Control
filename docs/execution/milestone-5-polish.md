@@ -7,6 +7,7 @@ Make Pacium dependable and comfortable for sustained personal use.
 ## Scope
 
 - optional tmux attach and keep-alive presets;
+- optional Tailscale Serve ingress with verified operator identity;
 - reconnect after local-server restart for tmux-backed sessions;
 - explicit ended-state recovery for direct PTYs;
 - process leak and long-output soak tests;
@@ -29,6 +30,7 @@ Make Pacium dependable and comfortable for sustained personal use.
 6. Diagnostic export is explicit and redaction-aware.
 7. Keyboard and screen-reader workflows pass the supported accessibility matrix.
 8. Release limitations are documented.
+9. Remote mode remains tailnet-only and the Pacium server remains loopback-bound.
 
 ## Demo
 

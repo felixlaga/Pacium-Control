@@ -11,6 +11,7 @@ import {
   type TerminalSurfaceHandle,
 } from "@pacium/terminal-ui";
 import type {
+  DirectoryListing,
   LaunchPresetCapability,
   LaunchPresetId,
   ServerMessage,
@@ -23,6 +24,7 @@ import {
   type ConnectionState,
   type TransportEvent,
 } from "./transport.js";
+import { DirectoryPicker } from "./directory-picker.js";
 import {
   adjacentTerminalTabId,
   closeTerminalTab,
@@ -241,6 +243,19 @@ export function App() {
     });
     setCreateOpen(false);
   };
+
+  const loadDirectories = useCallback(
+    (path?: string): Promise<DirectoryListing> => {
+      const transport = transportRef.current;
+      if (transport === null) {
+        return Promise.reject(
+          new Error("Pacium is still connecting to the host."),
+        );
+      }
+      return transport.listDirectories(path);
+    },
+    [],
+  );
 
   const closeSelected = () => {
     if (selectedSession === null) {
@@ -702,6 +717,7 @@ export function App() {
         <CreateTerminalDialog
           defaultCwd={defaultCwd}
           launchPresets={launchPresets}
+          loadDirectories={loadDirectories}
           onCancel={() => setCreateOpen(false)}
           onCreate={createSession}
         />
@@ -847,11 +863,13 @@ function upsertSession(
 function CreateTerminalDialog({
   defaultCwd,
   launchPresets,
+  loadDirectories,
   onCancel,
   onCreate,
 }: {
   defaultCwd: string;
   launchPresets: LaunchPresetCapability[];
+  loadDirectories: (path?: string) => Promise<DirectoryListing>;
   onCancel: () => void;
   onCreate: (input: {
     cwd: string;
@@ -862,6 +880,7 @@ function CreateTerminalDialog({
   const [cwd, setCwd] = useState(defaultCwd);
   const [displayName, setDisplayName] = useState("");
   const [launchPreset, setLaunchPreset] = useState<LaunchPresetId>("shell");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const selectedPreset = launchPresets.find(
     (preset) => preset.id === launchPreset,
   );
@@ -875,6 +894,20 @@ function CreateTerminalDialog({
       ...(name.length > 0 ? { displayName: name } : {}),
     });
   };
+
+  if (pickerOpen) {
+    return (
+      <DirectoryPicker
+        initialPath={cwd.trim() || defaultCwd}
+        loadDirectories={loadDirectories}
+        onCancel={() => setPickerOpen(false)}
+        onSelect={(path) => {
+          setCwd(path);
+          setPickerOpen(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div
@@ -933,17 +966,31 @@ function CreateTerminalDialog({
               </p>
             )}
         </fieldset>
-        <label>
-          <span>Working directory</span>
-          <input
-            autoFocus
-            onChange={(event) => setCwd(event.target.value)}
-            placeholder="/Users/you/Projects/project"
-            required
-            spellCheck={false}
-            value={cwd}
-          />
-        </label>
+        <div className="dialog-field">
+          <label htmlFor="working-directory">Working directory</label>
+          <div className="path-input-row">
+            <input
+              autoFocus
+              id="working-directory"
+              onChange={(event) => setCwd(event.target.value)}
+              placeholder="/Users/you/Projects/project"
+              required
+              spellCheck={false}
+              value={cwd}
+            />
+            <button
+              className="browse-directory-button"
+              onClick={() => setPickerOpen(true)}
+              type="button"
+            >
+              <span aria-hidden="true">⌘</span>
+              Browse
+            </button>
+          </div>
+          <small className="field-helper">
+            Choose a folder on the Pacium host or enter an absolute path.
+          </small>
+        </div>
         <label>
           <span>
             Name <small>Optional</small>

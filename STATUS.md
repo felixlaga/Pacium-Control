@@ -36,6 +36,7 @@ The secondary product is **Pacium mode**:
 - A loopback-only HTTP/WebSocket server with Host, Origin, ephemeral-token, path, schema, and payload-size checks.
 - Bounded xterm headless snapshots that let a new browser transport attach to a still-live PTY.
 - A fixed server-owned Shell, Codex, and Claude Code launch catalog with honest executable availability.
+- A token-protected, read-only host directory browser with canonical paths, repository markers, filtering, hidden-folder control, breadcrumbs, and browser-local recent choices.
 - Canonical repository-root discovery and repository-grouped session navigation.
 - Keyboard commands for session creation, numbered selection, previous/next selection, and leaving terminal capture.
 - Browser-owned terminal tabs with pinning, pointer/keyboard reordering, view-only close, stale-session reconciliation, and versioned local restoration.
@@ -61,9 +62,9 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm test`: 9 files and 34 tests passed, including preset resolution, repository discovery, grouping, terminal-tab transitions, shortcut logic, a real `node-pty` shell, and a disconnect/reconnect snapshot test.
+- `pnpm test`: 13 files and 45 tests passed, including directory contracts/resolution/authorization, picker state and transport, preset resolution, repository discovery, grouping, terminal-tab transitions, shortcut logic, a real `node-pty` shell, and a disconnect/reconnect snapshot test.
 - `pnpm build`: web and local-server production bundles completed.
-- `pnpm dev`: Vite and the source local server started together; the UI and proxied health route both returned 200.
+- `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
 - The live protocol-version-2 welcome message advertised Shell, Codex, and Claude Code as available on this machine.
 - Built server startup: served the application and health endpoint on `127.0.0.1:4174`.
 - Hostile bootstrap Origin: returned HTTP 403.
@@ -75,11 +76,12 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 626 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
+- The current web bundle is 635 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
+- Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
 ## Active decisions
 
-1. Pacium is localhost-only and single-user initially.
+1. Pacium is loopback-bound and single-user initially; optional remote ingress uses Tailscale Serve.
 2. The application binds to `127.0.0.1`.
 3. Local PTYs are the default terminal runtime.
 4. tmux is an optional adapter, not a requirement.
@@ -90,7 +92,7 @@ Evidence boundaries:
 9. Claude Code and Codex are integrated through their CLI/runtime interfaces, not desktop applications.
 10. Durable application state is minimal, filesystem-based, and contains no provider secrets.
 11. Questions and approvals remain distinct.
-12. Remote access, multi-user authorization, and multi-host coordination are out of initial scope.
+12. Tailscale Serve is the only supported remote ingress; public access, multi-user authorization, and multi-host coordination remain out of scope.
 
 ## Open decisions for Milestone 0
 

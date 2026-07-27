@@ -56,4 +56,4 @@ The sequence is:
 6. enrich with native events;
 7. add optional durability.
 
-Remote access and generalized workflows come only after demonstrated need.
+Remote access stays narrow: optional Tailscale Serve to the loopback application. Generalized workflows still require demonstrated need.

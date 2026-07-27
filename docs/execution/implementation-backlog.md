@@ -122,6 +122,11 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 
 - Focus order, labels, live regions, contrast, reduced motion, panel collapse, and minimum supported viewport.
 
+### PC-029 Implement host working-directory picker
+
+- Token-protected host directory browsing, breadcrumbs, parent/home navigation, repository markers, filtering, recent choices, hidden-folder control, typed-path fallback, bounded results, and remote-safe behavior.
+- Current status: implemented with resolver, contract, HTTP-boundary, transport, and state tests. Rendered browser and accessibility validation remain pending because no browser backend was available.
+
 ## Epic 3 — Agent attention and Git
 
 ### PC-030 Detect process and agent type
@@ -262,12 +267,14 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 
 - Clean install, full workflow, security checks, accessibility, performance, known limitations, and owner acceptance.
 
+### PC-077 Implement optional Tailscale Serve access
+
+- Keep Pacium loopback-bound; configure tailnet-only HTTPS/WebSocket proxying, exact remote Origin, verified Serve identity, explicit operator allowlist, connection labelling, grants example, disable path, and spoof/revocation/public-reachability tests.
+
 ## Deferred backlog
 
 These items require a future strategy and ADR:
 
-- remote access;
-- Tailscale;
 - multi-user authorization;
 - multi-host control;
 - public hosting;
