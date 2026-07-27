@@ -31,7 +31,7 @@ All notable changes to the Pacium Control blueprint are recorded here.
 
 ### Verified
 
-- `pnpm verify` passed formatting, lint, type checking, 58 test files and 277
+- `pnpm verify` passed formatting, lint, type checking, 58 test files and 278
   tests, and both production bundles.
 - `pnpm test:e2e` passed all seven Chromium workflows; the configured-check
   workflow verified exact catalog presentation, pass evidence, browser reload

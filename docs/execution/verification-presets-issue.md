@@ -188,7 +188,7 @@ wraps command/result metadata without horizontal page overflow.
 
 Completed on 2026-07-27.
 
-- `pnpm verify` passed formatting, lint, strict typing, 58 test files and 277
+- `pnpm verify` passed formatting, lint, strict typing, 58 test files and 278
   tests, and both production builds.
 - `pnpm test:e2e` passed seven Chromium workflows. The PC-037 workflow proved
   exact configured argv presentation, pass evidence, browser reload during a

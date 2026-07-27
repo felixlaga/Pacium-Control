@@ -251,7 +251,7 @@ Completed on 2026-07-27 as the planned protocol-9 vertical slice.
   explicit Run/Cancel, elapsed and terminal states, bounded stdout/stderr,
   truncation and HEAD warnings, stale/error recovery, reconnect inspection,
   keyboard navigation, and narrow responsive layout.
-- `pnpm verify` passed 58 files and 277 tests plus both production builds.
+- `pnpm verify` passed 58 files and 278 tests plus both production builds.
 - `pnpm test:e2e` passed all seven Chromium workflows, including deterministic
   run, browser reload, recovered cancellation, unchanged terminal selection,
   and 320 CSS px evidence.

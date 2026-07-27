@@ -98,7 +98,7 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 58 test files and 277 tests, plus web and local-server production builds passed.
+- `pnpm verify`: formatting, lint, type checking, 58 test files and 278 tests, plus web and local-server production builds passed.
 - `pnpm test:e2e`: seven Chromium workflows passed for skip navigation, panel shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200% zoom, forced colors, reduced motion, deterministic changed-file/diff/history inspection, and configured verification run/reload/cancel without terminal reselection.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
