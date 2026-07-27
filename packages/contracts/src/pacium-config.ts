@@ -55,9 +55,65 @@ export const PaciumBindingSchema = z.discriminatedUnion("type", [
 ]);
 export type PaciumBinding = z.infer<typeof PaciumBindingSchema>;
 
+export const PaciumRepositorySchema = z
+  .object({
+    id: PaciumIdentifierSchema,
+    label: PaciumLabelSchema,
+    root: PaciumAbsolutePathSchema,
+    verificationPresetIds: z
+      .array(PaciumIdentifierSchema)
+      .max(MAX_PACIUM_VERIFICATION_REFERENCES),
+  })
+  .strict()
+  .superRefine(({ verificationPresetIds }, context) => {
+    addDuplicateIssues(
+      verificationPresetIds,
+      context,
+      "verificationPresetIds",
+      "Verification preset references must be unique.",
+    );
+  });
+export type PaciumRepository = z.infer<typeof PaciumRepositorySchema>;
+
+export const PaciumRolesSchema = z
+  .object({
+    meta: PaciumBindingSchema.nullable(),
+    orchestrator: PaciumBindingSchema.nullable(),
+  })
+  .strict();
+export type PaciumRoles = z.infer<typeof PaciumRolesSchema>;
+
+export const PaciumWorkerSchema = z
+  .object({
+    id: PaciumIdentifierSchema,
+    label: PaciumLabelSchema,
+    binding: PaciumBindingSchema,
+  })
+  .strict();
+export type PaciumWorker = z.infer<typeof PaciumWorkerSchema>;
+
 function hasControlCharacter(value: string): boolean {
   return [...value].some((character) => {
     const codePoint = character.codePointAt(0);
     return codePoint !== undefined && (codePoint <= 0x1f || codePoint === 0x7f);
   });
+}
+
+function addDuplicateIssues(
+  values: readonly string[],
+  context: z.RefinementCtx,
+  path: string,
+  message: string,
+): void {
+  const seen = new Set<string>();
+  for (const [index, value] of values.entries()) {
+    if (seen.has(value)) {
+      context.addIssue({
+        code: "custom",
+        path: [path, index],
+        message,
+      });
+    }
+    seen.add(value);
+  }
 }

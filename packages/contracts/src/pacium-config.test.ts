@@ -8,6 +8,9 @@ import {
   PaciumBindingSchema,
   PaciumIdentifierSchema,
   PaciumLabelSchema,
+  PaciumRepositorySchema,
+  PaciumRolesSchema,
+  PaciumWorkerSchema,
 } from "./pacium-config.js";
 
 describe("Pacium config scalar contracts", () => {
@@ -92,6 +95,57 @@ describe("Pacium config binding contracts", () => {
       PaciumBindingSchema.safeParse({
         type: "name_match",
         name: "Meta",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("Pacium role, worker, and repository contracts", () => {
+  const sessionBinding = {
+    type: "session" as const,
+    sessionId: "03c2723f-e87a-4707-86af-d6fdb1e60f47",
+  };
+
+  it("allows explicit missing roles and bounded worker slots", () => {
+    expect(
+      PaciumRolesSchema.safeParse({
+        meta: null,
+        orchestrator: sessionBinding,
+      }).success,
+    ).toBe(true);
+    expect(
+      PaciumWorkerSchema.safeParse({
+        id: "worker-api",
+        label: "API worker",
+        binding: sessionBinding,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("requires repository references rather than verification commands", () => {
+    expect(
+      PaciumRepositorySchema.safeParse({
+        id: "pacium",
+        label: "Pacium Control",
+        root: "/work/pacium",
+        verificationPresetIds: ["verify", "lint"],
+      }).success,
+    ).toBe(true);
+    expect(
+      PaciumRepositorySchema.safeParse({
+        id: "pacium",
+        label: "Pacium Control",
+        root: "/work/pacium",
+        verificationPresetIds: ["verify", "verify"],
+      }).success,
+    ).toBe(false);
+    expect(
+      PaciumRepositorySchema.safeParse({
+        id: "pacium",
+        label: "Pacium Control",
+        root: "/work/pacium",
+        verificationPresetIds: [],
+        executable: "/bin/zsh",
       }).success,
     ).toBe(false);
   });
