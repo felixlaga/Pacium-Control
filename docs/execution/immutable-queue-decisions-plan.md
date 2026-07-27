@@ -8,7 +8,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `115d250d1d1ca60c341a83523fb9360ee1fe38a2`
 - Target milestone: Milestone 3 — Pacium mode
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -285,6 +285,27 @@ configured delivery method.
 - Mark PC047 complete and PC048 next only after evidence passes.
 - Record test counts, bundle sizes, browser boundary, runtime mismatch, and
   exact limitations in CHANGELOG and completion sections.
+
+## Completion evidence
+
+- Protocol 14 contracts, canonical hashing, private state storage, exact
+  decision service, authenticated server dispatch, browser state/forms, and
+  explicit no-delivery presentation are implemented.
+- Focused contract, store, service, server integration, browser-model, semantic
+  rendering, and Chromium decision tests pass. A reconstructed store instance
+  reads the same immutable record, proving local-server restart recovery.
+- Authenticated integration evidence preserves queue source, `pacium.json`,
+  delivery target, and live PTY state while recording/replaying decisions.
+- `queue-state.json` is mode `0600`, contains application-owned answer/outcome
+  data, and does not contain the raw queue source text.
+- `pnpm verify` passed formatting, lint, all workspace type checks, 91 test
+  files and 546 tests, and the 834.31 kB web / 227.62 kB local-server
+  production builds.
+- `pnpm test:e2e` passed all ten Chromium workflows with the required Xcode Git
+  path, including question/approval separation, reload, rewrite, focus,
+  responsive, forced-color, and reduced-motion evidence.
+- Verification used Node.js 26.4.0 rather than the pinned Node.js 24.18.x;
+  clean supported-runtime and release gates remain open outside this slice.
 
 ## Rollout
 
