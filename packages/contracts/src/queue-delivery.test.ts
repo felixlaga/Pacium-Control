@@ -7,6 +7,7 @@ import {
   QueueRolePromptDocumentSchema,
   QueueStateDocumentSchema,
   QueueStateV2DocumentSchema,
+  QueueStateV3DocumentSchema,
   queueDeliveryError,
 } from "./queue-delivery.js";
 
@@ -105,6 +106,117 @@ describe("queue delivery contracts", () => {
           {
             ...delivery,
             decisionHash: "f".repeat(64),
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts a schema-3 retry only after exact human confirmation", () => {
+    const retry = {
+      ...delivery,
+      deliveryId: "bb3d98ca-8308-46d7-9fe3-cf8a131e8dad",
+      requestedAt: "2026-07-27T15:02:00.000Z",
+      deliveryHash: "f".repeat(64),
+    };
+    const resolution = {
+      resolutionId: "253a4e0e-d606-4438-9e7e-c27b0021994c",
+      decisionId: decision.decisionId,
+      decisionHash: decision.decisionHash,
+      action: "confirmed_not_delivered" as const,
+      delivery: {
+        deliveryId: delivery.deliveryId,
+        deliveryHash: delivery.deliveryHash,
+      },
+      relatedDecision: null,
+      actor: {
+        kind: "local_operator" as const,
+        label: "Local operator" as const,
+      },
+      source: "human_labelled" as const,
+      recordedAt: "2026-07-27T15:01:00.000Z",
+      note: null,
+      resolutionHash: "9".repeat(64),
+    };
+    expect(
+      QueueStateV3DocumentSchema.safeParse({
+        schemaVersion: 3,
+        revision: 4,
+        decisions: [decision],
+        deliveries: [delivery, retry],
+        resolutions: [resolution],
+      }).success,
+    ).toBe(true);
+    expect(
+      QueueStateV3DocumentSchema.safeParse({
+        schemaVersion: 3,
+        revision: 4,
+        decisions: [decision],
+        deliveries: [delivery, retry],
+        resolutions: [],
+      }).success,
+    ).toBe(false);
+    expect(
+      QueueStateV3DocumentSchema.safeParse({
+        schemaVersion: 3,
+        revision: 4,
+        decisions: [decision],
+        deliveries: [
+          delivery,
+          retry,
+          {
+            ...retry,
+            deliveryId: "27adb772-f575-459b-a74e-993437a706d8",
+            deliveryHash: "8".repeat(64),
+          },
+        ],
+        resolutions: [resolution],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires bounded monotonic lifecycle references", () => {
+    const applied = {
+      resolutionId: "253a4e0e-d606-4438-9e7e-c27b0021994c",
+      decisionId: decision.decisionId,
+      decisionHash: decision.decisionHash,
+      action: "applied" as const,
+      delivery: {
+        deliveryId: delivery.deliveryId,
+        deliveryHash: delivery.deliveryHash,
+      },
+      relatedDecision: null,
+      actor: {
+        kind: "local_operator" as const,
+        label: "Local operator" as const,
+      },
+      source: "human_labelled" as const,
+      recordedAt: "2026-07-27T15:01:00.000Z",
+      note: null,
+      resolutionHash: "9".repeat(64),
+    };
+    expect(
+      QueueStateV3DocumentSchema.safeParse({
+        schemaVersion: 3,
+        revision: 3,
+        decisions: [decision],
+        deliveries: [delivery],
+        resolutions: [applied],
+      }).success,
+    ).toBe(true);
+    expect(
+      QueueStateV3DocumentSchema.safeParse({
+        schemaVersion: 3,
+        revision: 4,
+        decisions: [decision],
+        deliveries: [delivery],
+        resolutions: [
+          applied,
+          {
+            ...applied,
+            resolutionId: "27adb772-f575-459b-a74e-993437a706d8",
+            action: "acknowledged",
+            resolutionHash: "8".repeat(64),
           },
         ],
       }).success,

@@ -13,9 +13,15 @@ import {
   QueueQuestionAnswerPayloadSchema,
   QueueStateV1DocumentSchema,
 } from "./queue-decision.js";
+import {
+  MAX_QUEUE_RESOLUTIONS,
+  QueueResolutionRecordSchema,
+} from "./queue-reconciliation.js";
 
 export const QUEUE_STATE_SCHEMA_VERSION = 2 as const;
+export const QUEUE_STATE_SCHEMA_VERSION_V3 = 3 as const;
 export const MAX_QUEUE_DELIVERIES = 4096;
+export const MAX_QUEUE_DELIVERIES_V3 = MAX_QUEUE_DELIVERIES * 2;
 export const MAX_QUEUE_DELIVERY_PAYLOAD_BYTES = 16 * 1024;
 
 const QueueHashSchema = z.string().regex(/^[0-9a-f]{64}$/);
@@ -243,9 +249,24 @@ export const QueueStateV2DocumentSchema = z
   });
 export type QueueStateV2Document = z.infer<typeof QueueStateV2DocumentSchema>;
 
+export const QueueStateV3DocumentSchema = z
+  .object({
+    schemaVersion: z.literal(QUEUE_STATE_SCHEMA_VERSION_V3),
+    revision: z.number().int().positive().safe(),
+    decisions: z.array(QueueDecisionRecordSchema).max(MAX_QUEUE_DECISIONS),
+    deliveries: z.array(QueueDeliveryRecordSchema).max(MAX_QUEUE_DELIVERIES_V3),
+    resolutions: z
+      .array(QueueResolutionRecordSchema)
+      .max(MAX_QUEUE_RESOLUTIONS),
+  })
+  .strict()
+  .superRefine(validateQueueStateV3);
+export type QueueStateV3Document = z.infer<typeof QueueStateV3DocumentSchema>;
+
 export const QueueStateDocumentSchema = z.union([
   QueueStateV1DocumentSchema,
   QueueStateV2DocumentSchema,
+  QueueStateV3DocumentSchema,
 ]);
 export type QueueStateDocument = z.infer<typeof QueueStateDocumentSchema>;
 
@@ -404,4 +425,224 @@ export function queueDeliveryError(
     code,
     message: QUEUE_DELIVERY_ERROR_MESSAGES[code],
   };
+}
+
+function validateQueueStateV3(
+  document: {
+    decisions: z.infer<typeof QueueDecisionRecordSchema>[];
+    deliveries: QueueDeliveryRecord[];
+    resolutions: z.infer<typeof QueueResolutionRecordSchema>[];
+  },
+  context: z.core.$RefinementCtx,
+): void {
+  const decisions = new Map(
+    document.decisions.map((decision) => [decision.decisionId, decision]),
+  );
+  const deliveries = new Map<string, QueueDeliveryRecord>();
+  const deliveriesByDecision = new Map<string, QueueDeliveryRecord[]>();
+  const deliveryHashes = new Set<string>();
+
+  for (const [index, delivery] of document.deliveries.entries()) {
+    const decision = decisions.get(delivery.decisionId);
+    if (
+      decision === undefined ||
+      decision.decisionHash !== delivery.decisionHash
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["deliveries", index, "decisionId"],
+        message:
+          "A queue delivery must reference one matching immutable decision.",
+        input: delivery,
+      });
+    }
+    if (
+      deliveries.has(delivery.deliveryId) ||
+      deliveryHashes.has(delivery.deliveryHash)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["deliveries", index],
+        message: "Queue delivery identities and hashes must be unique.",
+        input: delivery,
+      });
+    }
+    deliveries.set(delivery.deliveryId, delivery);
+    deliveryHashes.add(delivery.deliveryHash);
+    const attempts = deliveriesByDecision.get(delivery.decisionId) ?? [];
+    attempts.push(delivery);
+    deliveriesByDecision.set(delivery.decisionId, attempts);
+    if (attempts.length > 2) {
+      context.addIssue({
+        code: "custom",
+        path: ["deliveries", index, "decisionId"],
+        message: "A queue decision can contain at most two delivery attempts.",
+        input: delivery,
+      });
+    }
+    if (
+      attempts.length === 2 &&
+      (attempts[0]?.payloadHash !== delivery.payloadHash ||
+        attempts[0]?.payloadByteLength !== delivery.payloadByteLength)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["deliveries", index, "payloadHash"],
+        message:
+          "A retry must preserve the immutable decision payload identity.",
+        input: delivery,
+      });
+    }
+  }
+
+  const resolutionIds = new Set<string>();
+  const resolutionHashes = new Set<string>();
+  const resolutionsByDecision = new Map<
+    string,
+    z.infer<typeof QueueResolutionRecordSchema>[]
+  >();
+
+  for (const [index, resolution] of document.resolutions.entries()) {
+    const decision = decisions.get(resolution.decisionId);
+    if (
+      decision === undefined ||
+      decision.decisionHash !== resolution.decisionHash
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["resolutions", index, "decisionId"],
+        message:
+          "A lifecycle resolution must reference one matching immutable decision.",
+        input: resolution,
+      });
+    }
+    if (
+      resolutionIds.has(resolution.resolutionId) ||
+      resolutionHashes.has(resolution.resolutionHash)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["resolutions", index],
+        message: "Lifecycle resolution identities and hashes must be unique.",
+        input: resolution,
+      });
+    }
+    resolutionIds.add(resolution.resolutionId);
+    resolutionHashes.add(resolution.resolutionHash);
+
+    if (resolution.delivery !== null) {
+      const delivery = deliveries.get(resolution.delivery.deliveryId);
+      if (
+        delivery === undefined ||
+        delivery.deliveryHash !== resolution.delivery.deliveryHash ||
+        delivery.decisionId !== resolution.decisionId
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["resolutions", index, "delivery"],
+          message:
+            "A lifecycle resolution must reference a matching attempt for its decision.",
+          input: resolution,
+        });
+      }
+      if (
+        resolution.action === "confirmed_not_delivered" &&
+        delivery?.outcome?.status === "delivered"
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["resolutions", index, "action"],
+          message: "A delivered attempt cannot be confirmed as not delivered.",
+          input: resolution,
+        });
+      }
+    }
+
+    if (resolution.relatedDecision !== null) {
+      const related = decisions.get(resolution.relatedDecision.decisionId);
+      if (
+        decision === undefined ||
+        related === undefined ||
+        related.decisionHash !== resolution.relatedDecision.decisionHash ||
+        related.source.workspaceId !== decision.source.workspaceId ||
+        related.source.sourceId !== decision.source.sourceId ||
+        related.source.itemId === decision.source.itemId
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["resolutions", index, "relatedDecision"],
+          message:
+            "A superseding decision must be a distinct item from the same workspace source.",
+          input: resolution,
+        });
+      }
+    }
+
+    const history = resolutionsByDecision.get(resolution.decisionId) ?? [];
+    if (!isValidResolutionTransition(history, resolution.action)) {
+      context.addIssue({
+        code: "custom",
+        path: ["resolutions", index, "action"],
+        message:
+          "Lifecycle resolutions must follow the bounded monotonic transition order.",
+        input: resolution,
+      });
+    }
+    history.push(resolution);
+    resolutionsByDecision.set(resolution.decisionId, history);
+  }
+
+  for (const [decisionId, attempts] of deliveriesByDecision) {
+    if (attempts.length !== 2) {
+      continue;
+    }
+    const first = attempts[0];
+    if (first === undefined) {
+      continue;
+    }
+    const unlocked = document.resolutions.some(
+      (resolution) =>
+        resolution.decisionId === decisionId &&
+        resolution.action === "confirmed_not_delivered" &&
+        resolution.delivery?.deliveryId === first.deliveryId &&
+        resolution.delivery?.deliveryHash === first.deliveryHash,
+    );
+    if (!unlocked) {
+      context.addIssue({
+        code: "custom",
+        path: ["deliveries"],
+        message:
+          "A second delivery attempt requires an exact confirmed-not-delivered resolution for the first attempt.",
+        input: attempts,
+      });
+    }
+  }
+}
+
+function isValidResolutionTransition(
+  history: z.infer<typeof QueueResolutionRecordSchema>[],
+  next: z.infer<typeof QueueResolutionRecordSchema>["action"],
+): boolean {
+  const current = history.at(-1)?.action;
+  if (current === undefined) {
+    return true;
+  }
+  if (
+    current === "applied" ||
+    current === "unable_to_apply" ||
+    current === "superseded"
+  ) {
+    return false;
+  }
+  if (current === "acknowledged") {
+    return (
+      next === "applied" || next === "unable_to_apply" || next === "superseded"
+    );
+  }
+  return (
+    next === "acknowledged" ||
+    next === "applied" ||
+    next === "unable_to_apply" ||
+    next === "superseded"
+  );
 }
