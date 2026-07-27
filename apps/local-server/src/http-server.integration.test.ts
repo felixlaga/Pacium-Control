@@ -1,5 +1,12 @@
 import { once } from "node:events";
-import { lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  lstat,
+  mkdtemp,
+  readFile,
+  rm,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -78,7 +85,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     );
     expect(welcome).toMatchObject({
       type: "server.welcome",
-      protocolVersion: 14,
+      protocolVersion: 15,
       capabilities: {
         launchPresets: [
           { id: "shell", available: true },
@@ -551,7 +558,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await once(client.socket, "close");
   });
 
-  it("records immutable queue decisions without delivery or process side effects", async () => {
+  it("requires explicit compatible delivery after an immutable decision", async () => {
     const queueDirectory = await mkdtemp(
       join(tmpdir(), "pacium-decision-http-"),
     );
@@ -772,10 +779,125 @@ describe("localhost HTTP and WebSocket boundary", () => {
           payload: { answer: "Keep the first slice narrow." },
         },
       },
+      deliveryState: {
+        status: "unavailable",
+        target: { type: "answer_file" },
+        error: { code: "DELIVERY_TARGET_OCCUPIED" },
+      },
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.decision.deliver",
+        requestId: "bf78ef76-32fd-42f9-af39-0c85ea4043f2",
+        decisionId: recorded.result.decision.decisionId,
+        decisionHash: recorded.result.decision.decisionHash,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.delivery" &&
+          message.requestId === "bf78ef76-32fd-42f9-af39-0c85ea4043f2",
+        "occupied delivery response",
+      ),
+    ).resolves.toMatchObject({
+      result: {
+        status: "rejected",
+        state: {
+          status: "unavailable",
+          error: { code: "DELIVERY_TARGET_OCCUPIED" },
+        },
+      },
     });
 
     await expect(readFile(queuePath, "utf8")).resolves.toBe(questionText);
     await expect(readFile(answerPath, "utf8")).resolves.toBe(answerTargetText);
+    expect(await readFile(statePath)).toEqual(firstState);
+
+    await unlink(answerPath);
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.item.inspect",
+        requestId: "10224bdf-89ca-4af1-b872-c400b21a090b",
+        ...questionIdentity,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.item" &&
+          message.requestId === "10224bdf-89ca-4af1-b872-c400b21a090b",
+        "ready delivery inspection",
+      ),
+    ).resolves.toMatchObject({
+      deliveryState: {
+        status: "ready",
+        target: { type: "answer_file" },
+      },
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.decision.deliver",
+        requestId: "ce84269b-b262-42d3-bce6-b1f026c57a9e",
+        decisionId: recorded.result.decision.decisionId,
+        decisionHash: recorded.result.decision.decisionHash,
+      }),
+    );
+    const delivered = await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.queue.delivery" &&
+        message.requestId === "ce84269b-b262-42d3-bce6-b1f026c57a9e",
+      "answer-file delivery response",
+    );
+    expect(delivered).toMatchObject({
+      result: {
+        status: "delivered",
+        state: {
+          status: "delivered",
+          delivery: {
+            outcome: {
+              status: "delivered",
+              evidence: { kind: "answer_file_created" },
+            },
+          },
+        },
+      },
+    });
+    const answerBytes = await readFile(answerPath, "utf8");
+    expect(JSON.parse(answerBytes)).toEqual({
+      format: "pacium_decision_v1",
+      decision: recorded.result.decision,
+    });
+    expect((await lstat(answerPath)).mode & 0o777).toBe(0o600);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.decision.deliver",
+        requestId: "db362e67-99ba-4a1e-92fe-df129a2c1a8f",
+        decisionId: recorded.result.decision.decisionId,
+        decisionHash: recorded.result.decision.decisionHash,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "pacium.queue.delivery" &&
+          message.requestId === "db362e67-99ba-4a1e-92fe-df129a2c1a8f",
+        "existing delivery response",
+      ),
+    ).resolves.toMatchObject({
+      result: {
+        status: "existing",
+        state: { status: "delivered" },
+      },
+    });
+    await expect(readFile(answerPath, "utf8")).resolves.toBe(answerBytes);
     await expect(
       readFile(join(setup.config.dataDirectory, "pacium.json")),
     ).resolves.toEqual(configBefore);
