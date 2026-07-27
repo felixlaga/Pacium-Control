@@ -1,3 +1,4 @@
+import { useEffect, useRef, type KeyboardEvent } from "react";
 import type {
   PaciumContextSourceObservation,
   PaciumRecentDecisionSummary,
@@ -14,13 +15,27 @@ export function PaciumContextInspector({
   onBack: () => void;
   onRefresh: () => void;
 }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const observation =
     state.observation?.status === "ready" ||
     state.observation?.status === "partial"
       ? state.observation
       : null;
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onBack();
+    }
+  };
   return (
-    <div className="pacium-context-inspector">
+    <section
+      aria-labelledby="pacium-context-title"
+      className="pacium-context-inspector"
+      onKeyDown={handleKeyDown}
+    >
       <div className="pacium-context-toolbar">
         <button
           aria-label="Back to session inspector"
@@ -39,7 +54,9 @@ export function PaciumContextInspector({
       </div>
       <header className="pacium-context-heading">
         <span>Control context</span>
-        <h2>Objective, plan, and decisions</h2>
+        <h2 id="pacium-context-title" ref={headingRef} tabIndex={-1}>
+          Objective, plan, and decisions
+        </h2>
         <p>
           Configured files and immutable local evidence only. Pacium does not
           infer tasks, progress, or resulting work.
@@ -89,7 +106,7 @@ export function PaciumContextInspector({
           </footer>
         </>
       )}
-    </div>
+    </section>
   );
 }
 

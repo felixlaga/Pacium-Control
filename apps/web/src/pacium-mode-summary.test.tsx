@@ -7,6 +7,7 @@ describe("Pacium mode summary semantics", () => {
   it("renders configured counts as labelled evidence", () => {
     const markup = renderToStaticMarkup(
       <PaciumModeSummaryCard
+        onOpenContext={() => undefined}
         onRetry={() => undefined}
         summary={{
           status: "ready",
@@ -25,12 +26,13 @@ describe("Pacium mode summary semantics", () => {
     expect(markup).toContain('aria-label="Pacium workspace definition"');
     expect(markup).toContain("Agent &amp; oversight");
     expect(markup).toContain("<dt>Roles</dt><dd>2/2</dd>");
-    expect(markup).not.toContain("<button");
+    expect(markup).toContain(">Open context</button>");
   });
 
   it("renders hostile error evidence as text and exposes bounded retry", () => {
     const markup = renderToStaticMarkup(
       <PaciumModeSummaryCard
+        onOpenContext={() => undefined}
         onRetry={() => undefined}
         summary={{
           status: "error",
