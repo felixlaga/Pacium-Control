@@ -19,6 +19,14 @@ const activity: RecentActivity = {
   },
   facts: [
     {
+      id: "provider:codex:approval-1",
+      source: "provider",
+      title: "Approval requested",
+      detail: "Codex · Provider native · Confirmed · Command approval requested.",
+      timestamp: "2026-07-27T10:06:00.000Z",
+      timestampMeaning: "occurred",
+    },
+    {
       id: "git:commit:abc",
       source: "git",
       title: "<script>hostile subject</script>",
@@ -36,6 +44,12 @@ const activity: RecentActivity = {
     },
   ],
   sources: [
+    {
+      id: "provider",
+      label: "Codex observer",
+      status: "ready",
+      detail: "Native observer connected. Fresh until 10:10.",
+    },
     {
       id: "changes",
       label: "Git changes",
@@ -70,7 +84,9 @@ describe("recent activity presentation", () => {
     expect(markup).toContain("Occurred");
     expect(markup).toContain("Observed");
     expect(markup).toContain("Evidence sources");
-    expect(markup).toContain("Deterministic local facts only");
+    expect(markup).toContain("Approval requested");
+    expect(markup).toContain("Codex observer");
+    expect(markup).toContain("Validated local evidence only");
   });
 
   it("renders hostile evidence as text and never introduces narrative HTML", () => {
@@ -107,7 +123,7 @@ describe("recent activity presentation", () => {
     expect(markup).toContain("Reading bounded local evidence");
     expect(markup).toContain("Refreshing…");
     expect(markup).toContain("disabled");
-    expect(markup).toContain("No valid recent process");
+    expect(markup).toContain("No valid recent provider");
     expect(markup).toContain("History inspection timed out.");
     expect(markup).toContain("selected terminal remains available");
   });
