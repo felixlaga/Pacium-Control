@@ -520,6 +520,36 @@ kbd {
   background: var(--panel-raised);
 }
 
+.pacium-queue-item {
+  width: auto;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.pacium-queue-item:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--panel-soft);
+}
+
+.pacium-queue-item:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline-offset: 2px;
+}
+
+.pacium-queue-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.queue-row-chevron {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+
 .pacium-queue-source-indicator {
   width: 7px;
   height: 7px;
@@ -603,6 +633,27 @@ kbd {
 .pacium-queue-source.status-empty .pacium-queue-source-indicator {
   border-color: var(--green);
   background: var(--green);
+}
+
+.pacium-queue-item.classification-question .pacium-queue-source-indicator,
+.pacium-queue-item.classification-review .pacium-queue-source-indicator {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+}
+
+.pacium-queue-item.classification-approval .pacium-queue-source-indicator {
+  border-color: var(--amber);
+  background: var(--amber);
+}
+
+.pacium-queue-item.classification-failure .pacium-queue-source-indicator {
+  border-color: var(--red);
+  background: var(--red);
+}
+
+.pacium-queue-item.classification-unknown .pacium-queue-source-indicator {
+  border-color: var(--text-faint);
+  background: transparent;
 }
 
 .pacium-queue-source.status-missing .pacium-queue-source-indicator,
@@ -1885,6 +1936,205 @@ kbd {
   color: var(--text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pacium-queue-inspector {
+  min-width: 0;
+  padding-bottom: 16px;
+}
+
+.pacium-queue-inspector-heading {
+  display: grid;
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-raised);
+}
+
+.pacium-queue-inspector-heading > button {
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--bg);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.pacium-queue-inspector-heading > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.pacium-queue-inspector-heading small {
+  color: var(--text-faint);
+  font-size: 8px;
+}
+
+.pacium-queue-inspector-heading h2 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pacium-queue-inspector-heading h2:focus {
+  outline: none;
+}
+
+.queue-type-badge {
+  padding: 3px 5px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 7px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.queue-type-badge.type-question,
+.queue-type-badge.type-review {
+  color: var(--accent-strong);
+}
+
+.queue-type-badge.type-approval {
+  color: var(--amber);
+}
+
+.queue-type-badge.type-failure {
+  color: var(--red);
+}
+
+.queue-original-text,
+.queue-meaning,
+.queue-provenance {
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.queue-original-text h3,
+.queue-meaning h3,
+.queue-provenance h3 {
+  margin: 0 0 10px;
+  color: var(--text-faint);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.queue-original-text .inspector-section-heading {
+  margin-bottom: 8px;
+}
+
+.queue-original-text .inspector-section-heading h3 {
+  margin: 0;
+}
+
+.queue-original-text .inspector-section-heading > span {
+  color: var(--text-faint);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 8px;
+}
+
+.queue-original-text pre {
+  max-height: min(40vh, 420px);
+  margin: 0;
+  padding: 11px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text-muted);
+  background: var(--bg);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 9px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+  white-space: pre-wrap;
+}
+
+.queue-original-text > p {
+  margin: 8px 0 0;
+  color: var(--text-faint);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.pacium-queue-inspector .metadata {
+  padding: 0;
+  border: 0;
+}
+
+.pacium-queue-inspector .metadata > div {
+  grid-template-columns: 92px minmax(0, 1fr);
+  padding: 5px 0;
+  font-size: 9px;
+}
+
+.pacium-queue-inspector .metadata dd {
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.pacium-queue-inspector .metadata code {
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 8px;
+}
+
+.queue-inspector-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 14px;
+  padding: 11px;
+  border: 1px dashed var(--border);
+  border-radius: 7px;
+  color: var(--text-faint);
+  background: var(--panel-raised);
+}
+
+.queue-inspector-message > span {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 9px;
+}
+
+.queue-inspector-message p {
+  margin: 0;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.queue-inspector-message.tone-error {
+  border-color: color-mix(in srgb, var(--red) 38%, var(--border));
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 6%, transparent);
+}
+
+.queue-inspector-safety {
+  margin: 14px 14px 0;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--amber) 30%, var(--border));
+  border-radius: 7px;
+  color: var(--text-faint);
+  background: color-mix(in srgb, var(--amber) 5%, transparent);
+  font-size: 8px;
+  line-height: 1.5;
 }
 
 .state-value {
@@ -5026,6 +5276,64 @@ html[data-density="comfortable"] .terminal-panel {
     margin: 0;
   }
 
+  .pacium-queue-sources {
+    margin-bottom: 9px;
+  }
+
+  .pacium-queue-source-list {
+    padding: 0 8px;
+  }
+
+  .pacium-queue-source {
+    min-height: 40px;
+    justify-content: center;
+    padding: 8px;
+  }
+
+  .pacium-queue-source > div,
+  .pacium-queue-sources > footer,
+  .queue-row-chevron {
+    display: none;
+  }
+
+  .pacium-queue-item .pacium-queue-source-indicator {
+    display: grid;
+    width: 20px;
+    height: 20px;
+    flex-basis: 20px;
+    place-items: center;
+    border-radius: 5px;
+    color: var(--bg);
+    font-size: 8px;
+    font-weight: 750;
+  }
+
+  .pacium-queue-item.classification-question
+    .pacium-queue-source-indicator::after {
+    content: "Q";
+  }
+
+  .pacium-queue-item.classification-approval
+    .pacium-queue-source-indicator::after {
+    content: "A";
+  }
+
+  .pacium-queue-item.classification-failure
+    .pacium-queue-source-indicator::after {
+    content: "F";
+  }
+
+  .pacium-queue-item.classification-review
+    .pacium-queue-source-indicator::after {
+    content: "R";
+  }
+
+  .pacium-queue-item.classification-unknown
+    .pacium-queue-source-indicator::after {
+    color: var(--text-muted);
+    content: "?";
+  }
+
   .pacium-toggle {
     justify-content: center;
   }
@@ -5335,6 +5643,7 @@ html[data-density="comfortable"] .terminal-panel {
 @media (prefers-reduced-motion: no-preference) {
   button,
   .session-item,
+  .pacium-queue-item,
   .notice {
     transition:
       color 120ms ease,
@@ -5394,6 +5703,10 @@ html[data-density="comfortable"] .terminal-panel {
   .pacium-role-card,
   .pacium-prompt-composer,
   .pacium-queue-source,
+  .pacium-queue-inspector-heading,
+  .queue-original-text pre,
+  .queue-inspector-message,
+  .queue-inspector-safety,
   .pacium-role-binding-dialog,
   .pacium-binding-options > label {
     forced-color-adjust: auto;
