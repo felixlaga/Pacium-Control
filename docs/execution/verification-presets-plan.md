@@ -203,9 +203,10 @@ input.
 - Security: no shell, config outside repository, exact session/root/preset
   ownership, absolute executable, environment allowlist, hostile control output,
   message limits, and text-only rendering.
-- Performance: 64 KiB per output stream, 128 KiB combined retained ceiling,
-  two active processes, one latest result per session, ten-minute timeout cap,
-  and no polling.
+- Performance: 24 KiB per output stream, a 48 KiB combined retained ceiling
+  that remains safe under JSON escaping and the application-message bound, two
+  active processes, one latest result per session, ten-minute timeout cap, and
+  no polling.
 
 ## Documentation changes
 
