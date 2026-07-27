@@ -132,6 +132,7 @@ export function App() {
   const actionInvokerRef = useRef<HTMLElement | null>(null);
   const createInvokerRef = useRef<HTMLElement | null>(null);
   const paletteInvokerRef = useRef<HTMLElement | null>(null);
+  const panelViewRef = useRef<ReturnType<typeof loadPanelView> | null>(null);
   const renameInvokerRef = useRef<HTMLElement | null>(null);
   const settingsInvokerRef = useRef<HTMLElement | null>(null);
   const transportRef = useRef<PaciumTransport | null>(null);
@@ -174,6 +175,7 @@ export function App() {
     loadPanelView(window.localStorage, window.innerWidth),
   );
 
+  panelViewRef.current = panelView;
   selectedIdRef.current = selectedId;
   tabsRef.current = tabs;
   layoutRef.current = layout;
@@ -644,6 +646,7 @@ export function App() {
   };
 
   const setPanelVisibility = (next: typeof panelView) => {
+    panelViewRef.current = next;
     setPanelView(next);
     if (!savePanelView(window.localStorage, next)) {
       setNotice(
@@ -653,11 +656,11 @@ export function App() {
   };
 
   const toggleSidebarPanel = () => {
-    setPanelVisibility(toggleSidebar(panelView));
+    setPanelVisibility(toggleSidebar(panelViewRef.current ?? panelView));
   };
 
   const toggleInspectorPanel = () => {
-    setPanelVisibility(toggleInspector(panelView));
+    setPanelVisibility(toggleInspector(panelViewRef.current ?? panelView));
   };
 
   const executePaletteCommand = (command: PaletteCommand) => {
