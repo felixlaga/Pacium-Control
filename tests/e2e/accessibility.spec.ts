@@ -1,0 +1,94 @@
+import { expect, test } from "@playwright/test";
+
+test("keyboard navigation controls the desktop shell without affecting sessions", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const workspace = page.getByRole("main", { name: "Terminal workspace" });
+  const sidebar = page.getByRole("complementary", {
+    name: "Session navigation",
+  });
+  const inspector = page.getByRole("complementary", {
+    name: "Session inspector",
+  });
+
+  await expect(workspace).toBeVisible();
+  await expect(sidebar).toBeVisible();
+  await expect(inspector).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(
+    /Connected · No terminal selected · Application controls/,
+  );
+
+  await page.keyboard.press("Tab");
+  const skipLink = page.getByRole("link", {
+    name: "Skip to terminal workspace",
+  });
+  await expect(skipLink).toBeFocused();
+  await skipLink.press("Enter");
+  await expect(workspace).toBeFocused();
+
+  await page.keyboard.press("Control+b");
+  await expect(sidebar).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "Show session sidebar" }),
+  ).toHaveAttribute("aria-expanded", "false");
+
+  await page.keyboard.press("Control+b");
+  await expect(sidebar).toBeVisible();
+  await page.keyboard.press("Control+Shift+b");
+  await expect(inspector).toBeHidden();
+  await page.keyboard.press("Control+Shift+b");
+  await expect(inspector).toBeVisible();
+});
+
+test("terminal launcher closes with Escape and restores invoking focus", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const createButton = page.getByRole("button", {
+    name: "Open first terminal",
+  });
+  await createButton.click();
+
+  const dialog = page.getByRole("dialog", { name: "Open a terminal" });
+  await expect(dialog).toBeVisible();
+  await expect(page.getByLabel("Working directory")).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(createButton).toBeFocused();
+});
+
+test("narrow shell exposes panels as dismissible drawers at 320 CSS pixels", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 720, width: 320 });
+  await page.goto("/");
+
+  const sidebar = page.getByRole("complementary", {
+    name: "Session navigation",
+  });
+  const inspector = page.getByRole("complementary", {
+    name: "Session inspector",
+  });
+
+  await expect(sidebar).toBeHidden();
+  await expect(inspector).toBeHidden();
+
+  await page.getByRole("button", { name: "Show session sidebar" }).click();
+  await expect(sidebar).toBeVisible();
+  await page.getByRole("button", { name: "Close session sidebar" }).click();
+  await expect(sidebar).toBeHidden();
+
+  await page.getByRole("button", { name: "Show inspector" }).click();
+  await expect(inspector).toBeVisible();
+  await page.getByRole("button", { name: "Close inspector" }).click();
+  await expect(inspector).toBeHidden();
+
+  const scrollWidth = await page.evaluate(
+    () => document.documentElement.scrollWidth,
+  );
+  expect(scrollWidth).toBeLessThanOrEqual(320);
+});
