@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `d5a4414`
 - Target milestone: Milestone 2
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -73,3 +73,13 @@ and inspector render that result.
 - Product: makes attention useful while preserving epistemic honesty.
 - Architecture: pure browser projection over current process truth.
 - Security: no new input or authority boundary.
+
+## Result
+
+The pure reducer now implements the complete attention vocabulary with
+source-first, confidence-second, recency-third precedence and explicit stale
+conversion. The current UI derives only process evidence: live processes remain
+unknown, failed exits surface failure, and clean exits say task completion is
+unverified. Sidebar and inspector consumers add text without changing PTY,
+focus, protocol, or persistence behavior. The full gate passes with 31 test
+files and 120 tests.

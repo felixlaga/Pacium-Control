@@ -39,19 +39,19 @@ state that explicitly does not verify task completion.
 
 ## Acceptance criteria
 
-- [ ] All required attention states have stable strict types.
-- [ ] Every result includes source, confidence, observed time, stale threshold,
+- [x] All required attention states have stable strict types.
+- [x] Every result includes source, confidence, observed time, stale threshold,
       and reason.
-- [ ] Source/confidence precedence is deterministic and tested.
-- [ ] Expired winning evidence becomes stale without being replaced by weak
+- [x] Source/confidence precedence is deterministic and tested.
+- [x] Expired winning evidence becomes stale without being replaced by weak
       terminal activity.
-- [ ] A live process alone produces unknown, never working.
-- [ ] Nonzero exits produce failed process evidence.
-- [ ] Clean exits produce process-derived finished evidence whose copy does not
+- [x] A live process alone produces unknown, never working.
+- [x] Nonzero exits produce failed process evidence.
+- [x] Clean exits produce process-derived finished evidence whose copy does not
       claim task completion.
-- [ ] Sidebar and inspector show attention using text as well as color/icon.
-- [ ] The reducer is pure and performs no polling or persistence.
-- [ ] The full repository verification gate passes.
+- [x] Sidebar and inspector show attention using text as well as color/icon.
+- [x] The reducer is pure and performs no polling or persistence.
+- [x] The full repository verification gate passes.
 
 ## Architecture
 
@@ -96,3 +96,11 @@ state that explicitly does not verify task completion.
 - Focused reducer and rendering results.
 - Full repository verification.
 - Synchronized status, backlog, issue, plan, and changelog.
+
+## Implementation evidence
+
+- Five reducer tests cover source precedence, stale strong evidence, invalid
+  observations, live-process uncertainty, and clean/failed exits.
+- Server-rendered evidence tests verify textual source/confidence and prohibit a
+  false working label.
+- `pnpm verify` passes with 31 test files and 120 tests.
