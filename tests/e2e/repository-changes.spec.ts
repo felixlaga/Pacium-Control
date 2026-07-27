@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { runGitOk } from "../../apps/local-server/src/git-fixture-test-utils.js";
 
@@ -56,17 +56,7 @@ test.afterEach(async ({ page }) => {
 test("changed files load lazily without changing terminal selection", async ({
   page,
 }) => {
-  await page.goto("/");
-  const workspaceStatus = page.locator(".workspace-status");
-  await expect(workspaceStatus).toContainText("Connected");
-
-  await page.getByRole("button", { name: "Open first terminal" }).click();
-  const workingDirectory = page.getByLabel("Working directory");
-  await workingDirectory.fill(repositoryDirectory);
-  await page.getByPlaceholder("Project shell").fill("Oversight fixture");
-  await page.getByRole("button", { name: "Open terminal" }).click();
-
-  await expect(workspaceStatus).toContainText("Oversight fixture");
+  const workspaceStatus = await openFixtureTerminal(page);
   const overviewTab = page.getByRole("tab", { name: "Overview" });
   const changesTab = page.getByRole("tab", { name: "Changes" });
   await expect(overviewTab).toHaveAttribute("aria-selected", "true");
@@ -128,3 +118,48 @@ test("changed files load lazily without changing terminal selection", async ({
   await expect(changesTab).toBeFocused();
   await expect(changesPanel).toBeVisible();
 });
+
+test("recent history loads lazily without changing terminal selection", async ({
+  page,
+}) => {
+  const workspaceStatus = await openFixtureTerminal(page);
+  const historyTab = page.getByRole("tab", { name: "History" });
+  await expect(
+    page.getByRole("tabpanel", { name: "History" }),
+  ).not.toBeAttached();
+
+  await historyTab.click();
+  const historyPanel = page.getByRole("tabpanel", { name: "History" });
+  await expect(historyPanel).toContainText("1 recent commit");
+  const commit = historyPanel.getByRole("listitem").first();
+  await expect(commit).toContainText("fixture");
+  await expect(commit).toContainText("Pacium E2E");
+  await expect(commit.locator("code")).toHaveText(/^[0-9a-f]{8}$/);
+  await expect(workspaceStatus).toContainText("Oversight fixture");
+
+  await historyPanel.getByRole("button", { name: "Refresh" }).click();
+  await expect(historyPanel).toContainText("1 recent commit");
+
+  await historyTab.focus();
+  await historyTab.press("ArrowLeft");
+  const changesTab = page.getByRole("tab", { name: "Changes" });
+  await expect(changesTab).toBeFocused();
+  await expect(changesTab).toHaveAttribute("aria-selected", "true");
+  await changesTab.press("ArrowRight");
+  await expect(historyTab).toBeFocused();
+  await expect(historyPanel).toBeVisible();
+  await expect(workspaceStatus).toContainText("Oversight fixture");
+});
+
+async function openFixtureTerminal(page: Page) {
+  await page.goto("/");
+  const workspaceStatus = page.locator(".workspace-status");
+  await expect(workspaceStatus).toContainText("Connected");
+
+  await page.getByRole("button", { name: "Open first terminal" }).click();
+  await page.getByLabel("Working directory").fill(repositoryDirectory);
+  await page.getByPlaceholder("Project shell").fill("Oversight fixture");
+  await page.getByRole("button", { name: "Open terminal" }).click();
+  await expect(workspaceStatus).toContainText("Oversight fixture");
+  return workspaceStatus;
+}
