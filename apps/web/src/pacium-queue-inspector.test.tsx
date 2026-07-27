@@ -12,6 +12,8 @@ describe("Pacium queue item inspector", () => {
     const markup = renderToStaticMarkup(
       <PaciumQueueInspector
         onBack={() => undefined}
+        onRecordApproval={() => undefined}
+        onRecordQuestion={() => undefined}
         requestingSessionLabel="Meta shell"
         state={state}
       />,
@@ -29,15 +31,17 @@ describe("Pacium queue item inspector", () => {
     expect(markup).toContain("Conflict detection is not implemented yet");
     expect(markup).toContain("/queue/NEEDS-FELIX");
     expect(markup).toContain("whole_source_v1");
-    expect(markup).toContain("cannot answer a question");
+    expect(markup).toContain("Record answer");
+    expect(markup).toContain("Recording never delivers");
     expect(markup).not.toContain(">Approve<");
-    expect(markup).not.toContain(">Answer<");
   });
 
   it("explains loading and stale states without retaining original text", () => {
     const loading = renderToStaticMarkup(
       <PaciumQueueInspector
         onBack={() => undefined}
+        onRecordApproval={() => undefined}
+        onRecordQuestion={() => undefined}
         requestingSessionLabel={null}
         state={{
           ...ready("Private answer"),
@@ -54,6 +58,8 @@ describe("Pacium queue item inspector", () => {
     const stale = renderToStaticMarkup(
       <PaciumQueueInspector
         onBack={() => undefined}
+        onRecordApproval={() => undefined}
+        onRecordQuestion={() => undefined}
         requestingSessionLabel={null}
         state={{
           ...ready("Private answer"),

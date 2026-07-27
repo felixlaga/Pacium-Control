@@ -1,5 +1,10 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
+import type {
+  QueueApprovalDecisionPayload,
+  QueueQuestionAnswerPayload,
+} from "@pacium/contracts";
 
+import { PaciumQueueDecisionPanel } from "./pacium-queue-decision-panel.js";
 import type { PaciumQueueInspectionState } from "./pacium-queue-inspection-model.js";
 import {
   confidenceLabel,
@@ -10,10 +15,14 @@ import {
 
 export function PaciumQueueInspector({
   onBack,
+  onRecordApproval,
+  onRecordQuestion,
   requestingSessionLabel,
   state,
 }: {
   onBack: () => void;
+  onRecordApproval: (payload: QueueApprovalDecisionPayload) => void;
+  onRecordQuestion: (payload: QueueQuestionAnswerPayload) => void;
   requestingSessionLabel: string | null;
   state: PaciumQueueInspectionState;
 }) {
@@ -32,6 +41,15 @@ export function PaciumQueueInspector({
     if (event.key !== "Escape") {
       return;
     }
+    const target = event.target;
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      (target instanceof HTMLElement && target.isContentEditable)
+    ) {
+      return;
+    }
     event.preventDefault();
     onBack();
   };
@@ -47,7 +65,7 @@ export function PaciumQueueInspector({
           ← Back
         </button>
         <span>
-          <small>Queue item · read-only</small>
+          <small>Queue item · exact local decision</small>
           <h2 id="queue-item-inspector-title" ref={headingRef} tabIndex={-1}>
             {queueItemTypeLabel(selection.type)} from {selection.sourceLabel}
           </h2>
@@ -80,6 +98,11 @@ export function PaciumQueueInspector({
           </section>
           <QueueMeaning
             requestingSessionLabel={requestingSessionLabel}
+            state={state}
+          />
+          <PaciumQueueDecisionPanel
+            onRecordApproval={onRecordApproval}
+            onRecordQuestion={onRecordQuestion}
             state={state}
           />
         </>
@@ -125,8 +148,9 @@ export function PaciumQueueInspector({
       </section>
 
       <footer className="queue-inspector-safety">
-        This inspector cannot answer a question or authorize an approval.
-        Decisions and delivery are not implemented in this read-only slice.
+        Question answers and approval decisions are separate immutable local
+        records. Recording never delivers a prompt, writes an answer target, or
+        runs the requested action.
       </footer>
     </section>
   );

@@ -17,6 +17,8 @@ import type {
   LaunchPresetId,
   PaciumBinding,
   PaciumRoleId,
+  QueueApprovalDecisionPayload,
+  QueueQuestionAnswerPayload,
   ServerMessage,
   SessionSummary,
   TerminalDataFrame,
@@ -102,10 +104,13 @@ import {
 } from "./pacium-queue-model.js";
 import {
   CLOSED_QUEUE_INSPECTION,
+  acceptQueueDecision,
   acceptQueueItemInspection,
+  beginQueueDecision,
   beginQueueItemInspection,
   closeQueueItemInspection,
   interruptQueueItemInspection,
+  interruptQueueDecision,
   reconcileQueueItemInspection,
   reconcileQueueItemInspectionConfig,
   type PaciumQueueInspectionState,
@@ -504,6 +509,11 @@ export function App() {
           setPaciumQueue(interruptedQueue);
         }
         if (paciumQueueInspectionRef.current.selection !== null) {
+          if (paciumQueueInspectionRef.current.decisionRequestId !== null) {
+            setNotice(
+              "Decision outcome is unknown after disconnect. Reopen the exact item to inspect durable state before another deliberate attempt.",
+            );
+          }
           const closed = closeQueueItemInspection();
           paciumQueueInspectionRef.current = closed;
           setPaciumQueueInspection(closed);
@@ -607,6 +617,25 @@ export function App() {
       if (accepted !== paciumQueueInspectionRef.current) {
         paciumQueueInspectionRef.current = accepted;
         setPaciumQueueInspection(accepted);
+      }
+      return;
+    }
+    if (event.message.type === "pacium.queue.decision") {
+      const accepted = acceptQueueDecision(
+        paciumQueueInspectionRef.current,
+        event.message.requestId,
+        event.message.result,
+      );
+      if (accepted !== paciumQueueInspectionRef.current) {
+        paciumQueueInspectionRef.current = accepted;
+        setPaciumQueueInspection(accepted);
+        setNotice(
+          event.message.result.status === "recorded"
+            ? "Immutable local decision recorded. Nothing was delivered or executed."
+            : event.message.result.status === "existing"
+              ? "The existing immutable decision was recovered. Nothing was delivered or executed."
+              : `${event.message.result.error?.message ?? "The decision was not recorded."} Pacium did not retry or deliver anything.`,
+        );
       }
       return;
     }
@@ -830,6 +859,16 @@ export function App() {
         setNotice(
           `Queue source refresh failed. ${event.message.message} Terminals and source files are unchanged.`,
         );
+        return;
+      }
+      const interruptedDecision = interruptQueueDecision(
+        paciumQueueInspectionRef.current,
+        event.message.requestId,
+        `Decision was not recorded. ${event.message.message} Pacium did not retry or deliver anything.`,
+      );
+      if (interruptedDecision !== paciumQueueInspectionRef.current) {
+        paciumQueueInspectionRef.current = interruptedDecision;
+        setPaciumQueueInspection(interruptedDecision);
         return;
       }
       const interruptedQueueInspection = interruptQueueItemInspection(
@@ -2169,6 +2208,62 @@ export function App() {
     );
   };
 
+  const recordQueueQuestionAnswer = (payload: QueueQuestionAnswerPayload) => {
+    const transport = transportRef.current;
+    const current = paciumQueueInspectionRef.current;
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      current.selection?.type !== "question" ||
+      current.status !== "ready" ||
+      current.decisionState?.status !== "open"
+    ) {
+      setNotice(
+        "This exact question is not ready for a decision. Nothing was recorded or delivered.",
+      );
+      return;
+    }
+    const requestId = transport.recordQueueQuestionAnswer(
+      current.selection.identity,
+      payload,
+    );
+    const submitting = beginQueueDecision(current, requestId);
+    paciumQueueInspectionRef.current = submitting;
+    setPaciumQueueInspection(submitting);
+    setNotice(
+      "Recording the immutable local answer. No prompt, file delivery, or terminal input is being sent.",
+    );
+  };
+
+  const recordQueueApprovalDecision = (
+    payload: QueueApprovalDecisionPayload,
+  ) => {
+    const transport = transportRef.current;
+    const current = paciumQueueInspectionRef.current;
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      current.selection?.type !== "approval" ||
+      current.status !== "ready" ||
+      current.decisionState?.status !== "open"
+    ) {
+      setNotice(
+        "This exact approval request is not ready for a decision. Nothing was recorded, delivered, or executed.",
+      );
+      return;
+    }
+    const requestId = transport.recordQueueApprovalDecision(
+      current.selection.identity,
+      payload,
+    );
+    const submitting = beginQueueDecision(current, requestId);
+    paciumQueueInspectionRef.current = submitting;
+    setPaciumQueueInspection(submitting);
+    setNotice(
+      `Recording the immutable local ${payload.outcome === "approved" ? "approval" : "denial"}. No prompt, file delivery, terminal input, or action is being sent.`,
+    );
+  };
+
   const closePaciumQueueInspector = () => {
     const sourceId =
       paciumQueueInspectionRef.current.selection?.identity.sourceId ?? null;
@@ -2997,6 +3092,8 @@ export function App() {
         {paciumQueueInspection.selection !== null ? (
           <PaciumQueueInspector
             onBack={closePaciumQueueInspector}
+            onRecordApproval={recordQueueApprovalDecision}
+            onRecordQuestion={recordQueueQuestionAnswer}
             requestingSessionLabel={queueRequestingSessionLabel}
             state={paciumQueueInspection}
           />
