@@ -78,6 +78,16 @@ export function parseStoredPreferences(
     : DEFAULT_WORKSPACE_PREFERENCES;
 }
 
+export function loadPreferences(
+  storage: Pick<Storage, "getItem">,
+): WorkspacePreferences {
+  try {
+    return parseStoredPreferences(storage.getItem(PREFERENCES_STORAGE_KEY));
+  } catch {
+    return DEFAULT_WORKSPACE_PREFERENCES;
+  }
+}
+
 export function serializePreferences(
   preferences: WorkspacePreferences,
 ): string {

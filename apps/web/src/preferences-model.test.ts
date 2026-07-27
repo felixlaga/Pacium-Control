@@ -5,6 +5,7 @@ import {
   DEFAULT_WORKSPACE_PREFERENCES,
   MAX_PREFERENCES_JSON_CHARS,
   TERMINAL_FONT_STACKS,
+  loadPreferences,
   parseStoredPreferences,
   resolveDefaultLaunchPreset,
   resolveEffectiveTheme,
@@ -22,6 +23,16 @@ describe("workspace preferences", () => {
       parseStoredPreferences(
         JSON.stringify({ ...DEFAULT_WORKSPACE_PREFERENCES, version: 2 }),
       ),
+    ).toBe(DEFAULT_WORKSPACE_PREFERENCES);
+  });
+
+  it("uses defaults when browser storage cannot be read", () => {
+    expect(
+      loadPreferences({
+        getItem() {
+          throw new Error("Storage denied");
+        },
+      }),
     ).toBe(DEFAULT_WORKSPACE_PREFERENCES);
   });
 

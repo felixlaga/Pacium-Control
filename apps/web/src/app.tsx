@@ -33,7 +33,7 @@ import { DirectoryPicker } from "./directory-picker.js";
 import {
   PREFERENCES_STORAGE_KEY,
   TERMINAL_FONT_STACKS,
-  parseStoredPreferences,
+  loadPreferences,
   resolveDefaultLaunchPreset,
   resolveEffectiveTheme,
   serializePreferences,
@@ -155,9 +155,7 @@ export function App() {
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [preferences, setPreferences] = useState<WorkspacePreferences>(() =>
-    parseStoredPreferences(
-      window.localStorage.getItem(PREFERENCES_STORAGE_KEY),
-    ),
+    loadPreferences(window.localStorage),
   );
   const [systemPrefersDark, setSystemPrefersDark] = useState(
     () => window.matchMedia("(prefers-color-scheme: dark)").matches,
