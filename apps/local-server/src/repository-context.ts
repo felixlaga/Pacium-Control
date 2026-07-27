@@ -8,7 +8,7 @@ import type {
 } from "@pacium/contracts";
 import type { z } from "zod";
 
-const GIT_TIMEOUT_MILLISECONDS = 1_500;
+const GIT_TIMEOUT_MILLISECONDS = 750;
 const GIT_MAX_OUTPUT_BYTES = 32 * 1024;
 
 type RepositoryErrorCode = z.infer<typeof RepositoryErrorCodeSchema>;
@@ -23,6 +23,11 @@ export type GitCommandRunner = (
   cwd: string,
   args: readonly string[],
 ) => Promise<GitCommandResult>;
+
+export type RepositoryInspector = (
+  canonicalCwd: string,
+  observedAt?: string,
+) => Promise<RepositoryObservation>;
 
 export class GitCommandFailure extends Error {
   public constructor(

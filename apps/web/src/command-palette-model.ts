@@ -346,7 +346,7 @@ export function buildPaletteCatalog(
             session.commandLabel,
             session.launchPreset,
             session.cwd,
-            session.repositoryName ?? "",
+            session.repository.name ?? "",
             session.processState,
           ],
         }),
@@ -504,7 +504,7 @@ function selectedSessionCommands(session: SessionSummary): PaletteCommand[] {
         : "No Git repository was detected",
       group: "Suggested",
       rank: 4,
-      keywords: ["finder", "folder", "git", session.repositoryName ?? ""],
+      keywords: ["finder", "folder", "git", session.repository.name ?? ""],
       enabled: availability.canRevealRepository,
       disabledReason: availability.canRevealRepository
         ? null
@@ -564,7 +564,7 @@ function command(
 }
 
 function sessionDetail(session: SessionSummary): string {
-  const repository = session.repositoryName ?? session.cwd;
+  const repository = session.repository.name ?? session.cwd;
   return `${session.commandLabel} · ${repository} · ${session.processState}`;
 }
 

@@ -62,7 +62,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     );
     expect(welcome).toMatchObject({
       type: "server.welcome",
-      protocolVersion: 4,
+      protocolVersion: 5,
       capabilities: {
         launchPresets: [
           { id: "shell", available: true },
@@ -99,7 +99,11 @@ describe("localhost HTTP and WebSocket boundary", () => {
         source: "launch_preset",
         confidence: "confirmed",
       },
-      repositoryName: "Pacium Control",
+      repository: {
+        status: "ready",
+        name: "Pacium Control",
+        branch: "dev",
+      },
     });
     expect(created.session.agentClassification.observedAt).toBe(
       created.session.createdAt,
@@ -249,7 +253,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
         message.type === "command.result" &&
         message.requestId === "7e96b977-e4f4-4c42-8ebd-a1ddc464695e",
     );
-    expect(revealPath).toHaveBeenCalledWith(manager.list()[0]?.repositoryRoot);
+    expect(revealPath).toHaveBeenCalledWith(manager.list()[0]?.repository.root);
 
     client.socket.close();
     await once(client.socket, "close");
@@ -388,6 +392,18 @@ async function startTestServer(
     factory,
     config.launchPresets,
     hostActions,
+    (cwd, observedAt) =>
+      Promise.resolve({
+        status: "ready",
+        root: cwd,
+        name: cwd.split("/").at(-1) ?? cwd,
+        branch: "dev",
+        headCommit: "a".repeat(40),
+        headState: "branch",
+        worktreeKind: "main",
+        observedAt: observedAt ?? "2026-07-27T10:00:00.000Z",
+        error: null,
+      }),
   );
   const application = createPaciumHttpServer(config, manager);
   application.server.listen(0, config.host);

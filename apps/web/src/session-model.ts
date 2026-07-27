@@ -134,15 +134,15 @@ export function groupSessions(sessions: SessionSummary[]): SessionGroup[] {
   const folders: SessionSummary[] = [];
 
   for (const session of sessions) {
-    if (session.repositoryRoot === null || session.repositoryName === null) {
+    if (session.repository.root === null || session.repository.name === null) {
       folders.push(session);
       continue;
     }
-    const existing = repositories.get(session.repositoryRoot);
+    const existing = repositories.get(session.repository.root);
     if (existing === undefined) {
-      repositories.set(session.repositoryRoot, {
-        key: `repository:${session.repositoryRoot}`,
-        label: session.repositoryName,
+      repositories.set(session.repository.root, {
+        key: `repository:${session.repository.root}`,
+        label: session.repository.name,
         kind: "repository",
         sessions: [session],
       });

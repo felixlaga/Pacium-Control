@@ -774,7 +774,7 @@ export function App() {
   const revealSessionRepository = (session: SessionSummary) => {
     transportRef.current?.revealRepository(session.id);
     setNotice(
-      `Asked the Pacium host to reveal ${session.repositoryName ?? "the repository"}.`,
+      `Asked the Pacium host to reveal ${session.repository.name ?? "the repository"}.`,
     );
     closeSessionActions();
   };
@@ -1574,7 +1574,7 @@ export function App() {
             <Metadata label="Preset">{selectedSession.commandLabel}</Metadata>
             <Metadata label="Command">{selectedSession.shell}</Metadata>
             <Metadata label="Repository">
-              {selectedSession.repositoryName ?? "Not detected"}
+              {selectedSession.repository.name ?? "Not detected"}
             </Metadata>
             <Metadata label="Process">
               {selectedSession.pid ?? "Exited"}

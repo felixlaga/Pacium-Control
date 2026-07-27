@@ -33,7 +33,7 @@ describe("terminal binary frames", () => {
 
 describe("client protocol", () => {
   it("advances the wire contract for required agent classification", () => {
-    expect(PROTOCOL_VERSION).toBe(4);
+    expect(PROTOCOL_VERSION).toBe(5);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -199,8 +199,17 @@ describe("agent classification contract", () => {
       launchPreset: "codex",
       commandLabel: "Codex",
       agentClassification: classification,
-      repositoryRoot: null,
-      repositoryName: null,
+      repository: {
+        status: "not_repository",
+        root: null,
+        name: null,
+        branch: null,
+        headCommit: null,
+        headState: "unknown",
+        worktreeKind: "unknown",
+        observedAt: "2026-07-27T10:00:00.000Z",
+        error: null,
+      },
       runtime: "pty",
       processState: "live",
       pid: 42,

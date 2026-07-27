@@ -18,7 +18,10 @@ import {
 import type { LaunchPresetDefinition } from "./launch-presets.js";
 import { HostActionError, type HostActions } from "./host-actions.js";
 import type { PtyFactory, PtyProcess } from "./pty-adapter.js";
-import { discoverRepositoryContext } from "./repository-context.js";
+import {
+  inspectRepositoryContext,
+  type RepositoryInspector,
+} from "./repository-context.js";
 
 type SerializeAddonConstructor = new () => SerializeAddonInstance;
 type HeadlessTerminalConstructor = new (
@@ -95,6 +98,13 @@ export class SessionManager {
     private readonly ptyFactory: PtyFactory,
     private readonly launchPresets: readonly LaunchPresetDefinition[],
     private readonly hostActions?: HostActions,
+    private readonly inspectRepository: RepositoryInspector = (
+      cwd,
+      observedAt,
+    ) =>
+      observedAt === undefined
+        ? inspectRepositoryContext(cwd)
+        : inspectRepositoryContext(cwd, { observedAt }),
   ) {}
 
   public list(): SessionSummary[] {
@@ -106,9 +116,9 @@ export class SessionManager {
   public async create(input: CreateSessionInput): Promise<SessionSummary> {
     const cwd = await this.validateCwd(input.cwd);
     const preset = this.requireAvailablePreset(input.launchPreset);
-    const repository = await discoverRepositoryContext(cwd);
     const id = randomUUID();
     const createdAt = new Date().toISOString();
+    const repository = await this.inspectRepository(cwd, createdAt);
     const displayName =
       input.displayName?.trim() ||
       (preset.id === "shell"
@@ -156,8 +166,7 @@ export class SessionManager {
           ...preset.classification,
           observedAt: createdAt,
         },
-        repositoryRoot: repository?.root ?? null,
-        repositoryName: repository?.name ?? null,
+        repository,
         runtime: "pty",
         processState: "live",
         pid: pty.pid,
@@ -255,7 +264,7 @@ export class SessionManager {
 
   public async revealRepository(sessionId: string): Promise<void> {
     const session = this.requireSession(sessionId);
-    const repositoryRoot = session.summary.repositoryRoot;
+    const repositoryRoot = session.summary.repository.root;
     if (repositoryRoot === null) {
       throw new SessionError(
         "SESSION_HAS_NO_REPOSITORY",

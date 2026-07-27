@@ -30,7 +30,7 @@ export function sessionActionAvailability(
     canInterrupt: live,
     canRelaunch: ended,
     canRename: session.processState !== "closing",
-    canRevealRepository: session.repositoryRoot !== null,
+    canRevealRepository: session.repository.root !== null,
     canTerminate:
       session.processState !== "creating" && session.processState !== "closing",
   };

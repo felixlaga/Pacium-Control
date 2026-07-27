@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { FakePtyFactory } from "@pacium/test-utils";
 
+import type { HostActions } from "./host-actions.js";
 import type { LaunchPresetDefinition } from "./launch-presets.js";
 import { SessionError, SessionManager } from "./session-manager.js";
 
@@ -49,10 +50,33 @@ const testPresets: readonly LaunchPresetDefinition[] = [
   },
 ];
 
+function createManager(
+  factory: FakePtyFactory,
+  hostActions?: HostActions,
+): SessionManager {
+  return new SessionManager(
+    factory,
+    testPresets,
+    hostActions,
+    (cwd, observedAt) =>
+      Promise.resolve({
+        status: "ready",
+        root: cwd,
+        name: cwd.split("/").at(-1) ?? cwd,
+        branch: "dev",
+        headCommit: "a".repeat(40),
+        headState: "branch",
+        worktreeKind: "main",
+        observedAt: observedAt ?? "2026-07-27T10:00:00.000Z",
+        error: null,
+      }),
+  );
+}
+
 describe("SessionManager", () => {
   it("creates a terminal, routes input and resize, and restores output", async () => {
     const factory = new FakePtyFactory();
-    const manager = new SessionManager(factory, testPresets);
+    const manager = createManager(factory);
     const session = await manager.create({
       cwd: process.cwd(),
       launchPreset: "shell",
@@ -96,7 +120,7 @@ describe("SessionManager", () => {
 
   it("does not destroy a PTY when no browser listener is attached", async () => {
     const factory = new FakePtyFactory();
-    const manager = new SessionManager(factory, testPresets);
+    const manager = createManager(factory);
     const session = await manager.create({
       cwd: process.cwd(),
       launchPreset: "shell",
@@ -115,7 +139,7 @@ describe("SessionManager", () => {
 
   it("requires explicit force to close a live shell", async () => {
     const factory = new FakePtyFactory();
-    const manager = new SessionManager(factory, testPresets);
+    const manager = createManager(factory);
     const session = await manager.create({
       cwd: process.cwd(),
       launchPreset: "shell",
@@ -134,7 +158,7 @@ describe("SessionManager", () => {
 
   it("renames session metadata and emits an updated summary", async () => {
     const factory = new FakePtyFactory();
-    const manager = new SessionManager(factory, testPresets);
+    const manager = createManager(factory);
     const session = await manager.create({
       cwd: process.cwd(),
       launchPreset: "shell",
@@ -160,7 +184,7 @@ describe("SessionManager", () => {
   it("reveals only the session's canonical repository root", async () => {
     const factory = new FakePtyFactory();
     const revealPath = vi.fn().mockResolvedValue(undefined);
-    const manager = new SessionManager(factory, testPresets, { revealPath });
+    const manager = createManager(factory, { revealPath });
     const session = await manager.create({
       cwd: process.cwd(),
       launchPreset: "shell",
@@ -169,13 +193,13 @@ describe("SessionManager", () => {
     });
 
     await manager.revealRepository(session.id);
-    expect(revealPath).toHaveBeenCalledWith(session.repositoryRoot);
+    expect(revealPath).toHaveBeenCalledWith(session.repository.root);
     manager.shutdown();
   });
 
   it("rejects a missing working directory without creating a PTY", async () => {
     const factory = new FakePtyFactory();
-    const manager = new SessionManager(factory, testPresets);
+    const manager = createManager(factory);
 
     await expect(
       manager.create({
@@ -190,7 +214,7 @@ describe("SessionManager", () => {
 
   it("uses a fixed agent preset and rejects an unavailable one", async () => {
     const factory = new FakePtyFactory();
-    const manager = new SessionManager(factory, testPresets);
+    const manager = createManager(factory);
     const session = await manager.create({
       cwd: process.cwd(),
       launchPreset: "codex",

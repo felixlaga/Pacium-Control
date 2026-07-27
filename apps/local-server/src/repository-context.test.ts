@@ -159,7 +159,7 @@ describe("repository context inspection", () => {
       code: "timeout",
       message: "Git inspection timed out.",
     });
-    expect(FIXED_GIT_TIMEOUT_MILLISECONDS).toBeLessThanOrEqual(1_500);
+    expect(FIXED_GIT_TIMEOUT_MILLISECONDS).toBeLessThanOrEqual(750);
     expect(FIXED_GIT_MAX_OUTPUT_BYTES).toBeLessThanOrEqual(32 * 1024);
   });
 

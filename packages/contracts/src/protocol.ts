@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PROTOCOL_VERSION = 4 as const;
+export const PROTOCOL_VERSION = 5 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -186,8 +186,7 @@ export const SessionSummarySchema = z.object({
   launchPreset: LaunchPresetIdSchema,
   commandLabel: z.string().min(1).max(40),
   agentClassification: AgentClassificationSchema,
-  repositoryRoot: z.string().min(1).max(4096).nullable(),
-  repositoryName: z.string().min(1).max(255).nullable(),
+  repository: RepositoryObservationSchema,
   runtime: z.literal("pty"),
   processState: ProcessStateSchema,
   pid: z.number().int().positive().nullable(),
