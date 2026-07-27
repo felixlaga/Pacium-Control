@@ -1,5 +1,5 @@
 import { lstat, realpath } from "node:fs/promises";
-import { isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 
 import {
   MAX_GIT_DIFF_BYTES,
@@ -29,9 +29,8 @@ const DIFF_FLAGS = [
   "--no-textconv",
   "--no-color",
   "--unified=3",
-  "--find-renames",
-  "--find-copies",
 ] as const;
+const TRACKED_DETECTION_FLAGS = ["--find-renames", "--find-copies"] as const;
 
 type UntrackedPathState = "safe" | "missing" | "unsafe";
 
@@ -241,6 +240,7 @@ async function readDiffSections(
       ...prefix,
       "diff",
       ...DIFF_FLAGS,
+      ...TRACKED_DETECTION_FLAGS,
       changes.headCommit,
       "--",
       ...pathspecs,
@@ -257,6 +257,7 @@ async function readDiffSections(
         "diff",
         "--cached",
         ...DIFF_FLAGS,
+        ...TRACKED_DETECTION_FLAGS,
         "--",
         ...pathspecs,
       ]).then((result) => {
@@ -271,6 +272,7 @@ async function readDiffSections(
         ...prefix,
         "diff",
         ...DIFF_FLAGS,
+        ...TRACKED_DETECTION_FLAGS,
         "--",
         ...pathspecs,
       ]).then((result) => {
@@ -287,23 +289,28 @@ async function validateUntrackedFile(
   path: string,
 ): Promise<UntrackedPathState> {
   const target = resolve(root, path);
-  const child = relative(root, target);
-  if (isAbsolute(path) || child.startsWith("..") || isAbsolute(child)) {
+  if (isAbsolute(path) || !containsPath(root, target)) {
     return "unsafe";
   }
   try {
+    const canonicalRoot = await realpath(root);
     const info = await lstat(target);
     if (!info.isFile() || info.isSymbolicLink()) {
       return "unsafe";
     }
     const canonical = await realpath(target);
-    const canonicalChild = relative(root, canonical);
-    return canonicalChild.startsWith("..") || isAbsolute(canonicalChild)
-      ? "unsafe"
-      : "safe";
+    return containsPath(canonicalRoot, canonical) ? "safe" : "unsafe";
   } catch (error) {
     return isMissingFile(error) ? "missing" : "unsafe";
   }
+}
+
+function containsPath(root: string, target: string): boolean {
+  const child = relative(root, target);
+  return (
+    child === "" ||
+    (child !== ".." && !child.startsWith(`..${sep}`) && !isAbsolute(child))
+  );
 }
 
 function requireSuccessfulDiff(result: GitCommandResult): void {
