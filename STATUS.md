@@ -188,9 +188,8 @@ The secondary product is **Pacium mode**:
   queue sources, delivery methods, context sources, or verification references,
   and no shortcut customization.
 - No Claude or Codex observer.
-- No multi-item parsing, compatible decision delivery,
-  acknowledgement/conflicts/supersession, worker role surface, or
-  objective/plan content presentation.
+- No multi-item parsing, acknowledgement/conflicts/supersession, worker role
+  surface, or objective/plan content presentation.
 - No tmux adapter.
 
 Do not extrapolate from the working terminal slice to any capability in this list.
@@ -201,8 +200,9 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 91 test files and 546 tests,
-  plus the 834.31 kB web and 227.62 kB local-server production builds passed.
+- `pnpm verify`: formatting, lint, type checking, 97 test files and 584 tests,
+  plus the 850.51 kB web JavaScript, 97.09 kB stylesheet, and 263.56 kB
+  local-server production builds passed.
 - `pnpm test:e2e`: ten Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
@@ -249,7 +249,7 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
   keyboard-accessible at 200% zoom.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
-- The protocol-version-13 boundary passed strict contract, atomic-store,
+- The protocol-version-15 boundary passed strict contract, atomic-store,
   canonical path/reference, authenticated WebSocket revision/conflict, PTY
   survival, bounded queue reader/observer/classifier, content-free bulk item
   evidence, exact-current base64 text inspection, stale/config/disconnect
@@ -269,7 +269,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 819.07 kB before gzip and emits Vite's chunk-size
+- The current web bundle is 850.51 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
 - Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
@@ -299,7 +299,8 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Begin PC-048 with explicit compatible decision delivery, idempotency, and
-honest delivered/unknown/failed state without blind retry. Complete the pinned
-Node.js 24 clean-install, CI, broader browser/security, manual accessibility,
-and sustained-output gates before release.
+Begin PC-049 with observable acknowledgement evidence, explicit conflict
+states, and bounded manual resolution without silently retrying or replacing
+immutable decisions. Complete the pinned Node.js 24 clean-install, CI, broader
+browser/security, manual accessibility, and sustained-output gates before
+release.

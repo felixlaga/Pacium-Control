@@ -70,16 +70,19 @@ The browser protocol can get or completely replace the versioned workspace.
 The current UI exposes a role-scoped Meta/Orchestrator binding editor and an
 ephemeral prompt target selector for exact live role or worker bindings. It
 does not edit workspace identity, repositories, workers, queue sources,
-delivery methods, or context sources. Configured objective/plan and delivery
-paths remain metadata only. Accepted queue-source paths receive bounded
+delivery methods, or context sources. Configured objective and plan paths
+remain metadata only. Accepted queue-source paths receive bounded
 no-follow stable reads and canonical-parent watches. Bulk messages remain
 content-free; opening one current list item requests its exact retained UTF-8
 text through the authenticated identity-bound inspector protocol. The browser
 keeps at most one decoded item and renders it only as inert text. For a current
 question or explicit approval, the inspector can record one bounded immutable
-local decision in private `queue-state.json`; it never changes the queue source
-or delivers the result. Pacium never executes queue contents, and
-classification, inspection, or local recording grants no execution authority.
+local decision in private `queue-state.json`; recording never changes the queue
+source or delivers the result. A decided item can separately deliver once
+through its exact accepted answer-file or live role-prompt method after
+explicit confirmation. Pacium never executes queue contents, and
+classification, inspection, local recording, or compatible delivery grants no
+execution authority.
 Browser prompts do not use those paths; they send bounded input directly to one
 explicitly selected live PTY. See the
 [Pacium workspace configuration contract](docs/execution/pacium-workspace-configuration.md)
