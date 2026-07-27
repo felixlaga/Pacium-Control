@@ -3,9 +3,11 @@ import type { AddressInfo } from "node:net";
 
 import { FakePtyFactory } from "@pacium/test-utils";
 import {
+  decodeTerminalDataFrame,
   DirectoryListingSchema,
   ServerMessageSchema,
   type ServerMessage,
+  type TerminalDataFrame,
 } from "@pacium/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 import { WebSocket, type RawData } from "ws";
@@ -22,10 +24,17 @@ interface PendingMessage {
   resolve: (message: ServerMessage) => void;
 }
 
+interface PendingFrame {
+  predicate: (frame: TerminalDataFrame) => boolean;
+  resolve: (frame: TerminalDataFrame) => void;
+}
+
 interface TestClient {
   socket: WebSocket;
   messages: ServerMessage[];
   pending: PendingMessage[];
+  frames: TerminalDataFrame[];
+  pendingFrames: PendingFrame[];
 }
 
 describe("localhost HTTP and WebSocket boundary", () => {
@@ -117,6 +126,70 @@ describe("localhost HTTP and WebSocket boundary", () => {
 
     second.socket.close();
     await once(second.socket, "close");
+  });
+
+  it("subscribes one browser transport to multiple terminal streams", async () => {
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(factory);
+    application = setup.application;
+    manager = setup.manager;
+
+    const creator = await connect(setup.url, setup.config);
+    await nextMessage(creator, (message) => message.type === "server.welcome");
+    const first = await createTestSession(creator);
+    const second = await createTestSession(creator);
+    creator.socket.close();
+    await once(creator.socket, "close");
+
+    const observer = await connect(setup.url, setup.config);
+    await nextMessage(observer, (message) => message.type === "server.welcome");
+    for (const [requestId, sessionId] of [
+      ["a4e62720-6b66-497d-a3db-37ad2ea6267a", first.id],
+      ["9c0a628c-6861-4059-99c5-24dd9ed2beeb", second.id],
+    ]) {
+      observer.socket.send(
+        JSON.stringify({
+          type: "terminal.attach",
+          requestId,
+          sessionId,
+        }),
+      );
+    }
+
+    const firstSnapshot = await nextMessage(
+      observer,
+      (message) =>
+        message.type === "terminal.snapshot" && message.sessionId === first.id,
+    );
+    const secondSnapshot = await nextMessage(
+      observer,
+      (message) =>
+        message.type === "terminal.snapshot" && message.sessionId === second.id,
+    );
+    expect(firstSnapshot).toMatchObject({
+      type: "terminal.snapshot",
+      sessionId: first.id,
+    });
+    expect(secondSnapshot).toMatchObject({
+      type: "terminal.snapshot",
+      sessionId: second.id,
+    });
+
+    factory.processes[0]?.emitData("first pane\r\n");
+    factory.processes[1]?.emitData("second pane\r\n");
+    const firstFrame = await nextFrame(
+      observer,
+      (frame) => frame.sessionId === first.id,
+    );
+    const secondFrame = await nextFrame(
+      observer,
+      (frame) => frame.sessionId === second.id,
+    );
+    expect(firstFrame.data).toContain("first pane");
+    expect(secondFrame.data).toContain("second pane");
+
+    observer.socket.close();
+    await once(observer.socket, "close");
   });
 
   it("rejects an invalid local access token", async () => {
@@ -254,9 +327,21 @@ async function connect(
     socket,
     messages: [],
     pending: [],
+    frames: [],
+    pendingFrames: [],
   };
   socket.on("message", (data, isBinary) => {
     if (isBinary) {
+      const frame = decodeTerminalDataFrame(toArrayBuffer(data));
+      const pendingIndex = client.pendingFrames.findIndex(({ predicate }) =>
+        predicate(frame),
+      );
+      if (pendingIndex === -1) {
+        client.frames.push(frame);
+        return;
+      }
+      const pending = client.pendingFrames.splice(pendingIndex, 1)[0];
+      pending?.resolve(frame);
       return;
     }
     const message = ServerMessageSchema.parse(JSON.parse(toUtf8(data)));
@@ -274,6 +359,29 @@ async function connect(
   return client;
 }
 
+async function createTestSession(client: TestClient): Promise<{ id: string }> {
+  client.socket.send(
+    JSON.stringify({
+      type: "session.create",
+      requestId: crypto.randomUUID(),
+      payload: {
+        cwd: process.cwd(),
+        launchPreset: "shell",
+        cols: 80,
+        rows: 24,
+      },
+    }),
+  );
+  const created = await nextMessage(
+    client,
+    (message) => message.type === "session.created",
+  );
+  if (created.type !== "session.created") {
+    throw new Error("Expected a created session");
+  }
+  return { id: created.session.id };
+}
+
 async function nextMessage(
   client: TestClient,
   predicate: (message: ServerMessage) => boolean,
@@ -288,6 +396,34 @@ async function nextMessage(
   return new Promise<ServerMessage>((resolve) => {
     client.pending.push({ predicate, resolve });
   });
+}
+
+async function nextFrame(
+  client: TestClient,
+  predicate: (frame: TerminalDataFrame) => boolean,
+): Promise<TerminalDataFrame> {
+  const index = client.frames.findIndex(predicate);
+  if (index !== -1) {
+    const frame = client.frames.splice(index, 1)[0];
+    if (frame !== undefined) {
+      return frame;
+    }
+  }
+  return new Promise<TerminalDataFrame>((resolve) => {
+    client.pendingFrames.push({ predicate, resolve });
+  });
+}
+
+function toArrayBuffer(data: RawData): ArrayBuffer {
+  const buffer = Array.isArray(data)
+    ? Buffer.concat(data)
+    : data instanceof ArrayBuffer
+      ? Buffer.from(data)
+      : Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+  return buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength,
+  ) as ArrayBuffer;
 }
 
 function toUtf8(data: RawData): string {

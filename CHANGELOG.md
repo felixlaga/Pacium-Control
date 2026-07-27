@@ -2,6 +2,30 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.7.0 — split-pane terminal workspace — 2026-07-27
+
+### Added
+
+- A bounded browser-owned binary layout for up to four nested horizontal or vertical terminal panes.
+- Explicit focused-pane state, empty-pane session selection, session move/swap, maximize/restore, and view-only pane closure.
+- Pointer and keyboard split creation, pane navigation, and separator resizing.
+- Versioned browser-local layout, ratio, focus, and maximize restoration with stale and duplicate session reconciliation.
+- Session-keyed terminal handles and reconnect cursors for simultaneous live terminal rendering.
+- A multi-subscription WebSocket integration test and server-rendered split-workspace tests.
+- A scoped PC-023 issue and implementation plan.
+
+### Verified
+
+- Formatting, lint, type checking, 55 automated tests, and both production bundles pass.
+- One WebSocket client receives independent snapshots and binary output from two subscribed PTYs.
+- The development UI and direct `/api/health` endpoint returned HTTP 200.
+
+### Known limitations
+
+- Rendered pointer, keyboard, zoom, and accessibility validation remain pending because no browser backend was available.
+- The current machine ran verification on Node.js 26.4.0; the pinned Node.js 24.18.x runtime remains to be verified.
+- The web bundle is 649 kB before gzip and still emits the tracked chunk-size warning.
+
 ## 0.6.0 — host directory picker and tailnet contract — 2026-07-27
 
 ### Added

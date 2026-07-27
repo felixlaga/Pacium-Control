@@ -27,6 +27,10 @@ export type WorkspaceShortcut =
   | { type: "previous-session" }
   | { type: "next-session" }
   | { type: "select-session"; index: number }
+  | { type: "split-horizontal" }
+  | { type: "split-vertical" }
+  | { type: "previous-pane" }
+  | { type: "next-pane" }
   | { type: "exit-terminal-capture" };
 
 export function resolveWorkspaceShortcut(input: {
@@ -37,11 +41,12 @@ export function resolveWorkspaceShortcut(input: {
   altKey: boolean;
   editable: boolean;
   dialogOpen: boolean;
+  terminalCaptured: boolean;
 }): WorkspaceShortcut | null {
   if (input.ctrlKey && input.shiftKey && input.code === "Period") {
     return { type: "exit-terminal-capture" };
   }
-  if (input.editable || input.dialogOpen) {
+  if (input.editable || input.dialogOpen || input.terminalCaptured) {
     return null;
   }
 
@@ -54,6 +59,27 @@ export function resolveWorkspaceShortcut(input: {
   }
   if (commandModifier && input.shiftKey && input.code === "BracketRight") {
     return { type: "next-session" };
+  }
+  if (commandModifier && input.code === "Backslash") {
+    return {
+      type: input.shiftKey ? "split-vertical" : "split-horizontal",
+    };
+  }
+  if (
+    input.altKey &&
+    !commandModifier &&
+    !input.shiftKey &&
+    input.code === "BracketLeft"
+  ) {
+    return { type: "previous-pane" };
+  }
+  if (
+    input.altKey &&
+    !commandModifier &&
+    !input.shiftKey &&
+    input.code === "BracketRight"
+  ) {
+    return { type: "next-pane" };
   }
   if (
     commandModifier &&
