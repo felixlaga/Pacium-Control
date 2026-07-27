@@ -507,6 +507,15 @@ export function App() {
       setPaciumConfig(next);
       return;
     }
+    if (event.type === "pacium.queue.requested") {
+      const next = beginPaciumQueueRequest(
+        paciumQueueRef.current,
+        event.requestId,
+      );
+      paciumQueueRef.current = next;
+      setPaciumQueue(next);
+      return;
+    }
     if (event.message.type === "command.result") {
       const currentPrompt = paciumPromptRef.current;
       const acceptedPrompt = acceptPaciumPromptResult(
@@ -558,16 +567,6 @@ export function App() {
       if (accepted !== paciumConfigRef.current) {
         paciumConfigRef.current = accepted;
         setPaciumConfig(accepted);
-        const transport = transportRef.current;
-        if (transport !== null) {
-          const requestId = transport.requestQueueObservation();
-          const queueRequest = beginPaciumQueueRequest(
-            paciumQueueRef.current,
-            requestId,
-          );
-          paciumQueueRef.current = queueRequest;
-          setPaciumQueue(queueRequest);
-        }
       }
       const savedRole = roleSaveRequestRef.current;
       if (savedRole?.requestId === event.message.requestId) {
@@ -1838,10 +1837,7 @@ export function App() {
       );
       return;
     }
-    const requestId = transport.requestQueueObservation();
-    const next = beginPaciumQueueRequest(paciumQueueRef.current, requestId);
-    paciumQueueRef.current = next;
-    setPaciumQueue(next);
+    transport.requestQueueObservation();
   };
 
   const openCreateDialog = () => {

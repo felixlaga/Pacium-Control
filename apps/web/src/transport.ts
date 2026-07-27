@@ -21,6 +21,7 @@ export type TransportEvent =
       requestId: string;
       intent: "get" | "replace";
     }
+  | { type: "pacium.queue.requested"; requestId: string }
   | { type: "message"; message: ServerMessage }
   | { type: "terminal.data"; frame: TerminalDataFrame }
   | { type: "transport.error"; message: string };
@@ -197,6 +198,7 @@ export class PaciumTransport {
 
   public requestQueueObservation(): string {
     const requestId = crypto.randomUUID();
+    this.emit({ type: "pacium.queue.requested", requestId });
     this.send(queueObserveMessage(requestId));
     return requestId;
   }
@@ -256,6 +258,7 @@ export class PaciumTransport {
         this.emit({ type: "connection", state: "connected" });
         this.listSessions();
         this.requestPaciumConfig();
+        this.requestQueueObservation();
       });
       socket.addEventListener("message", (event) => {
         const data: unknown = event.data;
