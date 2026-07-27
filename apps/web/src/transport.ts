@@ -146,6 +146,12 @@ export class PaciumTransport {
     return requestId;
   }
 
+  public requestRepositoryHistory(sessionId: string): string {
+    const requestId = crypto.randomUUID();
+    this.send(repositoryHistoryMessage(sessionId, requestId));
+    return requestId;
+  }
+
   public closeSession(sessionId: string, force: boolean): void {
     this.send({
       type: "session.close",
@@ -338,6 +344,17 @@ export function repositoryDiffMessage(
     requestId,
     sessionId,
     path,
+  };
+}
+
+export function repositoryHistoryMessage(
+  sessionId: string,
+  requestId: string,
+): Extract<ClientMessage, { type: "repository.history" }> {
+  return {
+    type: "repository.history",
+    requestId,
+    sessionId,
   };
 }
 

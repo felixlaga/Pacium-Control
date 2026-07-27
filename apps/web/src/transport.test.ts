@@ -4,6 +4,7 @@ import {
   fetchDirectoryListing,
   repositoryChangesMessage,
   repositoryDiffMessage,
+  repositoryHistoryMessage,
   repositoryRefreshMessage,
 } from "./transport.js";
 
@@ -46,6 +47,19 @@ describe("repository transport", () => {
       requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
       sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
       path: "src/file.ts",
+    });
+  });
+
+  it("sends only request and session identity for commit history", () => {
+    expect(
+      repositoryHistoryMessage(
+        "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ),
+    ).toEqual({
+      type: "repository.history",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
     });
   });
 });
