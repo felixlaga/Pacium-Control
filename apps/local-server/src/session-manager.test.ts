@@ -8,6 +8,8 @@ import type { GitDiffInspector } from "./git-diff.js";
 import type { GitHistoryInspector } from "./git-history.js";
 import type { RepositoryInspector } from "./repository-context.js";
 import { SessionError, SessionManager } from "./session-manager.js";
+import type { VerificationCatalog } from "./verification-config.js";
+import { VerificationRunner } from "./verification-runner.js";
 
 const testPresets: readonly LaunchPresetDefinition[] = [
   {
@@ -65,6 +67,11 @@ function createManager(
     Promise.resolve(emptyDiff(repository.root, path, observedAt)),
   gitHistoryInspector: GitHistoryInspector = (repository, observedAt) =>
     Promise.resolve(emptyHistory(repository.root, observedAt)),
+  verificationCatalog: VerificationCatalog = {
+    configured: false,
+    repositories: [],
+  },
+  verificationRunner?: VerificationRunner,
 ): SessionManager {
   return new SessionManager(
     factory,
@@ -74,6 +81,8 @@ function createManager(
     gitChangesInspector,
     gitDiffInspector,
     gitHistoryInspector,
+    verificationCatalog,
+    verificationRunner,
   );
 }
 
@@ -461,6 +470,120 @@ describe("SessionManager", () => {
     manager.shutdown();
   });
 
+  it("reports verification as unavailable without explicit configuration", async () => {
+    const factory = new FakePtyFactory();
+    const manager = createManager(factory);
+    const session = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+
+    expect(manager.repositoryVerification(session.id)).toMatchObject({
+      status: "unconfigured",
+      configured: false,
+      presets: [],
+      run: null,
+    });
+    await expect(
+      manager.runRepositoryVerification(session.id, "verify"),
+    ).rejects.toMatchObject({ code: "VERIFICATION_UNCONFIGURED" });
+    expect(factory.processes[0]?.signals).toEqual([]);
+    manager.shutdown();
+  });
+
+  it("runs only the configured preset for the session repository", async () => {
+    const factory = new FakePtyFactory();
+    const runner = new VerificationRunner({
+      environment: {},
+      observeHead: () => Promise.resolve("a".repeat(40)),
+    });
+    const catalog = verificationCatalog(
+      "process.stdout.write('manager verification passed\\n')",
+    );
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      catalog,
+      runner,
+    );
+    const session = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+    const completed = verificationEvent(manager, session.id, "passed");
+
+    await expect(
+      manager.runRepositoryVerification(session.id, "verify"),
+    ).resolves.toMatchObject({
+      status: "ready",
+      presets: [{ id: "verify", executable: process.execPath }],
+      run: { status: "running" },
+    });
+    await expect(completed).resolves.toMatchObject({
+      status: "ready",
+      run: {
+        status: "passed",
+        stdout: "manager verification passed\n",
+      },
+    });
+    await expect(
+      manager.runRepositoryVerification(session.id, "browser-command"),
+    ).rejects.toMatchObject({
+      code: "VERIFICATION_PRESET_UNAVAILABLE",
+    });
+    expect(factory.processes[0]?.signals).toEqual([]);
+    manager.shutdown();
+  });
+
+  it("cancels an exact verification run without signalling the PTY", async () => {
+    const factory = new FakePtyFactory();
+    const runner = new VerificationRunner({
+      environment: {},
+      observeHead: () => Promise.resolve("a".repeat(40)),
+      terminationGraceMs: 50,
+    });
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      verificationCatalog("setInterval(() => {}, 1000)"),
+      runner,
+    );
+    const session = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+    const started = await manager.runRepositoryVerification(
+      session.id,
+      "verify",
+    );
+    const runId = started.run?.runId;
+    expect(runId).toBeDefined();
+    const completed = verificationEvent(manager, session.id, "cancelled");
+
+    expect(
+      manager.cancelRepositoryVerification(session.id, runId!),
+    ).toMatchObject({ run: { status: "cancelling" } });
+    await expect(completed).resolves.toMatchObject({
+      run: { status: "cancelled" },
+    });
+    expect(factory.processes[0]?.signals).toEqual([]);
+    manager.shutdown();
+  });
+
   it("rejects a missing working directory without creating a PTY", async () => {
     const factory = new FakePtyFactory();
     const manager = createManager(factory);
@@ -514,3 +637,45 @@ describe("SessionManager", () => {
     manager.shutdown();
   });
 });
+
+function verificationCatalog(source: string): VerificationCatalog {
+  return {
+    configured: true,
+    repositories: [
+      {
+        root: process.cwd(),
+        presets: [
+          {
+            id: "verify",
+            label: "Verify",
+            description: "Run the configured verification fixture",
+            executable: process.execPath,
+            args: ["-e", source],
+            timeoutMs: 2_000,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function verificationEvent(
+  manager: SessionManager,
+  sessionId: string,
+  status: "passed" | "cancelled",
+) {
+  return new Promise<ReturnType<SessionManager["repositoryVerification"]>>(
+    (resolve) => {
+      const unsubscribe = manager.onSessionEvent((event) => {
+        if (
+          event.type === "verification" &&
+          event.sessionId === sessionId &&
+          event.observation.run?.status === status
+        ) {
+          unsubscribe();
+          resolve(event.observation);
+        }
+      });
+    },
+  );
+}
