@@ -84,41 +84,41 @@ source is modified, and no conflict is resolved silently.
 
 ## Acceptance criteria
 
-- [ ] Protocol schemas expose bounded conflict, reconciliation, resolution, and
+- [x] Protocol schemas expose bounded conflict, reconciliation, resolution, and
       retry state without queue text, browser-selected paths, provider claims,
       or generic mutation fields.
-- [ ] Queue-state schemas 1 and 2 remain readable; the first accepted PC-049
+- [x] Queue-state schemas 1 and 2 remain readable; the first accepted PC-049
       mutation atomically writes schema 3 without changing existing decisions,
       attempts, hashes, outcomes, or order.
-- [ ] Every resolution is server-authored, immutable, hash-verified, references
+- [x] Every resolution is server-authored, immutable, hash-verified, references
       one exact decision and applicable attempt, and follows a valid monotonic
       lifecycle transition.
-- [ ] Stable source rewrites and degraded/empty/missing sources with prior
+- [x] Stable source rewrites and degraded/empty/missing sources with prior
       decisions show explicit content-free conflict evidence after reload and
       local-server restart.
-- [ ] Two current accepted sources with the same exact content hash show a
+- [x] Two current accepted sources with the same exact content hash show a
       duplicate conflict on both sources without comparing or exposing text.
-- [ ] A differing second decision request preserves the first decision and
+- [x] A differing second decision request preserves the first decision and
       returns a visible competing-decision conflict; an identical retry remains
       idempotent.
-- [ ] Exact matching answer-file bytes show only transport-artifact-present
+- [x] Exact matching answer-file bytes show only transport-artifact-present
       evidence. Missing bytes remain acknowledgement-unavailable. Changed,
       symlinked, unsafe, or unreadable targets show a conflict without being
       modified.
-- [ ] Role-prompt delivery remains acknowledgement-unavailable unless an
+- [x] Role-prompt delivery remains acknowledgement-unavailable unless an
       explicit human-labelled resolution exists.
-- [ ] Acknowledged, applied, unable-to-apply, confirmed-not-delivered, and
+- [x] Acknowledged, applied, unable-to-apply, confirmed-not-delivered, and
       superseded states display source, time, note, and exact immutable
       references without claiming provider-native evidence.
-- [ ] A failed or unknown first attempt can be retried only after explicit
+- [x] A failed or unknown first attempt can be retried only after explicit
       confirmed-not-delivered Review/Cancel/Confirm, and at most one second
       attempt can ever be persisted or invoked.
-- [ ] Delivered attempts, unresolved unknown attempts, stale sources, changed
+- [x] Delivered attempts, unresolved unknown attempts, stale sources, changed
       configuration, unsafe targets, and ineligible transitions cannot retry
       or mutate unrelated state.
-- [ ] Refresh, browser reconnect, and local-server restart reconstruct conflict,
+- [x] Refresh, browser reconnect, and local-server restart reconstruct conflict,
       artifact, lifecycle, and retry evidence without replaying a transport.
-- [ ] Queue source bytes, answer-target bytes, `pacium.json`, repositories,
+- [x] Queue source bytes, answer-target bytes, `pacium.json`, repositories,
       selected terminals, layouts, and unrelated PTYs remain unchanged except
       for the one explicitly confirmed eligible delivery side effect.
 
@@ -263,3 +263,24 @@ sections stack without hiding the Back action or terminal ownership status.
   represent one logical request. PC-049 does not choose or delete a source.
 - A missing answer file can mean consumed, deleted, or never durable. It is
   intentionally not acknowledgement evidence.
+
+## Completion evidence
+
+Completed on 2026-07-27 on
+`codex/acknowledgement-conflict-resolution`.
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 104 Vitest
+  files and 623 tests, and both production builds.
+- `pnpm test:e2e` passed all 10 Chromium workflows, including exact artifact
+  evidence, explicit lifecycle confirmation and cancellation, reload
+  reconstruction, source-rewrite conflict evidence, focus, narrow layout,
+  forced colors, and reduced motion.
+- Authenticated server integration tests prove schema-1/2 compatibility,
+  restart reconstruction, answer-target inspection, lifecycle transitions,
+  source conflicts, a failed first role transport, the locked retry gate, one
+  human-unlocked successful retry, and rejection of a third attempt.
+- Production output was 307.56 kB for the local-server JavaScript and
+  876.41 kB JavaScript plus 100.24 kB CSS for the web application before gzip.
+- Verification used Node.js 26.4.0 rather than pinned Node.js 24.18.x and
+  emitted the existing web chunk-size warning. Supported-runtime and bundle
+  optimization work therefore remain open release gates.

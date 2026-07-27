@@ -8,7 +8,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `d3077b90a32ab5cc67e072a9fd163b91acf3ac54`
 - Target milestone: Milestone 3 — Pacium mode
-- Status: In progress
+- Status: Completed
 
 ## Objective
 
@@ -434,3 +434,29 @@ pacium.queue.resolution(requestId, result)
 - Security: exact server-owned reads, strict human-label transitions, one
   bounded retry, and no automatic inference preserve the accepted
   browser-to-shell/filesystem boundary.
+
+## Completion evidence
+
+Completed on 2026-07-27.
+
+- Protocol 16 carries strict content-free source conflicts, exact-item
+  reconciliation, identity-only lifecycle resolution, and bounded retry state.
+- Queue-state schemas 1 and 2 remain readable. Accepted mutations write schema
+  3 with unchanged prior decision and delivery records plus immutable,
+  hash-verified resolutions and at most two attempts per decision.
+- The browser separates terminal transport, answer-artifact observation,
+  provider acknowledgement availability, and explicit human-labelled
+  lifecycle state. Every mutation and the sole retry use
+  Review/Cancel/Confirm.
+- `pnpm verify` passed 104 Vitest files and 623 tests plus the production
+  builds. The local-server JavaScript was 307.56 kB; the web output was
+  876.41 kB JavaScript and 100.24 kB CSS before gzip.
+- `pnpm test:e2e` passed all 10 Chromium workflows. Authenticated integration
+  coverage separately proves restart reconstruction and the exact
+  failed-or-unknown → confirmed-not-delivered → one-retry boundary.
+- Provider-native acknowledgement remains unavailable; lifecycle resolution is
+  visibly human-labelled. Duplicate detection is exact-hash only, a missing
+  answer file is ambiguous, and target evidence is recomputed only on explicit
+  inspection or Refresh.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x and
+  retained Vite's existing chunk-size warning.
