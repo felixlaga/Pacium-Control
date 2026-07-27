@@ -252,6 +252,12 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-041 Implement General/Pacium toggle
 
 - Preserve terminal layout and selection while changing navigation emphasis and inspector tools.
+- Current status: a versioned browser-only mode preference, accessible
+  segmented control, `G P` chord, command-palette action, honest protocol-10
+  configuration card, explicit Retry, and responsive shell emphasis preserve
+  terminal/session/layout/inspector truth across mode changes and refresh.
+  Role rows, configuration editing, queue UI, and content behavior remain
+  PC-042 through PC-050.
 
 ### PC-042 Pin Meta and Orchestrator
 

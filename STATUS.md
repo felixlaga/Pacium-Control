@@ -1,8 +1,8 @@
 # Project status
 
-**Current phase:** Core terminal workspace, bounded Git oversight, and the
-server-owned Pacium workspace configuration slice are complete enough for
-continued slicing; the functional General/Pacium mode toggle is next.
+**Current phase:** Core terminal workspace, bounded Git oversight, server-owned
+Pacium configuration, and the General/Pacium presentation toggle are complete
+enough for continued slicing; pinned Meta and Orchestrator roles are next.
 
 Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
 
@@ -83,6 +83,15 @@ The secondary product is **Pacium mode**:
   retains only accepted server evidence during replacement, rejects stale
   responses, and drops pending intent on disconnect without affecting PTYs,
   tabs, splits, selection, or General mode.
+- A browser-owned, versioned General/Pacium presentation preference with a
+  compact segmented control, `G P` chord, command-palette action, safe General
+  fallback, and storage-failure disclosure.
+- Pacium navigation that keeps the same terminal groups and shows only accepted
+  loading, unconfigured, ready configured-reference counts, or bounded error
+  evidence with read-only Retry.
+- Mode changes and reload preserve selected PTY, terminal tabs/splits,
+  inspector context, panel state, terminal sync/input ownership, and existing
+  Git/check evidence.
 - Keyboard commands for session creation, numbered selection, previous/next selection, and leaving terminal capture.
 - Browser-owned terminal tabs with pinning, pointer/keyboard reordering, view-only close, stale-session reconciliation, and versioned local restoration.
 - A bounded four-pane terminal layout with horizontal/vertical nesting, pointer/keyboard resizing, explicit focus, session move/swap, maximize/restore, view-only close, and versioned local restoration.
@@ -105,7 +114,8 @@ The secondary product is **Pacium mode**:
 - No browser editor/setup flow for the server-owned Pacium workspace
   configuration and no shortcut customization.
 - No Claude or Codex observer.
-- No functional Pacium mode; the toggle is visibly marked as upcoming.
+- No pinned/launchable Meta or Orchestrator roles, prompt targeting, queue
+  observation, decisions, delivery, or objective/plan content presentation.
 - No queue integration.
 - No tmux adapter.
 
@@ -117,13 +127,15 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 64 test files and 339 tests,
+- `pnpm verify`: formatting, lint, type checking, 68 test files and 353 tests,
   plus web and local-server production builds passed.
-- `pnpm test:e2e`: seven Chromium workflows passed for skip navigation, panel
+- `pnpm test:e2e`: eight Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
   changed-file/diff/history/Activity inspection, and configured verification
-  run/reload/cancel without terminal reselection.
+  run/reload/cancel without terminal reselection. General/Pacium coverage
+  proved pointer, chord, palette, reload persistence, unchanged selected PTY
+  and inspector context, configured-state presentation, and narrow layouts.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
 - The protocol-version-10 boundary passed strict contract, atomic-store,
@@ -143,7 +155,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 766.29 kB before gzip and emits Vite's chunk-size
+- The current web bundle is 770.96 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
 - Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
@@ -173,8 +185,8 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Begin PC-041 with a functional General/Pacium presentation toggle that
-preserves terminal layout, selection, focus, PTY ownership, and General-mode
-recovery while consuming the server-owned configuration honestly. Complete the
-pinned Node.js 24 clean-install, CI, broader browser/security, manual
-accessibility, and sustained-output gates before release.
+Begin PC-042 with configured Meta and Orchestrator role rows that resolve
+explicit session/preset bindings honestly, show missing/disconnected states,
+and launch or attach without changing the underlying terminal-first model.
+Complete the pinned Node.js 24 clean-install, CI, broader browser/security,
+manual accessibility, and sustained-output gates before release.
