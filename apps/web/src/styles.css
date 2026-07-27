@@ -3059,11 +3059,12 @@ html[data-density="comfortable"] .terminal-panel {
     display: flex;
   }
 
-  .new-terminal-button {
+  .sidebar .new-terminal-button {
     width: auto;
     margin: 2px 10px 18px;
     justify-content: flex-start;
     padding: 0 10px;
+    display: flex;
     font-size: 12px;
   }
 
