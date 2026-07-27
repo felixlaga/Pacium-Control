@@ -1736,6 +1736,7 @@ export function App() {
       className={`app-shell ${
         panelView.sidebarOpen ? "" : "is-sidebar-collapsed"
       } ${panelView.inspectorOpen ? "" : "is-inspector-collapsed"}`}
+      data-workspace-mode={workspaceMode}
     >
       <a className="skip-link" href="#primary-workspace">
         Skip to terminal workspace
@@ -1788,7 +1789,9 @@ export function App() {
 
         <nav aria-label="Terminal sessions" className="session-navigation">
           <div className="section-heading">
-            <span>Terminals</span>
+            <span>
+              {workspaceMode === "pacium" ? "Pacium sessions" : "Terminals"}
+            </span>
             <span>{sessions.length}</span>
           </div>
           {sessions.length === 0 ? (
@@ -1872,21 +1875,30 @@ export function App() {
         </nav>
 
         <div className="sidebar-footer">
-          <button
-            aria-describedby="pacium-mode-note"
-            className="pacium-toggle"
-            disabled
-            type="button"
-          >
-            <span className="toggle-track" aria-hidden="true">
-              <span />
-            </span>
-            <span>
-              <strong>Pacium mode</strong>
-              <small id="pacium-mode-note">Meta · Orchestrator · Queue</small>
-            </span>
-            <span className="soon-label">Soon</span>
-          </button>
+          <div className="workspace-mode-switch">
+            <span id="workspace-mode-label">Workspace mode</span>
+            <div
+              aria-labelledby="workspace-mode-label"
+              className="workspace-mode-options"
+              role="group"
+            >
+              {(["general", "pacium"] as const).map((mode) => (
+                <button
+                  aria-pressed={workspaceMode === mode}
+                  key={mode}
+                  onClick={() => changeWorkspaceMode(mode)}
+                  type="button"
+                >
+                  {mode === "general" ? "General" : "Pacium"}
+                </button>
+              ))}
+            </div>
+            <small>
+              {workspaceMode === "pacium"
+                ? "Focused oversight · terminals unchanged"
+                : "All terminal sessions"}
+            </small>
+          </div>
         </div>
       </aside>
 
