@@ -120,8 +120,9 @@ Coding agents process untrusted repository instructions. The interface must:
 - Existing metadata leaves must be regular non-symlink files; missing leaves
   require an existing canonical parent. A source path cannot also be an answer
   target.
-- Configuration grants no permission to read queue/objective/plan content,
-  write an answer, send a prompt, run verification, or send terminal input.
+- Configuration replacement alone grants no automatic read, write, prompt,
+  verification, or terminal-input side effect. Queue/item and Control-context
+  reads require their separate typed authenticated requests.
 - Reject command, executable, argument, environment, signal, terminal-byte,
   content, secret, and generic write-target fields at the shared protocol
   boundary.
@@ -129,6 +130,33 @@ Coding agents process untrusted repository instructions. The interface must:
 See the
 [workspace configuration contract](docs/execution/pacium-workspace-configuration.md)
 for exact schemas, bounds, atomicity, and recovery.
+
+## Control-context safety
+
+- Accept only the identity-free `pacium.context.inspect(requestId)` request.
+  The browser cannot submit a path, workspace revision, source kind, queue
+  identity, range, count, filter, session, command, or read option.
+- Resolve objective and plan paths only from the current accepted workspace.
+  Open each leaf with no-follow semantics, require a regular file, cap it at
+  32 KiB, verify stable metadata, and validate strict UTF-8 before returning
+  content.
+- Recheck the accepted workspace ID and revision after both reads and queue
+  state inspection. Return no mixed-revision content after configuration
+  drift.
+- Render context and question previews only as inert text. Never interpret
+  Markdown, HTML, ANSI, OSC, hyperlinks, paths, or commands from them.
+- Bound recent decisions to twelve newest validated immutable records and
+  question previews to 320 UTF-8 bytes. Exclude notes, target paths, queue
+  source text, terminal bytes, commands, environments, and provider data.
+- Keep recording, durable transport attempts, and explicit human-labelled
+  lifecycle results separate. None authorizes or proves provider handling,
+  acknowledgement, application, task completion, or resulting Git/terminal
+  work.
+- Clear decoded text and pending intent on disconnect, accepted-config drift,
+  mode exit, Back, and route replacement. Reject late and cross-revision
+  responses.
+- Never watch, poll, repair, create, truncate, or write objective or plan
+  sources through the Control-context path.
 
 ## Secrets and retention
 
