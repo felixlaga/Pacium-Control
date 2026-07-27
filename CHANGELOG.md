@@ -2,6 +2,48 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.18.0 — bounded local commit history — 2026-07-27
+
+### Added
+
+- Protocol-8 selected-session history requests and strict ready, unborn/empty,
+  non-repository, and degraded observations with no browser revision, range,
+  count, path, format, command, or environment input.
+- One fixed local `HEAD` Git log read with no shell, pager, signature display,
+  prompt, optional lock, remote, or network operation.
+- NUL-framed commit normalization with a 1.5 second timeout, 256 KiB raw-output
+  ceiling, 51-record read window, 50-record payload cap, and bounded commit IDs,
+  parents, author names, authored times, subjects, errors, and final messages.
+- An accessible History inspector tab with compact hash, subject, author, local
+  time, Merge, truncation, freshness, unborn, and degraded evidence plus lazy
+  loading, explicit Refresh, and three-tab arrow/Home/End navigation.
+- Disposable per-session history state with stale/cross-session response
+  rejection, prior-evidence refresh, disconnect recovery, and no persistence or
+  PTY interaction.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, type checking, 51 test files and 227
+  tests, and both production bundles.
+- `pnpm test:e2e` passed all six Chromium workflows; deterministic temporary-Git
+  evidence verified lazy History load, subject/author/hash, Refresh, keyboard
+  movement, unchanged terminal selection, and the 320 CSS px inspector.
+- Real-Git fixtures passed for linear, merge, unusual control-character,
+  detached, 51-record truncated, and unborn histories.
+
+### Known limitations
+
+- Configured-base relationships, commit patches/details, graph lanes, search,
+  pagination, signatures, remote/PR metadata, and every Git mutation remain out
+  of scope.
+- Verification presets and recent activity remain PC-037 and PC-038.
+- The connected in-app browser backend was unavailable; automated headless
+  Chromium evidence passed, while independent manual visual and screen-reader
+  review remain release gates.
+- The current machine ran verification on Node.js 26.4.0, not pinned Node.js
+  24.18.x.
+- The web bundle is 733 kB before gzip and retains the tracked warning.
+
 ## 0.17.0 — bounded one-file diff oversight — 2026-07-27
 
 ### Added
