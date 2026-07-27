@@ -21,6 +21,11 @@ import {
   type ConnectionState,
   type TransportEvent,
 } from "./transport.js";
+import { CommandPalette, type CommandPaletteView } from "./command-palette.js";
+import {
+  buildPaletteCatalog,
+  type PaletteCommand,
+} from "./command-palette-model.js";
 import { DirectoryPicker } from "./directory-picker.js";
 import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
 import {
@@ -104,6 +109,7 @@ export function App() {
   const layoutRef = useRef<SplitLayoutState>(
     createSplitLayout(`pane-${crypto.randomUUID()}`),
   );
+  const paletteInvokerRef = useRef<HTMLElement | null>(null);
   const transportRef = useRef<PaciumTransport | null>(null);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -130,6 +136,9 @@ export function App() {
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
   const [actionSessionId, setActionSessionId] = useState<string | null>(null);
   const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
+  const [paletteView, setPaletteView] = useState<CommandPaletteView | null>(
+    null,
+  );
 
   selectedIdRef.current = selectedId;
   tabsRef.current = tabs;
@@ -267,6 +276,17 @@ export function App() {
       pane.sessionId === null ? [] : [pane.sessionId],
     );
   }, [layout]);
+  const paletteCommands = useMemo(
+    () =>
+      buildPaletteCatalog({
+        focusedPaneId: getFocusedPane(layout)?.id ?? null,
+        maximizedPaneId: layout.maximizedPaneId,
+        paneCount: listPanes(layout.root).length,
+        selectedSessionId: selectedId,
+        sessions,
+      }),
+    [layout, selectedId, sessions],
+  );
 
   useEffect(() => {
     if (connection !== "connected") {
@@ -448,6 +468,153 @@ export function App() {
     setActionSessionId(null);
   };
 
+  const duplicateSession = (session: SessionSummary) => {
+    transportRef.current?.createSession(duplicateSessionInput(session));
+    setNotice(
+      `Starting a duplicate of ${session.displayName}. The original process is unchanged.`,
+    );
+    setActionSessionId(null);
+  };
+
+  const relaunchSession = (session: SessionSummary) => {
+    const input = relaunchSessionInput(session);
+    if (input !== null) {
+      transportRef.current?.createSession(input);
+      setNotice(
+        `Starting a new ${session.displayName} process from its retained preset and directory.`,
+      );
+    }
+    setActionSessionId(null);
+  };
+
+  const interruptSession = (session: SessionSummary) => {
+    transportRef.current?.interrupt(session.id);
+    setNotice(
+      `Sent SIGINT to ${session.displayName}. The process may continue running.`,
+    );
+    setActionSessionId(null);
+  };
+
+  const beginRenameSession = (session: SessionSummary) => {
+    setRenameSessionId(session.id);
+    setActionSessionId(null);
+  };
+
+  const revealSessionRepository = (session: SessionSummary) => {
+    transportRef.current?.revealRepository(session.id);
+    setNotice(
+      `Asked the Pacium host to reveal ${session.repositoryName ?? "the repository"}.`,
+    );
+    setActionSessionId(null);
+  };
+
+  const openPalette = (view: CommandPaletteView) => {
+    const activeElement = document.activeElement;
+    paletteInvokerRef.current =
+      activeElement instanceof HTMLElement && activeElement !== document.body
+        ? activeElement
+        : document.getElementById("command-palette-trigger");
+    setCapturedPaneId(null);
+    setPaletteView(view);
+  };
+
+  const closePalette = (restoreFocus = true) => {
+    setPaletteView(null);
+    if (!restoreFocus) {
+      return;
+    }
+    const target = paletteInvokerRef.current;
+    window.requestAnimationFrame(() => {
+      if (target?.isConnected) {
+        target.focus();
+        return;
+      }
+      document.getElementById("command-palette-trigger")?.focus();
+    });
+  };
+
+  const executePaletteCommand = (command: PaletteCommand) => {
+    if (!command.enabled) {
+      return;
+    }
+    if (command.action.type === "show-shortcuts") {
+      setPaletteView("shortcuts");
+      return;
+    }
+
+    closePalette(false);
+    switch (command.action.type) {
+      case "new-terminal":
+        setCreateOpen(true);
+        return;
+      case "split-pane":
+        splitPane(command.action.direction);
+        return;
+      case "focus-pane":
+        focusAdjacentPane(command.action.direction);
+        return;
+      case "toggle-maximize": {
+        const next = toggleMaximizedPane(
+          layoutRef.current,
+          command.action.paneId,
+        );
+        setLayout(next);
+        setSelectedId(getFocusedPane(next)?.sessionId ?? null);
+        return;
+      }
+      case "select-session":
+        selectSession(command.action.sessionId);
+        return;
+      case "rename-session":
+      case "duplicate-session":
+      case "relaunch-session":
+      case "copy-session-directory":
+      case "reveal-session-repository":
+      case "close-session-view":
+      case "interrupt-session":
+      case "review-session-termination": {
+        const sessionId = command.action.sessionId;
+        const session = sessions.find(({ id }) => id === sessionId);
+        if (session === undefined) {
+          setNotice("That session is no longer available. Reopen the palette.");
+          return;
+        }
+        switch (command.action.type) {
+          case "rename-session":
+            beginRenameSession(session);
+            return;
+          case "duplicate-session":
+            duplicateSession(session);
+            return;
+          case "relaunch-session":
+            relaunchSession(session);
+            return;
+          case "copy-session-directory":
+            void copySessionDirectory(session);
+            return;
+          case "reveal-session-repository":
+            revealSessionRepository(session);
+            return;
+          case "close-session-view":
+            closeViewTab(session.id);
+            return;
+          case "interrupt-session":
+            interruptSession(session);
+            return;
+          case "review-session-termination":
+            terminateSession(session);
+            return;
+        }
+      }
+    }
+  };
+
+  const modalOpen =
+    createOpen ||
+    actionSession !== null ||
+    renameSession !== null ||
+    paletteView !== null;
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const shortcut = resolveWorkspaceShortcut({
@@ -457,7 +624,7 @@ export function App() {
         shiftKey: event.shiftKey,
         altKey: event.altKey,
         editable: isEditableTarget(event.target),
-        dialogOpen: createOpen,
+        dialogOpen: modalOpen,
         terminalCaptured: capturedPaneId !== null,
       });
       if (shortcut === null) {
@@ -476,6 +643,12 @@ export function App() {
           setCapturedPaneId(null);
           return;
         }
+        case "open-command-palette":
+          openPalette("commands");
+          return;
+        case "open-shortcut-reference":
+          openPalette("shortcuts");
+          return;
         case "new-terminal":
           setCreateOpen(true);
           return;
@@ -517,7 +690,7 @@ export function App() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [capturedPaneId, createOpen, tabs]);
+  }, [capturedPaneId, modalOpen, tabs]);
 
   return (
     <div className="app-shell">
@@ -634,6 +807,16 @@ export function App() {
           </div>
           <div className="header-actions">
             <ConnectionBadge state={connection} />
+            <button
+              aria-keyshortcuts="Meta+K Control+K"
+              id="command-palette-trigger"
+              onClick={() => openPalette("commands")}
+              title="Command palette (Cmd/Ctrl K)"
+              type="button"
+            >
+              Commands
+              <kbd>⌘K</kbd>
+            </button>
             <button
               disabled={selectedSession?.processState !== "live"}
               onClick={() => {
@@ -966,6 +1149,15 @@ export function App() {
           onCreate={createSession}
         />
       )}
+      {paletteView !== null && (
+        <CommandPalette
+          commands={paletteCommands}
+          onClose={() => closePalette()}
+          onExecute={executePaletteCommand}
+          onViewChange={setPaletteView}
+          view={paletteView}
+        />
+      )}
       {actionSession !== null && (
         <SessionActionsMenu
           onClose={() => setActionSessionId(null)}
@@ -976,43 +1168,11 @@ export function App() {
           onCopyDirectory={() => {
             void copySessionDirectory(actionSession);
           }}
-          onDuplicate={() => {
-            transportRef.current?.createSession(
-              duplicateSessionInput(actionSession),
-            );
-            setNotice(
-              `Starting a duplicate of ${actionSession.displayName}. The original process is unchanged.`,
-            );
-            setActionSessionId(null);
-          }}
-          onInterrupt={() => {
-            transportRef.current?.interrupt(actionSession.id);
-            setNotice(
-              `Sent SIGINT to ${actionSession.displayName}. The process may continue running.`,
-            );
-            setActionSessionId(null);
-          }}
-          onRelaunch={() => {
-            const input = relaunchSessionInput(actionSession);
-            if (input !== null) {
-              transportRef.current?.createSession(input);
-              setNotice(
-                `Starting a new ${actionSession.displayName} process from its retained preset and directory.`,
-              );
-            }
-            setActionSessionId(null);
-          }}
-          onRename={() => {
-            setRenameSessionId(actionSession.id);
-            setActionSessionId(null);
-          }}
-          onRevealRepository={() => {
-            transportRef.current?.revealRepository(actionSession.id);
-            setNotice(
-              `Asked the Pacium host to reveal ${actionSession.repositoryName ?? "the repository"}.`,
-            );
-            setActionSessionId(null);
-          }}
+          onDuplicate={() => duplicateSession(actionSession)}
+          onInterrupt={() => interruptSession(actionSession)}
+          onRelaunch={() => relaunchSession(actionSession)}
+          onRename={() => beginRenameSession(actionSession)}
+          onRevealRepository={() => revealSessionRepository(actionSession)}
           onTerminate={() => terminateSession(actionSession)}
           session={actionSession}
         />
