@@ -5,11 +5,13 @@ import { join } from "node:path";
 import {
   MAX_QUEUE_DELIVERIES,
   MAX_QUEUE_DECISIONS,
+  MAX_QUEUE_RESOLUTIONS,
   MAX_QUEUE_STATE_BYTES,
   QUEUE_STATE_SCHEMA_VERSION,
   QueueDecisionRecordSchema,
   QueueDeliveryOutcomeSchema,
   QueueDeliveryRecordSchema,
+  QueueResolutionRecordSchema,
   QueueStateDocumentSchema,
   QueueStateV3DocumentSchema,
   type QueueDeliveryOutcome,
@@ -104,6 +106,12 @@ export type QueueDeliveryStoreMutationResult = {
   status: "recorded" | "existing";
   revision: number;
   delivery: QueueDeliveryRecord;
+};
+
+export type QueueResolutionStoreMutationResult = {
+  status: "recorded" | "existing";
+  revision: number;
+  resolution: QueueResolutionRecord;
 };
 
 export type QueueDecisionStoreWriteErrorCode =
@@ -299,6 +307,19 @@ export class QueueDecisionStore {
   ): Promise<QueueDeliveryStoreMutationResult> {
     const operation = this.writeTail.then(() =>
       this.finishDeliveryOnce(deliveryId, outcome),
+    );
+    this.writeTail = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    return operation;
+  }
+
+  public appendResolution(
+    resolution: QueueResolutionRecord,
+  ): Promise<QueueResolutionStoreMutationResult> {
+    const operation = this.writeTail.then(() =>
+      this.appendResolutionOnce(resolution),
     );
     this.writeTail = operation.then(
       () => undefined,
@@ -534,6 +555,81 @@ export class QueueDecisionStore {
     };
   }
 
+  private async appendResolutionOnce(
+    resolution: QueueResolutionRecord,
+  ): Promise<QueueResolutionStoreMutationResult> {
+    const parsedResolution = QueueResolutionRecordSchema.parse(resolution);
+    if (!hasValidQueueResolutionHash(parsedResolution)) {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_state",
+        "A lifecycle resolution with an invalid hash cannot be stored.",
+      );
+    }
+    const current = await this.inspect();
+    if (current.status !== "ready") {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_state",
+        "Existing queue decision state must be available before recording a lifecycle resolution.",
+      );
+    }
+    const matchingAction = current.resolutions.find(
+      (candidate) =>
+        candidate.decisionId === parsedResolution.decisionId &&
+        candidate.action === parsedResolution.action,
+    );
+    if (matchingAction !== undefined) {
+      if (hasSameResolutionIntent(matchingAction, parsedResolution)) {
+        return {
+          status: "existing",
+          revision: current.revision,
+          resolution: matchingAction,
+        };
+      }
+      throw new QueueDecisionStoreWriteError(
+        "invalid_state",
+        "This lifecycle action already has a different immutable record.",
+      );
+    }
+    if (current.resolutions.length >= MAX_QUEUE_RESOLUTIONS) {
+      throw new QueueDecisionStoreWriteError(
+        "state_full",
+        "Queue lifecycle state reached its safe record bound.",
+      );
+    }
+    let document: ReturnType<typeof QueueStateV3DocumentSchema.parse>;
+    try {
+      document = QueueStateV3DocumentSchema.parse({
+        schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
+        revision: nextRevision(current.revision),
+        decisions: current.decisions,
+        deliveries: current.deliveries,
+        resolutions: [...current.resolutions, parsedResolution],
+      });
+    } catch {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_state",
+        "The lifecycle resolution does not match the current immutable queue state.",
+      );
+    }
+    const accepted = await this.persistDocument(document);
+    const acceptedResolution = accepted.resolutions.find(
+      (candidate) =>
+        candidate.resolutionId === parsedResolution.resolutionId &&
+        candidate.resolutionHash === parsedResolution.resolutionHash,
+    );
+    if (acceptedResolution === undefined) {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_result",
+        "Queue lifecycle replacement could not be verified.",
+      );
+    }
+    return {
+      status: "recorded",
+      revision: accepted.revision,
+      resolution: acceptedResolution,
+    };
+  }
+
   private async persistDocument(document: {
     schemaVersion: 3;
     revision: number;
@@ -659,6 +755,21 @@ function hasSameDecisionIntent(
     );
   }
   return false;
+}
+
+function hasSameResolutionIntent(
+  left: QueueResolutionRecord,
+  right: QueueResolutionRecord,
+): boolean {
+  return (
+    left.decisionId === right.decisionId &&
+    left.decisionHash === right.decisionHash &&
+    left.action === right.action &&
+    JSON.stringify(left.delivery) === JSON.stringify(right.delivery) &&
+    JSON.stringify(left.relatedDecision) ===
+      JSON.stringify(right.relatedDecision) &&
+    left.note === right.note
+  );
 }
 
 function emptyState(): QueueDecisionStoreObservation {

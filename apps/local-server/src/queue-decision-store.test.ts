@@ -16,11 +16,13 @@ import {
   QUEUE_STATE_SCHEMA_VERSION,
   type QueueDeliveryRecord,
   type QueueDecisionRecord,
+  type QueueResolutionRecord,
 } from "@pacium/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { computeQueueDecisionHash } from "./queue-decision-hash.js";
 import { computeQueueDeliveryHash } from "./queue-delivery-hash.js";
+import { computeQueueResolutionHash } from "./queue-resolution-hash.js";
 import { QueueDecisionStore } from "./queue-decision-store.js";
 import type { QueueDecisionStoreWriteError } from "./queue-decision-store.js";
 
@@ -485,6 +487,72 @@ describe("queue delivery store mutations", () => {
   });
 });
 
+describe("queue lifecycle resolution mutations", () => {
+  it("appends one hash-verified human label and recovers it", async () => {
+    const fixture = await stateFixture();
+    const decision = sampleDecision();
+    const delivery = sampleDelivery(decision);
+    await fixture.store.append(decision);
+    await fixture.store.beginDelivery(delivery);
+    const resolution = sampleResolution(decision, delivery, "acknowledged");
+
+    await expect(fixture.store.appendResolution(resolution)).resolves.toEqual({
+      status: "recorded",
+      revision: 3,
+      resolution,
+    });
+    await expect(
+      fixture.store.appendResolution(
+        sampleResolution(decision, delivery, "acknowledged", {
+          resolutionId: "27adb772-f575-459b-a74e-993437a706d8",
+        }),
+      ),
+    ).resolves.toEqual({
+      status: "existing",
+      revision: 3,
+      resolution,
+    });
+
+    const restarted = new QueueDecisionStore(fixture.dataDirectory);
+    await expect(restarted.inspect()).resolves.toMatchObject({
+      status: "ready",
+      revision: 3,
+      resolutions: [resolution],
+    });
+  });
+
+  it("rejects tampering, conflicting labels, and terminal transitions", async () => {
+    const fixture = await stateFixture();
+    const decision = sampleDecision();
+    const delivery = sampleDelivery(decision);
+    await fixture.store.append(decision);
+    await fixture.store.beginDelivery(delivery);
+    const applied = sampleResolution(decision, delivery, "applied");
+
+    await expect(
+      fixture.store.appendResolution({
+        ...applied,
+        note: "tampered",
+      }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+    await fixture.store.appendResolution(applied);
+    await expect(
+      fixture.store.appendResolution(
+        sampleResolution(decision, delivery, "acknowledged", {
+          resolutionId: "27adb772-f575-459b-a74e-993437a706d8",
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+    await expect(
+      fixture.store.appendResolution(
+        sampleResolution(decision, delivery, "applied", {
+          note: "different",
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_state" });
+  });
+});
+
 function sampleDecision(
   overrides: {
     answer?: string;
@@ -543,6 +611,37 @@ function sampleDelivery(decision: QueueDecisionRecord): QueueDeliveryRecord {
   return {
     ...unhashed,
     deliveryHash: computeQueueDeliveryHash(unhashed),
+  };
+}
+
+function sampleResolution(
+  decision: QueueDecisionRecord,
+  delivery: QueueDeliveryRecord,
+  action: Exclude<QueueResolutionRecord["action"], "superseded">,
+  overrides: { resolutionId?: string; note?: string | null } = {},
+): QueueResolutionRecord {
+  const unhashed = {
+    resolutionId:
+      overrides.resolutionId ?? "253a4e0e-d606-4438-9e7e-c27b0021994c",
+    decisionId: decision.decisionId,
+    decisionHash: decision.decisionHash,
+    action,
+    delivery: {
+      deliveryId: delivery.deliveryId,
+      deliveryHash: delivery.deliveryHash,
+    },
+    relatedDecision: null,
+    actor: {
+      kind: "local_operator" as const,
+      label: "Local operator" as const,
+    },
+    source: "human_labelled" as const,
+    recordedAt: "2026-07-27T15:01:00.000Z",
+    note: overrides.note ?? null,
+  };
+  return {
+    ...unhashed,
+    resolutionHash: computeQueueResolutionHash(unhashed),
   };
 }
 
