@@ -100,6 +100,18 @@ import {
   interruptPaciumQueueRequest,
   type PaciumQueueViewState,
 } from "./pacium-queue-model.js";
+import {
+  CLOSED_QUEUE_INSPECTION,
+  acceptQueueItemInspection,
+  beginQueueItemInspection,
+  closeQueueItemInspection,
+  interruptQueueItemInspection,
+  reconcileQueueItemInspection,
+  reconcileQueueItemInspectionConfig,
+  type PaciumQueueInspectionState,
+  type QueueItemSelection,
+} from "./pacium-queue-inspection-model.js";
+import { PaciumQueueInspector } from "./pacium-queue-inspector.js";
 import { PaciumQueueSources } from "./pacium-queue-sources.js";
 import { PaciumRoleBindingDialog } from "./pacium-role-binding.js";
 import {
@@ -261,6 +273,7 @@ export function App() {
   const panelViewRef = useRef<ReturnType<typeof loadPanelView> | null>(null);
   const renameInvokerRef = useRef<HTMLElement | null>(null);
   const roleEditorInvokerRef = useRef<HTMLElement | null>(null);
+  const queueInspectorInvokerRef = useRef<HTMLElement | null>(null);
   const settingsInvokerRef = useRef<HTMLElement | null>(null);
   const transportRef = useRef<PaciumTransport | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() =>
@@ -353,6 +366,9 @@ export function App() {
   const [paciumQueue, setPaciumQueue] =
     useState<PaciumQueueViewState>(IDLE_PACIUM_QUEUE);
   const paciumQueueRef = useRef(paciumQueue);
+  const [paciumQueueInspection, setPaciumQueueInspection] =
+    useState<PaciumQueueInspectionState>(CLOSED_QUEUE_INSPECTION);
+  const paciumQueueInspectionRef = useRef(paciumQueueInspection);
   const [editingPaciumRole, setEditingPaciumRole] =
     useState<PaciumRoleId | null>(null);
   const roleSaveRequestRef = useRef<{
@@ -377,6 +393,7 @@ export function App() {
   paciumConfigRef.current = paciumConfig;
   paciumPromptRef.current = paciumPrompt;
   paciumQueueRef.current = paciumQueue;
+  paciumQueueInspectionRef.current = paciumQueueInspection;
   pendingPaciumRoleLaunchRef.current = pendingPaciumRoleLaunch;
   workspaceModeRef.current = workspaceMode;
 
@@ -486,6 +503,12 @@ export function App() {
           paciumQueueRef.current = interruptedQueue;
           setPaciumQueue(interruptedQueue);
         }
+        if (paciumQueueInspectionRef.current.selection !== null) {
+          const closed = closeQueueItemInspection();
+          paciumQueueInspectionRef.current = closed;
+          setPaciumQueueInspection(closed);
+          queueInspectorInvokerRef.current = null;
+        }
       }
       return;
     }
@@ -544,6 +567,14 @@ export function App() {
       if (accepted !== paciumQueueRef.current) {
         paciumQueueRef.current = accepted;
         setPaciumQueue(accepted);
+        const reconciled = reconcileQueueItemInspection(
+          paciumQueueInspectionRef.current,
+          event.message.observation,
+        );
+        if (reconciled !== paciumQueueInspectionRef.current) {
+          paciumQueueInspectionRef.current = reconciled;
+          setPaciumQueueInspection(reconciled);
+        }
       }
       return;
     }
@@ -555,6 +586,26 @@ export function App() {
       if (accepted !== paciumQueueRef.current) {
         paciumQueueRef.current = accepted;
         setPaciumQueue(accepted);
+        const reconciled = reconcileQueueItemInspection(
+          paciumQueueInspectionRef.current,
+          event.message.observation,
+        );
+        if (reconciled !== paciumQueueInspectionRef.current) {
+          paciumQueueInspectionRef.current = reconciled;
+          setPaciumQueueInspection(reconciled);
+        }
+      }
+      return;
+    }
+    if (event.message.type === "pacium.queue.item") {
+      const accepted = acceptQueueItemInspection(
+        paciumQueueInspectionRef.current,
+        event.message.requestId,
+        event.message.inspection,
+      );
+      if (accepted !== paciumQueueInspectionRef.current) {
+        paciumQueueInspectionRef.current = accepted;
+        setPaciumQueueInspection(accepted);
       }
       return;
     }
@@ -567,6 +618,14 @@ export function App() {
       if (accepted !== paciumConfigRef.current) {
         paciumConfigRef.current = accepted;
         setPaciumConfig(accepted);
+        const reconciled = reconcileQueueItemInspectionConfig(
+          paciumQueueInspectionRef.current,
+          event.message.observation,
+        );
+        if (reconciled !== paciumQueueInspectionRef.current) {
+          paciumQueueInspectionRef.current = reconciled;
+          setPaciumQueueInspection(reconciled);
+        }
       }
       const savedRole = roleSaveRequestRef.current;
       if (savedRole?.requestId === event.message.requestId) {
@@ -770,6 +829,16 @@ export function App() {
         setNotice(
           `Queue source refresh failed. ${event.message.message} Terminals and source files are unchanged.`,
         );
+        return;
+      }
+      const interruptedQueueInspection = interruptQueueItemInspection(
+        paciumQueueInspectionRef.current,
+        event.message.requestId,
+        `Queue item inspection failed. ${event.message.message} The source file and terminals were not changed.`,
+      );
+      if (interruptedQueueInspection !== paciumQueueInspectionRef.current) {
+        paciumQueueInspectionRef.current = interruptedQueueInspection;
+        setPaciumQueueInspection(interruptedQueueInspection);
         return;
       }
       const interruptedPaciumConfig = interruptPaciumConfigRequest(
@@ -1410,6 +1479,28 @@ export function App() {
     visiblePaciumObservation?.status === "ready"
       ? visiblePaciumObservation.workspace
       : null;
+  const queueRequestingSessionLabel = useMemo(() => {
+    const selection = paciumQueueInspection.selection;
+    if (
+      selection === null ||
+      selection.requestingRole === "unknown" ||
+      readyPaciumWorkspace === null
+    ) {
+      return null;
+    }
+    const binding = readyPaciumWorkspace.roles[selection.requestingRole];
+    if (binding?.type !== "session") {
+      return null;
+    }
+    const session = sessions.find(({ id }) => id === binding.sessionId);
+    if (
+      session === undefined ||
+      (session.processState !== "live" && session.processState !== "creating")
+    ) {
+      return null;
+    }
+    return `${roleLabel(selection.requestingRole)} · ${session.displayName}`;
+  }, [paciumQueueInspection.selection, readyPaciumWorkspace, sessions]);
   const editingPaciumRoleBinding =
     editingPaciumRole === null
       ? null
@@ -2038,7 +2129,62 @@ export function App() {
   };
 
   const toggleInspectorPanel = () => {
+    if (
+      panelViewRef.current?.inspectorOpen === true &&
+      paciumQueueInspectionRef.current.selection !== null
+    ) {
+      const closed = closeQueueItemInspection();
+      paciumQueueInspectionRef.current = closed;
+      setPaciumQueueInspection(closed);
+      queueInspectorInvokerRef.current = null;
+    }
     setPanelVisibility(toggleInspector(panelViewRef.current ?? panelView));
+  };
+
+  const openPaciumQueueItem = (selection: QueueItemSelection) => {
+    const transport = transportRef.current;
+    if (connection !== "connected" || transport === null) {
+      setNotice(
+        "Queue item inspection needs a live Pacium connection. The terminal and source file are unchanged.",
+      );
+      return;
+    }
+    queueInspectorInvokerRef.current = activeControl(
+      `queue-item-${selection.identity.sourceId}`,
+    );
+    setCapturedPaneId(null);
+    const requestId = transport.requestQueueItemInspection(selection.identity);
+    const loading = beginQueueItemInspection(selection, requestId);
+    paciumQueueInspectionRef.current = loading;
+    setPaciumQueueInspection(loading);
+    if (!panelViewRef.current?.inspectorOpen) {
+      setPanelVisibility({
+        ...(panelViewRef.current ?? panelView),
+        inspectorOpen: true,
+      });
+    }
+    setNotice(
+      `Opening the read-only ${selection.type} from ${selection.sourceLabel}. Terminal selection is unchanged.`,
+    );
+  };
+
+  const closePaciumQueueInspector = () => {
+    const sourceId =
+      paciumQueueInspectionRef.current.selection?.identity.sourceId ?? null;
+    const closed = closeQueueItemInspection();
+    paciumQueueInspectionRef.current = closed;
+    setPaciumQueueInspection(closed);
+    const invoker = queueInspectorInvokerRef.current;
+    queueInspectorInvokerRef.current = null;
+    window.requestAnimationFrame(() => {
+      if (invoker?.isConnected) {
+        invoker.focus();
+        return;
+      }
+      if (sourceId !== null) {
+        document.getElementById(`queue-item-${sourceId}`)?.focus();
+      }
+    });
   };
 
   const changeWorkspaceMode = useCallback((next: WorkspaceMode) => {
@@ -2050,6 +2196,10 @@ export function App() {
     if (next === "general") {
       paciumPromptRef.current = EMPTY_PACIUM_PROMPT;
       setPaciumPrompt(EMPTY_PACIUM_PROMPT);
+      const closed = closeQueueItemInspection();
+      paciumQueueInspectionRef.current = closed;
+      setPaciumQueueInspection(closed);
+      queueInspectorInvokerRef.current = null;
     }
     const saved = saveWorkspaceMode(window.localStorage, next);
     setNotice(
@@ -2341,6 +2491,7 @@ export function App() {
                 roles={paciumRoleModels}
               />
               <PaciumQueueSources
+                onOpenItem={openPaciumQueueItem}
                 onRefresh={refreshPaciumQueue}
                 projection={paciumQueueProjection}
               />
@@ -2816,14 +2967,22 @@ export function App() {
       </main>
 
       <aside
-        aria-label="Session inspector"
+        aria-label={
+          paciumQueueInspection.selection === null
+            ? "Session inspector"
+            : "Queue item inspector"
+        }
         className="inspector"
         id="session-inspector"
       >
         <header>
-          <span>Session</span>
           <span>
-            <span className="panel-label">Details</span>
+            {paciumQueueInspection.selection === null ? "Session" : "Queue"}
+          </span>
+          <span>
+            <span className="panel-label">
+              {paciumQueueInspection.selection === null ? "Details" : "Item"}
+            </span>
             <button
               aria-label="Close inspector"
               className="inspector-close"
@@ -2834,151 +2993,161 @@ export function App() {
             </button>
           </span>
         </header>
-        <InspectorTabs active={inspectorTab} onChange={setInspectorTab} />
-        {inspectorTab === "overview" ? (
-          <div
-            aria-labelledby="inspector-overview-tab"
-            id="inspector-overview-panel"
-            role="tabpanel"
-            tabIndex={0}
-          >
-            {selectedSession === null ? (
-              <p className="inspector-empty">
-                Runtime details and agent context appear here.
-              </p>
-            ) : (
-              <dl className="metadata">
-                <Metadata label="State">
-                  <span className="state-value">
-                    <StatusDot state={selectedSession.processState} />
-                    {selectedSession.processState}
-                  </span>
-                </Metadata>
-                <Metadata label="Runtime">Direct PTY</Metadata>
-                <Metadata label="Preset">
-                  {selectedSession.commandLabel}
-                </Metadata>
-                <Metadata label="Command">{selectedSession.shell}</Metadata>
-                <Metadata label="Process">
-                  {selectedSession.pid ?? "Exited"}
-                </Metadata>
-                <Metadata label="Started">
-                  {formatTime(selectedSession.createdAt)}
-                </Metadata>
-                {selectedSession.exitedAt !== null && (
-                  <Metadata label="Exited">
-                    {formatTime(selectedSession.exitedAt)}
-                  </Metadata>
-                )}
-              </dl>
-            )}
-            <section className="inspector-section repository-section">
-              <div className="inspector-section-heading">
-                <h2>Repository</h2>
-                {selectedSession !== null && (
-                  <button
-                    disabled={connection !== "connected"}
-                    onClick={refreshSelectedRepository}
-                    title="Refresh branch, HEAD, and worktree evidence"
-                    type="button"
-                  >
-                    Refresh
-                  </button>
-                )}
-              </div>
-              {selectedSession !== null && (
-                <RepositoryContextCard
-                  repository={selectedSession.repository}
-                />
-              )}
-            </section>
-            <section className="inspector-section">
-              <h2>Agent evidence</h2>
-              {selectedSession !== null && (
-                <AgentClassificationCard
-                  classification={selectedSession.agentClassification}
-                />
-              )}
-            </section>
-            <section className="inspector-section attention-section">
-              {selectedAttention !== null &&
-                selectedAttentionCursor !== null && (
-                  <>
-                    <AttentionCursorHeader
-                      muted={selectedAttentionCursor.muted}
-                      onToggleMuted={toggleSelectedSessionMuted}
-                      unread={selectedAttentionUnread}
-                    />
-                    <AttentionEvidenceCard attention={selectedAttention} />
-                  </>
-                )}
-            </section>
-          </div>
-        ) : inspectorTab === "changes" ? (
-          selectedDiffPath === null ? (
-            <RepositoryChangesPanel
-              onOpenDiff={openSelectedRepositoryDiff}
-              onRefresh={() => {
-                if (selectedId !== null) {
-                  requestRepositoryChanges(selectedId);
-                }
-              }}
-              repository={selectedSession?.repository ?? null}
-              state={selectedRepositoryChanges}
-            />
-          ) : (
-            <RepositoryDiffPanel
-              key={repositoryDiffKey(selectedId!, selectedDiffPath)}
-              onBack={closeSelectedRepositoryDiff}
-              onRefresh={() => {
-                if (selectedId !== null) {
-                  requestRepositoryDiff(selectedId, selectedDiffPath);
-                }
-              }}
-              state={selectedRepositoryDiff}
-            />
-          )
-        ) : inspectorTab === "history" ? (
-          <RepositoryHistoryPanel
-            onRefresh={() => {
-              if (selectedId !== null) {
-                requestRepositoryHistory(selectedId);
-              }
-            }}
-            repository={selectedSession?.repository ?? null}
-            state={selectedRepositoryHistory}
-          />
-        ) : inspectorTab === "checks" ? (
-          <RepositoryVerificationPanel
-            onCancel={(runId) => {
-              if (selectedId !== null) {
-                cancelRepositoryVerification(selectedId, runId);
-              }
-            }}
-            onRefresh={() => {
-              if (selectedId !== null) {
-                requestRepositoryVerification(selectedId);
-              }
-            }}
-            onRun={(presetId) => {
-              if (selectedId !== null) {
-                runRepositoryVerification(selectedId, presetId);
-              }
-            }}
-            repository={selectedSession?.repository ?? null}
-            state={selectedRepositoryVerification}
+        {paciumQueueInspection.selection !== null ? (
+          <PaciumQueueInspector
+            onBack={closePaciumQueueInspector}
+            requestingSessionLabel={queueRequestingSessionLabel}
+            state={paciumQueueInspection}
           />
         ) : (
-          <RecentActivityPanel
-            activity={selectedRecentActivity}
-            onRefresh={() => {
-              if (selectedId !== null) {
-                requestRepositoryChanges(selectedId);
-                requestRepositoryHistory(selectedId);
-                requestRepositoryVerification(selectedId);
-              }
-            }}
-          />
+          <>
+            <InspectorTabs active={inspectorTab} onChange={setInspectorTab} />
+            {inspectorTab === "overview" ? (
+              <div
+                aria-labelledby="inspector-overview-tab"
+                id="inspector-overview-panel"
+                role="tabpanel"
+                tabIndex={0}
+              >
+                {selectedSession === null ? (
+                  <p className="inspector-empty">
+                    Runtime details and agent context appear here.
+                  </p>
+                ) : (
+                  <dl className="metadata">
+                    <Metadata label="State">
+                      <span className="state-value">
+                        <StatusDot state={selectedSession.processState} />
+                        {selectedSession.processState}
+                      </span>
+                    </Metadata>
+                    <Metadata label="Runtime">Direct PTY</Metadata>
+                    <Metadata label="Preset">
+                      {selectedSession.commandLabel}
+                    </Metadata>
+                    <Metadata label="Command">{selectedSession.shell}</Metadata>
+                    <Metadata label="Process">
+                      {selectedSession.pid ?? "Exited"}
+                    </Metadata>
+                    <Metadata label="Started">
+                      {formatTime(selectedSession.createdAt)}
+                    </Metadata>
+                    {selectedSession.exitedAt !== null && (
+                      <Metadata label="Exited">
+                        {formatTime(selectedSession.exitedAt)}
+                      </Metadata>
+                    )}
+                  </dl>
+                )}
+                <section className="inspector-section repository-section">
+                  <div className="inspector-section-heading">
+                    <h2>Repository</h2>
+                    {selectedSession !== null && (
+                      <button
+                        disabled={connection !== "connected"}
+                        onClick={refreshSelectedRepository}
+                        title="Refresh branch, HEAD, and worktree evidence"
+                        type="button"
+                      >
+                        Refresh
+                      </button>
+                    )}
+                  </div>
+                  {selectedSession !== null && (
+                    <RepositoryContextCard
+                      repository={selectedSession.repository}
+                    />
+                  )}
+                </section>
+                <section className="inspector-section">
+                  <h2>Agent evidence</h2>
+                  {selectedSession !== null && (
+                    <AgentClassificationCard
+                      classification={selectedSession.agentClassification}
+                    />
+                  )}
+                </section>
+                <section className="inspector-section attention-section">
+                  {selectedAttention !== null &&
+                    selectedAttentionCursor !== null && (
+                      <>
+                        <AttentionCursorHeader
+                          muted={selectedAttentionCursor.muted}
+                          onToggleMuted={toggleSelectedSessionMuted}
+                          unread={selectedAttentionUnread}
+                        />
+                        <AttentionEvidenceCard attention={selectedAttention} />
+                      </>
+                    )}
+                </section>
+              </div>
+            ) : inspectorTab === "changes" ? (
+              selectedDiffPath === null ? (
+                <RepositoryChangesPanel
+                  onOpenDiff={openSelectedRepositoryDiff}
+                  onRefresh={() => {
+                    if (selectedId !== null) {
+                      requestRepositoryChanges(selectedId);
+                    }
+                  }}
+                  repository={selectedSession?.repository ?? null}
+                  state={selectedRepositoryChanges}
+                />
+              ) : (
+                <RepositoryDiffPanel
+                  key={repositoryDiffKey(selectedId!, selectedDiffPath)}
+                  onBack={closeSelectedRepositoryDiff}
+                  onRefresh={() => {
+                    if (selectedId !== null) {
+                      requestRepositoryDiff(selectedId, selectedDiffPath);
+                    }
+                  }}
+                  state={selectedRepositoryDiff}
+                />
+              )
+            ) : inspectorTab === "history" ? (
+              <RepositoryHistoryPanel
+                onRefresh={() => {
+                  if (selectedId !== null) {
+                    requestRepositoryHistory(selectedId);
+                  }
+                }}
+                repository={selectedSession?.repository ?? null}
+                state={selectedRepositoryHistory}
+              />
+            ) : inspectorTab === "checks" ? (
+              <RepositoryVerificationPanel
+                onCancel={(runId) => {
+                  if (selectedId !== null) {
+                    cancelRepositoryVerification(selectedId, runId);
+                  }
+                }}
+                onRefresh={() => {
+                  if (selectedId !== null) {
+                    requestRepositoryVerification(selectedId);
+                  }
+                }}
+                onRun={(presetId) => {
+                  if (selectedId !== null) {
+                    runRepositoryVerification(selectedId, presetId);
+                  }
+                }}
+                repository={selectedSession?.repository ?? null}
+                state={selectedRepositoryVerification}
+              />
+            ) : (
+              <RecentActivityPanel
+                activity={selectedRecentActivity}
+                onRefresh={() => {
+                  if (selectedId !== null) {
+                    requestRepositoryChanges(selectedId);
+                    requestRepositoryHistory(selectedId);
+                    requestRepositoryVerification(selectedId);
+                  }
+                }}
+              />
+            )}
+          </>
         )}
       </aside>
 
