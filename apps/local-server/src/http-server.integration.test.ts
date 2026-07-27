@@ -816,6 +816,59 @@ describe("localhost HTTP and WebSocket boundary", () => {
     expect((await lstat(statePath)).mode & 0o777).toBe(0o600);
     expect(firstState.toString("utf8")).not.toContain(questionText.trim());
 
+    const writesBeforeContext = [...(factory.processes[0]?.writes ?? [])];
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.context.inspect",
+        requestId: "d5fc630e-88c2-43dd-8911-a5d49c021312",
+      }),
+    );
+    const context = await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.context" &&
+        message.requestId === "d5fc630e-88c2-43dd-8911-a5d49c021312",
+      "recent decision context",
+    );
+    expect(context).toMatchObject({
+      observation: {
+        status: "ready",
+        objective: { status: "unconfigured" },
+        plan: { status: "unconfigured" },
+        recentDecisions: {
+          status: "ready",
+          decisions: [
+            {
+              decisionId: recorded.result.decision.decisionId,
+              decisionHash: recorded.result.decision.decisionHash,
+              sourceId: "needs-felix",
+              sourceLabel: "Needs Felix",
+              sourceCurrent: true,
+              response: {
+                kind: "question_answer",
+                preview: "Keep the first slice narrow.",
+                truncated: false,
+              },
+              delivery: null,
+              lifecycle: null,
+            },
+          ],
+          truncated: false,
+        },
+      },
+    });
+    const contextPayload = JSON.stringify(context);
+    expect(contextPayload).not.toContain(queuePath);
+    expect(contextPayload).not.toContain(answerPath);
+    expect(contextPayload).not.toContain(questionText.trim());
+    expect(contextPayload).not.toContain(
+      "Confirmed from exact source evidence.",
+    );
+    await expect(readFile(queuePath, "utf8")).resolves.toBe(questionText);
+    await expect(readFile(answerPath, "utf8")).resolves.toBe(answerTargetText);
+    expect(factory.processes[0]?.writes).toEqual(writesBeforeContext);
+    expect(manager.hasSession(liveSession.id)).toBe(true);
+
     client.socket.send(
       JSON.stringify({
         type: "pacium.queue.question.answer",
