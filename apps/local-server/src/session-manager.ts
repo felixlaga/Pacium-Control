@@ -23,7 +23,7 @@ import {
 } from "@pacium/contracts";
 
 import type { LaunchPresetDefinition } from "./launch-presets.js";
-import { ClaudeObserver } from "./claude-observer.js";
+import type { ClaudeObserver } from "./claude-observer.js";
 import { inspectGitChanges, type GitChangesInspector } from "./git-changes.js";
 import { inspectGitDiff, type GitDiffInspector } from "./git-diff.js";
 import { inspectGitHistory, type GitHistoryInspector } from "./git-history.js";

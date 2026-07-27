@@ -587,7 +587,6 @@ function applyHookObservation(
     capabilities: mergeCapabilities(
       previous.capabilities,
       normalizedHook.capabilities,
-      observedAt,
     ),
     attention: normalizedHook.attention,
     activities: [normalizedHook.activity, ...previous.activities].slice(
@@ -636,11 +635,10 @@ function applyStatusObservation(
       confidence: "high",
       detail: "Authenticated Claude observations are arriving.",
     },
-    capabilities: mergeCapabilities(
-      previous.capabilities,
-      ["activity", "usage"],
-      observedAt,
-    ),
+    capabilities: mergeCapabilities(previous.capabilities, [
+      "activity",
+      "usage",
+    ]),
     activities: [activity, ...previous.activities].slice(
       0,
       MAX_PROVIDER_ACTIVITIES,
@@ -653,7 +651,6 @@ function applyStatusObservation(
 function mergeCapabilities(
   existing: readonly ProviderCapability[],
   supported: readonly ProviderCapabilityId[],
-  _observedAt: string,
 ): ProviderCapability[] {
   const supportedSet = new Set(supported);
   return existing.map((capability) =>

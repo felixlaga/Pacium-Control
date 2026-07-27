@@ -84,10 +84,20 @@ export function mergePtyEnvironment(
         !/^PACIUM_[A-Z0-9_]{1,80}$/.test(key) ||
         key === "PACIUM_SESSION" ||
         Buffer.byteLength(value) > 8_192 ||
-        /[\u0000-\u001f\u007f]/.test(value),
+        containsControlCharacter(value),
     )
   ) {
     throw new Error("Invalid server-owned PTY environment additions.");
   }
   return { ...base, ...additions };
+}
+
+function containsControlCharacter(value: string): boolean {
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code <= 31 || code === 127) {
+      return true;
+    }
+  }
+  return false;
 }

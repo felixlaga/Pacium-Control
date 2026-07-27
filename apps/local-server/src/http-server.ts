@@ -318,7 +318,7 @@ async function readBoundedJson(
     request.resume();
     return { status: "too_large" };
   }
-  const chunks: Buffer[] = [];
+  const chunks: Uint8Array[] = [];
   let size = 0;
   for await (const chunk of request) {
     const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
