@@ -2,6 +2,72 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.21.0 — server-owned Pacium workspace configuration — 2026-07-27
+
+### Added
+
+- Protocol-10 strict get, complete-replace, and observation messages for one
+  versioned Pacium workspace with no command, environment, signal, terminal
+  byte, queue content, context content, answer content, or verification
+  definition fields.
+- Bounded contracts for explicit Meta, Orchestrator, and worker live-session or
+  fixed-preset bindings; canonical repositories; exact-root verification
+  references; queue-source metadata; future answer-file/role-prompt delivery
+  metadata; and objective/plan source metadata.
+- Complete graph validation for unique IDs and paths, repository/delivery
+  references, one-slot-per-live-session bindings, configured role targets, and
+  source/answer separation.
+- A deterministic macOS-first data directory with an absolute
+  `PACIUM_DATA_DIR` override and one 96 KiB version-1 `pacium.json` file.
+- Private current-user directory/file checks, strict bounded UTF-8 reads,
+  corrupt/unsupported preservation, canonical path/reference validation, and
+  read-time drift detection that still permits explicit direct-session
+  bindings to become unresolved after restart.
+- Optimistic complete replacement with serialized writes, same-directory
+  unpredictable exclusive temporary files, restrictive modes, file sync,
+  atomic rename, directory sync, reread verification, stale conflicts, safe
+  cleanup, and explicit post-rename durability ambiguity.
+- Authenticated WebSocket get/replace ownership and browser request state that
+  retains accepted observations, accepts only matching responses, drops
+  pending intent on disconnect, and performs a fresh get after reconnect.
+- Operator, architecture, filesystem, security, issue, plan, backlog, and
+  status documentation for exact ownership, limits, recovery, and deferred
+  behavior.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 64 test
+  files and 339 tests, plus the 766.29 kB web and 166.07 kB local-server
+  production bundles.
+- `pnpm test:e2e` passed all seven Chromium regression workflows after the
+  browser was launched with the macOS host permission it requires.
+- Contract tests cover bounds, strict unions, graph/reference invariants,
+  observation states, forbidden authority fields, and protocol version 10.
+- Filesystem and fault tests cover canonical directories/files, missing leaves,
+  symlinks, repository containment, live/catalog references, private
+  permissions, absent/corrupt/unsupported/oversized state, concurrent and stale
+  revisions, rename failure, cleanup, and post-rename durability ambiguity.
+- Authenticated WebSocket tests prove unconfigured/get/create/replace/conflict
+  behavior and missing-live-session rejection without disk creation or PTY
+  impact. Browser tests prove request serialization, evidence retention,
+  stale-response rejection, disconnect recovery, and reconnect reads.
+
+### Known limitations
+
+- PC-040 exposes no setup/editor UI and does not make the visible Pacium toggle
+  functional. General/Pacium presentation begins with PC-041.
+- Role pinning/launch, prompt targeting, queue reads/watchers/classification,
+  decisions, answer delivery, acknowledgement/conflicts, worker resolution, and
+  objective/plan content reads remain PC-042 through PC-050.
+- There is one workspace and no migration, backup, browser repair, multi-host,
+  multi-user, database, workflow engine, event journal, or tmux binding.
+- Existing direct-session references are intentionally explicit but unresolved
+  after server restart; later role UI must label and recover them without
+  name-based inference.
+- The current machine ran verification on Node.js 26.4.0, not pinned Node.js
+  24.18.x.
+- The web bundle remains above Vite's 500 kB warning threshold.
+
 ## 0.20.0 — deterministic recent activity — 2026-07-27
 
 ### Added
