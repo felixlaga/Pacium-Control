@@ -2471,12 +2471,6 @@ export function App() {
       paciumQueueInspectionRef.current = closed;
       setPaciumQueueInspection(closed);
       queueInspectorInvokerRef.current = null;
-      const clearedContext = clearPaciumContext();
-      paciumContextRef.current = clearedContext;
-      setPaciumContext(clearedContext);
-      paciumContextOpenRef.current = false;
-      setPaciumContextOpen(false);
-      contextInspectorInvokerRef.current = null;
     }
     if (
       panelViewRef.current?.inspectorOpen === true &&
@@ -2682,6 +2676,12 @@ export function App() {
       paciumQueueInspectionRef.current = closed;
       setPaciumQueueInspection(closed);
       queueInspectorInvokerRef.current = null;
+      const clearedContext = clearPaciumContext();
+      paciumContextRef.current = clearedContext;
+      setPaciumContext(clearedContext);
+      paciumContextOpenRef.current = false;
+      setPaciumContextOpen(false);
+      contextInspectorInvokerRef.current = null;
     }
     const saved = saveWorkspaceMode(window.localStorage, next);
     setNotice(
