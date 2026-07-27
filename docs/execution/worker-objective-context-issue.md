@@ -86,41 +86,41 @@ acknowledgement or causally attributing Git or terminal activity.
 
 ## Acceptance criteria
 
-- [ ] Protocol schemas expose one bounded identity-free context inspection
+- [x] Protocol schemas expose one bounded identity-free context inspection
       request and one strict workspace-revision-bound response without
       browser-selected paths, context write fields, commands, terminal bytes,
       provider claims, or generic query parameters.
-- [ ] Only accepted objective and plan paths are read. Reads are stable,
+- [x] Only accepted objective and plan paths are read. Reads are stable,
       bounded, no-follow, regular-file-only, UTF-8 validated, and never modify
       either file.
-- [ ] Objective and plan observations fail independently and present exact
+- [x] Objective and plan observations fail independently and present exact
       ready/empty/unconfigured/degraded evidence with provenance and inert text.
-- [ ] Opening Control context and Refresh are the only read triggers; browser
+- [x] Opening Control context and Refresh are the only read triggers; browser
       reconnect, config drift, mode exit, and late responses cannot display
       text for a different accepted workspace revision.
-- [ ] Recent decisions are derived only from validated immutable queue state,
+- [x] Recent decisions are derived only from validated immutable queue state,
       sorted newest first with deterministic ties, capped at twelve, and
       content-bounded.
-- [ ] Decision summaries distinguish local recording, delivery attempt
+- [x] Decision summaries distinguish local recording, delivery attempt
       evidence, and explicitly human-labelled lifecycle state. They never
       promote transport or process evidence to provider acknowledgement,
       application, completion, or resulting code.
-- [ ] Invalid or unavailable queue state leaves context files and terminals
+- [x] Invalid or unavailable queue state leaves context files and terminals
       usable and shows bounded decision-state degradation without repairing or
       rewriting state.
-- [ ] Every configured worker appears once in accepted order. Exact session
+- [x] Every configured worker appears once in accepted order. Exact session
       bindings resolve without inference and launch-preset bindings remain
       capability-labelled rather than silently launched.
-- [ ] Worker rows show source-labelled process/attention, command/provider,
+- [x] Worker rows show source-labelled process/attention, command/provider,
       repository, freshness, and already available Git-change evidence without
       claiming task progress or authorship.
-- [ ] Opening one live worker selects its existing PTY and returns focus without
+- [x] Opening one live worker selects its existing PTY and returns focus without
       creating a session, changing configuration, sending input, or affecting
       another worker.
-- [ ] Empty, loading, partial, error, disconnected, 320 CSS px, 200% zoom,
+- [x] Empty, loading, partial, error, disconnected, 320 CSS px, 200% zoom,
       forced-colors, reduced-motion, keyboard, and focus-return states are
       complete.
-- [ ] Unit, contract, authenticated integration, browser, security, production
+- [x] Unit, contract, authenticated integration, browser, security, production
       build, and full repository gates pass with exact evidence recorded.
 
 ## User experience
@@ -251,6 +251,27 @@ ownership status.
   counts and bundle sizes.
 - Small coherent commits, clean branch, fast-forward merge into `dev`, and
   pushed exact `origin/dev` head.
+
+## Completion evidence
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 111 test
+  files and 675 tests, the 901.71 kB web JavaScript, 107.52 kB stylesheet, and
+  328.37 kB local-server production bundles.
+- `pnpm test:e2e` passed 11/11 headless Chromium workflows. The focused PC-050
+  workflow used two real direct PTYs and covered exact/preset worker evidence,
+  existing-PTY Open, Control context, explicit Refresh, Back/Escape focus,
+  browser reconnect, mode exit, unchanged terminal selection, 320 CSS px,
+  forced colors, and reduced motion.
+- Focused contract, context-reader/service, exact worker projection, correlated
+  browser state, semantic rendering, and authenticated WebSocket tests passed.
+  The full suite proves independent source failures, stable no-follow reads,
+  strict bounds/UTF-8/base64, stale revision rejection, recent-decision
+  ordering/truncation/transport/lifecycle joins, hostile inert text, unchanged
+  source/config/queue/PTY evidence, and local-server restart reconstruction.
+- Verification used Node.js 26.4.0 and emitted the expected engine warning
+  because the supported runtime is Node.js 24.18.x. Vite retained the existing
+  chunk-size warning. Supported-runtime clean-install and manual
+  screen-reader/visual review remain release gates rather than PC-050 claims.
 
 ## Open questions
 
