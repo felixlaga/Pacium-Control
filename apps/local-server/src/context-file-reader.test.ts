@@ -30,9 +30,11 @@ afterEach(async () => {
 
 describe("Pacium context file reader", () => {
   it("does not touch the filesystem for an unconfigured source", async () => {
+    const lstat: ContextFileReaderIO["lstat"] = vi.fn();
+    const open: ContextFileReaderIO["open"] = vi.fn();
     const io: ContextFileReaderIO = {
-      lstat: vi.fn(),
-      open: vi.fn(),
+      lstat,
+      open,
     };
     await expect(
       readPaciumContextSource("objective", null, {
@@ -51,8 +53,8 @@ describe("Pacium context file reader", () => {
       contentBase64: null,
       error: null,
     });
-    expect(io.lstat).not.toHaveBeenCalled();
-    expect(io.open).not.toHaveBeenCalled();
+    expect(lstat).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
   });
 
   it("returns exact bounded UTF-8 content and provenance", async () => {

@@ -7,6 +7,7 @@ import type {
 } from "@pacium/contracts";
 import { describe, expect, it, vi } from "vitest";
 
+import type { ContextFileReaderOptions } from "./context-file-reader.js";
 import type { PaciumConfigStore } from "./pacium-config-store.js";
 import {
   PaciumContextService,
@@ -228,19 +229,19 @@ describe("Pacium context service", () => {
         error: null,
       });
     const inspectState = vi.fn().mockResolvedValue(readyState());
-    const readSource = vi
-      .fn()
-      .mockImplementation(
-        (
-          kind: "objective" | "plan",
-          source: PaciumWorkspace["context"]["objective"],
-        ) =>
-          Promise.resolve(
-            source === null
-              ? unconfiguredSource(kind)
-              : readySource(kind, source.path),
-          ),
-      );
+    const readSource = vi.fn<
+      (
+        kind: "objective" | "plan",
+        source: PaciumWorkspace["context"]["objective"],
+        options?: ContextFileReaderOptions,
+      ) => Promise<PaciumContextSourceObservation>
+    >((kind, source) =>
+      Promise.resolve(
+        source === null
+          ? unconfiguredSource(kind)
+          : readySource(kind, source.path),
+      ),
+    );
     const service = new PaciumContextService(
       { inspect: inspectConfig } as unknown as PaciumConfigStore,
       { inspect: inspectState } as unknown as QueueDecisionStore,
@@ -255,18 +256,13 @@ describe("Pacium context service", () => {
       plan: { status: "unconfigured" },
       recentDecisions: { status: "ready" },
     });
-    expect(readSource).toHaveBeenNthCalledWith(
-      1,
+    expect(readSource.mock.calls[0]?.slice(0, 2)).toEqual([
       "objective",
       currentWorkspace.context.objective,
-      expect.objectContaining({ now: expect.any(Function) }),
-    );
-    expect(readSource).toHaveBeenNthCalledWith(
-      2,
-      "plan",
-      null,
-      expect.objectContaining({ now: expect.any(Function) }),
-    );
+    ]);
+    expect(typeof readSource.mock.calls[0]?.[2]?.now).toBe("function");
+    expect(readSource.mock.calls[1]?.slice(0, 2)).toEqual(["plan", null]);
+    expect(typeof readSource.mock.calls[1]?.[2]?.now).toBe("function");
     expect(inspectConfig).toHaveBeenCalledTimes(2);
   });
 
