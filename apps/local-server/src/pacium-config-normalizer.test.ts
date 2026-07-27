@@ -11,6 +11,7 @@ import {
   normalizePaciumWorkspace,
   normalizePaciumWorkspacePaths,
   PaciumConfigValidationError,
+  validatePersistedPaciumWorkspace,
 } from "./pacium-config-normalizer.js";
 
 const temporaryDirectories: string[] = [];
@@ -115,6 +116,32 @@ describe("Pacium workspace path normalization", () => {
 });
 
 describe("Pacium workspace server-owned references", () => {
+  it("allows unresolved persisted sessions but rejects noncanonical persisted paths", async () => {
+    const fixture = await createFixture();
+    const candidate = workspace(fixture);
+    candidate.roles.meta = {
+      type: "session",
+      sessionId: "03c2723f-e87a-4707-86af-d6fdb1e60f47",
+    };
+    const context = {
+      dataDirectory: join(fixture.dataParent, "pacium-data"),
+      launchPresetExists: () => true,
+      verificationCatalog: {
+        configured: false as const,
+        repositories: [],
+      },
+    };
+
+    expect(() =>
+      validatePersistedPaciumWorkspace(candidate, context),
+    ).not.toThrow();
+
+    candidate.repositories[0]!.root = `${fixture.repository}/../repository`;
+    expect(() => validatePersistedPaciumWorkspace(candidate, context)).toThrow(
+      "not canonical",
+    );
+  });
+
   it("accepts live sessions, fixed launch presets, and exact-root checks", async () => {
     const fixture = await createFixture();
     const candidate = workspace(fixture);

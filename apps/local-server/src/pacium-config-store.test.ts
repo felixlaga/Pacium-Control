@@ -62,6 +62,26 @@ describe("Pacium config store reads", () => {
     });
   });
 
+  it("degrades an externally drifted workspace without changing its file", async () => {
+    const fixture = await configFixture();
+    const document = configDocument();
+    await writeFile(fixture.configPath, JSON.stringify(document), {
+      mode: 0o600,
+    });
+    const original = await readFile(fixture.configPath);
+    const store = new PaciumConfigStore(fixture.dataDirectory, {
+      validateStoredWorkspace: () => {
+        throw new Error("catalog drift");
+      },
+    });
+
+    await expect(store.inspect()).resolves.toMatchObject({
+      status: "error",
+      error: { code: "invalid_file" },
+    });
+    await expect(readFile(fixture.configPath)).resolves.toEqual(original);
+  });
+
   it("preserves invalid, unsupported, and oversized files", async () => {
     const fixture = await configFixture();
     await writeFile(fixture.configPath, "{invalid", { mode: 0o600 });

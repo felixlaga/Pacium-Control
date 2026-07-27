@@ -21,6 +21,11 @@ export interface PaciumWorkspaceValidationContext {
   verificationCatalog: VerificationCatalog;
 }
 
+export type PersistedPaciumWorkspaceValidationContext = Omit<
+  PaciumWorkspaceValidationContext,
+  "sessionExists"
+>;
+
 export function normalizePaciumWorkspace(
   candidate: PaciumWorkspace,
   context: PaciumWorkspaceValidationContext,
@@ -99,6 +104,21 @@ export function normalizePaciumWorkspacePaths(
     );
   }
   return result.data;
+}
+
+export function validatePersistedPaciumWorkspace(
+  workspace: PaciumWorkspace,
+  context: PersistedPaciumWorkspaceValidationContext,
+): void {
+  const normalized = normalizePaciumWorkspace(workspace, {
+    ...context,
+    sessionExists: () => true,
+  });
+  if (JSON.stringify(normalized) !== JSON.stringify(workspace)) {
+    throw new PaciumConfigValidationError(
+      "Persisted Pacium workspace paths are not canonical.",
+    );
+  }
 }
 
 function validateBindings(

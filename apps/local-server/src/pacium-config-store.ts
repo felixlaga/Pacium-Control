@@ -41,6 +41,7 @@ const NODE_STORE_IO: PaciumConfigStoreIO = {
 
 export interface PaciumConfigStoreOptions {
   io?: Partial<PaciumConfigStoreIO>;
+  validateStoredWorkspace?: (workspace: PaciumWorkspace) => void;
   normalizeWorkspace?: (workspace: PaciumWorkspace) => PaciumWorkspace;
   ownerId?: number | null;
   randomId?: () => string;
@@ -69,6 +70,9 @@ export class PaciumConfigStore {
   private readonly normalizeWorkspace: (
     workspace: PaciumWorkspace,
   ) => PaciumWorkspace;
+  private readonly validateStoredWorkspace: (
+    workspace: PaciumWorkspace,
+  ) => void;
   private readonly ownerId: number | null;
   private readonly randomId: () => string;
   private writeTail = Promise.resolve();
@@ -81,6 +85,8 @@ export class PaciumConfigStore {
     this.io = { ...NODE_STORE_IO, ...options.io };
     this.normalizeWorkspace =
       options.normalizeWorkspace ?? ((workspace) => workspace);
+    this.validateStoredWorkspace =
+      options.validateStoredWorkspace ?? (() => undefined);
     this.ownerId =
       options.ownerId === undefined
         ? (process.getuid?.() ?? null)
@@ -158,6 +164,14 @@ export class PaciumConfigStore {
         return configError(
           "invalid_file",
           "Pacium config does not match the complete version-1 schema.",
+        );
+      }
+      try {
+        this.validateStoredWorkspace(parsed.data.workspace);
+      } catch {
+        return configError(
+          "invalid_file",
+          "Pacium config contains invalid or noncanonical server references.",
         );
       }
       return {
