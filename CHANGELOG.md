@@ -2,6 +2,34 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.10.0 — local workspace preferences — 2026-07-27
+
+### Added
+
+- A strict version-1 browser-local preference record with bounded parsing, deterministic serialization, and safe defaults.
+- System, dark, and light application and xterm themes plus compact and comfortable workspace density.
+- Three controlled terminal font stacks, 11–18 px sizing, 1.1–1.6 line height, and 500–10,000 ephemeral scrollback lines.
+- In-place terminal option updates and refitting without PTY recreation, input replay, or reconnect-cursor changes.
+- Available-provider default launch selection with honest fallback when a saved CLI is unavailable.
+- A stored off/important-attention notification level whose delivery remains explicitly deferred to PC-032.
+- One settings surface available from the top bar, `Cmd/Ctrl ,`, and command palette, with Cancel, Restore defaults, Apply, Escape, and focus containment.
+- Deterministic preference, storage-failure, theme/preset resolution, terminal-option, shortcut, command, and server-rendered settings tests.
+- A scoped PC-027 issue and implementation plan with acceptance evidence.
+
+### Verified
+
+- Formatting, lint, type checking, 94 automated tests, and both production bundles pass.
+- The development UI and direct `/api/health` endpoint returned HTTP 200 on loopback.
+- Malformed, oversized, unknown-version, extra-key, out-of-range, and unavailable-storage states fail safely in deterministic tests.
+
+### Known limitations
+
+- Rendered light/system theme, density, live terminal update, keyboard, focus, responsive, and refresh validation remains pending because no browser backend was available.
+- Preferences are intentionally local to one browser profile and do not synchronize across clients.
+- Notification delivery begins with PC-032; the current preference is stored but does not request browser permission or emit notifications.
+- The current machine ran verification on Node.js 26.4.0; the pinned Node.js 24.18.x runtime remains to be verified.
+- The web bundle is 684 kB before gzip and still emits the tracked chunk-size warning.
+
 ## 0.9.0 — contextual command palette — 2026-07-27
 
 ### Added
