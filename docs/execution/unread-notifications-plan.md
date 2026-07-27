@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `53d7cb4`
 - Target milestone: Milestone 2
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -76,3 +76,15 @@ contains a separate explicit permission button.
 - Product: quiet by default and optimized for oversight.
 - Architecture: browser-local personal metadata only.
 - Security: explicit permission and no privileged notification action.
+
+## Result
+
+Pacium now retains a bounded browser-local seen/notified/mute cursor for
+important attention evidence. Session selection acknowledges only while the
+page is visible; hidden-page needs-input, failure, and completion evidence can
+produce one quiet browser alert when preference, permission, unread state, and
+mute policy all allow it. Settings owns the only permission prompt. Notification
+copy is generic and excludes session names, paths, terminal content, prompts,
+and evidence reasons. Storage and Notification API failures leave terminals
+running and preserve honest in-app attention. Full verification passes with 33
+test files and 128 tests, and all four Chromium regressions pass.

@@ -2,6 +2,39 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.14.0 — unread attention and quiet notifications — 2026-07-27
+
+### Added
+
+- A strict version-1 browser-local seen/notified/mute cursor capped at 200
+  sessions with safe invalid-state fallback.
+- Important-only unread markers for needs-input, failure, and completion
+  evidence, acknowledged by visible session selection.
+- Per-session notification mute that preserves in-app attention truth.
+- An explicit settings-only notification permission request and honest
+  permission status.
+- Duplicate-safe hidden-page browser delivery gated by saved preference,
+  granted permission, unread evidence, and session mute.
+- Generic notification copy that excludes session names, paths, terminal
+  content, prompts, and evidence reasons.
+
+### Verified
+
+- `pnpm verify` passes formatting, lint, type checking, 33 test files and
+  128 tests, and both production bundles.
+- `pnpm test:e2e` passes all four Chromium keyboard, focus, responsive,
+  accessibility-preference, and zoom workflows.
+
+### Known limitations
+
+- Current process evidence can produce failure and clean-exit completion.
+  Needs-input alerts require future provider or queue observers.
+- Browser notification metadata is personal browser-local state and does not
+  synchronize between profiles.
+- The current machine ran verification on Node.js 26.4.0, not pinned Node.js
+  24.18.x.
+- The web bundle is 699 kB before gzip and retains the tracked warning.
+
 ## 0.13.0 — evidence-labelled attention reducer — 2026-07-27
 
 ### Added

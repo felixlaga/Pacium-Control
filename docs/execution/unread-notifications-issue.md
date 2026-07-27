@@ -36,18 +36,18 @@ survives refresh and permission requests require an explicit settings button.
 
 ## Acceptance criteria
 
-- [ ] Only needs-input, failed, and finished evidence can become unread.
-- [ ] Selecting a session advances its browser-local seen cursor.
-- [ ] Per-session mute suppresses delivery without hiding attention truth.
-- [ ] The same evidence is not notified twice across refresh.
-- [ ] Delivery requires enabled preference, granted permission, hidden page,
+- [x] Only needs-input, failed, and finished evidence can become unread.
+- [x] Selecting a session advances its browser-local seen cursor.
+- [x] Per-session mute suppresses delivery without hiding attention truth.
+- [x] The same evidence is not notified twice across refresh.
+- [x] Delivery requires enabled preference, granted permission, hidden page,
       actionable evidence, and an unmuted session.
-- [ ] Permission is requested only from an explicit operator action.
-- [ ] Notification content excludes cwd, terminal bytes, prompts, and secrets.
-- [ ] Invalid, oversized, unknown-version, or excess stored state fails safely.
-- [ ] Storage or Notification API failure leaves terminals and attention UI
+- [x] Permission is requested only from an explicit operator action.
+- [x] Notification content excludes cwd, terminal bytes, prompts, and secrets.
+- [x] Invalid, oversized, unknown-version, or excess stored state fails safely.
+- [x] Storage or Notification API failure leaves terminals and attention UI
       operational with honest feedback.
-- [ ] Full verification and browser regressions pass.
+- [x] Full verification and browser regressions pass.
 
 ## Architecture and safety
 
@@ -78,3 +78,17 @@ survives refresh and permission requests require an explicit settings button.
 - Focused state/policy/rendering tests.
 - Full `pnpm verify` and `pnpm test:e2e`.
 - Synchronized status, backlog, issue, plan, and changelog.
+
+## Implementation evidence
+
+- The strict version-1 record accepts at most 200 unique bounded session
+  entries and fails malformed, oversized, duplicate, excess, or unknown-version
+  data to an empty safe state.
+- Model tests cover important-only event keys, acknowledgement, mute,
+  notified-key de-duplication, delivery prerequisites, minimal copy, and
+  storage failure.
+- Rendered tests cover textual unread state, mute state, and explicit browser
+  permission copy.
+- `pnpm verify` passes with 33 test files and 128 tests.
+- `pnpm test:e2e` passes all four Chromium keyboard, focus, narrow-layout, zoom,
+  forced-colors, and reduced-motion workflows.

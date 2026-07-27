@@ -43,10 +43,13 @@ The secondary product is **Pacium mode**:
 - A bounded four-pane terminal layout with horizontal/vertical nesting, pointer/keyboard resizing, explicit focus, session move/swap, maximize/restore, view-only close, and versioned local restoration.
 - Consistent session actions for rename, duplicate, ended-session relaunch, cwd copy, host repository reveal, `SIGINT`, view closure, and confirmed termination.
 - A contextual `Cmd/Ctrl K` command palette with bounded token search, selected-session ranking, workspace/split/session dispatch, destructive-action review, focus restoration, and a searchable shortcut reference.
-- Versioned browser-local settings for system/dark/light themes, compact/comfortable density, controlled terminal font stacks, bounded font size/line height/scrollback, default launch preset, and future attention-notification level.
+- Versioned browser-local settings for system/dark/light themes, compact/comfortable density, controlled terminal font stacks, bounded font size/line height/scrollback, default launch preset, and quiet attention-notification level.
 - Named application and terminal landmarks, skip navigation, concise connection/selection/keyboard-owner status, persisted sidebar/inspector controls, narrow drawers, shared modal focus behavior, forced-colors support, and reduced-motion behavior.
 - Protocol-4 session classification evidence for fixed Shell, Codex CLI, and Claude Code CLI launches, including source, confidence, observation time, inspector presentation, and accessible session-row naming.
 - A pure attention reducer with explicit source/confidence/recency precedence, stale handling, and honest process-only Unknown/Finished/Failed sidebar and inspector states.
+- Bounded browser-local unread, notified, and per-session mute cursors plus
+  explicit-permission, hidden-page browser alerts for needs-input, failure, and
+  completion evidence only.
 - Contract, configuration, security, preset, classification, attention, preference, panel, modal, terminal-option, repository, grouping, tab-state, action-model, command-search, semantic-rendering, fake-PTY, real-PTY, WebSocket reconnect, and Playwright accessibility tests.
 
 ## What is not present
@@ -54,7 +57,7 @@ The secondary product is **Pacium mode**:
 - No packaged `pacium` launcher or release artifact.
 - No durable session restoration after local-server restart.
 - No completed manual screen-reader, visual contrast, or full terminal-lifecycle browser review.
-- No durable server-owned workspace configuration, shortcut customization, or notification delivery.
+- No durable server-owned workspace configuration or shortcut customization.
 - No Claude or Codex observer.
 - No Git inspector.
 - No functional Pacium mode; the toggle is visibly marked as upcoming.
@@ -69,7 +72,7 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 31 test files and 120 tests, plus web and local-server production builds passed.
+- `pnpm verify`: formatting, lint, type checking, 33 test files and 128 tests, plus web and local-server production builds passed.
 - `pnpm test:e2e`: four Chromium workflows passed for skip navigation, panel shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200% zoom, forced colors, and reduced motion.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
@@ -84,7 +87,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 694 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
+- The current web bundle is 699 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
 - Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
 ## Active decisions
@@ -113,4 +116,4 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Build unread/notification policy and Git inspection before Pacium mode. Complete the pinned Node.js 24 clean-install, CI, broader browser/security, manual accessibility, and sustained-output gates before release.
+Build repository context and Git inspection before Pacium mode. Complete the pinned Node.js 24 clean-install, CI, broader browser/security, manual accessibility, and sustained-output gates before release.
