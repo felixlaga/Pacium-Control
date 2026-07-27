@@ -1,5 +1,6 @@
 export * from "./directories.js";
 export * from "./pacium-config.js";
+export * from "./pacium-context.js";
 export * from "./protocol.js";
 export * from "./queue-classification.js";
 export * from "./queue-decision.js";
