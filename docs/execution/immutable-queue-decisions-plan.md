@@ -203,20 +203,20 @@ configured delivery method.
 
 ## Failure model
 
-| Failure point                         | Expected state                                      | Recovery                                      |
-| ------------------------------------- | --------------------------------------------------- | --------------------------------------------- |
-| No `queue-state.json`                 | Exact item is open; no file is created              | Submit one valid current decision             |
-| Item rewrites before submit           | Stale rejection; no durable write                   | Inspect and decide the replacement deliberately |
-| Classification/type mismatches        | Rejected; no durable write                          | Use the controls for the exact current type   |
-| Same request repeats                  | Existing record returned; no new revision           | Continue to PC048 delivery later              |
-| Different request follows a decision  | Already-decided rejection; first record preserved   | PC049 explicit conflict/supersession flow     |
-| State file is corrupt/unsafe/full      | Decision state unavailable; controls disabled       | Repair/archive state explicitly, then inspect |
-| Failure before rename                 | Previous state remains authoritative                | Inspect and deliberately retry                |
-| Directory sync fails after rename     | Durability unknown; no automatic retry              | Reopen/restart and inspect before retrying     |
-| Disconnect during request             | Browser outcome unknown; pending state clears       | Reconnect and inspect durable item state       |
-| Late response or source/config drift  | Reducer ignores/clears payload and controls          | Reopen the current item                       |
-| Hostile answer/note text              | Stored/rendered as bounded inert text               | Review immutable record                       |
-| Delivery target/session is missing    | Irrelevant; decision records as not delivered       | Configure/fix during PC048                     |
+| Failure point                        | Expected state                                    | Recovery                                        |
+| ------------------------------------ | ------------------------------------------------- | ----------------------------------------------- |
+| No `queue-state.json`                | Exact item is open; no file is created            | Submit one valid current decision               |
+| Item rewrites before submit          | Stale rejection; no durable write                 | Inspect and decide the replacement deliberately |
+| Classification/type mismatches       | Rejected; no durable write                        | Use the controls for the exact current type     |
+| Same request repeats                 | Existing record returned; no new revision         | Continue to PC048 delivery later                |
+| Different request follows a decision | Already-decided rejection; first record preserved | PC049 explicit conflict/supersession flow       |
+| State file is corrupt/unsafe/full    | Decision state unavailable; controls disabled     | Repair/archive state explicitly, then inspect   |
+| Failure before rename                | Previous state remains authoritative              | Inspect and deliberately retry                  |
+| Directory sync fails after rename    | Durability unknown; no automatic retry            | Reopen/restart and inspect before retrying      |
+| Disconnect during request            | Browser outcome unknown; pending state clears     | Reconnect and inspect durable item state        |
+| Late response or source/config drift | Reducer ignores/clears payload and controls       | Reopen the current item                         |
+| Hostile answer/note text             | Stored/rendered as bounded inert text             | Review immutable record                         |
+| Delivery target/session is missing   | Irrelevant; decision records as not delivered     | Configure/fix during PC048                      |
 
 ## Compatibility
 

@@ -33,10 +33,7 @@ export type QueueDecisionRequestIdentity = z.infer<
 export const QueueQuestionAnswerPayloadSchema = z
   .object({
     answer: boundedOperatorText(MAX_QUEUE_ANSWER_BYTES, false),
-    note: boundedOperatorText(
-      MAX_QUEUE_DECISION_NOTE_BYTES,
-      true,
-    ).nullable(),
+    note: boundedOperatorText(MAX_QUEUE_DECISION_NOTE_BYTES, true).nullable(),
   })
   .strict();
 export type QueueQuestionAnswerPayload = z.infer<
@@ -46,10 +43,7 @@ export type QueueQuestionAnswerPayload = z.infer<
 export const QueueApprovalDecisionPayloadSchema = z
   .object({
     outcome: z.enum(["approved", "denied"]),
-    note: boundedOperatorText(
-      MAX_QUEUE_DECISION_NOTE_BYTES,
-      true,
-    ).nullable(),
+    note: boundedOperatorText(MAX_QUEUE_DECISION_NOTE_BYTES, true).nullable(),
   })
   .strict();
 export type QueueApprovalDecisionPayload = z.infer<
@@ -124,9 +118,7 @@ export const QueueApprovalDecisionSchema = z
       });
     }
   });
-export type QueueApprovalDecision = z.infer<
-  typeof QueueApprovalDecisionSchema
->;
+export type QueueApprovalDecision = z.infer<typeof QueueApprovalDecisionSchema>;
 
 export const QueueDecisionRecordSchema = z.union([
   QueueQuestionAnswerDecisionSchema,
