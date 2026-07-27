@@ -14,11 +14,13 @@ import { join } from "node:path";
 
 import {
   QUEUE_STATE_SCHEMA_VERSION,
+  type QueueDeliveryRecord,
   type QueueDecisionRecord,
 } from "@pacium/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { computeQueueDecisionHash } from "./queue-decision-hash.js";
+import { computeQueueDeliveryHash } from "./queue-delivery-hash.js";
 import { QueueDecisionStore } from "./queue-decision-store.js";
 import type { QueueDecisionStoreWriteError } from "./queue-decision-store.js";
 
@@ -323,6 +325,118 @@ describe("queue decision store append", () => {
   });
 });
 
+describe("queue delivery store mutations", () => {
+  it("records one intent, one immutable outcome, and recovers both", async () => {
+    const fixture = await stateFixture();
+    const decision = sampleDecision();
+    const delivery = sampleDelivery(decision);
+    await fixture.store.append(decision);
+
+    await expect(fixture.store.beginDelivery(delivery)).resolves.toEqual({
+      status: "recorded",
+      revision: 2,
+      delivery,
+    });
+    await expect(fixture.store.beginDelivery(delivery)).resolves.toEqual({
+      status: "existing",
+      revision: 2,
+      delivery,
+    });
+
+    const outcome = {
+      status: "delivered" as const,
+      recordedAt: "2026-07-27T15:00:01.000Z",
+      evidence: {
+        kind: "answer_file_created" as const,
+        byteLength: delivery.payloadByteLength,
+        contentHash: delivery.payloadHash,
+      },
+      error: null,
+    };
+    const finished = await fixture.store.finishDelivery(
+      delivery.deliveryId,
+      outcome,
+    );
+    expect(finished).toMatchObject({
+      status: "recorded",
+      revision: 3,
+      delivery: {
+        deliveryId: delivery.deliveryId,
+        decisionId: delivery.decisionId,
+        outcome,
+      },
+    });
+    await expect(
+      fixture.store.finishDelivery(delivery.deliveryId, outcome),
+    ).resolves.toMatchObject({
+      status: "existing",
+      revision: 3,
+    });
+
+    const restarted = new QueueDecisionStore(fixture.dataDirectory);
+    await expect(restarted.inspect()).resolves.toMatchObject({
+      status: "ready",
+      revision: 3,
+      decisions: [decision],
+      deliveries: [finished.delivery],
+    });
+  });
+
+  it("serializes concurrent duplicate intents without duplicate delivery", async () => {
+    const fixture = await stateFixture();
+    const decision = sampleDecision();
+    const delivery = sampleDelivery(decision);
+    await fixture.store.append(decision);
+
+    const [first, second] = await Promise.all([
+      fixture.store.beginDelivery(delivery),
+      fixture.store.beginDelivery(delivery),
+    ]);
+    expect(first).toMatchObject({ status: "recorded", revision: 2 });
+    expect(second).toMatchObject({ status: "existing", revision: 2 });
+    await expect(fixture.store.inspect()).resolves.toMatchObject({
+      status: "ready",
+      deliveries: [delivery],
+    });
+  });
+
+  it("rejects unknown decisions and a different second outcome", async () => {
+    const fixture = await stateFixture();
+    const decision = sampleDecision();
+    const delivery = sampleDelivery(decision);
+    await expect(fixture.store.beginDelivery(delivery)).rejects.toMatchObject({
+      code: "invalid_state",
+    });
+
+    await fixture.store.append(decision);
+    await fixture.store.beginDelivery(delivery);
+    await fixture.store.finishDelivery(delivery.deliveryId, {
+      status: "failed",
+      recordedAt: "2026-07-27T15:00:01.000Z",
+      evidence: null,
+      error: {
+        code: "DELIVERY_WRITE_FAILED",
+        message:
+          "The configured transport failed before delivery could be confirmed.",
+      },
+    });
+    await expect(
+      fixture.store.finishDelivery(delivery.deliveryId, {
+        status: "unknown",
+        recordedAt: "2026-07-27T15:00:02.000Z",
+        evidence: null,
+        error: {
+          code: "DELIVERY_OUTCOME_UNKNOWN",
+          message:
+            "The delivery side effect may have occurred, but its durable outcome is unknown. Pacium will not retry it.",
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "invalid_state",
+    });
+  });
+});
+
 function sampleDecision(
   overrides: {
     answer?: string;
@@ -359,6 +473,28 @@ function sampleDecision(
   return {
     ...unhashed,
     decisionHash: computeQueueDecisionHash(unhashed),
+  };
+}
+
+function sampleDelivery(decision: QueueDecisionRecord): QueueDeliveryRecord {
+  const unhashed = {
+    deliveryId: "4699b11f-94d3-430a-960e-1c574a03db41",
+    decisionId: decision.decisionId,
+    decisionHash: decision.decisionHash,
+    target: {
+      type: "answer_file" as const,
+      methodId: "answers",
+      methodLabel: "Pacium answers",
+      path: "/private/tmp/PACIUM-ANSWERS",
+    },
+    payloadHash: "d".repeat(64),
+    payloadByteLength: 512,
+    requestedAt: "2026-07-27T15:00:00.000Z",
+    outcome: null,
+  };
+  return {
+    ...unhashed,
+    deliveryHash: computeQueueDeliveryHash(unhashed),
   };
 }
 

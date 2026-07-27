@@ -3,19 +3,26 @@ import { lstat, mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
+  MAX_QUEUE_DELIVERIES,
   MAX_QUEUE_DECISIONS,
   MAX_QUEUE_STATE_BYTES,
   QUEUE_STATE_SCHEMA_VERSION,
   QueueDecisionRecordSchema,
+  QueueDeliveryOutcomeSchema,
+  QueueDeliveryRecordSchema,
   QueueStateDocumentSchema,
   QueueStateV2DocumentSchema,
+  type QueueDeliveryOutcome,
   type QueueDeliveryRecord,
   type QueueDecisionRecord,
   queueDecisionIdentityKey,
 } from "@pacium/contracts";
 
 import { hasValidQueueDecisionHash } from "./queue-decision-hash.js";
-import { hasValidQueueDeliveryHash } from "./queue-delivery-hash.js";
+import {
+  computeQueueDeliveryHash,
+  hasValidQueueDeliveryHash,
+} from "./queue-delivery-hash.js";
 
 export interface QueueDecisionStoreIO {
   lstat: typeof lstat;
@@ -86,6 +93,12 @@ export type QueueDecisionStoreAppendResult = {
   status: "recorded" | "existing";
   revision: number;
   decision: QueueDecisionRecord;
+};
+
+export type QueueDeliveryStoreMutationResult = {
+  status: "recorded" | "existing";
+  revision: number;
+  delivery: QueueDeliveryRecord;
 };
 
 export type QueueDecisionStoreWriteErrorCode =
@@ -248,6 +261,33 @@ export class QueueDecisionStore {
     return operation;
   }
 
+  public beginDelivery(
+    delivery: QueueDeliveryRecord,
+  ): Promise<QueueDeliveryStoreMutationResult> {
+    const operation = this.writeTail.then(() =>
+      this.beginDeliveryOnce(delivery),
+    );
+    this.writeTail = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    return operation;
+  }
+
+  public finishDelivery(
+    deliveryId: string,
+    outcome: QueueDeliveryOutcome,
+  ): Promise<QueueDeliveryStoreMutationResult> {
+    const operation = this.writeTail.then(() =>
+      this.finishDeliveryOnce(deliveryId, outcome),
+    );
+    this.writeTail = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    return operation;
+  }
+
   private async appendOnce(
     decision: QueueDecisionRecord,
   ): Promise<QueueDecisionStoreAppendResult> {
@@ -304,27 +344,11 @@ export class QueueDecisionStore {
       decisions: [...current.decisions, parsedDecision],
       deliveries: current.deliveries,
     });
-    const serialized = `${JSON.stringify(document, null, 2)}\n`;
-    if (Buffer.byteLength(serialized) > MAX_QUEUE_STATE_BYTES) {
-      throw new QueueDecisionStoreWriteError(
-        "state_full",
-        "Queue decision state reached its safe serialized size bound.",
-      );
-    }
-
-    await this.ensureDataDirectory();
-    await this.atomicWrite(serialized);
-    const accepted = await this.inspect();
-    const acceptedDecision =
-      accepted.status === "ready"
-        ? accepted.decisions.find(
-            (candidate) =>
-              queueDecisionIdentityKey(candidate.source) === sourceKey,
-          )
-        : undefined;
+    const accepted = await this.persistDocument(document);
+    const acceptedDecision = accepted.decisions.find(
+      (candidate) => queueDecisionIdentityKey(candidate.source) === sourceKey,
+    );
     if (
-      accepted.status !== "ready" ||
-      accepted.revision !== document.revision ||
       acceptedDecision === undefined ||
       acceptedDecision.decisionHash !== parsedDecision.decisionHash
     ) {
@@ -339,6 +363,176 @@ export class QueueDecisionStore {
       revision: accepted.revision,
       decision: acceptedDecision,
     };
+  }
+
+  private async beginDeliveryOnce(
+    delivery: QueueDeliveryRecord,
+  ): Promise<QueueDeliveryStoreMutationResult> {
+    const parsedDelivery = QueueDeliveryRecordSchema.parse(delivery);
+    if (!hasValidQueueDeliveryHash(parsedDelivery)) {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_state",
+        "A queue delivery with an invalid hash cannot be stored.",
+      );
+    }
+    const current = await this.inspect();
+    if (current.status === "error") {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_state",
+        "Existing queue decision state must be repaired before delivery.",
+      );
+    }
+    const existing = current.deliveries.find(
+      (candidate) => candidate.decisionId === parsedDelivery.decisionId,
+    );
+    if (existing !== undefined) {
+      return {
+        status: "existing",
+        revision: current.revision,
+        delivery: existing,
+      };
+    }
+    const decision = current.decisions.find(
+      (candidate) =>
+        candidate.decisionId === parsedDelivery.decisionId &&
+        candidate.decisionHash === parsedDelivery.decisionHash,
+    );
+    if (decision === undefined) {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_state",
+        "Queue delivery must reference an existing immutable decision.",
+      );
+    }
+    if (current.deliveries.length >= MAX_QUEUE_DELIVERIES) {
+      throw new QueueDecisionStoreWriteError(
+        "state_full",
+        "Queue delivery state reached its safe record bound.",
+      );
+    }
+    const document = QueueStateV2DocumentSchema.parse({
+      schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
+      revision: nextRevision(current.revision),
+      decisions: current.decisions,
+      deliveries: [...current.deliveries, parsedDelivery],
+    });
+    const accepted = await this.persistDocument(document);
+    const acceptedDelivery = accepted.deliveries.find(
+      (candidate) => candidate.deliveryId === parsedDelivery.deliveryId,
+    );
+    if (
+      acceptedDelivery === undefined ||
+      acceptedDelivery.deliveryHash !== parsedDelivery.deliveryHash
+    ) {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_result",
+        "Queue delivery intent replacement could not be verified.",
+      );
+    }
+    return {
+      status: "recorded",
+      revision: accepted.revision,
+      delivery: acceptedDelivery,
+    };
+  }
+
+  private async finishDeliveryOnce(
+    deliveryId: string,
+    outcome: QueueDeliveryOutcome,
+  ): Promise<QueueDeliveryStoreMutationResult> {
+    const parsedOutcome = QueueDeliveryOutcomeSchema.parse(outcome);
+    const current = await this.inspect();
+    if (current.status !== "ready") {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_state",
+        "Queue delivery intent is unavailable.",
+      );
+    }
+    const index = current.deliveries.findIndex(
+      (candidate) => candidate.deliveryId === deliveryId,
+    );
+    const existing = current.deliveries[index];
+    if (existing === undefined) {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_state",
+        "Queue delivery intent does not exist.",
+      );
+    }
+    if (existing.outcome !== null) {
+      if (JSON.stringify(existing.outcome) === JSON.stringify(parsedOutcome)) {
+        return {
+          status: "existing",
+          revision: current.revision,
+          delivery: existing,
+        };
+      }
+      throw new QueueDecisionStoreWriteError(
+        "invalid_state",
+        "Queue delivery outcome is already immutable.",
+      );
+    }
+    const { deliveryHash: _previousHash, ...unhashed } = existing;
+    const updated: QueueDeliveryRecord = {
+      ...unhashed,
+      outcome: parsedOutcome,
+      deliveryHash: computeQueueDeliveryHash({
+        ...unhashed,
+        outcome: parsedOutcome,
+      }),
+    };
+    const deliveries = [...current.deliveries];
+    deliveries[index] = updated;
+    const document = QueueStateV2DocumentSchema.parse({
+      schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
+      revision: nextRevision(current.revision),
+      decisions: current.decisions,
+      deliveries,
+    });
+    const accepted = await this.persistDocument(document);
+    const acceptedDelivery = accepted.deliveries.find(
+      (candidate) => candidate.deliveryId === deliveryId,
+    );
+    if (
+      acceptedDelivery === undefined ||
+      acceptedDelivery.deliveryHash !== updated.deliveryHash
+    ) {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_result",
+        "Queue delivery outcome replacement could not be verified.",
+      );
+    }
+    return {
+      status: "recorded",
+      revision: accepted.revision,
+      delivery: acceptedDelivery,
+    };
+  }
+
+  private async persistDocument(document: {
+    schemaVersion: 2;
+    revision: number;
+    decisions: QueueDecisionRecord[];
+    deliveries: QueueDeliveryRecord[];
+  }): Promise<Extract<QueueDecisionStoreObservation, { status: "ready" }>> {
+    const serialized = `${JSON.stringify(document, null, 2)}\n`;
+    if (Buffer.byteLength(serialized) > MAX_QUEUE_STATE_BYTES) {
+      throw new QueueDecisionStoreWriteError(
+        "state_full",
+        "Queue decision state reached its safe serialized size bound.",
+      );
+    }
+    await this.ensureDataDirectory();
+    await this.atomicWrite(serialized);
+    const accepted = await this.inspect();
+    if (
+      accepted.status !== "ready" ||
+      accepted.revision !== document.revision
+    ) {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_result",
+        "Queue state replacement could not be verified.",
+      );
+    }
+    return accepted;
   }
 
   private async ensureDataDirectory(): Promise<void> {
@@ -473,4 +667,14 @@ function isMissing(error: unknown): boolean {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function nextRevision(revision: number): number {
+  if (revision >= Number.MAX_SAFE_INTEGER) {
+    throw new QueueDecisionStoreWriteError(
+      "invalid_state",
+      "Queue decision state revision cannot advance safely.",
+    );
+  }
+  return revision + 1;
 }
