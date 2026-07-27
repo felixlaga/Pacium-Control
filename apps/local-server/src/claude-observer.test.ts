@@ -123,6 +123,14 @@ describe("Claude observer launch preparation", () => {
       tokenFactory: () => "short",
     });
     expect(() => instance.prepare(sessionId, now)).toThrow("unsafe token");
+    const invalidCharacters = new ClaudeObserver({
+      baseUrl: "http://127.0.0.1:4174",
+      providerVersion: null,
+      tokenFactory: () => "x".repeat(31) + "/",
+    });
+    expect(() => invalidCharacters.prepare(sessionId, now)).toThrow(
+      "unsafe token",
+    );
   });
 });
 
@@ -248,7 +256,9 @@ describe("Claude hook normalization", () => {
     expect(result).toMatchObject({
       status: "accepted",
       observation: {
-        activities: [{ kind: "failed", summary: "Claude reported a failure from Edit." }],
+        activities: [
+          { kind: "failed", summary: "Claude reported a failure from Edit." },
+        ],
         attention: {
           state: "working",
           reason: "A Claude tool failed; turn outcome is still pending.",
@@ -299,9 +309,10 @@ describe("Claude hook normalization", () => {
 
     instance.release(sessionId);
     expect(instance.hasSession(sessionId)).toBe(false);
-    expect(
-      instance.ingestHook(sessionId, token, hook("Stop")),
-    ).toEqual({ status: "rejected", code: "unknown_session" });
+    expect(instance.ingestHook(sessionId, token, hook("Stop"))).toEqual({
+      status: "rejected",
+      code: "unknown_session",
+    });
   });
 });
 

@@ -140,8 +140,14 @@ export class ClaudeObserver {
     observedAt: string,
   ): PreparedClaudeObservation {
     const token = this.tokenFactory();
-    if (token.length < 32 || token.length > 256) {
-      throw new Error("Claude observer token factory returned an unsafe token.");
+    if (
+      token.length < 32 ||
+      token.length > 256 ||
+      !/^[A-Za-z0-9_-]+$/.test(token)
+    ) {
+      throw new Error(
+        "Claude observer token factory returned an unsafe token.",
+      );
     }
     const observation = unavailableObservation(
       observedAt,
@@ -267,9 +273,7 @@ export class ClaudeObserver {
   private authorizedSession(
     sessionId: string,
     token: string,
-  ):
-    | ObservedClaudeSession
-    | { code: "unknown_session" | "invalid_token" } {
+  ): ObservedClaudeSession | { code: "unknown_session" | "invalid_token" } {
     const session = this.sessions.get(sessionId);
     if (session === undefined) {
       return { code: "unknown_session" };
@@ -440,11 +444,7 @@ function normalizeHook(
           summary: `Claude requested approval for ${hook.tool_name ?? "a tool"}.`,
           extension: extension("permission_request"),
         },
-        attention(
-          "needs_input",
-          observedAt,
-          "Claude requested an approval.",
-        ),
+        attention("needs_input", observedAt, "Claude requested an approval."),
         ["activity", "attention", "approvals"],
       );
     case "PostToolUse":
@@ -590,10 +590,10 @@ function applyHookObservation(
       observedAt,
     ),
     attention: normalizedHook.attention,
-    activities: [
-      normalizedHook.activity,
-      ...previous.activities,
-    ].slice(0, MAX_PROVIDER_ACTIVITIES),
+    activities: [normalizedHook.activity, ...previous.activities].slice(
+      0,
+      MAX_PROVIDER_ACTIVITIES,
+    ),
     observedAt,
     staleAfter: addMinutes(observedAt, 5),
     diagnostics: previous.diagnostics.filter(
@@ -679,9 +679,7 @@ function unknownCapability(id: ProviderCapabilityId): ProviderCapability {
   };
 }
 
-function hookFingerprint(
-  hook: z.infer<typeof ClaudeHookInputSchema>,
-): string {
+function hookFingerprint(hook: z.infer<typeof ClaudeHookInputSchema>): string {
   return digest([
     hook.session_id,
     hook.prompt_id ?? "",
