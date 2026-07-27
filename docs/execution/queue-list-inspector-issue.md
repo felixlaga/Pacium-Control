@@ -59,7 +59,8 @@ degraded source removes text that can no longer be proven current.
       decision, or authority field.
 - [ ] Opening a row requests only an exact current item identity; the browser
       cannot request an arbitrary path or source text.
-- [ ] A ready inspection contains the exact bounded original text and matching
+- [ ] A ready inspection contains the exact bounded original UTF-8 text
+      transported with bounded base64 encoding and matching
       workspace/source/observation/hash/item provenance.
 - [ ] Original text is rendered only as escaped text, with no HTML, link,
       terminal escape, clipboard, command, or queue execution behavior.

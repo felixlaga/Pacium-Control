@@ -91,7 +91,8 @@ queue age.
   - add nullable `candidateFirstObservedAt` to queue source observations;
   - add strict `QueueItemInspection` union with `ready`, `stale`, and
     `unavailable`;
-  - ready detail carries exact bounded text plus matching current provenance;
+  - ready detail carries exact bounded UTF-8 bytes as base64 plus matching
+    current provenance;
   - stale/unavailable detail carries fixed safe diagnostics and no text.
 - Commands/events:
   - client `pacium.queue.item.inspect` with request ID, workspace revision,
@@ -110,8 +111,9 @@ queue age.
   candidate and is null for blank/degraded sources.
 - Ready detail invariants:
   - all requested identity fields equal current accepted observer evidence;
-  - `originalText` is at most `MAX_QUEUE_SOURCE_BYTES` Unicode characters and
-    represents the exact decoded current source bytes;
+  - `originalTextBase64` is bounded to the base64 expansion of
+    `MAX_QUEUE_SOURCE_BYTES` and represents the exact decoded current source
+    bytes after browser UTF-8 decoding;
   - classifier candidate and content hash still match;
   - no title, excerpt, command, answer, decision, permission, delivery, or
     generic path field exists.
@@ -128,6 +130,9 @@ queue age.
   returning the already bounded in-memory text.
 - Queue source content never enters logs, error messages, notices, row labels,
   ARIA names, durable state, terminal input, or HTML interpretation.
+- Base64 avoids JSON control-character expansion exceeding the 128 KiB
+  application-message ceiling; the browser validates and decodes it once for
+  inert text rendering.
 - No result authorizes a question answer or approval.
 
 ## Sequence
