@@ -1,28 +1,49 @@
-import { lstat, readFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { lstat, mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
+  MAX_QUEUE_DECISIONS,
   MAX_QUEUE_STATE_BYTES,
   QUEUE_STATE_SCHEMA_VERSION,
   QueueStateDocumentSchema,
   type QueueDecisionRecord,
+  queueDecisionIdentityKey,
 } from "@pacium/contracts";
 
 import { hasValidQueueDecisionHash } from "./queue-decision-hash.js";
 
-export interface QueueDecisionStoreReadIO {
+export interface QueueDecisionStoreIO {
   lstat: typeof lstat;
+  mkdir: typeof mkdir;
+  open: typeof open;
   readFile: typeof readFile;
+  rename: typeof rename;
+  unlink: typeof unlink;
+  syncDirectory(path: string): Promise<void>;
 }
 
-const NODE_READ_IO: QueueDecisionStoreReadIO = {
+const NODE_STORE_IO: QueueDecisionStoreIO = {
   lstat,
+  mkdir,
+  open,
   readFile,
+  rename,
+  unlink,
+  async syncDirectory(path) {
+    const handle = await open(path, "r");
+    try {
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  },
 };
 
 export interface QueueDecisionStoreOptions {
-  io?: Partial<QueueDecisionStoreReadIO>;
+  io?: Partial<QueueDecisionStoreIO>;
   ownerId?: number | null;
+  randomId?: () => string;
 }
 
 export type QueueDecisionStoreErrorCode =
@@ -54,21 +75,47 @@ export type QueueDecisionStoreObservation =
       };
     };
 
+export type QueueDecisionStoreAppendResult = {
+  status: "recorded" | "existing";
+  revision: number;
+  decision: QueueDecisionRecord;
+};
+
+export type QueueDecisionStoreWriteErrorCode =
+  | "invalid_state"
+  | "state_full"
+  | "already_decided"
+  | "write_failed"
+  | "durability_unknown"
+  | "invalid_result";
+
+export class QueueDecisionStoreWriteError extends Error {
+  public constructor(
+    public readonly code: QueueDecisionStoreWriteErrorCode,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 export class QueueDecisionStore {
   public readonly statePath: string;
-  private readonly io: QueueDecisionStoreReadIO;
+  private readonly io: QueueDecisionStoreIO;
   private readonly ownerId: number | null;
+  private readonly randomId: () => string;
+  private writeTail = Promise.resolve();
 
   public constructor(
     public readonly dataDirectory: string,
     options: QueueDecisionStoreOptions = {},
   ) {
     this.statePath = join(dataDirectory, "queue-state.json");
-    this.io = { ...NODE_READ_IO, ...options.io };
+    this.io = { ...NODE_STORE_IO, ...options.io };
     this.ownerId =
       options.ownerId === undefined
         ? (process.getuid?.() ?? null)
         : options.ownerId;
+    this.randomId = options.randomId ?? randomUUID;
   }
 
   public async inspect(): Promise<QueueDecisionStoreObservation> {
@@ -102,10 +149,7 @@ export class QueueDecisionStore {
           "Queue decision state must be a private regular non-symlink file.",
         );
       }
-      if (
-        stateStatus.size === 0 ||
-        stateStatus.size > MAX_QUEUE_STATE_BYTES
-      ) {
+      if (stateStatus.size === 0 || stateStatus.size > MAX_QUEUE_STATE_BYTES) {
         return stateError(
           "invalid_file",
           `Queue decision state must be between 1 and ${MAX_QUEUE_STATE_BYTES} bytes.`,
@@ -174,6 +218,164 @@ export class QueueDecisionStore {
     }
   }
 
+  public append(
+    decision: QueueDecisionRecord,
+  ): Promise<QueueDecisionStoreAppendResult> {
+    const operation = this.writeTail.then(() => this.appendOnce(decision));
+    this.writeTail = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    return operation;
+  }
+
+  private async appendOnce(
+    decision: QueueDecisionRecord,
+  ): Promise<QueueDecisionStoreAppendResult> {
+    const parsedDecision =
+      QueueStateDocumentSchema.shape.decisions.element.parse(decision);
+    if (!hasValidQueueDecisionHash(parsedDecision)) {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_state",
+        "A queue decision with an invalid hash cannot be stored.",
+      );
+    }
+
+    const current = await this.inspect();
+    if (current.status === "error") {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_state",
+        "Existing queue decision state must be repaired before recording another decision.",
+      );
+    }
+
+    const sourceKey = queueDecisionIdentityKey(parsedDecision.source);
+    const existing = current.decisions.find(
+      (candidate) => queueDecisionIdentityKey(candidate.source) === sourceKey,
+    );
+    if (existing !== undefined) {
+      if (hasSameDecisionIntent(existing, parsedDecision)) {
+        return {
+          status: "existing",
+          revision: current.revision,
+          decision: existing,
+        };
+      }
+      throw new QueueDecisionStoreWriteError(
+        "already_decided",
+        "This queue item already has a different immutable decision.",
+      );
+    }
+
+    if (current.decisions.length >= MAX_QUEUE_DECISIONS) {
+      throw new QueueDecisionStoreWriteError(
+        "state_full",
+        "Queue decision state reached its safe record bound.",
+      );
+    }
+    if (current.revision >= Number.MAX_SAFE_INTEGER) {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_state",
+        "Queue decision state revision cannot advance safely.",
+      );
+    }
+
+    const document = QueueStateDocumentSchema.parse({
+      schemaVersion: QUEUE_STATE_SCHEMA_VERSION,
+      revision: current.revision + 1,
+      decisions: [...current.decisions, parsedDecision],
+    });
+    const serialized = `${JSON.stringify(document, null, 2)}\n`;
+    if (Buffer.byteLength(serialized) > MAX_QUEUE_STATE_BYTES) {
+      throw new QueueDecisionStoreWriteError(
+        "state_full",
+        "Queue decision state reached its safe serialized size bound.",
+      );
+    }
+
+    await this.ensureDataDirectory();
+    await this.atomicWrite(serialized);
+    const accepted = await this.inspect();
+    const acceptedDecision =
+      accepted.status === "ready"
+        ? accepted.decisions.find(
+            (candidate) =>
+              queueDecisionIdentityKey(candidate.source) === sourceKey,
+          )
+        : undefined;
+    if (
+      accepted.status !== "ready" ||
+      accepted.revision !== document.revision ||
+      acceptedDecision === undefined ||
+      acceptedDecision.decisionHash !== parsedDecision.decisionHash
+    ) {
+      throw new QueueDecisionStoreWriteError(
+        "invalid_result",
+        "Queue decision replacement could not be verified.",
+      );
+    }
+
+    return {
+      status: "recorded",
+      revision: accepted.revision,
+      decision: acceptedDecision,
+    };
+  }
+
+  private async ensureDataDirectory(): Promise<void> {
+    try {
+      await this.io.mkdir(this.dataDirectory, {
+        recursive: true,
+        mode: 0o700,
+      });
+      const status = await this.io.lstat(this.dataDirectory);
+      if (
+        status.isSymbolicLink() ||
+        !status.isDirectory() ||
+        this.hasUnsafeOwnershipOrMode(status)
+      ) {
+        throw new Error("unsafe directory");
+      }
+    } catch {
+      throw new QueueDecisionStoreWriteError(
+        "write_failed",
+        "Pacium data directory could not be created safely.",
+      );
+    }
+  }
+
+  private async atomicWrite(serialized: string): Promise<void> {
+    const temporaryPath = join(
+      this.dataDirectory,
+      `.queue-state.json.${this.randomId()}.tmp`,
+    );
+    let handle: Awaited<ReturnType<typeof open>> | null = null;
+    let renamed = false;
+    try {
+      handle = await this.io.open(temporaryPath, "wx", 0o600);
+      await handle.writeFile(serialized, "utf8");
+      await handle.sync();
+      await handle.close();
+      handle = null;
+      await this.io.rename(temporaryPath, this.statePath);
+      renamed = true;
+      await this.io.syncDirectory(this.dataDirectory);
+    } catch {
+      if (handle !== null) {
+        await handle.close().catch(() => {});
+      }
+      if (!renamed) {
+        await this.io.unlink(temporaryPath).catch(() => {});
+      }
+      throw new QueueDecisionStoreWriteError(
+        renamed ? "durability_unknown" : "write_failed",
+        renamed
+          ? "Queue decision state was replaced but directory durability is unknown; inspect before retrying."
+          : "Queue decision state could not be replaced atomically.",
+      );
+    }
+  }
+
   private async optionalStatus(path: string) {
     try {
       return await this.io.lstat(path);
@@ -194,6 +396,28 @@ export class QueueDecisionStore {
       (this.ownerId !== null && status.uid !== this.ownerId)
     );
   }
+}
+
+function hasSameDecisionIntent(
+  left: QueueDecisionRecord,
+  right: QueueDecisionRecord,
+): boolean {
+  if (left.kind !== right.kind) {
+    return false;
+  }
+  if (left.kind === "question_answer" && right.kind === "question_answer") {
+    return (
+      left.payload.answer === right.payload.answer &&
+      left.payload.note === right.payload.note
+    );
+  }
+  if (left.kind === "approval_decision" && right.kind === "approval_decision") {
+    return (
+      left.payload.outcome === right.payload.outcome &&
+      left.payload.note === right.payload.note
+    );
+  }
+  return false;
 }
 
 function emptyState(): QueueDecisionStoreObservation {
