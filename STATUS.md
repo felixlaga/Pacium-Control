@@ -1,6 +1,7 @@
 # Project status
 
-**Current phase:** Core terminal workspace complete enough for continued slicing; agent visibility is in progress.
+**Current phase:** Core terminal workspace and bounded Git-oversight slices are
+complete enough for continued slicing; Pacium-mode configuration is next.
 
 Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
 
@@ -62,8 +63,13 @@ The secondary product is **Pacium mode**:
   latest result, and fresh start/end HEAD evidence.
 - A lazy Checks inspector with exact argv and local-authority disclosure,
   Run/Cancel, pass/fail/timeout/cancel/error evidence, truncation and
-  changed-HEAD warnings, browser-refresh recovery, and four-tab keyboard
+  changed-HEAD warnings, browser-refresh recovery, and five-tab keyboard
   navigation.
+- A lazy fifth Activity inspector that projects current attention, direct-PTY
+  lifecycle, changed-file totals, three recent local commits, and the
+  current/latest verification run into at most seven deterministic facts with
+  explicit observed/occurred timestamps, source availability, partial errors,
+  Refresh, reconnect recovery, and no terminal/provider narrative.
 - Keyboard commands for session creation, numbered selection, previous/next selection, and leaving terminal capture.
 - Browser-owned terminal tabs with pinning, pointer/keyboard reordering, view-only close, stale-session reconciliation, and versioned local restoration.
 - A bounded four-pane terminal layout with horizontal/vertical nesting, pointer/keyboard resizing, explicit focus, session move/swap, maximize/restore, view-only close, and versioned local restoration.
@@ -85,7 +91,6 @@ The secondary product is **Pacium mode**:
 - No completed manual screen-reader, visual contrast, or full terminal-lifecycle browser review.
 - No durable server-owned workspace configuration or shortcut customization.
 - No Claude or Codex observer.
-- No recent-activity summary yet.
 - No functional Pacium mode; the toggle is visibly marked as upcoming.
 - No queue integration.
 - No tmux adapter.
@@ -98,8 +103,13 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 58 test files and 278 tests, plus web and local-server production builds passed.
-- `pnpm test:e2e`: seven Chromium workflows passed for skip navigation, panel shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200% zoom, forced colors, reduced motion, deterministic changed-file/diff/history inspection, and configured verification run/reload/cancel without terminal reselection.
+- `pnpm verify`: formatting, lint, type checking, 60 test files and 292 tests,
+  plus web and local-server production builds passed.
+- `pnpm test:e2e`: seven Chromium workflows passed for skip navigation, panel
+  shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
+  zoom, forced colors, reduced motion, deterministic
+  changed-file/diff/history/Activity inspection, and configured verification
+  run/reload/cancel without terminal reselection.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
 - The protocol-version-9 boundary passed strict contract and WebSocket tests on this machine.
@@ -109,11 +119,16 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 Evidence boundaries:
 
 - The current shell exposed Node.js `26.4.0`, not the approved Node.js `24.18.x`; the commands passed with an engine warning, so the supported runtime remains unverified.
-- The repository Playwright suite ran in headless Chromium after its browser binary was installed and verified the PC-028, PC-034, PC-035, PC-036, and PC-037 workflows. The connected in-app browser backend remained unavailable, so manual visual, screen-reader, and full type/refresh/close terminal review are still open.
+- The repository Playwright suite ran in headless Chromium after its browser
+  binary was installed and verified the PC-028, PC-034, PC-035, PC-036, PC-037,
+  and PC-038 workflows. The connected in-app browser backend remained
+  unavailable, so manual visual, screen-reader, and full type/refresh/close
+  terminal review are still open.
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 748 kB before gzip and emits Vite's chunk-size warning; code splitting is a later optimization, not a functional blocker.
+- The current web bundle is 759.50 kB before gzip and emits Vite's chunk-size
+  warning; code splitting is a later optimization, not a functional blocker.
 - Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
 ## Active decisions
@@ -142,7 +157,8 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Build the PC-038 recent-activity summary, then begin Pacium mode with its
-server-owned workspace configuration. Complete the pinned Node.js 24
+Begin PC-040 with the server-owned Pacium workspace configuration for explicit
+Meta and Orchestrator references, repository roots, queue sources, worker
+classification, and verification references. Complete the pinned Node.js 24
 clean-install, CI, broader browser/security, manual accessibility, and
 sustained-output gates before release.
