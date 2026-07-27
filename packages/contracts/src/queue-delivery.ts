@@ -289,7 +289,16 @@ export const QueueDeliveryStateSchema = z.discriminatedUnion("status", [
       delivery: z.null(),
       error: QueueDeliveryErrorSchema,
     })
-    .strict(),
+    .strict()
+    .superRefine((state, context) => {
+      if (state.error.code !== "DELIVERY_NOT_CONFIGURED") {
+        context.addIssue({
+          code: "custom",
+          message:
+            "An unconfigured delivery state requires the fixed not-configured error.",
+        });
+      }
+    }),
   z
     .object({
       status: z.literal("ready"),
@@ -309,10 +318,13 @@ export const QueueDeliveryStateSchema = z.discriminatedUnion("status", [
     })
     .strict()
     .superRefine((state, context) => {
-      if (state.delivery.decisionId !== state.decisionId) {
+      if (
+        state.delivery.decisionId !== state.decisionId ||
+        state.delivery.decisionHash !== state.decisionHash
+      ) {
         context.addIssue({
           code: "custom",
-          message: "Delivery state and record decision IDs must agree.",
+          message: "Delivery state and record decision identities must agree.",
         });
       }
       const outcomeStatus = state.delivery.outcome?.status ?? null;
@@ -357,6 +369,15 @@ export const QueueDeliveryResultSchema = z
   })
   .strict()
   .superRefine((result, context) => {
+    if (
+      result.state.decisionId !== result.decisionId ||
+      result.state.decisionHash !== result.decisionHash
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Queue delivery result and state identities must agree.",
+      });
+    }
     const valid =
       (result.status === "delivered" && result.state.status === "delivered") ||
       (result.status === "failed" && result.state.status === "failed") ||

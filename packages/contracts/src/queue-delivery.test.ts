@@ -221,6 +221,20 @@ describe("queue delivery contracts", () => {
         state,
       }).success,
     ).toBe(false);
+    expect(
+      QueueDeliveryResultSchema.safeParse({
+        status: "unknown",
+        decisionId: "bb3d98ca-8308-46d7-9fe3-cf8a131e8dad",
+        decisionHash: decision.decisionHash,
+        state,
+      }).success,
+    ).toBe(false);
+    expect(
+      QueueDeliveryStateSchema.safeParse({
+        ...state,
+        decisionHash: "f".repeat(64),
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects forged target and retry authority", () => {
@@ -251,6 +265,16 @@ describe("queue delivery contracts", () => {
           error: queueDeliveryError("DELIVERY_NOT_CONFIGURED"),
         },
         retry: true,
+      }).success,
+    ).toBe(false);
+    expect(
+      QueueDeliveryStateSchema.safeParse({
+        status: "not_configured",
+        decisionId: decision.decisionId,
+        decisionHash: decision.decisionHash,
+        target: null,
+        delivery: null,
+        error: queueDeliveryError("DELIVERY_STATE_UNAVAILABLE"),
       }).success,
     ).toBe(false);
   });
