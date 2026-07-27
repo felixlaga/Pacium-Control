@@ -509,10 +509,11 @@ export function App() {
   };
 
   const openPalette = (view: CommandPaletteView) => {
+    const activeElement = document.activeElement;
     paletteInvokerRef.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
+      activeElement instanceof HTMLElement && activeElement !== document.body
+        ? activeElement
+        : document.getElementById("command-palette-trigger");
     setCapturedPaneId(null);
     setPaletteView(view);
   };
