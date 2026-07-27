@@ -37,6 +37,19 @@ See the
 [Pacium workspace configuration contract](../execution/pacium-workspace-configuration.md)
 for the exact schema and lifecycle.
 
+## Current ephemeral queue state
+
+PC-044 adds no durable file. While the local server is running, one queue
+observer retains at most 64 KiB of complete stable UTF-8 text for each accepted
+queue source plus bounded source-health metadata. The text is discarded when a
+source degrades, leaves accepted configuration, or the server stops.
+
+Protocol 11 sends only source ID, process-local observation revision, status,
+time, byte length, modification time, SHA-256 provenance, and bounded error
+evidence. It never sends, logs, or persists original queue text. Filesystem
+watchers and debounce timers are disposable runtime resources; configured queue
+files remain the content authority and are never modified by observation.
+
 ## File lifecycle
 
 - Missing data/config state is `unconfigured`; inspection creates nothing.
@@ -70,8 +83,9 @@ for the exact schema and lifecycle.
 ## Planned state, not implemented
 
 Later accepted slices may add narrowly scoped versioned files only when a real
-consumer requires them, for example queue decision/delivery provenance or
-packaged-launcher preferences. The following are not current files:
+consumer requires them, for example queue classification/decision/delivery
+provenance or packaged-launcher preferences. The following are not current
+files:
 
 ```text
 queue-state.json
