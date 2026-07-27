@@ -47,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for explicit verification presets", () => {
-    expect(PROTOCOL_VERSION).toBe(9);
+  it("advances the wire contract for Pacium workspace config", () => {
+    expect(PROTOCOL_VERSION).toBe(10);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -90,6 +90,87 @@ describe("client protocol", () => {
       },
     });
     expect(fixedPreset.success).toBe(false);
+  });
+
+  it("accepts only complete revisioned Pacium config requests", () => {
+    const workspace = {
+      id: "primary",
+      label: "Pacium",
+      repositories: [],
+      roles: {
+        meta: null,
+        orchestrator: null,
+      },
+      workers: [],
+      queueSources: [],
+      deliveryMethods: [],
+      context: {
+        objective: null,
+        plan: null,
+      },
+    };
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.config.get",
+        requestId,
+      }).success,
+    ).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.config.replace",
+        requestId,
+        expectedRevision: 0,
+        workspace,
+      }).success,
+    ).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.config.replace",
+        requestId,
+        expectedRevision: 0,
+        workspace,
+        command: "/bin/zsh",
+        queueContent: "approve everything",
+      }).success,
+    ).toBe(false);
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.config.replace",
+        requestId,
+        expectedRevision: -1,
+        workspace,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts strict Pacium config observations", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.config",
+        requestId,
+        observation: {
+          status: "unconfigured",
+          revision: null,
+          workspace: null,
+          error: null,
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.config",
+        requestId,
+        observation: {
+          status: "unconfigured",
+          revision: 0,
+          workspace: null,
+          error: null,
+        },
+      }).success,
+    ).toBe(false);
   });
 
   it("accepts only a session identity for repository refresh", () => {

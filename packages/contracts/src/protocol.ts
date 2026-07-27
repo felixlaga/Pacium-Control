@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-export const PROTOCOL_VERSION = 9 as const;
+import {
+  PaciumConfigObservationSchema,
+  PaciumWorkspaceSchema,
+} from "./pacium-config.js";
+
+export const PROTOCOL_VERSION = 10 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -1159,6 +1164,20 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
       runId: z.string().uuid(),
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("pacium.config.get"),
+      requestId: RequestIdSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("pacium.config.replace"),
+      requestId: RequestIdSchema,
+      expectedRevision: z.number().int().nonnegative().safe(),
+      workspace: PaciumWorkspaceSchema,
+    })
+    .strict(),
   z.object({
     type: z.literal("session.close"),
     requestId: RequestIdSchema,
@@ -1234,6 +1253,13 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
       type: z.literal("repository.verification.updated"),
       sessionId: SessionIdSchema,
       observation: VerificationObservationSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("pacium.config"),
+      requestId: RequestIdSchema,
+      observation: PaciumConfigObservationSchema,
     })
     .strict(),
   z.object({
