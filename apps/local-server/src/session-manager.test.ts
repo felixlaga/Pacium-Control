@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { FakePtyFactory } from "@pacium/test-utils";
+import type { SessionSummary } from "@pacium/contracts";
 
+import { ClaudeObserver } from "./claude-observer.js";
 import type { HostActions } from "./host-actions.js";
 import type { LaunchPresetDefinition } from "./launch-presets.js";
 import type { GitChangesInspector } from "./git-changes.js";
@@ -72,10 +74,12 @@ function createManager(
     repositories: [],
   },
   verificationRunner?: VerificationRunner,
+  claudeObserver?: ClaudeObserver,
+  launchPresets: readonly LaunchPresetDefinition[] = testPresets,
 ): SessionManager {
   return new SessionManager(
     factory,
-    testPresets,
+    launchPresets,
     hostActions,
     inspectRepository,
     gitChangesInspector,
@@ -83,6 +87,7 @@ function createManager(
     gitHistoryInspector,
     verificationCatalog,
     verificationRunner,
+    claudeObserver,
   );
 }
 
@@ -666,6 +671,85 @@ describe("SessionManager", () => {
       }),
     ).rejects.toMatchObject({ code: "PRESET_UNAVAILABLE" });
     expect(factory.processes).toHaveLength(1);
+    manager.shutdown();
+  });
+
+  it("prepares only Claude launches and applies authenticated observer updates", async () => {
+    const factory = new FakePtyFactory();
+    const token = "t".repeat(43);
+    const observer = new ClaudeObserver({
+      baseUrl: "http://127.0.0.1:4174",
+      providerVersion: "2.1.206",
+      tokenFactory: () => token,
+    });
+    const presets = testPresets.map((preset) =>
+      preset.id === "claude"
+        ? {
+            ...preset,
+            available: true,
+            unavailableReason: null,
+            executable: "/opt/test/bin/claude",
+          }
+        : preset,
+    );
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      observer,
+      presets,
+    );
+    const updates: SessionSummary[] = [];
+    manager.onSessionEvent((event) => {
+      if (event.type === "updated") {
+        updates.push(event.session);
+      }
+    });
+
+    const claude = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "claude",
+      cols: 80,
+      rows: 24,
+    });
+    const createCall = factory.createCalls[0];
+    expect(createCall).toMatchObject({
+      executable: "/opt/test/bin/claude",
+      environment: { PACIUM_CLAUDE_HOOK_TOKEN: token },
+    });
+    expect(createCall?.args[0]).toBe("--settings");
+    expect(createCall?.args[1]).not.toContain(token);
+    expect(claude.providerObservation).toMatchObject({
+      provider: "claude",
+      providerVersion: "2.1.206",
+      health: { state: "unavailable" },
+    });
+    expect(observer.hasSession(claude.id)).toBe(true);
+
+    expect(
+      observer.ingestHook(claude.id, token, {
+        session_id: "claude-session",
+        prompt_id: "prompt-1",
+        hook_event_name: "PermissionRequest",
+        tool_name: "Bash",
+        tool_use_id: "tool-1",
+        tool_input: { command: "private command" },
+      }).status,
+    ).toBe("accepted");
+    expect(updates.at(-1)?.providerObservation).toMatchObject({
+      health: { state: "ready", source: "hook" },
+      attention: { state: "needs_input", source: "hook" },
+      activities: [{ kind: "approval_requested" }],
+    });
+    expect(JSON.stringify(updates.at(-1))).not.toContain("private command");
+
+    factory.processes[0]?.emitExit(0, 0);
+    expect(observer.hasSession(claude.id)).toBe(false);
     manager.shutdown();
   });
 });
