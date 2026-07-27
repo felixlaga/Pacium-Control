@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `0f9a910`
 - Target milestone: Milestone 2
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -179,3 +179,22 @@ presentation state and never trigger Git.
 - Architecture: Git remains authoritative; patch state is disposable.
 - Security: fresh membership, fixed no-shell commands, content and response
   bounds, and no HTML interpretation.
+
+## Result
+
+Completed on 2026-07-27 as the planned protocol-7 vertical slice.
+
+- One selected changed path is revalidated against fresh session-owned status
+  before fixed, bounded Git inspection.
+- Tracked, untracked, unborn, binary, large, stale, and degraded observations
+  cross strict contract, session, and WebSocket boundaries without persisting
+  patch content.
+- The Changes inspector now opens a compact unified-diff subview with safe text
+  rendering, old/new line numbers, local literal search, hunk collapse, wrap,
+  explicit refresh, Back/Escape navigation, and invoking-row focus return.
+- `pnpm verify` passed 46 files and 199 tests plus both production builds.
+- `pnpm test:e2e` passed all five Chromium workflows, including the
+  deterministic real-Git diff workflow.
+- Manual in-app-browser visual review could not be performed because no browser
+  backend was connected; that broader release evidence remains open and is not
+  represented as completed here.

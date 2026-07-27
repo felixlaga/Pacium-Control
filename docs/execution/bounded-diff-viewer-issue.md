@@ -50,26 +50,26 @@ untracked, unborn-HEAD, and degraded states.
 
 ## Acceptance criteria
 
-- [ ] Selecting a changed file loads only that file’s current Git patch and
+- [x] Selecting a changed file loads only that file’s current Git patch and
       preserves terminal selection, focus, and PTY lifecycle.
-- [ ] The server derives the canonical root from the session, rejects absolute
+- [x] The server derives the canonical root from the session, rejects absolute
       or escaping paths, and refuses paths absent from fresh changed-file
       evidence.
-- [ ] Git runs without a shell, external diff drivers, text conversion, color,
+- [x] Git runs without a shell, external diff drivers, text conversion, color,
       prompts, optional locks, or browser-supplied arguments.
-- [ ] Tracked staged/unstaged/mixed/deleted/renamed/type-changed/conflicted and
+- [x] Tracked staged/unstaged/mixed/deleted/renamed/type-changed/conflicted and
       untracked files produce honest patch or unsupported/degraded states.
-- [ ] Binary and known-large files are labelled without returning binary
+- [x] Binary and known-large files are labelled without returning binary
       content or attempting an unbounded patch.
-- [ ] Patch bytes, lines, individual lines, paths, errors, and the serialized
+- [x] Patch bytes, lines, individual lines, paths, errors, and the serialized
       response are strictly bounded.
-- [ ] Diff headers, hunks, additions, deletions, context, and metadata render as
+- [x] Diff headers, hunks, additions, deletions, context, and metadata render as
       text with old/new line numbers and no HTML interpretation.
-- [ ] Literal search, hunk collapse/expand, and line wrapping are keyboard
+- [x] Literal search, hunk collapse/expand, and line wrapping are keyboard
       operable and do not trigger new Git reads.
-- [ ] Loading, empty, stale/missing, binary, too-large, and error states explain
+- [x] Loading, empty, stale/missing, binary, too-large, and error states explain
       the next useful action while the terminal remains usable.
-- [ ] Real Git fixtures, protocol/session/WebSocket boundaries, focused
+- [x] Real Git fixtures, protocol/session/WebSocket boundaries, focused
       rendering/model tests, full verification, and browser regressions pass.
 
 ## User experience
@@ -155,3 +155,23 @@ action instead of a blank surface.
 - A unified patch is intentionally preferred over side-by-side rendering in
   this first slice because it fits the compact inspector and retains one
   predictable keyboard reading order.
+
+## Completion evidence
+
+Completed on 2026-07-27.
+
+- `pnpm verify`: formatting, lint, type checking, 46 test files and 199 tests,
+  and both production bundles passed.
+- `pnpm test:e2e`: all five Chromium workflows passed, including a temporary
+  real-Git repository that exercised file selection, deleted/added lines,
+  literal search, wrap, hunk collapse, Escape return, focus restoration, and
+  unchanged terminal selection.
+- Real-Git fixture coverage passed for tracked, staged, unstaged, mixed,
+  deleted, renamed, conflicted, untracked, binary, known-large, symlink, stale,
+  and unborn states.
+- Protocol, session manager, WebSocket dispatch, final serialized-message
+  bounds, browser transport/state, hostile text rendering, and PTY-survival
+  tests passed.
+- The connected in-app browser backend was unavailable, so independent manual
+  visual review remains a release-level evidence gap rather than part of this
+  automated completion claim.
