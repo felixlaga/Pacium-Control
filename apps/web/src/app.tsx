@@ -11,6 +11,7 @@ import {
   type TerminalSurfaceHandle,
 } from "@pacium/terminal-ui";
 import type {
+  ConnectionAccess,
   DirectoryListing,
   GitChangedFile,
   LaunchPresetCapability,
@@ -26,6 +27,7 @@ import type {
   TerminalDataFrame,
 } from "@pacium/contracts";
 
+import { ConnectionBadge } from "./connection-badge.js";
 import {
   PaciumTransport,
   type ConnectionState,
@@ -308,6 +310,8 @@ export function App() {
   const workspaceModeRef = useRef(workspaceMode);
   const workspaceModeChordRef = useRef(IDLE_WORKSPACE_MODE_CHORD);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
+  const [connectionAccess, setConnectionAccess] =
+    useState<ConnectionAccess | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionListReady, setSessionListReady] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(() =>
@@ -450,6 +454,7 @@ export function App() {
     if (event.type === "connection") {
       setConnection(event.state);
       if (event.state !== "connected") {
+        setConnectionAccess(null);
         const pendingRoleLaunch = pendingPaciumRoleLaunchRef.current;
         if (pendingRoleLaunch !== null) {
           pendingPaciumRoleLaunchRef.current = null;
@@ -585,6 +590,9 @@ export function App() {
       paciumQueueRef.current = next;
       setPaciumQueue(next);
       return;
+    }
+    if (event.message.type === "server.welcome") {
+      setConnectionAccess(event.message.connection);
     }
     if (event.message.type === "command.result") {
       const currentPrompt = paciumPromptRef.current;
@@ -3142,7 +3150,7 @@ export function App() {
             >
               <span aria-hidden="true">▐</span>
             </button>
-            <ConnectionBadge state={connection} />
+            <ConnectionBadge access={connectionAccess} state={connection} />
             <button
               aria-keyshortcuts="Meta+K Control+K"
               id="command-palette-trigger"
@@ -4135,15 +4143,6 @@ function EmptyWorkspace({
 
 function StatusDot({ state }: { state: string }) {
   return <span aria-hidden="true" className={`status-dot state-${state}`} />;
-}
-
-function ConnectionBadge({ state }: { state: ConnectionState }) {
-  return (
-    <span className={`connection-badge connection-${state}`}>
-      <StatusDot state={state === "connected" ? "live" : "waiting"} />
-      {state}
-    </span>
-  );
 }
 
 function Metadata({
