@@ -91,6 +91,10 @@ test("narrow shell exposes panels as dismissible drawers at 320 CSS pixels", asy
 
   await page.getByRole("button", { name: "Show session sidebar" }).click();
   await expect(sidebar).toBeVisible();
+  await sidebar.getByRole("button", { name: "Pacium" }).click();
+  await expect(
+    sidebar.getByRole("region", { name: "Pacium workspace definition" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Close session sidebar" }).click();
   await expect(sidebar).toBeHidden();
 
@@ -121,8 +125,10 @@ test("two-times zoom and system accessibility preferences keep controls usable",
   const workspace = page.getByRole("main", { name: "Terminal workspace" });
   await page.getByRole("button", { name: "Show session sidebar" }).click();
   const newTerminal = page.getByRole("button", { name: "New terminal" });
+  const modeGroup = page.getByRole("group", { name: "Workspace mode" });
   await expect(workspace).toBeVisible();
   await expect(newTerminal).toBeVisible();
+  await expect(modeGroup).toBeVisible();
 
   await page.getByRole("button", { name: "Close session sidebar" }).focus();
   await page.keyboard.press("Tab");
@@ -138,6 +144,12 @@ test("two-times zoom and system accessibility preferences keep controls usable",
   expect(
     Number.parseFloat(accessibilityStyles.transitionDuration),
   ).toBeLessThan(0.001);
+
+  const paciumButton = modeGroup.getByRole("button", { name: "Pacium" });
+  await paciumButton.focus();
+  await expect(paciumButton).toBeFocused();
+  await paciumButton.press("Enter");
+  await expect(paciumButton).toHaveAttribute("aria-pressed", "true");
 
   const scrollWidth = await page.evaluate(
     () => document.documentElement.scrollWidth,
