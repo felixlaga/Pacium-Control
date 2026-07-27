@@ -53,6 +53,17 @@ const observation: GitChangesObservation = {
   truncated: true,
   error: null,
 };
+const repository = {
+  status: "ready" as const,
+  root: "/work/pacium",
+  name: "pacium",
+  branch: "dev",
+  headCommit: "a".repeat(40),
+  headState: "branch" as const,
+  worktreeKind: "main" as const,
+  observedAt: "2026-07-27T10:00:00.000Z",
+  error: null,
+};
 
 describe("repository Changes presentation", () => {
   it("renders accessible stable inspector tabs", () => {
@@ -78,6 +89,7 @@ describe("repository Changes presentation", () => {
     const markup = renderToStaticMarkup(
       <RepositoryChangesPanel
         onRefresh={() => {}}
+        repository={repository}
         state={{
           status: "loaded",
           requestId: "request-1",
@@ -86,6 +98,8 @@ describe("repository Changes presentation", () => {
       />,
     );
     expect(markup).toContain("src/new.ts");
+    expect(markup).toContain("pacium");
+    expect(markup).toContain("dev · aaaaaaaa");
     expect(markup).toContain("From src/old.ts");
     expect(markup).toContain("Staged");
     expect(markup).toContain("Unstaged");
@@ -101,6 +115,7 @@ describe("repository Changes presentation", () => {
     const loading = renderToStaticMarkup(
       <RepositoryChangesPanel
         onRefresh={() => {}}
+        repository={repository}
         state={{
           status: "loading",
           requestId: "request-1",
@@ -114,6 +129,7 @@ describe("repository Changes presentation", () => {
     const empty = renderToStaticMarkup(
       <RepositoryChangesPanel
         onRefresh={() => {}}
+        repository={repository}
         state={{
           status: "loaded",
           requestId: "request-2",
@@ -137,6 +153,7 @@ describe("repository Changes presentation", () => {
     const error = renderToStaticMarkup(
       <RepositoryChangesPanel
         onRefresh={() => {}}
+        repository={repository}
         state={{
           status: "loaded",
           requestId: "request-3",

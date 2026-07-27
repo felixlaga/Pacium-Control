@@ -1,4 +1,8 @@
-import type { GitChangedFile, GitChangesObservation } from "@pacium/contracts";
+import type {
+  GitChangedFile,
+  GitChangesObservation,
+  RepositoryObservation,
+} from "@pacium/contracts";
 import type { KeyboardEvent, ReactNode } from "react";
 
 import {
@@ -81,9 +85,11 @@ function handleInspectorTabKeyDown(
 
 export function RepositoryChangesPanel({
   onRefresh,
+  repository,
   state,
 }: {
   onRefresh: () => void;
+  repository: RepositoryObservation | null;
   state: RepositoryChangesViewState;
 }) {
   const observation = visibleRepositoryChanges(state);
@@ -99,8 +105,10 @@ export function RepositoryChangesPanel({
     >
       <header>
         <span>
-          <strong>Changed files</strong>
+          <strong>{repositoryHeading(repository)}</strong>
           <small>
+            {repositoryContext(repository)}
+            {repository !== null && " · "}
             {observation === null
               ? loading
                 ? "Reading Git evidence…"
@@ -199,6 +207,32 @@ function ChangedFileRow({ file }: { file: GitChangedFile }) {
       </span>
     </li>
   );
+}
+
+function repositoryHeading(repository: RepositoryObservation | null): string {
+  return repository?.status === "ready" && repository.name !== null
+    ? repository.name
+    : "Changed files";
+}
+
+function repositoryContext(repository: RepositoryObservation | null): string {
+  if (repository === null) {
+    return "";
+  }
+  if (repository.status !== "ready") {
+    return repository.status === "not_repository"
+      ? "No repository"
+      : "Repository unavailable";
+  }
+  const branch =
+    repository.headState === "detached"
+      ? "Detached HEAD"
+      : (repository.branch ?? "Unborn HEAD");
+  const head =
+    repository.headCommit === null
+      ? "No commit"
+      : repository.headCommit.slice(0, 8);
+  return `${branch} · ${head}`;
 }
 
 function ChangesMessage({

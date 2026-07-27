@@ -1750,6 +1750,7 @@ export function App() {
                 requestRepositoryChanges(selectedId);
               }
             }}
+            repository={selectedSession?.repository ?? null}
             state={selectedRepositoryChanges}
           />
         )}
