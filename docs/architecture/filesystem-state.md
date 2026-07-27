@@ -44,18 +44,24 @@ observer retains at most 64 KiB of complete stable UTF-8 text for each accepted
 queue source plus bounded source-health metadata. The text is discarded when a
 source degrades, leaves accepted configuration, or the server stops.
 
-Protocol 12 sends only source ID, process-local observation revision, status,
-time, byte length, modification time, SHA-256 provenance, bounded error
-evidence, and content-free whole-source classification metadata. Candidate IDs
-are deterministically derived from the boundary version, source ID, and content
-hash. It never sends, logs, or persists original queue text, a title, excerpt,
-or parsed action.
+Protocol 13 bulk observations send only source ID, process-local observation
+revision, status, time, byte length, modification time, SHA-256 provenance,
+bounded error evidence, process-local candidate-first-seen time, and
+content-free whole-source classification metadata. Candidate IDs are
+deterministically derived from the boundary version, source ID, and content
+hash.
+
+One authenticated exact-identity inspection may send the current source bytes
+as bounded UTF-8 base64 to the browser. The browser keeps at most one decoded
+item, renders it as inert text, and clears it on source/config drift,
+disconnect, mode exit, or Back. Neither encoded nor decoded text is logged,
+persisted, placed in the queue list, or treated as a parsed action.
 
 Classification is also disposable runtime state. Empty/degraded evidence or
 source/config removal discards it; restart reconstructs it from a new complete
 stable read. Filesystem watchers and debounce timers remain disposable runtime
 resources. Configured queue files remain the content authority and are never
-modified by observation or classification.
+modified by observation, classification, or inspection.
 
 ## File lifecycle
 

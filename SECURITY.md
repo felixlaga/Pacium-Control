@@ -147,6 +147,10 @@ Prefer bounded in-memory scrollback. If diagnostic export is added, it must be e
 
 - Treat queue files as untrusted text.
 - Use stable source identity and hashes for deduplication.
+- Keep bulk queue observations content-free. Allow an on-demand text read only
+  for an exact current workspace/source/observation/hash/item identity.
+- Transport maximum-size queue text with bounded encoding, render it only as
+  inert text, and clear browser copies when current identity is lost.
 - Never overwrite ambiguous human edits silently.
 - Distinguish questions from approvals.
 - Record answer provenance and delivery result.

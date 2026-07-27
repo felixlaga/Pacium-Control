@@ -144,13 +144,15 @@ The configuration contract itself:
 - does not by itself open, watch, create, append, or deliver a configured file;
 - no role prompt is sent and no terminal input is generated.
 
-Protocol 12 gives the queue observer separate read-only authority for accepted
+Protocol 13 retains the queue observer's separate read-only authority for accepted
 queue-source paths only. It watches canonical parent directories and performs
 bounded no-follow stable reads of at most 64 KiB. Complete UTF-8 text is kept
-only in process memory for later queue inspection; browser messages contain
-only status, byte length, modification time, SHA-256 provenance, bounded error,
-and content-free whole-source classification evidence. Objective, plan, and
-answer-file paths are still never opened by this slice.
+only in process memory. Bulk browser messages contain only status, byte length,
+modification time, SHA-256 provenance, bounded error, process-local candidate
+first-seen time, and content-free whole-source classification evidence. One
+authenticated on-demand request can read the current exact item as described
+below. Objective, plan, and answer-file paths are still never opened by this
+slice.
 
 Queue text remains untrusted data. Configuration and observation never grant
 command, prompt, delivery, or shell authority.
@@ -173,7 +175,7 @@ command, prompt, delivery, or shell authority.
 The 96 KiB file ceiling leaves deterministic room inside the 128 KiB
 application-message envelope.
 
-## Protocol 12
+## Protocol 13
 
 The authenticated WebSocket protocol retains the protocol-10 configuration
 operations:
@@ -232,6 +234,36 @@ An approval classification requires the exact supported
 commands, filenames, roles, and question marks never infer approval. Protocol
 12 still contains no original text, title, excerpt, parsed action, answer,
 decision, delivery, provider callback, or execution authority.
+
+Protocol 13 adds process-local candidate-first-seen evidence and one strict
+read-only item inspection:
+
+```text
+pacium.queue.item.inspect(
+  requestId,
+  workspaceRevision,
+  sourceId,
+  observationRevision,
+  contentHash,
+  itemId
+)
+pacium.queue.item(requestId, inspection)
+```
+
+The request contains no path or content. The server returns `ready` only when
+all five current identity fields still match one stable candidate in the
+accepted observer. A ready result carries the exact current UTF-8 bytes as
+bounded base64 plus source/first-observed timestamps and byte length.
+Base64 prevents JSON escaping of hostile control bytes from exceeding the
+128 KiB application-message ceiling. The browser validates and decodes it once,
+renders it only as inert React text, and retains at most one inspected item.
+
+`stale` and `unavailable` results use fixed bounded diagnostics and contain no
+text. A source rewrite/degradation, config revision change, disconnect, mode
+exit, late response, or identity mismatch clears accepted browser text. Bulk
+source snapshots remain content-free. Protocol 13 still contains no semantic
+title/excerpt, parsed action, answer, decision, delivery, provider callback,
+or execution authority.
 
 ## Atomicity and recovery
 
