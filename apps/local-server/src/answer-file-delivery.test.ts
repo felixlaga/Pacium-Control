@@ -15,6 +15,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   AnswerFileDeliveryError,
+  inspectAnswerFileTarget,
   publishAnswerFile,
 } from "./answer-file-delivery.js";
 
@@ -55,7 +56,9 @@ describe("answer-file delivery", () => {
   it("preserves an existing target and rejects a symlink target", async () => {
     const directory = await temporaryDirectory();
     const target = join(directory, "PACIUM-ANSWERS");
+    await expect(inspectAnswerFileTarget(target)).resolves.toBe("ready");
     await writeFile(target, "human answer\n", { mode: 0o600 });
+    await expect(inspectAnswerFileTarget(target)).resolves.toBe("occupied");
     await expect(
       publishAnswerFile(target, payload(), { randomId: () => "occupied" }),
     ).rejects.toEqual(new AnswerFileDeliveryError("occupied"));
@@ -63,6 +66,9 @@ describe("answer-file delivery", () => {
 
     const linkPath = join(directory, "SYMLINK-ANSWERS");
     await symlink(target, linkPath);
+    await expect(inspectAnswerFileTarget(linkPath)).resolves.toBe(
+      "unavailable",
+    );
     await expect(
       publishAnswerFile(linkPath, payload(), {
         randomId: () => "symlink",

@@ -53,6 +53,25 @@ export interface AnswerFileDeliveryOptions {
   randomId?: () => string;
 }
 
+export async function inspectAnswerFileTarget(
+  path: string,
+  options: AnswerFileDeliveryOptions = {},
+): Promise<"ready" | "occupied" | "unavailable"> {
+  const io = { ...NODE_IO, ...options.io };
+  const ownerId =
+    options.ownerId === undefined
+      ? (process.getuid?.() ?? null)
+      : options.ownerId;
+  try {
+    await validateMissingTarget(io, path, dirname(path), ownerId);
+    return "ready";
+  } catch (error) {
+    return error instanceof AnswerFileDeliveryError && error.code === "occupied"
+      ? "occupied"
+      : "unavailable";
+  }
+}
+
 export async function publishAnswerFile(
   path: string,
   payload: QueueDeliveryPayload,
