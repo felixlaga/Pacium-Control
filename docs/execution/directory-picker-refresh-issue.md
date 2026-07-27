@@ -55,26 +55,26 @@ is submitted.
 
 ## Acceptance criteria
 
-- [ ] The picker still browses only directories on the Pacium host.
-- [ ] Local access uses the existing loopback Origin/token boundary and remote
+- [x] The picker still browses only directories on the Pacium host.
+- [x] Local access uses the existing loopback Origin/token boundary and remote
       access uses the implemented exact Serve Origin/identity/token boundary.
-- [ ] `Cmd/Ctrl+L` exposes and focuses a bounded absolute host-path editor;
+- [x] `Cmd/Ctrl+L` exposes and focuses a bounded absolute host-path editor;
       Enter requests that location and Escape returns to directory browsing.
-- [ ] Invalid direct paths show a bounded error while Pacium default, known
+- [x] Invalid direct paths show a bounded error while Pacium default, known
       Home, valid recents, Back, and Retry remain honest recovery actions.
-- [ ] Pacium default works even if the first requested path is invalid.
-- [ ] Storage denial or quota failure cannot prevent the picker from opening or
+- [x] Pacium default works even if the first requested path is invalid.
+- [x] Storage denial or quota failure cannot prevent the picker from opening or
       returning a selected canonical path.
-- [ ] Arrow-key movement between visible directory rows and deliberate current
+- [x] Arrow-key movement between visible directory rows and deliberate current
       folder confirmation are keyboard accessible without stealing terminal
       input outside the modal.
-- [ ] Loading, empty, filtered-empty, truncated, inaccessible, disconnected,
+- [x] Loading, empty, filtered-empty, truncated, inaccessible, disconnected,
       and successful states explain what happened and that running PTYs survive.
-- [ ] The current canonical host path, repository markers, hidden-directory
+- [x] The current canonical host path, repository markers, hidden-directory
       control, breadcrumbs, and typed-path fallback remain present.
-- [ ] Desktop, 320 CSS px, 200% zoom, forced-colors, and reduced-motion browser
+- [x] Desktop, 320 CSS px, 200% zoom, forced-colors, and reduced-motion browser
       evidence passes.
-- [ ] Unit, semantic-render, transport/security, and full repository gates pass.
+- [x] Unit, semantic-render, transport/security, and full repository gates pass.
 
 ## User experience
 
@@ -158,6 +158,25 @@ browser-local hints and are revalidated by the host whenever chosen.
 - Full `pnpm verify` and `pnpm test:e2e`.
 - Documentation that distinguishes implemented application behavior from
   manual accessibility and real-tailnet evidence.
+
+## Completion evidence
+
+- `pnpm verify` passed on 2026-07-28: formatting, lint, every workspace type
+  check, 114 test files and 705 tests, plus 906.13 kB web JavaScript,
+  109.71 kB CSS, and 335.82 kB local-server production output.
+- `pnpm test:e2e` passed all 14 Chromium workflows. Three dedicated PC-078
+  workflows prove invalid-first-path recovery, server-owned default recovery,
+  `Cmd/Ctrl+L` path navigation, filter-to-row and row-to-row keyboard focus,
+  canonical selection without premature PTY launch, browser-storage denial,
+  recent reuse, focus return, 320 CSS px, 200% zoom, forced colors, and reduced
+  motion.
+- Before/after desktop and final 320px screenshots were inspected from the
+  local application. The connected interactive browser was unavailable, so
+  rendered interaction used the repository's installed Playwright Chromium
+  rather than claiming in-app-browser evidence.
+- Existing local and proxy-shaped Serve HTTP/WebSocket authorization tests
+  remained green. A real tailnet canary and manual screen-reader review remain
+  separate release gates.
 
 ## Open questions
 

@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `d84e2f93083f6699db57f3bcf81b7c44f01637c5`
 - Target milestone: Milestone 1 daily-use polish
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -175,3 +175,19 @@ blocks returning the selected canonical path.
   expansion.
 - Security: all reads keep the implemented PC-077 authority classifier and
   PC-029 bounds.
+
+## Completion evidence
+
+- Pure state helpers fail soft on storage exceptions and deterministically
+  resolve path, confirmation, filter, and result-row keyboard actions.
+- The refreshed component keeps protocol 18 and `/api/directories` unchanged,
+  requests the server-owned default without reusing an invalid browser path,
+  preserves focus after authoritative navigation, and returns selection even
+  when browser-local persistence is denied.
+- The rendered desktop and 320px surfaces preserve the existing compact
+  hierarchy while adding one explicit path editor and visible focus evidence.
+- `pnpm verify` passed 114 test files and 705 tests. Production output was
+  906.13 kB web JavaScript (239.50 kB gzip), 109.71 kB CSS (17.12 kB gzip),
+  and 335.82 kB local-server JavaScript.
+- `pnpm test:e2e` passed all 14 Chromium workflows, including the three new
+  PC-078 workflows described by the issue completion evidence.

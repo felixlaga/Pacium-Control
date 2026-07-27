@@ -98,7 +98,10 @@ The picker never implies that a directory exists on the browser device. Copy ide
 
 - `pnpm verify` passed on 2026-07-27: formatting, lint, type checking, 13 test files with 45 tests, and both production builds.
 - The development web root and direct local-server health endpoint returned HTTP 200.
-- Rendered workflow and accessibility evidence remain pending because no browser backend was available in the implementation environment.
+- PC-078 closed the original rendered-evidence gap on 2026-07-28. Its three
+  dedicated Chromium workflows cover navigation, canonical selection,
+  invalid-first-path recovery, storage denial, recent reuse, focus restoration,
+  320 CSS px, 200% zoom, forced colors, and reduced motion.
 
 ## Open questions
 
