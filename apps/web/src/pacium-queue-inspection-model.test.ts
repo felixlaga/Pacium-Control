@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   CLOSED_QUEUE_INSPECTION,
+  acceptQueueDecision,
   acceptQueueItemInspection,
+  beginQueueDecision,
   beginQueueItemInspection,
   closeQueueItemInspection,
   decodeQueueItemText,
   interruptQueueItemInspection,
+  interruptQueueDecision,
   queueItemSelection,
   reconcileQueueItemInspection,
   reconcileQueueItemInspectionConfig,
@@ -46,22 +49,28 @@ describe("queue item inspection state", () => {
     const selection = queueItemSelection(source(), observation(), 4)!;
     const loading = beginQueueItemInspection(selection, "request-1");
     const ready = detail();
-    expect(acceptQueueItemInspection(loading, "unrelated", ready)).toBe(
+    expect(acceptQueueItemInspection(loading, "unrelated", ready, open())).toBe(
       loading,
     );
     expect(
-      acceptQueueItemInspection(loading, "request-1", {
-        ...ready,
-        itemId: "c".repeat(64),
-      }),
+      acceptQueueItemInspection(
+        loading,
+        "request-1",
+        {
+          ...ready,
+          itemId: "c".repeat(64),
+        },
+        open(),
+      ),
     ).toBe(loading);
     expect(
-      acceptQueueItemInspection(loading, "request-1", ready),
+      acceptQueueItemInspection(loading, "request-1", ready, open()),
     ).toMatchObject({
       requestId: null,
       status: "ready",
       originalText: "Question: Choose λ\n",
       errorMessage: null,
+      decisionState: { status: "open" },
     });
   });
 
@@ -69,11 +78,16 @@ describe("queue item inspection state", () => {
     const selection = queueItemSelection(source(), observation(), 4)!;
     const loading = beginQueueItemInspection(selection, "request-1");
     expect(
-      acceptQueueItemInspection(loading, "request-1", {
-        ...detail(),
-        originalTextBase64: "/w==",
-        byteLength: 1,
-      }),
+      acceptQueueItemInspection(
+        loading,
+        "request-1",
+        {
+          ...detail(),
+          originalTextBase64: "/w==",
+          byteLength: 1,
+        },
+        open(),
+      ),
     ).toMatchObject({
       status: "error",
       originalText: null,
@@ -87,6 +101,7 @@ describe("queue item inspection state", () => {
       beginQueueItemInspection(selection, "request-1"),
       "request-1",
       detail(),
+      open(),
     );
     expect(reconcileQueueItemInspection(ready, aggregate(observation()))).toBe(
       ready,
@@ -141,6 +156,7 @@ describe("queue item inspection state", () => {
       beginQueueItemInspection(selection, "request-1"),
       "request-1",
       detail(),
+      open(),
     );
     expect(
       reconcileQueueItemInspectionConfig(ready, {
@@ -188,6 +204,90 @@ describe("queue item inspection state", () => {
     expect(
       sameQueueIdentity(identity, { ...identity, contentHash: "c".repeat(64) }),
     ).toBe(false);
+  });
+
+  it("accepts only a correlated exact immutable decision", () => {
+    const selection = queueItemSelection(source(), observation(), 4)!;
+    const ready = acceptQueueItemInspection(
+      beginQueueItemInspection(selection, "inspect-1"),
+      "inspect-1",
+      detail(),
+      open(),
+    );
+    const submitting = beginQueueDecision(ready, "decision-1");
+    expect(submitting).toMatchObject({
+      decisionRequestId: "decision-1",
+      decisionStatus: "submitting",
+    });
+    expect(acceptQueueDecision(submitting, "unrelated", decisionResult())).toBe(
+      submitting,
+    );
+    expect(
+      acceptQueueDecision(submitting, "decision-1", {
+        ...decisionResult(),
+        itemId: "c".repeat(64),
+      }),
+    ).toBe(submitting);
+    expect(
+      acceptQueueDecision(submitting, "decision-1", decisionResult()),
+    ).toMatchObject({
+      status: "ready",
+      originalText: "Question: Choose λ\n",
+      decisionRequestId: null,
+      decisionStatus: "idle",
+      decisionState: {
+        status: "decided",
+        decision: {
+          kind: "question_answer",
+          payload: { answer: "Use the verified slice." },
+        },
+      },
+    });
+  });
+
+  it("fails closed on stale decisions and does not retry interrupted writes", () => {
+    const selection = queueItemSelection(source(), observation(), 4)!;
+    const ready = acceptQueueItemInspection(
+      beginQueueItemInspection(selection, "inspect-1"),
+      "inspect-1",
+      detail(),
+      open(),
+    );
+    const submitting = beginQueueDecision(ready, "decision-1");
+    expect(interruptQueueDecision(submitting, "unrelated", "failed")).toBe(
+      submitting,
+    );
+    expect(
+      interruptQueueDecision(
+        submitting,
+        "decision-1",
+        "Decision outcome is unknown.",
+      ),
+    ).toMatchObject({
+      status: "ready",
+      originalText: "Question: Choose λ\n",
+      decisionRequestId: null,
+      decisionStatus: "error",
+      decisionErrorMessage: "Decision outcome is unknown.",
+    });
+
+    expect(
+      acceptQueueDecision(submitting, "decision-1", {
+        status: "stale",
+        ...detailIdentity(),
+        decision: null,
+        error: {
+          code: "ITEM_STALE",
+          message:
+            "This queue item is no longer current. No decision was recorded or delivered.",
+        },
+      }),
+    ).toMatchObject({
+      status: "stale",
+      originalText: null,
+      decisionState: null,
+      decisionStatus: "error",
+    });
   });
 });
 
@@ -244,6 +344,59 @@ function detail() {
     byteLength: 20,
     encoding: "utf8_base64" as const,
     originalTextBase64: "UXVlc3Rpb246IENob29zZSDOuwo=",
+    error: null,
+  };
+}
+
+function detailIdentity() {
+  const {
+    workspaceRevision,
+    sourceId,
+    observationRevision,
+    contentHash,
+    itemId,
+  } = detail();
+  return {
+    workspaceRevision,
+    sourceId,
+    observationRevision,
+    contentHash,
+    itemId,
+  };
+}
+
+function open() {
+  return {
+    status: "open" as const,
+    decision: null,
+    error: null,
+  };
+}
+
+function decisionResult() {
+  return {
+    status: "recorded" as const,
+    ...detailIdentity(),
+    decision: {
+      decisionId: "28c9142a-8986-43c7-9451-445fd8c13c3e",
+      kind: "question_answer" as const,
+      source: {
+        workspaceId: "primary",
+        ...detailIdentity(),
+        boundary: "whole_source_v1" as const,
+        itemType: "question" as const,
+      },
+      payload: {
+        answer: "Use the verified slice.",
+        note: null,
+      },
+      actor: {
+        kind: "local_operator" as const,
+        label: "Local operator" as const,
+      },
+      decidedAt: "2026-07-27T12:05:00.000Z",
+      decisionHash: "c".repeat(64),
+    },
     error: null,
   };
 }

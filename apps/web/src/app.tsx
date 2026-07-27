@@ -602,6 +602,7 @@ export function App() {
         paciumQueueInspectionRef.current,
         event.message.requestId,
         event.message.inspection,
+        event.message.decisionState,
       );
       if (accepted !== paciumQueueInspectionRef.current) {
         paciumQueueInspectionRef.current = accepted;

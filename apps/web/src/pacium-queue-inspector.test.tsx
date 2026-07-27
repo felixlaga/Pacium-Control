@@ -109,5 +109,13 @@ function ready(originalText: string): PaciumQueueInspectionState {
       error: null,
     },
     errorMessage: null,
+    decisionState: {
+      status: "open",
+      decision: null,
+      error: null,
+    },
+    decisionRequestId: null,
+    decisionStatus: "idle",
+    decisionErrorMessage: null,
   };
 }
