@@ -1277,6 +1277,37 @@ kbd {
   line-height: 1.5;
 }
 
+.inspector-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  margin: 10px 14px 4px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-raised);
+}
+
+.inspector-tabs button {
+  min-height: 27px;
+  border-radius: 5px;
+  color: var(--text-faint);
+  background: transparent;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 550;
+}
+
+.inspector-tabs button:hover {
+  color: var(--text-muted);
+}
+
+.inspector-tabs button[aria-selected="true"] {
+  color: var(--text);
+  background: var(--panel-soft);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
 .metadata {
   margin: 0;
   padding: 8px 14px 13px;
@@ -1347,6 +1378,185 @@ kbd {
 
 .repository-section {
   border-bottom: 1px solid var(--border);
+}
+
+.repository-changes-panel {
+  padding: 14px;
+}
+
+.repository-changes-panel > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.repository-changes-panel > header > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.repository-changes-panel > header strong {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.repository-changes-panel > header small,
+.repository-changes-panel > time {
+  color: var(--text-faint);
+  font-size: 9px;
+}
+
+.repository-changes-panel > header button {
+  min-height: 26px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--panel-raised);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.repository-changes-panel > header button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.repository-changes-panel > header button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.repository-changes-message {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 7px;
+  color: var(--text-faint);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.repository-changes-message.is-error {
+  border-color: color-mix(in srgb, var(--red) 38%, var(--border));
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 6%, transparent);
+}
+
+.changes-totals {
+  display: flex;
+  min-height: 27px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: 7px 7px 0 0;
+  color: var(--text-faint);
+  background: var(--panel-raised);
+  font-size: 9px;
+}
+
+.changes-additions {
+  color: var(--green);
+}
+
+.changes-deletions {
+  color: var(--red);
+}
+
+.changed-file-list {
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 0 0 7px 7px;
+  list-style: none;
+  background: var(--panel-raised);
+}
+
+.changed-file-list > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 9px;
+  border-bottom: 1px solid var(--border);
+}
+
+.changed-file-list > li:last-child {
+  border-bottom: 0;
+}
+
+.changed-file-list > li.is-conflicted {
+  box-shadow: inset 2px 0 var(--red);
+}
+
+.changed-file-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.changed-file-copy strong,
+.changed-file-copy small {
+  overflow: hidden;
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.changed-file-copy strong {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.changed-file-copy small {
+  color: var(--text-faint);
+  font-size: 8px;
+}
+
+.changed-file-evidence {
+  display: flex;
+  grid-column: 1;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.changed-file-evidence span {
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-faint);
+  font-size: 8px;
+}
+
+.changed-file-stats {
+  display: flex;
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-items: flex-start;
+  gap: 5px;
+  color: var(--text-faint);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.changes-truncated {
+  margin: 10px 0 0;
+  color: var(--amber);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.repository-changes-panel > time {
+  display: block;
+  margin-top: 10px;
 }
 
 .repository-card {
