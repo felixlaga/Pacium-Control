@@ -131,13 +131,25 @@ Pacium mode is a configuration and presentation layer:
 PaciumWorkspace
 ├── Meta session reference or launch preset
 ├── Orchestrator session reference or launch preset
+├── Ordered exact worker session or launch-preset bindings
 ├── Queue source definitions
-├── Optional worker session classifications
 ├── Repository roots
+├── Objective and optional plan source
 └── Verification presets
 ```
 
-The first queue adapter observes existing files, tracks provenance, presents questions and approvals separately, and delivers answers through an explicit compatibility path.
+The first queue adapter observes existing files, tracks provenance, presents
+questions and approvals separately, and delivers answers through an explicit
+compatibility path. Worker rows are disposable projections of accepted exact
+bindings plus existing PTY, attention, repository, and selected-session Git
+evidence. They do not create task, assignment, ownership, or progress state.
+
+The read-only Control-context service snapshots the accepted workspace, reads
+only its objective and plan paths with bounded no-follow regular-file reads,
+joins at most twelve newest validated queue decisions, then rechecks the same
+workspace revision. Browser state is request/revision correlated and
+disposable; opening or explicitly refreshing the inspector is the only read
+trigger.
 
 ## State
 
@@ -177,6 +189,13 @@ or an exact item are observed. Exact answer bytes prove a transport artifact,
 not provider acknowledgement or application. Those states remain unavailable
 unless a future provider observer supplies native evidence or the operator
 records an explicitly human-labelled resolution.
+
+Objective/plan observations and recent-decision summaries are also disposable
+server projections. Context bytes remain owned by their configured files and
+are never copied to application state. Recent summaries exclude notes,
+delivery target paths, terminal bytes, queue source text, commands, and
+provider data. They distinguish local recording, transport evidence, and
+human-labelled lifecycle state without attributing later Git or terminal work.
 
 Writes use complete schema/reference validation, optimistic revisions, a
 private same-directory temporary file, atomic rename, and directory sync.
