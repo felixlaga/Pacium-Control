@@ -1,4 +1,7 @@
 import { Buffer } from "node:buffer";
+import { access, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 import {
   MAX_VERIFICATION_OUTPUT_BYTES,
@@ -92,15 +95,23 @@ describe("verification process runner", () => {
 
   it("forces a process group that ignores graceful cancellation", async () => {
     const runner = createRunner({ terminationGraceMs: 40 });
+    const readyPath = join(
+      tmpdir(),
+      `pacium-verification-ready-${crypto.randomUUID()}`,
+    );
     const completed = terminalRun(runner, "session-1");
     const active = await runner.start(
       "session-1",
       process.cwd(),
       nodePreset(
-        "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)",
+        `process.on('SIGTERM', () => {});` +
+          `require('node:fs').writeFileSync(${JSON.stringify(
+            readyPath,
+          )}, 'ready');` +
+          "setInterval(() => {}, 1000)",
       ),
     );
-    await new Promise((resolve) => setTimeout(resolve, 40));
+    await waitForFile(readyPath);
     runner.cancel("session-1", active.runId);
 
     await expect(completed).resolves.toMatchObject({
@@ -108,6 +119,7 @@ describe("verification process runner", () => {
       signal: "SIGKILL",
       terminationForced: true,
     });
+    await rm(readyPath, { force: true });
   });
 
   it("times out and terminates a long-running process", async () => {
@@ -227,6 +239,18 @@ function nodePreset(
     args: ["-e", source],
     timeoutMs,
   };
+}
+
+async function waitForFile(path: string): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      await access(path);
+      return;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+  throw new Error("Verification fixture did not become ready.");
 }
 
 function terminalRun(
