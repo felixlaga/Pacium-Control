@@ -238,9 +238,7 @@ export function reconcileSplitLayout(
     return pane;
   });
   const panes = listPanes(root);
-  const focusedPaneId = panes.some(
-    (pane) => pane.id === state.focusedPaneId,
-  )
+  const focusedPaneId = panes.some((pane) => pane.id === state.focusedPaneId)
     ? state.focusedPaneId
     : (panes[0]?.id ?? state.focusedPaneId);
   const maximizedPaneId =
@@ -263,7 +261,9 @@ export function listPanes(root: SplitLayoutNode): TerminalPaneNode[] {
     : [...listPanes(root.first), ...listPanes(root.second)];
 }
 
-export function parseStoredSplitLayout(value: string | null): SplitLayoutState | null {
+export function parseStoredSplitLayout(
+  value: string | null,
+): SplitLayoutState | null {
   if (value === null) {
     return null;
   }
@@ -291,9 +291,7 @@ export function parseStoredSplitLayout(value: string | null): SplitLayoutState |
       return null;
     }
     const panes = listPanes(root);
-    const focusedPaneId = panes.some(
-      (pane) => pane.id === stored.focusedPaneId,
-    )
+    const focusedPaneId = panes.some((pane) => pane.id === stored.focusedPaneId)
       ? stored.focusedPaneId
       : (panes[0]?.id ?? "");
     const maximizedPaneId =
@@ -407,8 +405,7 @@ function containsNodeId(node: SplitLayoutNode, nodeId: string): boolean {
     return true;
   }
   return node.kind === "split"
-    ? containsNodeId(node.first, nodeId) ||
-        containsNodeId(node.second, nodeId)
+    ? containsNodeId(node.first, nodeId) || containsNodeId(node.second, nodeId)
     : false;
 }
 

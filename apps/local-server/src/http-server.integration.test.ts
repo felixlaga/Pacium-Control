@@ -159,14 +159,12 @@ describe("localhost HTTP and WebSocket boundary", () => {
     const firstSnapshot = await nextMessage(
       observer,
       (message) =>
-        message.type === "terminal.snapshot" &&
-        message.sessionId === first.id,
+        message.type === "terminal.snapshot" && message.sessionId === first.id,
     );
     const secondSnapshot = await nextMessage(
       observer,
       (message) =>
-        message.type === "terminal.snapshot" &&
-        message.sessionId === second.id,
+        message.type === "terminal.snapshot" && message.sessionId === second.id,
     );
     expect(firstSnapshot).toMatchObject({
       type: "terminal.snapshot",
@@ -361,9 +359,7 @@ async function connect(
   return client;
 }
 
-async function createTestSession(
-  client: TestClient,
-): Promise<{ id: string }> {
+async function createTestSession(client: TestClient): Promise<{ id: string }> {
   client.socket.send(
     JSON.stringify({
       type: "session.create",

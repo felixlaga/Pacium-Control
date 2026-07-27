@@ -91,9 +91,7 @@ const TERMINAL_TABS_STORAGE_KEY = "pacium.terminalTabs";
 const SPLIT_LAYOUT_STORAGE_KEY = "pacium.splitLayout";
 
 export function App() {
-  const terminalRefs = useRef(
-    new Map<string, TerminalSurfaceHandle>(),
-  );
+  const terminalRefs = useRef(new Map<string, TerminalSurfaceHandle>());
   const selectedIdRef = useRef<string | null>(null);
   const tabsRef = useRef<TerminalTab[]>([]);
   const syncRefs = useRef(new Map<string, TerminalSync>());
@@ -219,10 +217,7 @@ export function App() {
       return;
     }
     const validSessionIds = new Set(sessions.map(({ id }) => id));
-    const reconciled = reconcileSplitLayout(
-      layoutRef.current,
-      validSessionIds,
-    );
+    const reconciled = reconcileSplitLayout(layoutRef.current, validSessionIds);
     setLayout(reconciled);
   }, [sessionListReady, sessions]);
 
@@ -235,7 +230,9 @@ export function App() {
       return;
     }
     const next = showSessionInFocusedPane(layoutRef.current, selectedId);
-    if (serializeSplitLayout(next) !== serializeSplitLayout(layoutRef.current)) {
+    if (
+      serializeSplitLayout(next) !== serializeSplitLayout(layoutRef.current)
+    ) {
       setLayout(next);
     }
   }, [selectedId, sessionListReady, sessions]);
@@ -444,10 +441,7 @@ export function App() {
           const capturedPane = listPanes(layoutRef.current.root).find(
             (pane) => pane.id === capturedPaneId,
           );
-          if (
-            capturedPane !== undefined &&
-            capturedPane.sessionId !== null
-          ) {
+          if (capturedPane !== undefined && capturedPane.sessionId !== null) {
             terminalRefs.current.get(capturedPane.sessionId)?.blur();
           }
           setCapturedPaneId(null);
@@ -648,125 +642,126 @@ export function App() {
                 role="tablist"
               >
                 {tabSessions.map(({ tab, session }) => (
-                <div
-                  className={`terminal-tab ${
-                    session.id === selectedId ? "is-active" : ""
-                  } ${tab.pinned ? "is-pinned" : ""} ${
-                    draggedTabId === session.id ? "is-dragging" : ""
-                  }`}
-                  draggable
-                  key={session.id}
-                  onDragEnd={() => setDraggedTabId(null)}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDragStart={(event) => {
-                    setDraggedTabId(session.id);
-                    event.dataTransfer.effectAllowed = "move";
-                    event.dataTransfer.setData("text/plain", session.id);
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    const sourceId =
-                      draggedTabId || event.dataTransfer.getData("text/plain");
-                    if (sourceId.length > 0) {
-                      setTabs((current) =>
-                        moveTerminalTab(current, sourceId, session.id),
-                      );
-                    }
-                    setDraggedTabId(null);
-                  }}
-                >
-                  <button
-                    aria-controls="active-terminal-panel"
-                    aria-selected={session.id === selectedId}
-                    className="terminal-tab-select"
-                    id={`terminal-tab-${session.id}`}
-                    onClick={() => selectSession(session.id)}
-                    onKeyDown={(event) => {
-                      if (
-                        !event.altKey &&
-                        !event.ctrlKey &&
-                        !event.metaKey &&
-                        !event.shiftKey &&
-                        (event.code === "ArrowLeft" ||
-                          event.code === "ArrowRight" ||
-                          event.code === "Home" ||
-                          event.code === "End")
-                      ) {
-                        event.preventDefault();
-                        const nextId =
-                          event.code === "Home"
-                            ? tabsRef.current[0]?.sessionId
-                            : event.code === "End"
-                              ? tabsRef.current.at(-1)?.sessionId
-                              : adjacentTerminalTabId(
-                                  tabsRef.current,
-                                  session.id,
-                                  event.code === "ArrowLeft" ? -1 : 1,
-                                );
-                        if (nextId !== undefined && nextId !== null) {
-                          selectSession(nextId);
-                          window.requestAnimationFrame(() => {
-                            document
-                              .getElementById(`terminal-tab-${nextId}`)
-                              ?.focus();
-                          });
-                        }
-                        return;
-                      }
-                      if (
-                        event.altKey &&
-                        event.shiftKey &&
-                        (event.code === "ArrowLeft" ||
-                          event.code === "ArrowRight")
-                      ) {
-                        event.preventDefault();
+                  <div
+                    className={`terminal-tab ${
+                      session.id === selectedId ? "is-active" : ""
+                    } ${tab.pinned ? "is-pinned" : ""} ${
+                      draggedTabId === session.id ? "is-dragging" : ""
+                    }`}
+                    draggable
+                    key={session.id}
+                    onDragEnd={() => setDraggedTabId(null)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDragStart={(event) => {
+                      setDraggedTabId(session.id);
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", session.id);
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const sourceId =
+                        draggedTabId ||
+                        event.dataTransfer.getData("text/plain");
+                      if (sourceId.length > 0) {
                         setTabs((current) =>
-                          moveTerminalTabByOffset(
-                            current,
-                            session.id,
-                            event.code === "ArrowLeft" ? -1 : 1,
-                          ),
+                          moveTerminalTab(current, sourceId, session.id),
                         );
                       }
+                      setDraggedTabId(null);
                     }}
-                    role="tab"
-                    tabIndex={session.id === selectedId ? 0 : -1}
-                    title={`${session.displayName} · Alt Shift Left/Right reorders inside ${
-                      tab.pinned ? "pinned" : "regular"
-                    } tabs`}
-                    type="button"
                   >
-                    <StatusDot state={session.processState} />
-                    <span className="terminal-tab-copy">
-                      <strong>{session.displayName}</strong>
-                      <small>{session.commandLabel}</small>
-                    </span>
-                  </button>
-                  <button
-                    aria-label={`${tab.pinned ? "Unpin" : "Pin"} ${
-                      session.displayName
-                    } tab`}
-                    aria-pressed={tab.pinned}
-                    className="terminal-tab-action"
-                    onClick={() =>
-                      setTabs((current) =>
-                        toggleTerminalTabPin(current, session.id),
-                      )
-                    }
-                    title={tab.pinned ? "Unpin tab" : "Pin tab"}
-                    type="button"
-                  >
-                    <span aria-hidden="true">{tab.pinned ? "◆" : "◇"}</span>
-                  </button>
-                  <button
-                    aria-label={`Close ${session.displayName} tab; terminal keeps running`}
-                    className="terminal-tab-action close-tab-action"
-                    onClick={() => closeViewTab(session.id)}
-                    title="Close tab · terminal keeps running"
-                    type="button"
-                  >
-                    <span aria-hidden="true">×</span>
-                  </button>
+                    <button
+                      aria-controls="active-terminal-panel"
+                      aria-selected={session.id === selectedId}
+                      className="terminal-tab-select"
+                      id={`terminal-tab-${session.id}`}
+                      onClick={() => selectSession(session.id)}
+                      onKeyDown={(event) => {
+                        if (
+                          !event.altKey &&
+                          !event.ctrlKey &&
+                          !event.metaKey &&
+                          !event.shiftKey &&
+                          (event.code === "ArrowLeft" ||
+                            event.code === "ArrowRight" ||
+                            event.code === "Home" ||
+                            event.code === "End")
+                        ) {
+                          event.preventDefault();
+                          const nextId =
+                            event.code === "Home"
+                              ? tabsRef.current[0]?.sessionId
+                              : event.code === "End"
+                                ? tabsRef.current.at(-1)?.sessionId
+                                : adjacentTerminalTabId(
+                                    tabsRef.current,
+                                    session.id,
+                                    event.code === "ArrowLeft" ? -1 : 1,
+                                  );
+                          if (nextId !== undefined && nextId !== null) {
+                            selectSession(nextId);
+                            window.requestAnimationFrame(() => {
+                              document
+                                .getElementById(`terminal-tab-${nextId}`)
+                                ?.focus();
+                            });
+                          }
+                          return;
+                        }
+                        if (
+                          event.altKey &&
+                          event.shiftKey &&
+                          (event.code === "ArrowLeft" ||
+                            event.code === "ArrowRight")
+                        ) {
+                          event.preventDefault();
+                          setTabs((current) =>
+                            moveTerminalTabByOffset(
+                              current,
+                              session.id,
+                              event.code === "ArrowLeft" ? -1 : 1,
+                            ),
+                          );
+                        }
+                      }}
+                      role="tab"
+                      tabIndex={session.id === selectedId ? 0 : -1}
+                      title={`${session.displayName} · Alt Shift Left/Right reorders inside ${
+                        tab.pinned ? "pinned" : "regular"
+                      } tabs`}
+                      type="button"
+                    >
+                      <StatusDot state={session.processState} />
+                      <span className="terminal-tab-copy">
+                        <strong>{session.displayName}</strong>
+                        <small>{session.commandLabel}</small>
+                      </span>
+                    </button>
+                    <button
+                      aria-label={`${tab.pinned ? "Unpin" : "Pin"} ${
+                        session.displayName
+                      } tab`}
+                      aria-pressed={tab.pinned}
+                      className="terminal-tab-action"
+                      onClick={() =>
+                        setTabs((current) =>
+                          toggleTerminalTabPin(current, session.id),
+                        )
+                      }
+                      title={tab.pinned ? "Unpin tab" : "Pin tab"}
+                      type="button"
+                    >
+                      <span aria-hidden="true">{tab.pinned ? "◆" : "◇"}</span>
+                    </button>
+                    <button
+                      aria-label={`Close ${session.displayName} tab; terminal keeps running`}
+                      className="terminal-tab-action close-tab-action"
+                      onClick={() => closeViewTab(session.id)}
+                      title="Close tab · terminal keeps running"
+                      type="button"
+                    >
+                      <span aria-hidden="true">×</span>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -832,9 +827,7 @@ export function App() {
                 transportRef.current?.resize(sessionId, cols, rows)
               }
               onSetRatio={(splitId, ratio) =>
-                setLayout(
-                  setSplitRatio(layoutRef.current, splitId, ratio),
-                )
+                setLayout(setSplitRatio(layoutRef.current, splitId, ratio))
               }
               onSplit={(paneId, direction) => {
                 const focused = focusPane(layoutRef.current, paneId);
@@ -855,10 +848,7 @@ export function App() {
                 setCapturedPaneId(null);
               }}
               onToggleMaximize={(paneId) => {
-                const next = toggleMaximizedPane(
-                  layoutRef.current,
-                  paneId,
-                );
+                const next = toggleMaximizedPane(layoutRef.current, paneId);
                 setLayout(next);
                 setSelectedId(getFocusedPane(next)?.sessionId ?? null);
               }}

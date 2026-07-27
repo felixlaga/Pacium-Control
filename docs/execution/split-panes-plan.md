@@ -69,16 +69,16 @@ Each visible session gets its own terminal handle and reconnect cursor. The curr
 
 ## Failure model
 
-| Failure point                         | Expected state                                  | Recovery                                  |
-| ------------------------------------- | ----------------------------------------------- | ----------------------------------------- |
-| Stored layout is malformed or too deep | One empty root pane                            | Select a running session                  |
-| Stored session no longer exists       | Its leaf becomes empty                          | Choose another running session            |
-| Same session appears twice in storage | Later duplicate leaf becomes empty              | Assign another session                    |
-| Snapshot arrives during pane mount    | Session-keyed cursor applies it once             | Reattach requests a new snapshot          |
-| Browser reconnects                    | Visible cursors reset and all panes reattach     | Bounded snapshots restore each pane       |
-| Pane closes                           | PTY and tab survive                              | Reopen from tab/sidebar                    |
-| Divider reaches an edge               | Ratio clamps to the safe range                   | Drag back or use restored default         |
-| Visible session closes server-side    | Pane becomes empty and focus remains deterministic | Choose another session                 |
+| Failure point                          | Expected state                                     | Recovery                            |
+| -------------------------------------- | -------------------------------------------------- | ----------------------------------- |
+| Stored layout is malformed or too deep | One empty root pane                                | Select a running session            |
+| Stored session no longer exists        | Its leaf becomes empty                             | Choose another running session      |
+| Same session appears twice in storage  | Later duplicate leaf becomes empty                 | Assign another session              |
+| Snapshot arrives during pane mount     | Session-keyed cursor applies it once               | Reattach requests a new snapshot    |
+| Browser reconnects                     | Visible cursors reset and all panes reattach       | Bounded snapshots restore each pane |
+| Pane closes                            | PTY and tab survive                                | Reopen from tab/sidebar             |
+| Divider reaches an edge                | Ratio clamps to the safe range                     | Drag back or use restored default   |
+| Visible session closes server-side     | Pane becomes empty and focus remains deterministic | Choose another session              |
 
 ## Compatibility
 

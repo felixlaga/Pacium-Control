@@ -22,12 +22,7 @@ function twoPaneLayout() {
     createSplitLayout("pane-one"),
     "session-one",
   );
-  const split = splitFocusedPane(
-    first,
-    "horizontal",
-    "split-one",
-    "pane-two",
-  );
+  const split = splitFocusedPane(first, "horizontal", "split-one", "pane-two");
   return assignSessionToPane(split, "pane-two", "session-two");
 }
 
@@ -52,12 +47,7 @@ describe("split layout", () => {
 
     const four = splitFocusedPane(
       splitFocusedPane(
-        splitFocusedPane(
-          split,
-          "vertical",
-          "split-two",
-          "pane-three",
-        ),
+        splitFocusedPane(split, "vertical", "split-two", "pane-three"),
         "horizontal",
         "split-three",
         "pane-four",
@@ -104,7 +94,9 @@ describe("split layout", () => {
     });
     const maximized = toggleMaximizedPane(state, "pane-two");
     expect(maximized.maximizedPaneId).toBe("pane-two");
-    expect(toggleMaximizedPane(maximized, "pane-two").maximizedPaneId).toBeNull();
+    expect(
+      toggleMaximizedPane(maximized, "pane-two").maximizedPaneId,
+    ).toBeNull();
   });
 
   it("closes only the view and deterministically recovers focus", () => {
@@ -132,9 +124,9 @@ describe("split layout", () => {
       new Set(["session-one"]),
     );
 
-    expect(listPanes(reconciled.root).map(({ sessionId }) => sessionId)).toEqual(
-      [null, "session-one"],
-    );
+    expect(
+      listPanes(reconciled.root).map(({ sessionId }) => sessionId),
+    ).toEqual([null, "session-one"]);
     expect(getFocusedPane(reconciled)?.id).toBe("pane-two");
   });
 
@@ -143,9 +135,7 @@ describe("split layout", () => {
     expect(parseStoredSplitLayout(serializeSplitLayout(state))).toEqual(state);
     expect(parseStoredSplitLayout("{")).toBeNull();
     expect(
-      parseStoredSplitLayout(
-        JSON.stringify({ version: 2, root: state.root }),
-      ),
+      parseStoredSplitLayout(JSON.stringify({ version: 2, root: state.root })),
     ).toBeNull();
 
     const duplicateStorage = JSON.stringify({
