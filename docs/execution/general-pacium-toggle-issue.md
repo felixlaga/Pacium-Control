@@ -50,37 +50,37 @@ PC-050 behavior exists.
 
 ## Acceptance criteria
 
-- [ ] General is the safe default when no valid browser preference exists;
+- [x] General is the safe default when no valid browser preference exists;
       only `general` or `pacium` is restored.
-- [ ] The visible control behaves as a labelled two-option selection with
+- [x] The visible control behaves as a labelled two-option selection with
       pressed/selected semantics, concise copy, keyboard focus, and restrained
       Linear-inspired hierarchy at desktop, 320 CSS px, 200% zoom, forced
       colors, and reduced motion.
-- [ ] Mouse, `G` then `P`, and command-palette mode changes share one action and
+- [x] Mouse, `G` then `P`, and command-palette mode changes share one action and
       the shortcut never fires during terminal capture, text editing, or a
       modal.
-- [ ] Switching mode preserves session list identity, selected session,
+- [x] Switching mode preserves session list identity, selected session,
       terminal tabs, split tree and ratios, focused/maximized pane, inspector
       tab, panel visibility, PTY processes, terminal sync/input state, and
       current Git/check evidence.
-- [ ] Pacium mode can be entered while config is loading, unconfigured, ready,
+- [x] Pacium mode can be entered while config is loading, unconfigured, ready,
       errored, or disconnected; each state states what is known and that
       terminals survived.
-- [ ] Ready presentation uses only the accepted config observation and labels
+- [x] Ready presentation uses only the accepted config observation and labels
       configured role/worker/queue counts without claiming live resolution,
       queue observation, or delivery.
-- [ ] Error presentation exposes only the bounded server message and a Retry
+- [x] Error presentation exposes only the bounded server message and a Retry
       action; retry sends only `pacium.config.get` and does not mutate config or
       terminals.
-- [ ] Mode persistence failure leaves the in-memory change active and reports
+- [x] Mode persistence failure leaves the in-memory change active and reports
       that refresh may return to General; it never writes server state.
-- [ ] Refresh restores mode and the existing terminal layout/selection;
+- [x] Refresh restores mode and the existing terminal layout/selection;
       reconnect reconstructs config truth without changing mode.
-- [ ] General mode restores the ordinary terminal navigation and contains no
+- [x] General mode restores the ordinary terminal navigation and contains no
       Pacium-only placeholder chrome.
-- [ ] No queue/context file read, prompt, answer, process, verification, Git,
+- [x] No queue/context file read, prompt, answer, process, verification, Git,
       or protocol mutation is introduced.
-- [ ] Focused tests, `pnpm verify`, and `pnpm test:e2e` pass with synchronized
+- [x] Focused tests, `pnpm verify`, and `pnpm test:e2e` pass with synchronized
       status, backlog, issue, plan, README, and changelog.
 
 ## User experience
@@ -187,3 +187,20 @@ mode effect if the second key is absent or different.
 
 - Multi-workspace mode preference waits for a real workspace router; version 1
   deliberately owns only the current local shell presentation.
+
+## Completion evidence
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 68 test
+  files and 353 tests, plus the 770.96 kB web and 166.07 kB local-server
+  production bundles.
+- `pnpm test:e2e` passed all eight Chromium workflows after Chromium received
+  its required macOS host permission.
+- Unit and semantic tests prove strict version-1 storage, safe fallback,
+  persistence failures, bounded shortcut ownership, palette projection,
+  configuration-state projection, text-only hostile evidence, and retry
+  visibility.
+- Browser evidence proves pointer, `G` then `P`, palette, and reload changes;
+  preserves the selected terminal and Changes inspector; and covers 320 CSS
+  px, 200% zoom, forced colors, and visible keyboard focus.
+- The implementation is split across 14 coherent commits before issue, plan,
+  and changelog closeout.
