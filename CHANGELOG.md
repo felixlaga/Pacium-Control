@@ -2,6 +2,54 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.20.0 — deterministic recent activity — 2026-07-27
+
+### Added
+
+- A pure selected-session Activity projection over existing process, attention,
+  Git changes, local-HEAD history, and verification evidence with no protocol
+  change or duplicate system of record.
+- Honest current evidence that keeps source, confidence, freshness, process
+  state, and the absence of assigned-task proof visible.
+- Newest-first occurred/observed facts with stable identities, at most three
+  commits, one working-tree observation, one latest verification run, process
+  lifecycle evidence, and a seven-fact ceiling.
+- Source-specific idle, loading, ready, empty, unavailable, and error evidence
+  that retains prior results during refresh and keeps partial failures visible
+  without affecting the terminal.
+- A lazy fifth Activity inspector tab with one explicit Refresh action,
+  semantic empty/no-selection states, five-tab keyboard order, text-only
+  untrusted evidence, and compact 320 CSS px layouts.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, type checking, 60 test files and 292
+  tests, and both production bundles.
+- `pnpm test:e2e` passed all seven Chromium workflows. Activity coverage proved
+  lazy reads, current process/attention, changed-file and commit facts, latest
+  verification result, Refresh, browser reload, unchanged terminal selection,
+  five-tab keyboard navigation, and 320 CSS px layout.
+- Unit and semantic coverage passed for process honesty, timestamp semantics,
+  deterministic bounds/order, Git/verification source states, retained
+  evidence during refresh, output exclusion, hostile text, and empty/partial
+  presentation.
+
+### Known limitations
+
+- Activity is a disposable current projection, not a durable event history.
+  There is no “since last checked” cursor, activity persistence, export,
+  search, filtering, polling, or automatic filesystem refresh.
+- Provider-native and hook observations are not connected yet. Live processes
+  therefore remain process-observed Unknown, and there is no agent narrative.
+- Queue decisions and Pacium-mode worker/objective activity begin with the
+  Pacium-mode slices.
+- The connected in-app browser backend was unavailable; automated headless
+  Chromium evidence passed, while independent manual visual and screen-reader
+  review remain release gates.
+- The current machine ran verification on Node.js 26.4.0, not pinned Node.js
+  24.18.x.
+- The web bundle is 759.50 kB before gzip and retains the tracked warning.
+
 ## 0.19.0 — explicit verification presets — 2026-07-27
 
 ### Added
