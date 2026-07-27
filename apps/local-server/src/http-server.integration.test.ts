@@ -9,6 +9,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
+import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -25,7 +26,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket, type RawData } from "ws";
 
-import type { ServerConfig } from "./config.js";
+import type { ServerConfig, TailscaleServeConfig } from "./config.js";
 import type { HostActions } from "./host-actions.js";
 import {
   createPaciumHttpServer,
@@ -2395,6 +2396,184 @@ describe("localhost HTTP and WebSocket boundary", () => {
     );
     expect(deniedOrigin.status).toBe(403);
   });
+
+  it("authorizes remote bootstrap and protected reads only through exact Serve evidence", async () => {
+    const tailscaleServe = testTailscaleServeConfig();
+    const setup = await startTestServer(
+      new FakePtyFactory(),
+      undefined,
+      undefined,
+      undefined,
+      tailscaleServe,
+    );
+    application = setup.application;
+    manager = setup.manager;
+    const httpUrl = setup.url.replace("ws://", "http://");
+    const headers = remoteRequestHeaders(tailscaleServe);
+
+    const bootstrap = await requestHttp(`${httpUrl}/api/bootstrap`, {
+      method: "POST",
+      headers,
+    });
+    expect(bootstrap.status).toBe(200);
+    expect(bootstrap.json).toMatchObject({
+      protocolVersion: PROTOCOL_VERSION,
+      accessToken: setup.config.accessToken,
+      webSocketPath: "/ws",
+    });
+
+    const directories = await requestHttp(
+      `${httpUrl}/api/directories?path=${encodeURIComponent(process.cwd())}`,
+      {
+        method: "POST",
+        headers: {
+          ...headers,
+          authorization: `Bearer ${setup.config.accessToken}`,
+        },
+      },
+    );
+    expect(directories.status).toBe(200);
+    expect(DirectoryListingSchema.parse(directories.json)).toMatchObject({
+      currentPath: process.cwd(),
+    });
+
+    const localHealth = await fetch(`${httpUrl}/api/health`);
+    expect(localHealth.status).toBe(200);
+  });
+
+  it("denies spoofed, missing, duplicate, and unlisted Serve identity before bootstrap", async () => {
+    const tailscaleServe = testTailscaleServeConfig();
+    const setup = await startTestServer(
+      new FakePtyFactory(),
+      undefined,
+      undefined,
+      undefined,
+      tailscaleServe,
+    );
+    application = setup.application;
+    manager = setup.manager;
+    const httpUrl = setup.url.replace("ws://", "http://");
+    const valid = remoteRequestHeaders(tailscaleServe);
+    const deniedHeaders = [
+      { ...valid, host: "127.0.0.1:4174" },
+      { ...valid, origin: "https://hostile.example" },
+      { ...valid, host: `other.${tailscaleServe.hostname}` },
+      withoutHeader(valid, "tailscale-user-login"),
+      { ...valid, "tailscale-user-login": "other@example.com" },
+      {
+        ...valid,
+        "tailscale-user-login": "owner@example.com, other@example.com",
+      },
+      {
+        ...withoutHeader(valid, "tailscale-user-login"),
+        "tailscale-app-capabilities": '{"example/cap":[]}',
+      },
+    ];
+
+    for (const headers of deniedHeaders) {
+      const response = await requestHttp(`${httpUrl}/api/bootstrap`, {
+        method: "POST",
+        headers,
+      });
+      expect(response.status).toBe(403);
+      expect(response.json).toEqual({ error: "Forbidden" });
+    }
+
+    const remoteGet = await requestHttp(`${httpUrl}/api/bootstrap`, {
+      headers: valid,
+    });
+    expect(remoteGet.status).toBe(405);
+    const bodyAttempt = await requestHttp(`${httpUrl}/api/bootstrap`, {
+      method: "POST",
+      headers: valid,
+      body: "not allowed",
+    });
+    expect(bodyAttempt.status).toBe(400);
+  });
+
+  it("operates a canary PTY through Serve and preserves it for local reconnect", async () => {
+    const tailscaleServe = testTailscaleServeConfig();
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      tailscaleServe,
+    );
+    application = setup.application;
+    manager = setup.manager;
+
+    const remote = await connect(setup.url, setup.config, {
+      origin: tailscaleServe.origin,
+      headers: {
+        host: tailscaleServe.hostname,
+        "tailscale-user-login": "owner@example.com",
+      },
+    });
+    await nextMessage(remote, (message) => message.type === "server.welcome");
+    const session = await createTestSession(remote);
+    factory.processes[0]?.emitData("remote canary remains local\r\n");
+    remote.socket.close();
+    await once(remote.socket, "close");
+    expect(manager.list()).toHaveLength(1);
+
+    const local = await connect(setup.url, setup.config);
+    await nextMessage(local, (message) => message.type === "server.welcome");
+    local.socket.send(
+      JSON.stringify({
+        type: "terminal.attach",
+        requestId: "631664f3-4abd-4a6d-9b1f-d65b7199412b",
+        sessionId: session.id,
+      }),
+    );
+    await expect(
+      nextMessage(local, (message) => message.type === "terminal.snapshot"),
+    ).resolves.toMatchObject({
+      sessionId: session.id,
+      data: expect.stringContaining("remote canary remains local"),
+    });
+    local.socket.close();
+    await once(local.socket, "close");
+  });
+
+  it("rejects an unlisted Serve WebSocket without affecting local access", async () => {
+    const tailscaleServe = testTailscaleServeConfig();
+    const setup = await startTestServer(
+      new FakePtyFactory(),
+      undefined,
+      undefined,
+      undefined,
+      tailscaleServe,
+    );
+    application = setup.application;
+    manager = setup.manager;
+
+    const socket = new WebSocket(
+      `${setup.url}/ws`,
+      ["pacium.v1", `pacium.token.${setup.config.accessToken}`],
+      {
+        origin: tailscaleServe.origin,
+        headers: {
+          host: tailscaleServe.hostname,
+          "tailscale-user-login": "other@example.com",
+        },
+      },
+    );
+    socket.on("error", () => {
+      // A rejected upgrade is the expected outcome for this test.
+    });
+    const [, response] = (await once(socket, "unexpected-response")) as [
+      unknown,
+      { statusCode: number },
+    ];
+    expect(response.statusCode).toBe(403);
+
+    const local = await connect(setup.url, setup.config);
+    await nextMessage(local, (message) => message.type === "server.welcome");
+    local.socket.close();
+    await once(local.socket, "close");
+  });
 });
 
 async function startTestServer(
@@ -2405,6 +2584,7 @@ async function startTestServer(
     runner: VerificationRunner;
   },
   dataDirectory?: string,
+  tailscaleServe: TailscaleServeConfig | null = null,
 ): Promise<{
   application: PaciumHttpServer;
   manager: SessionManager;
@@ -2417,7 +2597,7 @@ async function startTestServer(
     host: "127.0.0.1",
     port: 4174,
     allowedOrigins: new Set(["http://127.0.0.1:4173"]),
-    tailscaleServe: null,
+    tailscaleServe,
     accessToken: "test-access-token",
     serverId: "d5805287-d2b0-41f4-b80f-56c77d892cbc",
     defaultCwd: process.cwd(),
@@ -2633,11 +2813,18 @@ class FailFirstWritePtyFactory extends FakePtyFactory {
 async function connect(
   baseUrl: string,
   config: ServerConfig,
+  options?: {
+    origin: string;
+    headers: Readonly<Record<string, string>>;
+  },
 ): Promise<TestClient> {
   const socket = new WebSocket(
     `${baseUrl}/ws`,
     ["pacium.v1", `pacium.token.${config.accessToken}`],
-    { origin: [...config.allowedOrigins][0] },
+    {
+      origin: options?.origin ?? [...config.allowedOrigins][0],
+      ...(options === undefined ? {} : { headers: options.headers }),
+    },
   );
   const client: TestClient = {
     socket,
@@ -2673,6 +2860,69 @@ async function connect(
   });
   await once(socket, "open");
   return client;
+}
+
+function testTailscaleServeConfig(): TailscaleServeConfig {
+  return {
+    origin: "https://pacium-host.example-tailnet.ts.net",
+    hostname: "pacium-host.example-tailnet.ts.net",
+    operatorLogins: new Set(["owner@example.com"]),
+  };
+}
+
+function remoteRequestHeaders(
+  config: TailscaleServeConfig,
+): Record<string, string> {
+  return {
+    host: config.hostname,
+    origin: config.origin,
+    "sec-fetch-site": "same-origin",
+    "tailscale-user-login": "owner@example.com",
+  };
+}
+
+function withoutHeader(
+  headers: Readonly<Record<string, string>>,
+  name: string,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(headers).filter(([key]) => key !== name),
+  );
+}
+
+async function requestHttp(
+  value: string,
+  options: {
+    method?: string;
+    headers?: Readonly<Record<string, string>>;
+    body?: string;
+  } = {},
+): Promise<{ status: number; json: unknown }> {
+  const url = new URL(value);
+  return new Promise((resolve, reject) => {
+    const request = httpRequest(
+      {
+        hostname: url.hostname,
+        port: url.port,
+        path: `${url.pathname}${url.search}`,
+        method: options.method ?? "GET",
+        headers: options.headers,
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () => {
+          const body = Buffer.concat(chunks).toString("utf8");
+          resolve({
+            status: response.statusCode ?? 0,
+            json: body.length === 0 ? null : JSON.parse(body),
+          });
+        });
+      },
+    );
+    request.on("error", reject);
+    request.end(options.body);
+  });
 }
 
 async function createTestSession(
