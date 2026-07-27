@@ -255,6 +255,14 @@ export class WebSocketHub {
         this.sessions.interrupt(message.sessionId);
         this.sendResult(client.socket, message.requestId);
         return;
+      case "session.rename":
+        this.sessions.rename(message.sessionId, message.displayName);
+        this.sendResult(client.socket, message.requestId);
+        return;
+      case "session.revealRepository":
+        await this.sessions.revealRepository(message.sessionId);
+        this.sendResult(client.socket, message.requestId);
+        return;
       case "session.close":
         this.sessions.close(
           message.sessionId,

@@ -9,10 +9,11 @@ import {
   type ServerMessage,
   type TerminalDataFrame,
 } from "@pacium/contracts";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket, type RawData } from "ws";
 
 import type { ServerConfig } from "./config.js";
+import type { HostActions } from "./host-actions.js";
 import {
   createPaciumHttpServer,
   type PaciumHttpServer,
@@ -192,6 +193,59 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await once(observer.socket, "close");
   });
 
+  it("renames a session and reveals only its detected repository", async () => {
+    const revealPath = vi.fn().mockResolvedValue(undefined);
+    const setup = await startTestServer(new FakePtyFactory(), { revealPath });
+    application = setup.application;
+    manager = setup.manager;
+
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    const session = await createTestSession(client);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "session.rename",
+        requestId: "64f1634b-68cb-4102-a754-7c9fb27a99b6",
+        sessionId: session.id,
+        displayName: "Meta",
+      }),
+    );
+    const renamed = await nextMessage(
+      client,
+      (message) =>
+        message.type === "session.updated" && message.session.id === session.id,
+    );
+    expect(renamed).toMatchObject({
+      type: "session.updated",
+      session: { displayName: "Meta" },
+    });
+    await nextMessage(
+      client,
+      (message) =>
+        message.type === "command.result" &&
+        message.requestId === "64f1634b-68cb-4102-a754-7c9fb27a99b6",
+    );
+
+    client.socket.send(
+      JSON.stringify({
+        type: "session.revealRepository",
+        requestId: "7e96b977-e4f4-4c42-8ebd-a1ddc464695e",
+        sessionId: session.id,
+      }),
+    );
+    await nextMessage(
+      client,
+      (message) =>
+        message.type === "command.result" &&
+        message.requestId === "7e96b977-e4f4-4c42-8ebd-a1ddc464695e",
+    );
+    expect(revealPath).toHaveBeenCalledWith(manager.list()[0]?.repositoryRoot);
+
+    client.socket.close();
+    await once(client.socket, "close");
+  });
+
   it("rejects an invalid local access token", async () => {
     const setup = await startTestServer(new FakePtyFactory());
     application = setup.application;
@@ -257,7 +311,10 @@ describe("localhost HTTP and WebSocket boundary", () => {
   });
 });
 
-async function startTestServer(factory: FakePtyFactory): Promise<{
+async function startTestServer(
+  factory: FakePtyFactory,
+  hostActions?: HostActions,
+): Promise<{
   application: PaciumHttpServer;
   manager: SessionManager;
   config: ServerConfig;
@@ -300,7 +357,11 @@ async function startTestServer(factory: FakePtyFactory): Promise<{
       },
     ],
   };
-  const manager = new SessionManager(factory, config.launchPresets);
+  const manager = new SessionManager(
+    factory,
+    config.launchPresets,
+    hostActions,
+  );
   const application = createPaciumHttpServer(config, manager);
   application.server.listen(0, config.host);
   await once(application.server, "listening");
