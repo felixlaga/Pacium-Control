@@ -358,6 +358,9 @@ export function App() {
       applyTerminalFrame(event.frame, syncRefs, terminalRefs);
       return;
     }
+    if (event.type === "pacium.config.requested") {
+      return;
+    }
     if (event.message.type === "repository.changes") {
       const current =
         repositoryChangesRef.current.get(event.message.sessionId) ??

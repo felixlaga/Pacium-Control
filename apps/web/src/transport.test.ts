@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   fetchDirectoryListing,
+  paciumConfigGetMessage,
+  paciumConfigReplaceMessage,
   repositoryChangesMessage,
   repositoryDiffMessage,
   repositoryHistoryMessage,
@@ -93,6 +95,42 @@ describe("repository transport", () => {
       requestId,
       sessionId,
       runId: "03c2723f-e87a-4707-86af-d6fdb1e60f47",
+    });
+  });
+});
+
+describe("Pacium config transport", () => {
+  it("sends a read without terminal or filesystem authority", () => {
+    expect(
+      paciumConfigGetMessage("66bd01dc-a1c3-4341-9c3c-153027b7f098"),
+    ).toEqual({
+      type: "pacium.config.get",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+    });
+  });
+
+  it("sends one complete revisioned workspace replacement", () => {
+    const workspace = {
+      id: "primary",
+      label: "Pacium",
+      repositories: [],
+      roles: { meta: null, orchestrator: null },
+      workers: [],
+      queueSources: [],
+      deliveryMethods: [],
+      context: { objective: null, plan: null },
+    };
+    expect(
+      paciumConfigReplaceMessage(
+        4,
+        workspace,
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ),
+    ).toEqual({
+      type: "pacium.config.replace",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      expectedRevision: 4,
+      workspace,
     });
   });
 });

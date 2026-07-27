@@ -6,6 +6,7 @@ import {
   type ClientMessage,
   type DirectoryListing,
   type LaunchPresetId,
+  type PaciumWorkspace,
   type ServerMessage,
   type TerminalDataFrame,
 } from "@pacium/contracts";
@@ -15,6 +16,11 @@ export type ConnectionState =
 
 export type TransportEvent =
   | { type: "connection"; state: ConnectionState }
+  | {
+      type: "pacium.config.requested";
+      requestId: string;
+      intent: "get" | "replace";
+    }
   | { type: "message"; message: ServerMessage }
   | { type: "terminal.data"; frame: TerminalDataFrame }
   | { type: "transport.error"; message: string };
@@ -176,6 +182,33 @@ export class PaciumTransport {
     return requestId;
   }
 
+  public requestPaciumConfig(): string {
+    const requestId = crypto.randomUUID();
+    this.emit({
+      type: "pacium.config.requested",
+      requestId,
+      intent: "get",
+    });
+    this.send(paciumConfigGetMessage(requestId));
+    return requestId;
+  }
+
+  public replacePaciumConfig(
+    expectedRevision: number,
+    workspace: PaciumWorkspace,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.emit({
+      type: "pacium.config.requested",
+      requestId,
+      intent: "replace",
+    });
+    this.send(
+      paciumConfigReplaceMessage(expectedRevision, workspace, requestId),
+    );
+    return requestId;
+  }
+
   public closeSession(sessionId: string, force: boolean): void {
     this.send({
       type: "session.close",
@@ -230,6 +263,7 @@ export class PaciumTransport {
         this.retryAttempt = 0;
         this.emit({ type: "connection", state: "connected" });
         this.listSessions();
+        this.requestPaciumConfig();
       });
       socket.addEventListener("message", (event) => {
         const data: unknown = event.data;
@@ -416,6 +450,28 @@ export function repositoryVerificationCancelMessage(
     requestId,
     sessionId,
     runId,
+  };
+}
+
+export function paciumConfigGetMessage(
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.config.get" }> {
+  return {
+    type: "pacium.config.get",
+    requestId,
+  };
+}
+
+export function paciumConfigReplaceMessage(
+  expectedRevision: number,
+  workspace: PaciumWorkspace,
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.config.replace" }> {
+  return {
+    type: "pacium.config.replace",
+    requestId,
+    expectedRevision,
+    workspace,
   };
 }
 
