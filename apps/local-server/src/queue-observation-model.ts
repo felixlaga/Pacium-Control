@@ -2,6 +2,7 @@ import type {
   PaciumConfigObservation,
   PaciumQueueSource,
   QueueSourceObservation,
+  QueueSourceClassification,
   QueueSourceObservationStatus,
   QueueSourcesObservation,
 } from "@pacium/contracts";
@@ -11,6 +12,7 @@ import type { QueueFileReadResult } from "./queue-file-reader.js";
 export interface QueueSourceRuntimeState {
   definition: PaciumQueueSource;
   observation: QueueSourceObservation;
+  classification: QueueSourceClassification | null;
   text: string | null;
 }
 
@@ -39,6 +41,7 @@ export function pendingQueueSource(
       contentHash: null,
       error: null,
     },
+    classification: null,
     text: null,
   };
 }
@@ -47,6 +50,7 @@ export function applyQueueFileRead(
   current: QueueSourceRuntimeState,
   result: QueueRuntimeResult,
   observedAt: string,
+  classification: QueueSourceClassification | null = null,
 ): QueueReadTransition {
   const candidate: QueueSourceRuntimeState = {
     definition: current.definition,
@@ -60,6 +64,7 @@ export function applyQueueFileRead(
       contentHash: result.contentHash,
       error: result.error,
     },
+    classification,
     text: result.text,
   };
   if (sameQueueEvidence(current, candidate)) {
@@ -172,6 +177,29 @@ function sameQueueEvidence(
     left.observation.contentHash === right.observation.contentHash &&
     left.observation.error?.code === right.observation.error?.code &&
     left.observation.error?.message === right.observation.error?.message &&
+    sameClassification(left.classification, right.classification) &&
     left.text === right.text
+  );
+}
+
+function sameClassification(
+  left: QueueSourceClassification | null,
+  right: QueueSourceClassification | null,
+): boolean {
+  if (left === null || right === null) {
+    return left === right;
+  }
+  return (
+    left.status === right.status &&
+    left.boundary === right.boundary &&
+    left.candidate?.itemId === right.candidate?.itemId &&
+    left.candidate?.type === right.candidate?.type &&
+    left.candidate?.confidence === right.candidate?.confidence &&
+    left.diagnostics.length === right.diagnostics.length &&
+    left.diagnostics.every(
+      (diagnostic, index) =>
+        diagnostic.code === right.diagnostics[index]?.code &&
+        diagnostic.message === right.diagnostics[index]?.message,
+    )
   );
 }

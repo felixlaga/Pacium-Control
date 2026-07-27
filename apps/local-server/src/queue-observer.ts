@@ -3,6 +3,7 @@ import { basename, dirname } from "node:path";
 
 import type {
   PaciumConfigObservation,
+  QueueSourceClassification,
   QueueSourcesObservation,
 } from "@pacium/contracts";
 
@@ -17,6 +18,10 @@ import {
   readStableQueueFile,
   type QueueFileReadResult,
 } from "./queue-file-reader.js";
+import {
+  classifyQueueItem,
+  type QueueItemClassifierInput,
+} from "./queue-item-classifier.js";
 
 export interface QueueDirectoryWatcher {
   close(): void;
@@ -34,6 +39,7 @@ export interface QueueObserverOptions {
   now?: () => string;
   debounceMs?: number;
   retryDelayMs?: number;
+  classifyItem?: (input: QueueItemClassifierInput) => QueueSourceClassification;
 }
 
 const NODE_WATCH_DIRECTORY: QueueWatchDirectory = (
@@ -51,6 +57,9 @@ const NODE_WATCH_DIRECTORY: QueueWatchDirectory = (
 export class QueueObserver {
   private aggregate: QueueSourcesObservation;
   private readonly debounceMs: number;
+  private readonly classifyItem: (
+    input: QueueItemClassifierInput,
+  ) => QueueSourceClassification;
   private disposed = false;
   private generation = 0;
   private readonly now: () => string;
@@ -68,6 +77,7 @@ export class QueueObserver {
 
   public constructor(options: QueueObserverOptions = {}) {
     this.readFile = options.readFile ?? readStableQueueFile;
+    this.classifyItem = options.classifyItem ?? classifyQueueItem;
     this.watchDirectory = options.watchDirectory ?? NODE_WATCH_DIRECTORY;
     this.now = options.now ?? (() => new Date().toISOString());
     this.debounceMs = options.debounceMs ?? 200;
@@ -100,6 +110,16 @@ export class QueueObserver {
       return null;
     }
     return this.states.get(sourceId)?.text ?? null;
+  }
+
+  public sourceClassification(
+    workspaceRevision: number,
+    sourceId: string,
+  ): QueueSourceClassification | null {
+    if (workspaceRevision !== this.workspaceRevision) {
+      return null;
+    }
+    return this.states.get(sourceId)?.classification ?? null;
   }
 
   public async syncConfig(
@@ -287,9 +307,40 @@ export class QueueObserver {
     if (current === undefined) {
       return false;
     }
-    const transition = applyQueueFileRead(current, result, this.now());
+    const classification = this.classificationFor(current, result);
+    const transition = applyQueueFileRead(
+      current,
+      result,
+      this.now(),
+      classification,
+    );
     this.states.set(sourceId, transition.state);
     return transition.changed;
+  }
+
+  private classificationFor(
+    current: QueueSourceRuntimeState,
+    result: QueueFileReadResult,
+  ): QueueSourceClassification | null {
+    if (
+      result.status !== "stable" ||
+      result.contentHash === null ||
+      result.text === null
+    ) {
+      return null;
+    }
+    if (
+      current.observation.status === "stable" &&
+      current.observation.contentHash === result.contentHash &&
+      current.classification !== null
+    ) {
+      return current.classification;
+    }
+    return this.classifyItem({
+      sourceId: current.definition.id,
+      contentHash: result.contentHash,
+      text: result.text,
+    });
   }
 
   private rebuildAggregate(): void {

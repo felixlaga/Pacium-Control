@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PaciumConfigObservation } from "@pacium/contracts";
 
 import type { QueueFileReadResult } from "./queue-file-reader.js";
+import { classifyQueueItem } from "./queue-item-classifier.js";
 import {
   QueueObserver,
   type QueueDirectoryWatcher,
@@ -42,9 +43,11 @@ describe("queue observer", () => {
   });
 
   it("does not advance or publish duplicate evidence on refresh", async () => {
+    const classifyItem = vi.fn(classifyQueueItem);
     const observer = new QueueObserver({
+      classifyItem,
       now: () => now,
-      readFile: () => Promise.resolve(stable("Question")),
+      readFile: () => Promise.resolve(stable("# Question: Choose")),
       watchDirectory: inertWatcher,
     });
     const subscriber = vi.fn();
@@ -55,6 +58,10 @@ describe("queue observer", () => {
     const refreshed = await observer.refresh();
 
     expect(refreshed.sources[0]?.observationRevision).toBe(2);
+    expect(classifyItem).toHaveBeenCalledTimes(1);
+    expect(observer.sourceClassification(4, "needs-felix")).toMatchObject({
+      candidate: { type: "question", confidence: "confirmed" },
+    });
     expect(subscriber).not.toHaveBeenCalled();
     observer.dispose();
   });
@@ -86,6 +93,9 @@ describe("queue observer", () => {
       observationRevision: 3,
     });
     expect(observer.sourceText(4, "needs-felix")).toBe("Two");
+    expect(observer.sourceClassification(4, "needs-felix")).toMatchObject({
+      candidate: { type: "unknown", confidence: "low" },
+    });
     expect(subscriber).toHaveBeenCalledTimes(1);
     observer.dispose();
   });
@@ -116,6 +126,7 @@ describe("queue observer", () => {
 
     expect(observer.snapshot().status).toBe("unconfigured");
     expect(observer.sourceText(4, "needs-felix")).toBeNull();
+    expect(observer.sourceClassification(4, "needs-felix")).toBeNull();
     observer.dispose();
   });
 
@@ -139,6 +150,7 @@ describe("queue observer", () => {
       error: { code: "WATCH_FAILED" },
     });
     expect(observer.sourceText(4, "needs-felix")).toBeNull();
+    expect(observer.sourceClassification(4, "needs-felix")).toBeNull();
     expect(close).toHaveBeenCalledTimes(1);
     observer.dispose();
   });
