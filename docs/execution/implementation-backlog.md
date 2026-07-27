@@ -445,6 +445,14 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-077 Implement optional Tailscale Serve access
 
 - Keep Pacium loopback-bound; configure tailnet-only HTTPS/WebSocket proxying, exact remote Origin, verified Serve identity, explicit operator allowlist, connection labelling, grants example, disable path, and spoof/revocation/public-reachability tests.
+- Current status: complete. Protocol 18 reports strict per-socket Local or
+  Tailscale/login evidence. Startup configuration, canonical local/remote
+  Origin separation, Host/Origin/login/token/Funnel enforcement, exact WSS
+  policy, compact accessible labelling, proxy-shaped HTTP/WebSocket/PTy tests,
+  direct non-loopback denial, and the active Serve/grants/revocation runbook
+  are implemented. Real tailnet, certificate, deployed-grant, Funnel/public,
+  and revocation propagation checks remain an explicit release gate rather than
+  claimed repository evidence.
 
 ## Deferred backlog
 
