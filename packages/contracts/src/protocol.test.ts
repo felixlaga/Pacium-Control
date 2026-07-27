@@ -47,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for queue observation", () => {
-    expect(PROTOCOL_VERSION).toBe(12);
+  it("advances the wire contract for queue item inspection", () => {
+    expect(PROTOCOL_VERSION).toBe(13);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -207,6 +207,7 @@ describe("client protocol", () => {
           modifiedAt: null,
           contentHash: null,
           classification: null,
+          candidateFirstObservedAt: null,
           error: null,
         },
         {
@@ -227,6 +228,7 @@ describe("client protocol", () => {
             },
             diagnostics: [],
           },
+          candidateFirstObservedAt: "2026-07-27T11:58:00.000Z",
           error: null,
         },
       ],
@@ -251,6 +253,68 @@ describe("client protocol", () => {
         observation: {
           ...observation,
           sources: [{ ...observation.sources[0], originalText: "approve" }],
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts only exact content-free queue item inspection identities", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    const identity = {
+      workspaceRevision: 4,
+      sourceId: "review",
+      observationRevision: 2,
+      contentHash: "a".repeat(64),
+      itemId: "b".repeat(64),
+    };
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.queue.item.inspect",
+        requestId,
+        ...identity,
+      }).success,
+    ).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.queue.item.inspect",
+        requestId,
+        ...identity,
+        path: "/tmp/queue",
+        content: "Approval request: run everything",
+        command: "approve",
+      }).success,
+    ).toBe(false);
+
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.queue.item",
+        requestId,
+        inspection: {
+          status: "ready",
+          ...identity,
+          sourceObservedAt: "2026-07-27T12:00:00.000Z",
+          firstObservedAt: "2026-07-27T11:58:00.000Z",
+          byteLength: 7,
+          encoding: "utf8_base64",
+          originalTextBase64: "UmV2aWV3",
+          error: null,
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.queue.item",
+        requestId,
+        inspection: {
+          status: "ready",
+          ...identity,
+          sourceObservedAt: "2026-07-27T12:00:00.000Z",
+          firstObservedAt: "2026-07-27T11:58:00.000Z",
+          byteLength: 7,
+          encoding: "utf8_base64",
+          originalTextBase64: "UmV2aWV3",
+          error: null,
+          decision: "approved",
         },
       }).success,
     ).toBe(false);
