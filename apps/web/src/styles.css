@@ -4197,6 +4197,11 @@ kbd {
   color: var(--amber);
 }
 
+.activity-sources > ul > li.is-degraded > span:last-child,
+.activity-sources > ul > li.is-stale > span:last-child {
+  color: var(--amber);
+}
+
 .activity-empty,
 .activity-partial-note,
 .activity-boundary-note {
