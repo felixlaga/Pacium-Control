@@ -6,10 +6,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import {
-  TerminalSurface,
-  type TerminalSurfaceHandle,
-} from "@pacium/terminal-ui";
+import type { TerminalSurfaceHandle } from "@pacium/terminal-ui";
 import type {
   DirectoryListing,
   LaunchPresetCapability,
@@ -25,6 +22,7 @@ import {
   type TransportEvent,
 } from "./transport.js";
 import { DirectoryPicker } from "./directory-picker.js";
+import { SplitWorkspace } from "./split-workspace.js";
 import {
   adjacentTerminalTabId,
   closeTerminalTab,
@@ -39,6 +37,26 @@ import {
   toggleTerminalTabPin,
   type TerminalTab,
 } from "./session-model.js";
+import {
+  MAX_SPLIT_PANES,
+  assignSessionToPane,
+  clearSessionFromLayout,
+  closePane,
+  createSplitLayout,
+  focusPane,
+  focusPaneByOffset,
+  getFocusedPane,
+  listPanes,
+  parseStoredSplitLayout,
+  reconcileSplitLayout,
+  serializeSplitLayout,
+  setSplitRatio,
+  showSessionInFocusedPane,
+  splitFocusedPane,
+  toggleMaximizedPane,
+  type SplitDirection,
+  type SplitLayoutState,
+} from "./split-layout-model.js";
 
 interface TerminalSync {
   sessionId: string;
@@ -70,12 +88,18 @@ const INITIAL_LAUNCH_PRESETS: LaunchPresetCapability[] = [
 ];
 
 const TERMINAL_TABS_STORAGE_KEY = "pacium.terminalTabs";
+const SPLIT_LAYOUT_STORAGE_KEY = "pacium.splitLayout";
 
 export function App() {
-  const terminalRef = useRef<TerminalSurfaceHandle>(null);
+  const terminalRefs = useRef(
+    new Map<string, TerminalSurfaceHandle>(),
+  );
   const selectedIdRef = useRef<string | null>(null);
   const tabsRef = useRef<TerminalTab[]>([]);
-  const syncRef = useRef<TerminalSync | null>(null);
+  const syncRefs = useRef(new Map<string, TerminalSync>());
+  const layoutRef = useRef<SplitLayoutState>(
+    createSplitLayout(`pane-${crypto.randomUUID()}`),
+  );
   const transportRef = useRef<PaciumTransport | null>(null);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -88,15 +112,22 @@ export function App() {
       window.localStorage.getItem(TERMINAL_TABS_STORAGE_KEY),
     ),
   );
+  const [layout, setLayout] = useState<SplitLayoutState>(() => {
+    const restored = parseStoredSplitLayout(
+      window.localStorage.getItem(SPLIT_LAYOUT_STORAGE_KEY),
+    );
+    return restored ?? createSplitLayout(`pane-${crypto.randomUUID()}`);
+  });
   const [defaultCwd, setDefaultCwd] = useState("");
   const [launchPresets, setLaunchPresets] = useState(INITIAL_LAUNCH_PRESETS);
   const [notice, setNotice] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [terminalCaptured, setTerminalCaptured] = useState(false);
+  const [capturedPaneId, setCapturedPaneId] = useState<string | null>(null);
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
 
   selectedIdRef.current = selectedId;
   tabsRef.current = tabs;
+  layoutRef.current = layout;
 
   const onTransportEvent = useCallback((event: TransportEvent) => {
     if (event.type === "connection") {
@@ -108,19 +139,20 @@ export function App() {
       return;
     }
     if (event.type === "terminal.data") {
-      applyTerminalFrame(event.frame, selectedIdRef, syncRef, terminalRef);
+      applyTerminalFrame(event.frame, syncRefs, terminalRefs);
       return;
     }
     applyServerMessage(
       event.message,
       selectedIdRef,
-      syncRef,
-      terminalRef,
+      syncRefs,
+      terminalRefs,
       setSessions,
       setSessionListReady,
       setSelectedId,
       tabsRef,
       setTabs,
+      setLayout,
       setDefaultCwd,
       setLaunchPresets,
       setNotice,
@@ -143,6 +175,13 @@ export function App() {
       serializeTerminalTabs(tabs),
     );
   }, [tabs]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      SPLIT_LAYOUT_STORAGE_KEY,
+      serializeSplitLayout(layout),
+    );
+  }, [layout]);
 
   useEffect(() => {
     if (!sessionListReady) {
@@ -170,28 +209,82 @@ export function App() {
   useEffect(() => {
     if (selectedId === null) {
       window.localStorage.removeItem("pacium.selectedSession");
-      syncRef.current = null;
-      terminalRef.current?.clear();
       return;
     }
     window.localStorage.setItem("pacium.selectedSession", selectedId);
-    syncRef.current = {
-      sessionId: selectedId,
-      epoch: undefined,
-      sequence: 0,
-      snapshotApplied: false,
-      pending: [],
-    };
-    terminalRef.current?.clear();
-    if (connection === "connected") {
-      transportRef.current?.attach(selectedId);
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (!sessionListReady) {
+      return;
     }
-  }, [connection, selectedId]);
+    const validSessionIds = new Set(sessions.map(({ id }) => id));
+    const reconciled = reconcileSplitLayout(
+      layoutRef.current,
+      validSessionIds,
+    );
+    setLayout(reconciled);
+  }, [sessionListReady, sessions]);
+
+  useEffect(() => {
+    if (
+      !sessionListReady ||
+      selectedId === null ||
+      !sessions.some(({ id }) => id === selectedId)
+    ) {
+      return;
+    }
+    const next = showSessionInFocusedPane(layoutRef.current, selectedId);
+    if (serializeSplitLayout(next) !== serializeSplitLayout(layoutRef.current)) {
+      setLayout(next);
+    }
+  }, [selectedId, sessionListReady, sessions]);
 
   const selectedSession = useMemo(
     () => sessions.find((session) => session.id === selectedId) ?? null,
     [selectedId, sessions],
   );
+  const renderedSessionIds = useMemo(() => {
+    const panes = listPanes(layout.root);
+    if (layout.maximizedPaneId !== null) {
+      const maximized = panes.find(
+        (pane) => pane.id === layout.maximizedPaneId,
+      );
+      return maximized?.sessionId === null || maximized === undefined
+        ? []
+        : [maximized.sessionId];
+    }
+    return panes.flatMap((pane) =>
+      pane.sessionId === null ? [] : [pane.sessionId],
+    );
+  }, [layout]);
+
+  useEffect(() => {
+    if (connection !== "connected") {
+      syncRefs.current.clear();
+      return;
+    }
+    const rendered = new Set(renderedSessionIds);
+    for (const sessionId of syncRefs.current.keys()) {
+      if (!rendered.has(sessionId)) {
+        syncRefs.current.delete(sessionId);
+      }
+    }
+    for (const sessionId of renderedSessionIds) {
+      if (syncRefs.current.has(sessionId)) {
+        continue;
+      }
+      syncRefs.current.set(sessionId, {
+        sessionId,
+        epoch: undefined,
+        sequence: 0,
+        snapshotApplied: false,
+        pending: [],
+      });
+      terminalRefs.current.get(sessionId)?.clear();
+      transportRef.current?.attach(sessionId);
+    }
+  }, [connection, renderedSessionIds]);
   const sessionGroups = useMemo(() => groupSessions(sessions), [sessions]);
   const tabSessions = useMemo(
     () =>
@@ -212,7 +305,61 @@ export function App() {
   const selectSession = (sessionId: string) => {
     setNotice(null);
     setTabs((current) => openTerminalTab(current, sessionId));
+    setLayout(showSessionInFocusedPane(layoutRef.current, sessionId));
     setSelectedId(sessionId);
+  };
+
+  const selectPane = (paneId: string) => {
+    const next = focusPane(layoutRef.current, paneId);
+    setLayout(next);
+    setSelectedId(getFocusedPane(next)?.sessionId ?? null);
+    setCapturedPaneId(null);
+  };
+
+  const assignSession = (paneId: string, sessionId: string) => {
+    setTabs((current) => openTerminalTab(current, sessionId));
+    const next = assignSessionToPane(layoutRef.current, paneId, sessionId);
+    setLayout(next);
+    setSelectedId(sessionId);
+  };
+
+  const splitPane = (direction: SplitDirection) => {
+    const next = splitFocusedPane(
+      layoutRef.current,
+      direction,
+      `split-${crypto.randomUUID()}`,
+      `pane-${crypto.randomUUID()}`,
+    );
+    if (next === layoutRef.current) {
+      setNotice(`Pacium keeps split layouts to ${MAX_SPLIT_PANES} panes.`);
+      return;
+    }
+    setLayout(next);
+    setSelectedId(null);
+    setCapturedPaneId(null);
+  };
+
+  const closePaneView = (paneId: string) => {
+    const pane = listPanes(layoutRef.current.root).find(
+      (candidate) => candidate.id === paneId,
+    );
+    const session = sessions.find(({ id }) => id === pane?.sessionId);
+    const next = closePane(layoutRef.current, paneId);
+    setLayout(next);
+    setSelectedId(getFocusedPane(next)?.sessionId ?? null);
+    setCapturedPaneId(null);
+    if (session !== undefined) {
+      setNotice(
+        `${session.displayName} pane closed. Its process and tab are still available.`,
+      );
+    }
+  };
+
+  const focusAdjacentPane = (direction: -1 | 1) => {
+    const next = focusPaneByOffset(layoutRef.current, direction);
+    setLayout(next);
+    setSelectedId(getFocusedPane(next)?.sessionId ?? null);
+    setCapturedPaneId(null);
   };
 
   const closeViewTab = (sessionId: string) => {
@@ -285,6 +432,7 @@ export function App() {
         altKey: event.altKey,
         editable: isEditableTarget(event.target),
         dialogOpen: createOpen,
+        terminalCaptured: capturedPaneId !== null,
       });
       if (shortcut === null) {
         return;
@@ -292,29 +440,53 @@ export function App() {
 
       event.preventDefault();
       switch (shortcut.type) {
-        case "exit-terminal-capture":
-          terminalRef.current?.blur();
-          setTerminalCaptured(false);
+        case "exit-terminal-capture": {
+          const capturedPane = listPanes(layoutRef.current.root).find(
+            (pane) => pane.id === capturedPaneId,
+          );
+          if (
+            capturedPane !== undefined &&
+            capturedPane.sessionId !== null
+          ) {
+            terminalRefs.current.get(capturedPane.sessionId)?.blur();
+          }
+          setCapturedPaneId(null);
           return;
+        }
         case "new-terminal":
           setCreateOpen(true);
           return;
         case "previous-session":
-        case "next-session":
-          setSelectedId((current) =>
-            adjacentTerminalTabId(
-              tabs,
-              current,
-              shortcut.type === "previous-session" ? -1 : 1,
-            ),
+        case "next-session": {
+          const sessionId = adjacentTerminalTabId(
+            tabs,
+            selectedIdRef.current,
+            shortcut.type === "previous-session" ? -1 : 1,
           );
+          if (sessionId !== null) {
+            selectSession(sessionId);
+          }
           return;
+        }
         case "select-session": {
           const tab = tabs[shortcut.index];
           if (tab !== undefined) {
-            setSelectedId(tab.sessionId);
+            selectSession(tab.sessionId);
           }
+          return;
         }
+        case "split-horizontal":
+          splitPane("horizontal");
+          return;
+        case "split-vertical":
+          splitPane("vertical");
+          return;
+        case "previous-pane":
+          focusAdjacentPane(-1);
+          return;
+        case "next-pane":
+          focusAdjacentPane(1);
+          return;
       }
     };
 
@@ -322,7 +494,7 @@ export function App() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [createOpen, tabs]);
+  }, [capturedPaneId, createOpen, tabs]);
 
   return (
     <div className="app-shell">
@@ -469,12 +641,13 @@ export function App() {
 
         {tabSessions.length > 0 && (
           <div className="terminal-tabs-shell">
-            <div
-              aria-label="Open terminal tabs"
-              className="terminal-tab-list"
-              role="tablist"
-            >
-              {tabSessions.map(({ tab, session }) => (
+            <div className="terminal-tabs-row">
+              <div
+                aria-label="Open terminal tabs"
+                className="terminal-tab-list"
+                role="tablist"
+              >
+                {tabSessions.map(({ tab, session }) => (
                 <div
                   className={`terminal-tab ${
                     session.id === selectedId ? "is-active" : ""
@@ -594,68 +767,104 @@ export function App() {
                   >
                     <span aria-hidden="true">×</span>
                   </button>
-                </div>
-              ))}
+                  </div>
+                ))}
+              </div>
+              <div className="split-toolbar" aria-label="Split layout actions">
+                <button
+                  disabled={listPanes(layout.root).length >= MAX_SPLIT_PANES}
+                  onClick={() => splitPane("horizontal")}
+                  title="Split right (Cmd/Ctrl \\)"
+                  type="button"
+                >
+                  <span aria-hidden="true">▥</span>
+                  <span className="visually-hidden">Split right</span>
+                </button>
+                <button
+                  disabled={listPanes(layout.root).length >= MAX_SPLIT_PANES}
+                  onClick={() => splitPane("vertical")}
+                  title="Split down (Cmd/Ctrl Shift \\)"
+                  type="button"
+                >
+                  <span aria-hidden="true">▤</span>
+                  <span className="visually-hidden">Split down</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         <section
-          aria-label="Active terminal"
-          aria-labelledby={
-            selectedSession === null
-              ? undefined
-              : `terminal-tab-${selectedSession.id}`
-          }
-          className="terminal-panel"
+          aria-label="Terminal split workspace"
+          className="terminal-panel split-workspace"
           id="active-terminal-panel"
-          role="tabpanel"
+          role="region"
         >
-          {selectedSession === null ? (
+          {sessions.length === 0 ? (
             <EmptyWorkspace
               onCreate={() => setCreateOpen(true)}
-              onOpenRunning={
-                sessions[0] === undefined
-                  ? undefined
-                  : () => selectSession(sessions[0]!.id)
-              }
-              runningSessionCount={sessions.length}
+              onOpenRunning={undefined}
+              runningSessionCount={0}
             />
           ) : (
-            <>
-              <div className="terminal-chrome">
-                <span>{selectedSession.commandLabel}</span>
-                <span>
-                  {terminalCaptured
-                    ? "Terminal capture · Ctrl Shift ."
-                    : `${selectedSession.cols} × ${selectedSession.rows}`}
-                </span>
-              </div>
-              <TerminalSurface
-                ref={terminalRef}
-                ariaLabel={`${selectedSession.displayName} terminal`}
-                disabled={selectedSession.processState !== "live"}
-                onCaptureChange={setTerminalCaptured}
-                onInput={(data) => {
-                  if (selectedSession.processState === "live") {
-                    transportRef.current?.input(selectedSession.id, data);
-                  }
-                }}
-                onResize={(cols, rows) => {
-                  if (
-                    selectedSession.processState === "live" &&
-                    (cols !== selectedSession.cols ||
-                      rows !== selectedSession.rows)
-                  ) {
-                    transportRef.current?.resize(
-                      selectedSession.id,
-                      cols,
-                      rows,
-                    );
-                  }
-                }}
-              />
-            </>
+            <SplitWorkspace
+              capturedPaneId={capturedPaneId}
+              layout={layout}
+              onAssignSession={assignSession}
+              onCaptureChange={(paneId, captured) => {
+                if (captured) {
+                  const next = focusPane(layoutRef.current, paneId);
+                  setLayout(next);
+                  setSelectedId(getFocusedPane(next)?.sessionId ?? null);
+                  setCapturedPaneId(paneId);
+                  return;
+                }
+                setCapturedPaneId((current) =>
+                  current === paneId ? null : current,
+                );
+              }}
+              onClosePane={closePaneView}
+              onFocusPane={selectPane}
+              onInput={(sessionId, data) =>
+                transportRef.current?.input(sessionId, data)
+              }
+              onResize={(sessionId, cols, rows) =>
+                transportRef.current?.resize(sessionId, cols, rows)
+              }
+              onSetRatio={(splitId, ratio) =>
+                setLayout(
+                  setSplitRatio(layoutRef.current, splitId, ratio),
+                )
+              }
+              onSplit={(paneId, direction) => {
+                const focused = focusPane(layoutRef.current, paneId);
+                const next = splitFocusedPane(
+                  focused,
+                  direction,
+                  `split-${crypto.randomUUID()}`,
+                  `pane-${crypto.randomUUID()}`,
+                );
+                if (next === focused) {
+                  setNotice(
+                    `Pacium keeps split layouts to ${MAX_SPLIT_PANES} panes.`,
+                  );
+                  return;
+                }
+                setLayout(next);
+                setSelectedId(null);
+                setCapturedPaneId(null);
+              }}
+              onToggleMaximize={(paneId) => {
+                const next = toggleMaximizedPane(
+                  layoutRef.current,
+                  paneId,
+                );
+                setLayout(next);
+                setSelectedId(getFocusedPane(next)?.sessionId ?? null);
+              }}
+              sessions={sessions}
+              terminalRefs={terminalRefs}
+            />
           )}
         </section>
       </main>
@@ -729,13 +938,14 @@ export function App() {
 function applyServerMessage(
   message: ServerMessage,
   selectedIdRef: React.MutableRefObject<string | null>,
-  syncRef: React.MutableRefObject<TerminalSync | null>,
-  terminalRef: React.MutableRefObject<TerminalSurfaceHandle | null>,
+  syncRefs: React.MutableRefObject<Map<string, TerminalSync>>,
+  terminalRefs: React.MutableRefObject<Map<string, TerminalSurfaceHandle>>,
   setSessions: React.Dispatch<React.SetStateAction<SessionSummary[]>>,
   setSessionListReady: React.Dispatch<React.SetStateAction<boolean>>,
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>,
   tabsRef: React.MutableRefObject<TerminalTab[]>,
   setTabs: React.Dispatch<React.SetStateAction<TerminalTab[]>>,
+  setLayout: React.Dispatch<React.SetStateAction<SplitLayoutState>>,
   setDefaultCwd: React.Dispatch<React.SetStateAction<string>>,
   setLaunchPresets: React.Dispatch<
     React.SetStateAction<LaunchPresetCapability[]>
@@ -773,8 +983,13 @@ function applyServerMessage(
       setSessions((current) => upsertSession(current, message.session));
       return;
     case "session.closed":
+      syncRefs.current.delete(message.sessionId);
+      terminalRefs.current.delete(message.sessionId);
       setSessions((current) =>
         current.filter(({ id }) => id !== message.sessionId),
+      );
+      setLayout((current) =>
+        clearSessionFromLayout(current, message.sessionId),
       );
       {
         const next = closeTerminalTab(
@@ -787,20 +1002,18 @@ function applyServerMessage(
       }
       return;
     case "terminal.snapshot": {
-      if (selectedIdRef.current !== message.sessionId) {
-        return;
-      }
-      const sync = syncRef.current;
-      if (sync === null || sync.sessionId !== message.sessionId) {
+      const sync = syncRefs.current.get(message.sessionId);
+      if (sync === undefined) {
         return;
       }
       sync.epoch = message.epoch;
       sync.sequence = message.sequence;
       sync.snapshotApplied = true;
-      terminalRef.current?.applySnapshot(message);
+      const terminal = terminalRefs.current.get(message.sessionId);
+      terminal?.applySnapshot(message);
       for (const frame of sync.pending) {
         if (frame.epoch === sync.epoch && frame.sequence > sync.sequence) {
-          terminalRef.current?.write(frame.data);
+          terminal?.write(frame.data);
           sync.sequence = frame.sequence;
         }
       }
@@ -810,7 +1023,6 @@ function applyServerMessage(
           "This session exceeded the reconnect snapshot limit; the newest screen state was restored.",
         );
       }
-      terminalRef.current?.focus();
       return;
     }
     case "error":
@@ -823,15 +1035,11 @@ function applyServerMessage(
 
 function applyTerminalFrame(
   frame: TerminalDataFrame,
-  selectedIdRef: React.MutableRefObject<string | null>,
-  syncRef: React.MutableRefObject<TerminalSync | null>,
-  terminalRef: React.MutableRefObject<TerminalSurfaceHandle | null>,
+  syncRefs: React.MutableRefObject<Map<string, TerminalSync>>,
+  terminalRefs: React.MutableRefObject<Map<string, TerminalSurfaceHandle>>,
 ): void {
-  if (selectedIdRef.current !== frame.sessionId) {
-    return;
-  }
-  const sync = syncRef.current;
-  if (sync === null || sync.sessionId !== frame.sessionId) {
+  const sync = syncRefs.current.get(frame.sessionId);
+  if (sync === undefined) {
     return;
   }
   if (!sync.snapshotApplied) {
@@ -843,7 +1051,7 @@ function applyTerminalFrame(
   if (frame.epoch !== sync.epoch || frame.sequence <= sync.sequence) {
     return;
   }
-  terminalRef.current?.write(frame.data);
+  terminalRefs.current.get(frame.sessionId)?.write(frame.data);
   sync.sequence = frame.sequence;
 }
 
