@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `bc8b937`
 - Target milestone: Milestone 1
-- Status: In progress
+- Status: Implemented; rendered browser validation pending
 
 ## Objective
 
@@ -121,3 +121,14 @@ Add a bounded ephemeral palette catalog derived from current sessions, selected 
 - Product: scoped by the accepted keyboard and command specification.
 - Architecture: browser-local only; no ADR change.
 - Security: no new shell, filesystem, or transport boundary.
+
+## Result
+
+- A pure catalog derives bounded workspace, split, selected-session, and open-session entries from current browser/server summaries.
+- Deterministic search normalizes case and diacritics, matches bounded tokens across labels and context, ranks the selected terminal first, and returns at most 40 results.
+- `Cmd/Ctrl K`, `?`, arrows, Enter, Escape, pointer selection, modal focus containment, and invoking-focus restoration are implemented without taking keys from terminal capture or editable controls.
+- Safe commands reuse current browser actions. Transport-backed commands reuse existing typed operations. Termination opens explicit confirmation before any mutation.
+- The responsive command surface includes selected, disabled, empty, commands, and searchable shortcut-reference states.
+- `pnpm verify` passed on 2026-07-27 with 20 test files and 82 tests.
+- Both loopback development services passed direct HTTP smoke checks.
+- Rendered pointer, keyboard, modal-focus, responsive, and international-layout validation remains open because the browser runtime reported no available backend.
