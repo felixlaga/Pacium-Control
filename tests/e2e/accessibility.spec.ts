@@ -95,6 +95,12 @@ test("narrow shell exposes panels as dismissible drawers at 320 CSS pixels", asy
   await expect(
     sidebar.getByRole("region", { name: "Pacium workspace definition" }),
   ).toBeVisible();
+  const primaryRoles = sidebar.locator(".pacium-role-group");
+  await expect(primaryRoles).toBeVisible();
+  await expect(primaryRoles.locator(".pacium-role-card")).toHaveCount(2);
+  await expect(
+    primaryRoles.locator('[data-role="orchestrator"]'),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Close session sidebar" }).click();
   await expect(sidebar).toBeHidden();
 
@@ -150,6 +156,18 @@ test("two-times zoom and system accessibility preferences keep controls usable",
   await expect(paciumButton).toBeFocused();
   await paciumButton.press("Enter");
   await expect(paciumButton).toHaveAttribute("aria-pressed", "true");
+  const primaryRoles = page.locator(".pacium-role-group");
+  await expect(primaryRoles).toBeVisible();
+  const assignMeta = primaryRoles
+    .locator('[data-role="meta"]')
+    .getByRole("button", { name: "Assign" });
+  await assignMeta.click();
+  const roleDialog = page.getByRole("dialog", { name: "Assign Meta" });
+  await expect(roleDialog).toBeVisible();
+  await expect(roleDialog.getByLabel("Launch preset")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(roleDialog).toBeHidden();
+  await expect(assignMeta).toBeFocused();
 
   const scrollWidth = await page.evaluate(
     () => document.documentElement.scrollWidth,
