@@ -2,6 +2,32 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.8.0 — consistent session actions — 2026-07-27
+
+### Added
+
+- One consequence-aware session menu shared by the workspace header, terminal panes, and session/tab context menus.
+- Server-owned rename with strict bounded protocol validation and live summary updates.
+- Duplicate and ended-session relaunch flows that reuse retained preset, canonical cwd, and terminal dimensions without changing the source.
+- Clipboard-aware cwd copy, explicit `SIGINT`, view-only closure, and confirmed live-process termination.
+- Repository reveal through a server-selected canonical root and fixed no-shell macOS/Linux host adapter.
+- Deterministic protocol, server, WebSocket, host-adapter, action-model, and server-rendered component tests.
+- A scoped PC-024 issue and implementation plan with acceptance evidence.
+
+### Verified
+
+- Formatting, lint, type checking, 70 automated tests, and both production bundles pass.
+- The development UI and direct `/api/health` endpoint returned HTTP 200 on loopback.
+- Host-action errors are typed and bounded; browser-supplied reveal paths are rejected by the protocol.
+
+### Known limitations
+
+- Rendered pointer, keyboard, dialog-focus, and accessibility validation remains pending because no browser backend was available.
+- Relaunch context is in memory only and does not survive a local-server restart.
+- Repository reveal acts on the Pacium host, including during remote Tailscale Serve access.
+- The current machine ran verification on Node.js 26.4.0; the pinned Node.js 24.18.x runtime remains to be verified.
+- The web bundle is 656 kB before gzip and still emits the tracked chunk-size warning.
+
 ## 0.7.0 — split-pane terminal workspace — 2026-07-27
 
 ### Added
