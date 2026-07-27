@@ -10,6 +10,7 @@ import {
   type QueueItemInspectionIdentity,
   type PaciumWorkspace,
   type QueueQuestionAnswerPayload,
+  type QueueResolutionRequest,
   type ServerMessage,
   type TerminalDataFrame,
 } from "@pacium/contracts";
@@ -240,6 +241,12 @@ export class PaciumTransport {
     this.send(
       queueDecisionDeliveryMessage(decisionId, decisionHash, requestId),
     );
+    return requestId;
+  }
+
+  public resolveQueueDecision(request: QueueResolutionRequest): string {
+    const requestId = crypto.randomUUID();
+    this.send(queueDecisionResolutionMessage(request, requestId));
     return requestId;
   }
 
@@ -578,6 +585,17 @@ export function queueDecisionDeliveryMessage(
     requestId,
     decisionId,
     decisionHash,
+  };
+}
+
+export function queueDecisionResolutionMessage(
+  request: QueueResolutionRequest,
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.queue.decision.resolve" }> {
+  return {
+    type: "pacium.queue.decision.resolve",
+    requestId,
+    ...request,
   };
 }
 

@@ -8,7 +8,10 @@ import type {
   QueueItemDecisionState,
   QueueItemInspection,
   QueueItemInspectionIdentity,
+  QueueItemReconciliation,
   QueueItemType,
+  QueueResolutionRequest,
+  QueueResolutionResult,
   QueueSourceObservation,
   QueueSourcesObservation,
 } from "@pacium/contracts";
@@ -41,6 +44,10 @@ export interface PaciumQueueInspectionState {
   deliveryRequestId: string | null;
   deliveryStatus: "idle" | "submitting" | "error";
   deliveryErrorMessage: string | null;
+  reconciliation: QueueItemReconciliation | null;
+  resolutionRequestId: string | null;
+  resolutionStatus: "idle" | "submitting" | "error";
+  resolutionErrorMessage: string | null;
 }
 
 export interface QueueItemInspectionEvidence extends QueueItemInspectionIdentity {
@@ -66,6 +73,10 @@ export const CLOSED_QUEUE_INSPECTION: PaciumQueueInspectionState = {
   deliveryRequestId: null,
   deliveryStatus: "idle",
   deliveryErrorMessage: null,
+  reconciliation: null,
+  resolutionRequestId: null,
+  resolutionStatus: "idle",
+  resolutionErrorMessage: null,
 };
 
 export function queueItemSelection(
@@ -126,6 +137,10 @@ export function beginQueueItemInspection(
     deliveryRequestId: null,
     deliveryStatus: "idle",
     deliveryErrorMessage: null,
+    reconciliation: null,
+    resolutionRequestId: null,
+    resolutionStatus: "idle",
+    resolutionErrorMessage: null,
   };
 }
 
@@ -135,6 +150,7 @@ export function acceptQueueItemInspection(
   inspection: QueueItemInspection,
   decisionState: QueueItemDecisionState | null,
   deliveryState: QueueDeliveryState | null = null,
+  reconciliation: QueueItemReconciliation | null = null,
 ): PaciumQueueInspectionState {
   if (
     state.requestId !== requestId ||
@@ -159,6 +175,10 @@ export function acceptQueueItemInspection(
       deliveryRequestId: null,
       deliveryStatus: "idle",
       deliveryErrorMessage: null,
+      reconciliation: null,
+      resolutionRequestId: null,
+      resolutionStatus: "idle",
+      resolutionErrorMessage: null,
     };
   }
   const originalText = decodeQueueItemText(
@@ -182,6 +202,10 @@ export function acceptQueueItemInspection(
       deliveryRequestId: null,
       deliveryStatus: "idle",
       deliveryErrorMessage: null,
+      reconciliation: null,
+      resolutionRequestId: null,
+      resolutionStatus: "idle",
+      resolutionErrorMessage: null,
     };
   }
   return {
@@ -196,6 +220,10 @@ export function acceptQueueItemInspection(
     deliveryRequestId: null,
     deliveryStatus: "idle",
     deliveryErrorMessage: null,
+    reconciliation,
+    resolutionRequestId: null,
+    resolutionStatus: "idle",
+    resolutionErrorMessage: null,
   };
 }
 
@@ -245,6 +273,10 @@ export function acceptQueueDecision(
       deliveryRequestId: null,
       deliveryStatus: "idle",
       deliveryErrorMessage: null,
+      reconciliation: null,
+      resolutionRequestId: null,
+      resolutionStatus: "idle",
+      resolutionErrorMessage: null,
     };
   }
   const error = result.error;
@@ -267,6 +299,10 @@ export function acceptQueueDecision(
       deliveryRequestId: null,
       deliveryStatus: "idle",
       deliveryErrorMessage: null,
+      reconciliation: null,
+      resolutionRequestId: null,
+      resolutionStatus: "idle",
+      resolutionErrorMessage: null,
     };
   }
   return {
@@ -300,7 +336,7 @@ export function beginQueueDelivery(
   if (
     state.status !== "ready" ||
     state.decisionState?.status !== "decided" ||
-    state.deliveryState?.status !== "ready" ||
+    !["ready", "ready_retry"].includes(state.deliveryState?.status ?? "") ||
     state.deliveryStatus === "submitting"
   ) {
     return state;
@@ -336,6 +372,10 @@ export function acceptQueueDelivery(
     deliveryRequestId: null,
     deliveryStatus: "idle",
     deliveryErrorMessage: null,
+    reconciliation: null,
+    resolutionRequestId: null,
+    resolutionStatus: "idle",
+    resolutionErrorMessage: null,
   };
 }
 
@@ -352,6 +392,84 @@ export function interruptQueueDelivery(
     deliveryRequestId: null,
     deliveryStatus: "error",
     deliveryErrorMessage: message,
+  };
+}
+
+export function beginQueueResolution(
+  state: PaciumQueueInspectionState,
+  requestId: string,
+  request: QueueResolutionRequest,
+): PaciumQueueInspectionState {
+  const decision =
+    state.decisionState?.status === "decided"
+      ? state.decisionState.decision
+      : null;
+  if (
+    state.status !== "ready" ||
+    decision === null ||
+    state.reconciliation === null ||
+    state.resolutionStatus === "submitting" ||
+    request.decisionId !== decision.decisionId ||
+    request.decisionHash !== decision.decisionHash
+  ) {
+    return state;
+  }
+  return {
+    ...state,
+    resolutionRequestId: requestId,
+    resolutionStatus: "submitting",
+    resolutionErrorMessage: null,
+  };
+}
+
+export function acceptQueueResolution(
+  state: PaciumQueueInspectionState,
+  requestId: string,
+  result: QueueResolutionResult,
+): PaciumQueueInspectionState {
+  const decision =
+    state.decisionState?.status === "decided"
+      ? state.decisionState.decision
+      : null;
+  if (
+    state.resolutionRequestId !== requestId ||
+    decision === null ||
+    result.decisionId !== decision.decisionId ||
+    result.decisionHash !== decision.decisionHash
+  ) {
+    return state;
+  }
+  if (result.status === "recorded" || result.status === "existing") {
+    return {
+      ...state,
+      resolutionRequestId: null,
+      resolutionStatus: "idle",
+      resolutionErrorMessage: null,
+    };
+  }
+  return {
+    ...state,
+    resolutionRequestId: null,
+    resolutionStatus: "error",
+    resolutionErrorMessage:
+      result.error?.message ??
+      "The lifecycle label was not recorded. External state was not changed.",
+  };
+}
+
+export function interruptQueueResolution(
+  state: PaciumQueueInspectionState,
+  requestId: string,
+  message: string,
+): PaciumQueueInspectionState {
+  if (state.resolutionRequestId !== requestId) {
+    return state;
+  }
+  return {
+    ...state,
+    resolutionRequestId: null,
+    resolutionStatus: "error",
+    resolutionErrorMessage: message,
   };
 }
 
@@ -395,6 +513,10 @@ export function interruptQueueItemInspection(
     deliveryRequestId: null,
     deliveryStatus: "idle",
     deliveryErrorMessage: null,
+    reconciliation: null,
+    resolutionRequestId: null,
+    resolutionStatus: "idle",
+    resolutionErrorMessage: null,
   };
 }
 
@@ -438,6 +560,10 @@ export function reconcileQueueItemInspection(
     deliveryRequestId: null,
     deliveryStatus: "idle",
     deliveryErrorMessage: null,
+    reconciliation: null,
+    resolutionRequestId: null,
+    resolutionStatus: "idle",
+    resolutionErrorMessage: null,
   };
 }
 
@@ -470,6 +596,10 @@ export function reconcileQueueItemInspectionConfig(
     deliveryRequestId: null,
     deliveryStatus: "idle",
     deliveryErrorMessage: null,
+    reconciliation: null,
+    resolutionRequestId: null,
+    resolutionStatus: "idle",
+    resolutionErrorMessage: null,
   };
 }
 

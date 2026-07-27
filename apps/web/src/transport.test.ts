@@ -6,6 +6,7 @@ import {
   paciumConfigReplaceMessage,
   queueApprovalDecisionMessage,
   queueDecisionDeliveryMessage,
+  queueDecisionResolutionMessage,
   queueItemInspectMessage,
   queueObserveMessage,
   queueQuestionAnswerMessage,
@@ -236,6 +237,30 @@ describe("queue observation transport", () => {
     expect(message).not.toHaveProperty("role");
     expect(message).not.toHaveProperty("payload");
     expect(message).not.toHaveProperty("retry");
+  });
+
+  it("sends one exact human-labelled lifecycle request", () => {
+    const request = {
+      decisionId: "28c9142a-8986-43c7-9451-445fd8c13c3e",
+      decisionHash: "c".repeat(64),
+      action: "confirmed_not_delivered" as const,
+      delivery: {
+        deliveryId: "4699b11f-94d3-430a-960e-1c574a03db41",
+        deliveryHash: "e".repeat(64),
+      },
+      relatedDecision: null,
+      note: "Verified outside Pacium.",
+    };
+    expect(
+      queueDecisionResolutionMessage(
+        request,
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ),
+    ).toEqual({
+      type: "pacium.queue.decision.resolve",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ...request,
+    });
   });
 });
 

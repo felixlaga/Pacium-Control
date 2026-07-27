@@ -108,11 +108,13 @@ import {
   acceptQueueDecision,
   acceptQueueDelivery,
   acceptQueueItemInspection,
+  acceptQueueResolution,
   beginQueueDecision,
   beginQueueDelivery,
   beginQueueItemInspection,
   closeQueueItemInspection,
   interruptQueueItemInspection,
+  interruptQueueResolution,
   interruptQueueDecision,
   interruptQueueDelivery,
   reconcileQueueItemInspection,
@@ -618,6 +620,7 @@ export function App() {
         event.message.inspection,
         event.message.decisionState,
         event.message.deliveryState,
+        event.message.reconciliation,
       );
       if (accepted !== paciumQueueInspectionRef.current) {
         paciumQueueInspectionRef.current = accepted;
@@ -667,9 +670,60 @@ export function App() {
         event.message.result,
       );
       if (accepted !== paciumQueueInspectionRef.current) {
-        paciumQueueInspectionRef.current = accepted;
-        setPaciumQueueInspection(accepted);
+        let next = accepted;
+        if (
+          event.message.result.state.delivery !== null &&
+          accepted.selection !== null &&
+          transportRef.current !== null
+        ) {
+          const inspectionRequestId =
+            transportRef.current.requestQueueItemInspection(
+              accepted.selection.identity,
+            );
+          next = beginQueueItemInspection(
+            accepted.selection,
+            inspectionRequestId,
+          );
+        }
+        paciumQueueInspectionRef.current = next;
+        setPaciumQueueInspection(next);
         setNotice(queueDeliveryNotice(event.message.result));
+      }
+      return;
+    }
+    if (event.message.type === "pacium.queue.resolution") {
+      const accepted = acceptQueueResolution(
+        paciumQueueInspectionRef.current,
+        event.message.requestId,
+        event.message.result,
+      );
+      if (accepted !== paciumQueueInspectionRef.current) {
+        let next = accepted;
+        if (
+          (event.message.result.status === "recorded" ||
+            event.message.result.status === "existing") &&
+          accepted.selection !== null &&
+          transportRef.current !== null
+        ) {
+          const inspectionRequestId =
+            transportRef.current.requestQueueItemInspection(
+              accepted.selection.identity,
+            );
+          next = beginQueueItemInspection(
+            accepted.selection,
+            inspectionRequestId,
+          );
+        }
+        paciumQueueInspectionRef.current = next;
+        setPaciumQueueInspection(next);
+        setNotice(
+          event.message.result.status === "recorded"
+            ? "Human-labelled lifecycle evidence recorded. Rechecking the exact item and target."
+            : event.message.result.status === "existing"
+              ? "The existing lifecycle evidence was recovered. Rechecking the exact item and target."
+              : (event.message.result.error?.message ??
+                "The lifecycle label was not recorded."),
+        );
       }
       return;
     }
@@ -905,6 +959,19 @@ export function App() {
         setPaciumQueueInspection(interruptedDelivery);
         setNotice(
           "Delivery outcome is not confirmed. Pacium did not retry; reopen the exact item to inspect durable state.",
+        );
+        return;
+      }
+      const interruptedResolution = interruptQueueResolution(
+        paciumQueueInspectionRef.current,
+        event.message.requestId,
+        `Lifecycle outcome is not confirmed. ${event.message.message}`,
+      );
+      if (interruptedResolution !== paciumQueueInspectionRef.current) {
+        paciumQueueInspectionRef.current = interruptedResolution;
+        setPaciumQueueInspection(interruptedResolution);
+        setNotice(
+          "Lifecycle outcome is not confirmed. Reopen the exact item before another deliberate action.",
         );
         return;
       }

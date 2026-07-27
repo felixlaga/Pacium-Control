@@ -5,14 +5,17 @@ import {
   acceptQueueDecision,
   acceptQueueDelivery,
   acceptQueueItemInspection,
+  acceptQueueResolution,
   beginQueueDecision,
   beginQueueDelivery,
   beginQueueItemInspection,
+  beginQueueResolution,
   closeQueueItemInspection,
   decodeQueueItemText,
   interruptQueueItemInspection,
   interruptQueueDecision,
   interruptQueueDelivery,
+  interruptQueueResolution,
   queueItemSelection,
   reconcileQueueItemInspection,
   reconcileQueueItemInspectionConfig,
@@ -360,6 +363,78 @@ describe("queue item inspection state", () => {
       deliveryState: { status: "ready" },
     });
   });
+
+  it("correlates lifecycle labels to the exact inspected decision", () => {
+    const selection = queueItemSelection(source(), observation(), 4)!;
+    const ready = acceptQueueItemInspection(
+      beginQueueItemInspection(selection, "inspect-1"),
+      "inspect-1",
+      detail(),
+      decided(),
+      readyDelivery(),
+      reconciliation(),
+    );
+    const request = {
+      decisionId: decisionResult().decision.decisionId,
+      decisionHash: decisionResult().decision.decisionHash,
+      action: "acknowledged" as const,
+      delivery: {
+        deliveryId: "4699b11f-94d3-430a-960e-1c574a03db41",
+        deliveryHash: "e".repeat(64),
+      },
+      relatedDecision: null,
+      note: null,
+    };
+    const submitting = beginQueueResolution(ready, "resolution-1", request);
+    expect(submitting).toMatchObject({
+      resolutionRequestId: "resolution-1",
+      resolutionStatus: "submitting",
+    });
+    const result = {
+      status: "recorded" as const,
+      decisionId: request.decisionId,
+      decisionHash: request.decisionHash,
+      resolution: {
+        resolutionId: "253a4e0e-d606-4438-9e7e-c27b0021994c",
+        ...request,
+        actor: {
+          kind: "local_operator" as const,
+          label: "Local operator" as const,
+        },
+        source: "human_labelled" as const,
+        recordedAt: "2026-07-27T12:07:00.000Z",
+        resolutionHash: "f".repeat(64),
+      },
+      error: null,
+    };
+    expect(acceptQueueResolution(submitting, "unrelated", result)).toBe(
+      submitting,
+    );
+    expect(
+      acceptQueueResolution(submitting, "resolution-1", {
+        ...result,
+        decisionHash: "0".repeat(64),
+      }),
+    ).toBe(submitting);
+    expect(
+      acceptQueueResolution(submitting, "resolution-1", result),
+    ).toMatchObject({
+      resolutionRequestId: null,
+      resolutionStatus: "idle",
+      resolutionErrorMessage: null,
+    });
+    expect(
+      interruptQueueResolution(
+        submitting,
+        "resolution-1",
+        "Lifecycle outcome is unknown.",
+      ),
+    ).toMatchObject({
+      resolutionRequestId: null,
+      resolutionStatus: "error",
+      resolutionErrorMessage: "Lifecycle outcome is unknown.",
+    });
+  });
 });
 
 function source() {
@@ -535,6 +610,24 @@ function answerTarget() {
     methodId: "answers",
     methodLabel: "Pacium answers",
     path: "/queue/PACIUM-ANSWERS",
+  };
+}
+
+function reconciliation() {
+  return {
+    decisionId: decisionResult().decision.decisionId,
+    decisionHash: decisionResult().decision.decisionHash,
+    conflicts: [],
+    priorDecisions: { decisions: [], truncated: false },
+    attempts: [],
+    artifact: null,
+    lifecycle: {
+      status: "awaiting_evidence" as const,
+      current: null,
+      history: [],
+      historyTruncated: false,
+    },
+    retry: { status: "not_applicable" as const },
   };
 }
 
