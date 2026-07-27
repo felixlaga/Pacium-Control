@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `b60edabf331ea18d1f56a0759aaf240efc2158a6`
 - Target milestone: Milestone 3
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -255,3 +255,28 @@ The editor:
   state retain separate owners.
 - Security: all mutation uses existing strict authenticated fixed operations;
   no new command or content authority is added.
+
+## Completion result
+
+- Pacium mode now renders stable Meta and Orchestrator cards before ordinary
+  sessions, resolves only immutable accepted session IDs, and labels
+  live/starting/ending/ended/failed/missing/disconnected evidence without name
+  inference.
+- The role-scoped editor preserves every non-selected-role workspace field and
+  selects only eligible live sessions, fixed capabilities, and configured
+  repositories. First setup creates only the strict minimal workspace.
+- Existing session bindings open through the current tab/split/attach path.
+  Preset launch uses the existing fixed `session.create` operation, correlates
+  its exact response, and saves the exact created ID through optimistic
+  protocol-10 replacement.
+- Disconnect, create failure, replacement conflict, and lost-response paths do
+  not replay or silently terminate a created PTY. Fresh config/session evidence
+  and explicit action are required.
+- `pnpm verify` passed 72 test files and 380 tests. `pnpm test:e2e` passed all
+  nine Chromium workflows, including the real two-role lifecycle and
+  responsive/focus evidence.
+- PC-043 remains responsible for an explicit prompt target and deliberate
+  terminal-input send. PC-042 added no prompt, queue, worker, provider, tmux,
+  or remote-access behavior.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  787.01 kB web bundle retains Vite's 500 kB warning.
