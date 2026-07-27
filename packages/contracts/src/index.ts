@@ -3,5 +3,6 @@ export * from "./pacium-config.js";
 export * from "./protocol.js";
 export * from "./queue-classification.js";
 export * from "./queue-decision.js";
+export * from "./queue-delivery.js";
 export * from "./queue-item-inspection.js";
 export * from "./queue-observation.js";
