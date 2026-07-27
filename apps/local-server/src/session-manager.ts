@@ -12,6 +12,7 @@ import type {
 import {
   MAX_TERMINAL_SNAPSHOT_CHARS,
   type GitChangesObservation,
+  type GitDiffObservation,
   type LaunchPresetId,
   type RepositoryObservation,
   type SessionSummary,
@@ -19,6 +20,7 @@ import {
 
 import type { LaunchPresetDefinition } from "./launch-presets.js";
 import { inspectGitChanges, type GitChangesInspector } from "./git-changes.js";
+import { inspectGitDiff, type GitDiffInspector } from "./git-diff.js";
 import { HostActionError, type HostActions } from "./host-actions.js";
 import type { PtyFactory, PtyProcess } from "./pty-adapter.js";
 import {
@@ -115,6 +117,14 @@ export class SessionManager {
       observedAt === undefined
         ? inspectGitChanges(repository)
         : inspectGitChanges(repository, { observedAt }),
+    private readonly gitDiffInspector: GitDiffInspector = (
+      repository,
+      path,
+      observedAt,
+    ) =>
+      observedAt === undefined
+        ? inspectGitDiff(repository, path)
+        : inspectGitDiff(repository, path, { observedAt }),
   ) {}
 
   public list(): SessionSummary[] {
@@ -318,6 +328,18 @@ export class SessionManager {
     const session = this.requireSession(sessionId);
     return this.gitChangesInspector(
       session.summary.repository,
+      new Date().toISOString(),
+    );
+  }
+
+  public repositoryDiff(
+    sessionId: string,
+    path: string,
+  ): Promise<GitDiffObservation> {
+    const session = this.requireSession(sessionId);
+    return this.gitDiffInspector(
+      session.summary.repository,
+      path,
       new Date().toISOString(),
     );
   }

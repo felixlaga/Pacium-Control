@@ -4,6 +4,7 @@ import { FakePtyFactory } from "@pacium/test-utils";
 import type { HostActions } from "./host-actions.js";
 import type { LaunchPresetDefinition } from "./launch-presets.js";
 import type { GitChangesInspector } from "./git-changes.js";
+import type { GitDiffInspector } from "./git-diff.js";
 import type { RepositoryInspector } from "./repository-context.js";
 import { SessionError, SessionManager } from "./session-manager.js";
 
@@ -59,6 +60,8 @@ function createManager(
     Promise.resolve(repositoryObservation(cwd, "dev", observedAt)),
   gitChangesInspector: GitChangesInspector = (repository, observedAt) =>
     Promise.resolve(emptyChanges(repository.root, observedAt)),
+  gitDiffInspector: GitDiffInspector = (repository, path, observedAt) =>
+    Promise.resolve(emptyDiff(repository.root, path, observedAt)),
 ): SessionManager {
   return new SessionManager(
     factory,
@@ -66,6 +69,7 @@ function createManager(
     hostActions,
     inspectRepository,
     gitChangesInspector,
+    gitDiffInspector,
   );
 }
 
@@ -102,6 +106,21 @@ function emptyChanges(root: string | null, observedAt?: string) {
       conflictCount: 0,
     },
     truncated: false,
+    error: null,
+  };
+}
+
+function emptyDiff(root: string | null, path: string, observedAt?: string) {
+  return {
+    status: root === null ? ("not_repository" as const) : ("empty" as const),
+    root,
+    headCommit: root === null ? null : "a".repeat(40),
+    path,
+    previousPath: null,
+    observedAt: observedAt ?? "2026-07-27T10:00:00.000Z",
+    sections: [],
+    patchBytes: 0,
+    patchLines: 0,
     error: null,
   };
 }
@@ -318,6 +337,59 @@ describe("SessionManager", () => {
       expect.any(String),
     );
     expect(factory.processes[0]?.signals).toEqual([]);
+    manager.shutdown();
+  });
+
+  it("reads one diff from server-owned session evidence without changing the PTY", async () => {
+    const factory = new FakePtyFactory();
+    const inspectDiff = vi
+      .fn<GitDiffInspector>()
+      .mockImplementation((repository, path, observedAt) =>
+        Promise.resolve({
+          ...emptyDiff(repository.root, path, observedAt),
+          status: "ready",
+          previousPath: "src/old.ts",
+          sections: [
+            {
+              source: "combined",
+              patch: "@@ -1 +1 @@\n-old\n+new\n",
+              byteCount: 22,
+              lineCount: 3,
+            },
+          ],
+          patchBytes: 22,
+          patchLines: 3,
+        }),
+      );
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      inspectDiff,
+    );
+    const session = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+    const ptyProcess = factory.processes[0];
+
+    await expect(
+      manager.repositoryDiff(session.id, "src/new.ts"),
+    ).resolves.toMatchObject({
+      status: "ready",
+      path: "src/new.ts",
+      previousPath: "src/old.ts",
+    });
+    expect(inspectDiff).toHaveBeenCalledWith(
+      session.repository,
+      "src/new.ts",
+      expect.any(String),
+    );
+    expect(factory.processes[0]).toBe(ptyProcess);
+    expect(ptyProcess?.signals).toEqual([]);
     manager.shutdown();
   });
 
