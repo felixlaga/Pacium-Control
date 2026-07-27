@@ -53,10 +53,10 @@ describe("queue decision service", () => {
           label: "Local operator",
         },
         decidedAt: "2026-07-27T14:00:00.000Z",
-        decisionHash: expect.stringMatching(/^[0-9a-f]{64}$/),
       },
       error: null,
     });
+    expect(result.decision?.decisionHash).toMatch(/^[0-9a-f]{64}$/);
     expect(fixture.store.append).toHaveBeenCalledTimes(1);
   });
 
@@ -221,26 +221,30 @@ function serviceFixture(
 } {
   const decisions: QueueDecisionRecord[] = [];
   const store = {
-    inspect: vi.fn<QueueDecisionStateStore["inspect"]>(async () =>
-      decisions.length === 0
-        ? {
-            status: "empty",
-            revision: 0,
-            decisions: [],
-            error: null,
-          }
-        : {
-            status: "ready",
-            revision: decisions.length,
-            decisions,
-            error: null,
-          },
+    inspect: vi.fn<QueueDecisionStateStore["inspect"]>(() =>
+      Promise.resolve(
+        decisions.length === 0
+          ? {
+              status: "empty",
+              revision: 0,
+              decisions: [],
+              error: null,
+            }
+          : {
+              status: "ready",
+              revision: decisions.length,
+              decisions,
+              error: null,
+            },
+      ),
     ),
-    append: vi.fn<QueueDecisionStateStore["append"]>(async (decision) => ({
-      status: "recorded",
-      revision: decisions.length + 1,
-      decision,
-    })),
+    append: vi.fn<QueueDecisionStateStore["append"]>((decision) =>
+      Promise.resolve({
+        status: "recorded",
+        revision: decisions.length + 1,
+        decision,
+      }),
+    ),
   };
   return {
     service: new QueueDecisionService(sourceReader, store, {

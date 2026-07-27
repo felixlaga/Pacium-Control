@@ -680,11 +680,17 @@ describe("localhost HTTP and WebSocket boundary", () => {
             kind: "local_operator",
             label: "Local operator",
           },
-          decisionHash: expect.stringMatching(/^[0-9a-f]{64}$/),
         },
         error: null,
       },
     });
+    if (
+      recorded.type !== "pacium.queue.decision" ||
+      recorded.result.status !== "recorded"
+    ) {
+      throw new Error("Expected a recorded queue decision");
+    }
+    expect(recorded.result.decision.decisionHash).toMatch(/^[0-9a-f]{64}$/);
     const statePath = join(setup.config.dataDirectory, "queue-state.json");
     const firstState = await readFile(statePath);
     expect((await lstat(statePath)).mode & 0o777).toBe(0o600);

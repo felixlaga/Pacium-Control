@@ -19,10 +19,8 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 
 import { computeQueueDecisionHash } from "./queue-decision-hash.js";
-import {
-  QueueDecisionStore,
-  QueueDecisionStoreWriteError,
-} from "./queue-decision-store.js";
+import { QueueDecisionStore } from "./queue-decision-store.js";
+import type { QueueDecisionStoreWriteError } from "./queue-decision-store.js";
 
 const cleanup = new Set<string>();
 
