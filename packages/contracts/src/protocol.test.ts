@@ -47,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for explicit decision delivery", () => {
-    expect(PROTOCOL_VERSION).toBe(16);
+  it("advances the wire contract for control context inspection", () => {
+    expect(PROTOCOL_VERSION).toBe(17);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -169,6 +169,83 @@ describe("client protocol", () => {
           workspace: null,
           error: null,
         },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts only an identity-free control context request", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.context.inspect",
+        requestId,
+      }).success,
+    ).toBe(true);
+    for (const extra of [
+      { path: "/private/context" },
+      { workspaceRevision: 7 },
+      { sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5" },
+      { count: 100 },
+      { command: "cat OBJECTIVE" },
+    ]) {
+      expect(
+        ClientMessageSchema.safeParse({
+          type: "pacium.context.inspect",
+          requestId,
+          ...extra,
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  it("accepts a strict workspace-bound control context response", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    const observedAt = "2026-07-27T12:00:00.000Z";
+    const source = (kind: "objective" | "plan") => ({
+      kind,
+      status: "unconfigured",
+      path: null,
+      format: null,
+      observedAt,
+      byteLength: null,
+      modifiedAt: null,
+      contentHash: null,
+      contentBase64: null,
+      error: null,
+    });
+    const message = {
+      type: "pacium.context",
+      requestId,
+      observation: {
+        status: "ready",
+        workspaceId: "primary",
+        workspaceRevision: 7,
+        objective: source("objective"),
+        plan: source("plan"),
+        recentDecisions: {
+          status: "ready",
+          decisions: [],
+          truncated: false,
+          error: null,
+        },
+        observedAt,
+        error: null,
+      },
+    };
+    expect(ServerMessageSchema.safeParse(message).success).toBe(true);
+    expect(
+      ServerMessageSchema.safeParse({
+        ...message,
+        observation: {
+          ...message.observation,
+          targetPath: "/private/answer",
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      ServerMessageSchema.safeParse({
+        ...message,
+        command: "cat OBJECTIVE",
       }).success,
     ).toBe(false);
   });
