@@ -361,6 +361,13 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-049 Implement acknowledgement and conflict handling
 
 - Observable acknowledgement/applied state, file rewrites, competing answers, truncation, duplicate items, and manual resolution.
+- Current status: protocol 16 and queue-state schema 3 expose content-free
+  source conflicts, no-follow exact answer-artifact evidence, immutable
+  human-labelled lifecycle resolutions, and one separately confirmed retry
+  only after a failed or unknown first attempt is explicitly confirmed not
+  delivered. Browser and authenticated restart evidence preserve queue,
+  target, configuration, terminal, and prior decision truth. Provider-native
+  acknowledgement remains unavailable rather than inferred.
 
 ### PC-050 Implement worker and objective context
 

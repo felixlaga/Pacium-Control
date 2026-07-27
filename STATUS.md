@@ -5,8 +5,9 @@ Pacium configuration, the General/Pacium toggle, and pinned Meta/Orchestrator
 roles plus explicit terminal prompt targeting and conservative queue-file
 observation, whole-source queue classification, and a read-only queue
 list/original-text inspector plus immutable local question/approval decisions
-and explicit compatible answer-file/role-prompt delivery are complete enough
-for continued slicing; acknowledgement and conflict resolution are next.
+and explicit compatible answer-file/role-prompt delivery, reconciliation,
+human-labelled lifecycle evidence, and one bounded recovery retry are complete
+enough for continued slicing; worker and objective context are next.
 
 Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
 
@@ -75,11 +76,12 @@ The secondary product is **Pacium mode**:
   current/latest verification run into at most seven deterministic facts with
   explicit observed/occurred timestamps, source availability, partial errors,
   Refresh, reconnect recovery, and no terminal/provider narrative.
-- Protocol-15 strict Pacium workspace configuration for explicit Meta,
+- Protocol-16 strict Pacium workspace configuration for explicit Meta,
   Orchestrator, and worker session/preset bindings; canonical repositories;
   verification references; and queue, future-delivery, objective, and plan path
   metadata without generic execution authority, plus content-free queue-source
-  observation and identity-only explicit decision-delivery requests.
+  observation plus identity-only explicit decision-delivery and lifecycle
+  resolution requests.
 - One private server-owned version-1 `pacium.json` with a 96 KiB ceiling,
   complete graph/path/catalog validation, optimistic revisions,
   same-directory atomic replacement, corruption preservation, read-time drift
@@ -140,12 +142,12 @@ The secondary product is **Pacium mode**:
   exact current workspace/source/observation/hash/item identity and classified
   type, with UTF-8 byte bounds and rejection of browser-supplied actor,
   timestamp, decision ID/hash, delivery, command, or authority fields.
-- A private version-2 `queue-state.json` with a 4 MiB/4,096-record ceiling,
+- A private version-3 `queue-state.json` with a 4 MiB/4,096-record ceiling,
   strict schema/uniqueness/hash validation, serialized same-directory atomic
-  mutation, compatible version-1 reads and first-mutation migration,
-  identical-replay detection, competing-decision rejection, one delivery
-  attempt per decision, corruption preservation, and explicit
-  unknown-durability recovery.
+  mutation, compatible version-1/2 reads and first-mutation migration,
+  identical-replay detection, competing-decision rejection, bounded immutable
+  lifecycle resolutions, at most two delivery attempts per decision,
+  corruption preservation, and explicit unknown-durability recovery.
 - Question answer and optional-note controls plus distinct approval/denial
   controls with inline confirmation, pending and failure states, stale-evidence
   clearing, and immutable local record presentation after reload or server
@@ -159,9 +161,19 @@ The secondary product is **Pacium mode**:
   publication, plus one bounded JSON-escaped comment line to an exact
   configured live Meta or Orchestrator PTY. Terminal acceptance does not claim
   provider receipt, handling, acknowledgement, application, or completion.
-- Durable intent-before-effect ordering, immutable one-attempt records,
-  duplicate suppression, restart recovery, and no automatic or manual retry
-  for failed or unknown attempts in the current slice.
+- Durable intent-before-effect ordering, immutable attempt records, duplicate
+  suppression, and restart recovery. Failed or unknown first attempts remain
+  locked until an explicit human `confirmed_not_delivered` resolution; one
+  separately confirmed second attempt is the absolute limit.
+- Content-free source-rewrite, source-degradation, and exact-hash duplicate
+  conflicts joined to immutable decisions without exposing or modifying queue
+  text.
+- On-demand, no-follow answer-target inspection that separates exact transport
+  artifacts from unavailable provider acknowledgement and reports changed,
+  unsafe, oversized, or unreadable targets as conflicts.
+- Explicit Review/Cancel/Confirm lifecycle labels for acknowledged, applied,
+  unable-to-apply, confirmed-not-delivered, and superseded evidence. These are
+  server-authored, immutable, hash-verified, and visibly human-labelled.
 - Mode changes and reload preserve selected PTY, terminal tabs/splits,
   inspector context, panel state, terminal sync/input ownership, and existing
   Git/check evidence.
@@ -188,8 +200,8 @@ The secondary product is **Pacium mode**:
   queue sources, delivery methods, context sources, or verification references,
   and no shortcut customization.
 - No Claude or Codex observer.
-- No multi-item parsing, acknowledgement/conflicts/supersession, worker role
-  surface, or objective/plan content presentation.
+- No multi-item parsing, provider-native acknowledgement, worker role surface,
+  or objective/plan content presentation.
 - No tmux adapter.
 
 Do not extrapolate from the working terminal slice to any capability in this list.
@@ -200,8 +212,8 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 97 test files and 584 tests,
-  plus the 850.51 kB web JavaScript, 97.09 kB stylesheet, and 263.56 kB
+- `pnpm verify`: formatting, lint, type checking, 104 test files and 623 tests,
+  plus the 876.41 kB web JavaScript, 100.24 kB stylesheet, and 307.56 kB
   local-server production builds passed.
 - `pnpm test:e2e`: ten Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
@@ -216,6 +228,14 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
   and then confirmed an approval, preserved source/config/terminal state, and
   covered 320 CSS px, forced colors, and reduced motion. Store reconstruction
   separately proves local-server restart recovery.
+- PC-049 browser evidence separated exact answer-artifact presence from
+  provider acknowledgement, cancelled and confirmed explicit human lifecycle
+  labels, reconstructed the lifecycle after reload, and surfaced a stable
+  source rewrite as content-free conflict evidence. Authenticated integration
+  coverage proves schema-1/2 compatibility, local-server restart
+  reconstruction, exact answer-target states, monotonic lifecycle transitions,
+  a failed first role transport, its locked retry, one human-unlocked second
+  attempt, and rejection of a third attempt.
 - PC-042 browser evidence assigned an existing PTY to Meta, opened it without
   duplication, configured an Orchestrator fixed preset, launched one direct
   PTY, bound its exact created session ID, and restored both bindings after
@@ -249,12 +269,13 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
   keyboard-accessible at 200% zoom.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
-- The protocol-version-15 boundary passed strict contract, atomic-store,
+- The protocol-version-16 boundary passed strict contract, atomic-store,
   canonical path/reference, authenticated WebSocket revision/conflict, PTY
   survival, bounded queue reader/observer/classifier, content-free bulk item
   evidence, exact-current base64 text inspection, stale/config/disconnect
-  clearing, approval separation, and browser request-state tests on this
-  machine.
+  clearing, approval separation, source-conflict derivation, no-follow target
+  reconciliation, human-labelled lifecycle, one-retry gating, and browser
+  request-state tests on this machine.
 - Built server startup: served the application and health endpoint on `127.0.0.1:4174`.
 - Hostile bootstrap Origin: returned HTTP 403.
 
@@ -269,7 +290,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 850.51 kB before gzip and emits Vite's chunk-size
+- The current web bundle is 876.41 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
 - Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
@@ -299,8 +320,8 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Begin PC-049 with observable acknowledgement evidence, explicit conflict
-states, and bounded manual resolution without silently retrying or replacing
-immutable decisions. Complete the pinned Node.js 24 clean-install, CI, broader
-browser/security, manual accessibility, and sustained-output gates before
-release.
+Begin PC-050 with a compact worker list, bounded current objective and plan
+context, recent immutable decisions, and resulting evidence without creating a
+workflow engine or provider narrative. Complete the pinned Node.js 24
+clean-install, CI, broader browser/security, manual accessibility, and
+sustained-output gates before release.

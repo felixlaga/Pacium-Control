@@ -2,6 +2,54 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.30.0 — explicit queue reconciliation — 2026-07-27
+
+### Added
+
+- Protocol 16 content-free source conflicts, exact-item reconciliation, and
+  identity-only lifecycle-resolution requests with strict cross-reference and
+  message bounds.
+- Queue-state schema 3 with compatible schema-1/2 reads, immutable
+  hash-verified human-labelled resolutions, monotonic lifecycle transitions,
+  and at most two delivery attempts per decision.
+- Source rewrite/degradation and exact-hash duplicate conflict evidence without
+  exposing, choosing, or modifying queue text.
+- On-demand no-follow answer-target inspection that distinguishes an exact
+  transport artifact from unavailable provider acknowledgement and reports
+  changed or unsafe targets as conflicts.
+- Review/Cancel/Confirm controls for acknowledged, applied, unable-to-apply,
+  confirmed-not-delivered, and superseded lifecycle labels, with immutable
+  evidence reconstruction after reload or local-server restart.
+- One separately confirmed retry after a failed or unknown first attempt is
+  explicitly labelled not delivered. The exact decision, source,
+  configuration, target, and payload are revalidated; a third attempt is
+  invalid.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 104 test
+  files and 623 tests, plus the 876.41 kB web JavaScript, 100.24 kB stylesheet,
+  and 307.56 kB local-server production bundles.
+- `pnpm test:e2e` passed all 10 Chromium workflows, including artifact versus
+  acknowledgement evidence, lifecycle cancellation and confirmation, reload
+  reconstruction, source-rewrite conflict, focus, 320 CSS px, forced colors,
+  and reduced motion.
+- Authenticated restart and PTY integration tests proved state reconstruction,
+  exact target evidence, transition rejection, the locked retry gate, one
+  human-unlocked successful retry, and rejection of a third attempt.
+
+### Known limitations
+
+- Provider-native acknowledgement remains unavailable. Current lifecycle
+  records are visibly human-labelled and never inferred from files, terminal
+  output, process activity, or queue rewrites.
+- Duplicate detection is exact-content-hash only. A missing answer file is
+  ambiguous, and target evidence is recomputed only on explicit inspection or
+  Refresh.
+- Worker/objective/plan context and recent-result summaries remain PC-050.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x, and the
+  web build retains Vite's existing chunk-size warning.
+
 ## 0.29.0 — explicit compatible decision delivery — 2026-07-27
 
 ### Added
