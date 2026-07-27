@@ -4,6 +4,7 @@ import {
   fetchDirectoryListing,
   paciumConfigGetMessage,
   paciumConfigReplaceMessage,
+  queueObserveMessage,
   repositoryChangesMessage,
   repositoryDiffMessage,
   repositoryHistoryMessage,
@@ -134,6 +135,17 @@ describe("Pacium config transport", () => {
       expectedRevision: 4,
       workspace,
     });
+  });
+});
+
+describe("queue observation transport", () => {
+  it("requests current configured sources without path or content authority", () => {
+    expect(queueObserveMessage("66bd01dc-a1c3-4341-9c3c-153027b7f098")).toEqual(
+      {
+        type: "pacium.queue.observe",
+        requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      },
+    );
   });
 });
 

@@ -195,6 +195,12 @@ export class PaciumTransport {
     return requestId;
   }
 
+  public requestQueueObservation(): string {
+    const requestId = crypto.randomUUID();
+    this.send(queueObserveMessage(requestId));
+    return requestId;
+  }
+
   public closeSession(sessionId: string, force: boolean): void {
     this.send({
       type: "session.close",
@@ -458,6 +464,15 @@ export function paciumConfigReplaceMessage(
     requestId,
     expectedRevision,
     workspace,
+  };
+}
+
+export function queueObserveMessage(
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.queue.observe" }> {
+  return {
+    type: "pacium.queue.observe",
+    requestId,
   };
 }
 
