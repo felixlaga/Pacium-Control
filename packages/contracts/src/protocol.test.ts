@@ -7,6 +7,7 @@ import {
   encodeTerminalDataFrame,
   MAX_TERMINAL_INPUT_CHARS,
   PROTOCOL_VERSION,
+  RepositoryObservationSchema,
   SessionSummarySchema,
 } from "./protocol.js";
 
@@ -32,7 +33,7 @@ describe("terminal binary frames", () => {
 
 describe("client protocol", () => {
   it("advances the wire contract for required agent classification", () => {
-    expect(PROTOCOL_VERSION).toBe(4);
+    expect(PROTOCOL_VERSION).toBe(5);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -74,6 +75,21 @@ describe("client protocol", () => {
       },
     });
     expect(fixedPreset.success).toBe(false);
+  });
+
+  it("accepts only a session identity for repository refresh", () => {
+    const message = {
+      type: "session.refreshRepository",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+    };
+    expect(ClientMessageSchema.safeParse(message).success).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        ...message,
+        command: "git status",
+      }).success,
+    ).toBe(false);
   });
 
   it("accepts a bounded terminal input command", () => {
@@ -198,8 +214,17 @@ describe("agent classification contract", () => {
       launchPreset: "codex",
       commandLabel: "Codex",
       agentClassification: classification,
-      repositoryRoot: null,
-      repositoryName: null,
+      repository: {
+        status: "not_repository",
+        root: null,
+        name: null,
+        branch: null,
+        headCommit: null,
+        headState: "unknown",
+        worktreeKind: "unknown",
+        observedAt: "2026-07-27T10:00:00.000Z",
+        error: null,
+      },
       runtime: "pty",
       processState: "live",
       pid: 42,
@@ -216,6 +241,115 @@ describe("agent classification contract", () => {
       SessionSummarySchema.safeParse({
         ...session,
         agentClassification: undefined,
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("repository observation contract", () => {
+  const observedAt = "2026-07-27T10:00:00.000Z";
+  const ready = {
+    status: "ready",
+    root: "/work/pacium",
+    name: "pacium",
+    branch: "codex/repository-context",
+    headCommit: "a".repeat(40),
+    headState: "branch",
+    worktreeKind: "linked",
+    observedAt,
+    error: null,
+  };
+
+  it("accepts complete branch, detached, unborn, and non-repository states", () => {
+    expect(RepositoryObservationSchema.safeParse(ready).success).toBe(true);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...ready,
+        branch: null,
+        headState: "detached",
+      }).success,
+    ).toBe(true);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...ready,
+        headCommit: null,
+        headState: "unborn",
+      }).success,
+    ).toBe(true);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        status: "not_repository",
+        root: null,
+        name: null,
+        branch: null,
+        headCommit: null,
+        headState: "unknown",
+        worktreeKind: "unknown",
+        observedAt,
+        error: null,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("requires evidence combinations to match status and head state", () => {
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...ready,
+        headState: "detached",
+      }).success,
+    ).toBe(false);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...ready,
+        headState: "unborn",
+      }).success,
+    ).toBe(false);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...ready,
+        status: "error",
+        branch: null,
+        headCommit: null,
+        headState: "unknown",
+        error: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...ready,
+        terminalOutput: "secret",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts bounded degraded evidence with or without a known root", () => {
+    const error = {
+      status: "error",
+      root: "/work/pacium",
+      name: "pacium",
+      branch: null,
+      headCommit: null,
+      headState: "unknown",
+      worktreeKind: "linked",
+      observedAt,
+      error: {
+        code: "timeout",
+        message: "Git inspection timed out.",
+      },
+    };
+    expect(RepositoryObservationSchema.safeParse(error).success).toBe(true);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...error,
+        root: null,
+        name: null,
+        worktreeKind: "unknown",
+      }).success,
+    ).toBe(true);
+    expect(
+      RepositoryObservationSchema.safeParse({
+        ...error,
+        error: { ...error.error, message: "x".repeat(201) },
       }).success,
     ).toBe(false);
   });

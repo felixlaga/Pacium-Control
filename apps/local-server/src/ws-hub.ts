@@ -263,6 +263,10 @@ export class WebSocketHub {
         await this.sessions.revealRepository(message.sessionId);
         this.sendResult(client.socket, message.requestId);
         return;
+      case "session.refreshRepository":
+        await this.sessions.refreshRepository(message.sessionId);
+        this.sendResult(client.socket, message.requestId);
+        return;
       case "session.close":
         this.sessions.close(
           message.sessionId,

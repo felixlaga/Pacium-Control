@@ -22,8 +22,17 @@ const session: SessionSummary = {
     confidence: "confirmed",
     observedAt: "2026-07-27T10:00:00.000Z",
   },
-  repositoryRoot: "/work/pacium",
-  repositoryName: "pacium",
+  repository: {
+    status: "ready",
+    root: "/work/pacium",
+    name: "pacium",
+    branch: "dev",
+    headCommit: "a".repeat(40),
+    headState: "branch",
+    worktreeKind: "main",
+    observedAt: "2026-07-27T10:00:00.000Z",
+    error: null,
+  },
   runtime: "pty",
   processState: "live",
   pid: 42,
@@ -57,7 +66,20 @@ describe("session actions", () => {
 
   it("disables repository reveal without server-detected context", () => {
     expect(
-      sessionActionAvailability({ ...session, repositoryRoot: null }),
+      sessionActionAvailability({
+        ...session,
+        repository: {
+          status: "not_repository",
+          root: null,
+          name: null,
+          branch: null,
+          headCommit: null,
+          headState: "unknown",
+          worktreeKind: "unknown",
+          observedAt: "2026-07-27T10:00:00.000Z",
+          error: null,
+        },
+      }),
     ).toMatchObject({ canRevealRepository: false });
   });
 

@@ -164,6 +164,11 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-033 Detect repository context
 
 - Canonical root, branch, commit, worktree, and detached/error states from session cwd.
+- Current status: protocol 5 sessions carry strict, refreshable Git evidence
+  from fixed bounded commands: canonical root/name, branch or detached/unborn
+  HEAD, full commit, main/linked worktree, freshness, non-repository, and
+  degraded error. The inspector exposes that evidence and refresh without
+  affecting PTY lifecycle. Dirty/changed-file state begins in PC-034.
 
 ### PC-034 Implement changed-files inspector
 

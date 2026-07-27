@@ -2,6 +2,41 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.15.0 — evidence-backed repository context — 2026-07-27
+
+### Added
+
+- Protocol-5 repository observations with strict ready, non-repository, and
+  degraded invariants.
+- Fixed read-only Git inspection for canonical root, branch or detached/unborn
+  HEAD, full commit, main/linked worktree kind, and observation time.
+- A 750 ms per-command timeout, 32 KiB output bound, disabled prompts, root
+  containment check, and bounded error copy.
+- Typed repository refresh through the existing authenticated WebSocket
+  boundary; refresh changes only evidence and preserves the PTY.
+- A compact selected-session Repository card with explicit freshness, absent
+  and degraded states, and a Refresh control.
+
+### Verified
+
+- `pnpm verify` passes formatting, lint, type checking, 34 test files and
+  141 tests, and both production bundles.
+- `pnpm test:e2e` passes all four Chromium keyboard, focus, responsive,
+  accessibility-preference, and zoom workflows.
+- Direct fixed Git commands matched the current checkout’s canonical root,
+  branch, and exact HEAD.
+
+### Known limitations
+
+- Dirty/clean state, changed files, diff, commits, and verification begin with
+  PC-034 through PC-037.
+- The default macOS Git wrapper on this machine remains blocked by the
+  unaccepted Xcode license; Pacium reports bounded degraded evidence until Git
+  is usable.
+- The current machine ran verification on Node.js 26.4.0, not pinned Node.js
+  24.18.x.
+- The web bundle is 703 kB before gzip and retains the tracked warning.
+
 ## 0.14.0 — unread attention and quiet notifications — 2026-07-27
 
 ### Added

@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { FakePtyFactory } from "@pacium/test-utils";
 
+import type { HostActions } from "./host-actions.js";
 import type { LaunchPresetDefinition } from "./launch-presets.js";
+import type { RepositoryInspector } from "./repository-context.js";
 import { SessionError, SessionManager } from "./session-manager.js";
 
 const testPresets: readonly LaunchPresetDefinition[] = [
@@ -49,10 +51,42 @@ const testPresets: readonly LaunchPresetDefinition[] = [
   },
 ];
 
+function createManager(
+  factory: FakePtyFactory,
+  hostActions?: HostActions,
+  inspectRepository: RepositoryInspector = (cwd, observedAt) =>
+    Promise.resolve(repositoryObservation(cwd, "dev", observedAt)),
+): SessionManager {
+  return new SessionManager(
+    factory,
+    testPresets,
+    hostActions,
+    inspectRepository,
+  );
+}
+
+function repositoryObservation(
+  cwd: string,
+  branch: string,
+  observedAt?: string,
+) {
+  return {
+    status: "ready" as const,
+    root: cwd,
+    name: cwd.split("/").at(-1) ?? cwd,
+    branch,
+    headCommit: branch === "dev" ? "a".repeat(40) : "b".repeat(40),
+    headState: "branch" as const,
+    worktreeKind: "main" as const,
+    observedAt: observedAt ?? "2026-07-27T10:00:00.000Z",
+    error: null,
+  };
+}
+
 describe("SessionManager", () => {
   it("creates a terminal, routes input and resize, and restores output", async () => {
     const factory = new FakePtyFactory();
-    const manager = new SessionManager(factory, testPresets);
+    const manager = createManager(factory);
     const session = await manager.create({
       cwd: process.cwd(),
       launchPreset: "shell",
@@ -96,7 +130,7 @@ describe("SessionManager", () => {
 
   it("does not destroy a PTY when no browser listener is attached", async () => {
     const factory = new FakePtyFactory();
-    const manager = new SessionManager(factory, testPresets);
+    const manager = createManager(factory);
     const session = await manager.create({
       cwd: process.cwd(),
       launchPreset: "shell",
@@ -115,7 +149,7 @@ describe("SessionManager", () => {
 
   it("requires explicit force to close a live shell", async () => {
     const factory = new FakePtyFactory();
-    const manager = new SessionManager(factory, testPresets);
+    const manager = createManager(factory);
     const session = await manager.create({
       cwd: process.cwd(),
       launchPreset: "shell",
@@ -134,7 +168,7 @@ describe("SessionManager", () => {
 
   it("renames session metadata and emits an updated summary", async () => {
     const factory = new FakePtyFactory();
-    const manager = new SessionManager(factory, testPresets);
+    const manager = createManager(factory);
     const session = await manager.create({
       cwd: process.cwd(),
       launchPreset: "shell",
@@ -160,7 +194,7 @@ describe("SessionManager", () => {
   it("reveals only the session's canonical repository root", async () => {
     const factory = new FakePtyFactory();
     const revealPath = vi.fn().mockResolvedValue(undefined);
-    const manager = new SessionManager(factory, testPresets, { revealPath });
+    const manager = createManager(factory, { revealPath });
     const session = await manager.create({
       cwd: process.cwd(),
       launchPreset: "shell",
@@ -169,13 +203,47 @@ describe("SessionManager", () => {
     });
 
     await manager.revealRepository(session.id);
-    expect(revealPath).toHaveBeenCalledWith(session.repositoryRoot);
+    expect(revealPath).toHaveBeenCalledWith(session.repository.root);
+    manager.shutdown();
+  });
+
+  it("refreshes repository evidence without replacing or signalling the PTY", async () => {
+    const factory = new FakePtyFactory();
+    const inspectRepository = vi
+      .fn<RepositoryInspector>()
+      .mockImplementationOnce((cwd, observedAt) =>
+        Promise.resolve(repositoryObservation(cwd, "dev", observedAt)),
+      )
+      .mockImplementationOnce((cwd, observedAt) =>
+        Promise.resolve(repositoryObservation(cwd, "feature", observedAt)),
+      );
+    const manager = createManager(factory, undefined, inspectRepository);
+    const session = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+    const updates: string[] = [];
+    manager.onSessionEvent((event) => {
+      if (event.type === "updated") {
+        updates.push(event.session.repository.branch ?? "none");
+      }
+    });
+
+    await expect(manager.refreshRepository(session.id)).resolves.toMatchObject({
+      branch: "feature",
+      headCommit: "b".repeat(40),
+    });
+    expect(manager.list()[0]?.id).toBe(session.id);
+    expect(factory.processes[0]?.signals).toEqual([]);
+    expect(updates).toEqual(["feature"]);
     manager.shutdown();
   });
 
   it("rejects a missing working directory without creating a PTY", async () => {
     const factory = new FakePtyFactory();
-    const manager = new SessionManager(factory, testPresets);
+    const manager = createManager(factory);
 
     await expect(
       manager.create({
@@ -190,7 +258,7 @@ describe("SessionManager", () => {
 
   it("uses a fixed agent preset and rejects an unavailable one", async () => {
     const factory = new FakePtyFactory();
-    const manager = new SessionManager(factory, testPresets);
+    const manager = createManager(factory);
     const session = await manager.create({
       cwd: process.cwd(),
       launchPreset: "codex",

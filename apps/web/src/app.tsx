@@ -70,6 +70,7 @@ import {
   type WorkspacePreferences,
 } from "./preferences-model.js";
 import { PreferencesDialog } from "./preferences.js";
+import { RepositoryContextCard } from "./repository-context.js";
 import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
 import {
   duplicateSessionInput,
@@ -774,9 +775,19 @@ export function App() {
   const revealSessionRepository = (session: SessionSummary) => {
     transportRef.current?.revealRepository(session.id);
     setNotice(
-      `Asked the Pacium host to reveal ${session.repositoryName ?? "the repository"}.`,
+      `Asked the Pacium host to reveal ${session.repository.name ?? "the repository"}.`,
     );
     closeSessionActions();
+  };
+
+  const refreshSelectedRepository = () => {
+    if (selectedSession === null) {
+      return;
+    }
+    transportRef.current?.refreshRepository(selectedSession.id);
+    setNotice(
+      `Refreshing Git evidence for ${selectedSession.displayName}. Its terminal is unchanged.`,
+    );
   };
 
   const openPalette = (view: CommandPaletteView) => {
@@ -1573,9 +1584,6 @@ export function App() {
             <Metadata label="Runtime">Direct PTY</Metadata>
             <Metadata label="Preset">{selectedSession.commandLabel}</Metadata>
             <Metadata label="Command">{selectedSession.shell}</Metadata>
-            <Metadata label="Repository">
-              {selectedSession.repositoryName ?? "Not detected"}
-            </Metadata>
             <Metadata label="Process">
               {selectedSession.pid ?? "Exited"}
             </Metadata>
@@ -1589,6 +1597,24 @@ export function App() {
             )}
           </dl>
         )}
+        <section className="inspector-section repository-section">
+          <div className="inspector-section-heading">
+            <h2>Repository</h2>
+            {selectedSession !== null && (
+              <button
+                disabled={connection !== "connected"}
+                onClick={refreshSelectedRepository}
+                title="Refresh branch, HEAD, and worktree evidence"
+                type="button"
+              >
+                Refresh
+              </button>
+            )}
+          </div>
+          {selectedSession !== null && (
+            <RepositoryContextCard repository={selectedSession.repository} />
+          )}
+        </section>
         <section className="inspector-section">
           <h2>Agent evidence</h2>
           {selectedSession !== null && (

@@ -27,8 +27,17 @@ const session: SessionSummary = {
     confidence: "confirmed",
     observedAt: "2026-07-27T10:00:00.000Z",
   },
-  repositoryRoot: "/work/pacium",
-  repositoryName: "pacium",
+  repository: {
+    status: "ready",
+    root: "/work/pacium",
+    name: "pacium",
+    branch: "dev",
+    headCommit: "a".repeat(40),
+    headState: "branch",
+    worktreeKind: "main",
+    observedAt: "2026-07-27T10:00:00.000Z",
+    error: null,
+  },
   runtime: "pty",
   processState: "live",
   pid: 42,
@@ -154,7 +163,10 @@ describe("command palette catalog", () => {
       id: "e4a7e71b-e74a-4aef-850f-b5092f89912d",
       displayName: "Checkout Worker",
       cwd: "/work/checkout-api",
-      repositoryName: "checkout-api",
+      repository: {
+        ...session.repository,
+        name: "checkout-api",
+      },
     };
     const catalog = buildPaletteCatalog({
       focusedPaneId: "pane-1",
