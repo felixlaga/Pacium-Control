@@ -147,7 +147,7 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 72 test files and 380 tests,
+- `pnpm verify`: formatting, lint, type checking, 75 test files and 410 tests,
   plus web and local-server production builds passed.
 - `pnpm test:e2e`: nine Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
@@ -162,6 +162,11 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
   refresh. Responsive coverage proved both role cards and the assignment
   dialog at 320 CSS px, 200% zoom, forced colors, reduced motion, and focus
   return.
+- PC-043 browser evidence kept an ordinary terminal selected while explicitly
+  targeting Meta, rejected plain Enter and multiline input, sent through
+  `Ctrl+Enter`, observed the marker only in Meta's real PTY, and cleared scope
+  after the matching result, mode exit, and refresh. The composer remained
+  usable at 320 CSS px, 200% zoom, forced colors, and reduced motion.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
 - The protocol-version-10 boundary passed strict contract, atomic-store,
@@ -181,7 +186,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 787.01 kB before gzip and emits Vite's chunk-size
+- The current web bundle is 794.93 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
 - Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
