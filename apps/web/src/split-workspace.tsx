@@ -209,6 +209,7 @@ function TerminalPane(
     >
       {session === null ? (
         <EmptyPane
+          canClose={props.paneCount > 1}
           focused={focused}
           onAssign={(sessionId) =>
             props.onAssignSession(props.pane.id, sessionId)
@@ -321,11 +322,13 @@ function TerminalPane(
 }
 
 function EmptyPane({
+  canClose,
   focused,
   onAssign,
   onClose,
   sessions,
 }: {
+  canClose: boolean;
   focused: boolean;
   onAssign: (sessionId: string) => void;
   onClose: () => void;
@@ -341,14 +344,16 @@ function EmptyPane({
           <h2>Choose a running terminal</h2>
           <p>Move a session here without stopping or duplicating its PTY.</p>
         </div>
-        <button
-          aria-label="Close empty pane"
-          onClick={onClose}
-          title="Close pane"
-          type="button"
-        >
-          ×
-        </button>
+        {canClose && (
+          <button
+            aria-label="Close empty pane"
+            onClick={onClose}
+            title="Close pane"
+            type="button"
+          >
+            ×
+          </button>
+        )}
       </div>
       <div className="empty-pane-sessions">
         {sessions.slice(0, 8).map((session) => (

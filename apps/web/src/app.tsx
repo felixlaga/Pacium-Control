@@ -374,6 +374,7 @@ export function App() {
       selectedIdRef.current,
     );
     setTabs(next.tabs);
+    setLayout(clearSessionFromLayout(layoutRef.current, sessionId));
     setSelectedId(next.selectedId);
     setNotice(
       `${
@@ -797,10 +798,17 @@ export function App() {
         )}
 
         <section
-          aria-label="Terminal split workspace"
+          aria-label={
+            selectedSession === null ? "Terminal split workspace" : undefined
+          }
+          aria-labelledby={
+            selectedSession === null
+              ? undefined
+              : `terminal-tab-${selectedSession.id}`
+          }
           className="terminal-panel split-workspace"
           id="active-terminal-panel"
-          role="region"
+          role="tabpanel"
         >
           {sessions.length === 0 ? (
             <EmptyWorkspace
