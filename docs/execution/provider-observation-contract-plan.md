@@ -85,15 +85,15 @@ strict contract.
 
 ## Failure model
 
-| Failure point | Expected state | Recovery |
-| ------------- | -------------- | -------- |
-| Adapter absent | Health is `unavailable`; PTY remains usable | Install/connect in later provider issue |
-| Unsupported capability | Capability is `unsupported` or `unknown`; no inferred event | Upgrade or use terminal fallback |
-| Invalid snapshot | Contract rejects the entire value | Keep last valid snapshot or unavailable default |
-| Stale attention | UI reports stale provider evidence | Await a fresh valid provider observation |
-| Diagnostic contains secret-like key | Contract rejects the diagnostic | Adapter emits a safe bounded code/message |
-| Browser reconnect | Server resends current process-local snapshot | Existing session list/update flow |
-| Local-server restart | Direct PTY follows existing ended-session contract | Relaunch terminal; no transcript replay |
+| Failure point                       | Expected state                                              | Recovery                                        |
+| ----------------------------------- | ----------------------------------------------------------- | ----------------------------------------------- |
+| Adapter absent                      | Health is `unavailable`; PTY remains usable                 | Install/connect in later provider issue         |
+| Unsupported capability              | Capability is `unsupported` or `unknown`; no inferred event | Upgrade or use terminal fallback                |
+| Invalid snapshot                    | Contract rejects the entire value                           | Keep last valid snapshot or unavailable default |
+| Stale attention                     | UI reports stale provider evidence                          | Await a fresh valid provider observation        |
+| Diagnostic contains secret-like key | Contract rejects the diagnostic                             | Adapter emits a safe bounded code/message       |
+| Browser reconnect                   | Server resends current process-local snapshot               | Existing session list/update flow               |
+| Local-server restart                | Direct PTY follows existing ended-session contract          | Relaunch terminal; no transcript replay         |
 
 ## Compatibility
 
