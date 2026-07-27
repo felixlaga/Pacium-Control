@@ -12,6 +12,7 @@ import {
   clearPaciumContext,
   initialPaciumContextState,
   reconcilePaciumContextConfig,
+  rejectPaciumContextResponse,
 } from "./pacium-context-model.js";
 
 describe("Pacium control context request state", () => {
@@ -157,6 +158,41 @@ describe("Pacium control context request state", () => {
       objectiveText: null,
       planText: null,
       error: "Configuration changed.",
+    });
+  });
+
+  it("rejects only the matching failed request and clears prior text", () => {
+    const accepted = acceptPaciumContextResponse(
+      beginPaciumContextInspection(
+        initialPaciumContextState(),
+        "request-1",
+        readyConfig(),
+      ),
+      "request-1",
+      readyObservation(),
+      readyConfig(),
+    );
+    const refreshing = beginPaciumContextInspection(
+      accepted,
+      "request-2",
+      readyConfig(),
+    );
+    expect(
+      rejectPaciumContextResponse(refreshing, "stale", "stale failure"),
+    ).toBe(refreshing);
+    expect(
+      rejectPaciumContextResponse(
+        refreshing,
+        "request-2",
+        "Context request failed.",
+      ),
+    ).toMatchObject({
+      status: "error",
+      pendingRequestId: null,
+      observation: null,
+      objectiveText: null,
+      planText: null,
+      error: "Context request failed.",
     });
   });
 

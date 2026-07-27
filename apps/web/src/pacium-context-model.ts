@@ -130,6 +130,25 @@ export function reconcilePaciumContextConfig(
   return initialPaciumContextState();
 }
 
+export function rejectPaciumContextResponse(
+  state: PaciumContextViewState,
+  requestId: string,
+  message: string,
+): PaciumContextViewState {
+  if (state.pendingRequestId !== requestId) {
+    return state;
+  }
+  return {
+    ...state,
+    status: "error",
+    pendingRequestId: null,
+    observation: null,
+    objectiveText: null,
+    planText: null,
+    error: message,
+  };
+}
+
 export function clearPaciumContext(): PaciumContextViewState {
   return initialPaciumContextState();
 }
