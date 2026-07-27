@@ -44,8 +44,29 @@ test("assigns, opens, launches, and durably binds the two primary roles", async 
   await openTerminal(page, "Ordinary terminal");
   const workspaceStatus = page.locator(".workspace-status");
   await expect(workspaceStatus).toContainText("Ordinary terminal");
+
+  const composer = page.getByRole("region", {
+    name: "Send to one exact terminal",
+  });
+  const prompt = composer.getByLabel("Prompt");
+  await composer.getByLabel("Target").selectOption("role:meta");
+  await prompt.fill("printf 'PC043_TARGET\\n'");
+  await prompt.press("Enter");
+  await expect(prompt).toHaveValue("printf 'PC043_TARGET\\n'");
+  await expect(workspaceStatus).toContainText("Ordinary terminal");
+  await prompt.press("Control+Enter");
+  await expect(page.locator(".notice")).toContainText(
+    "Terminal input accepted for Meta. Agent handling is not confirmed.",
+  );
+  await expect(composer.getByLabel("Target")).toHaveValue("");
+  await expect(prompt).toHaveValue("");
+  await expect(workspaceStatus).toContainText("Ordinary terminal");
+
   await meta.getByRole("button", { name: "Open" }).click();
   await expect(workspaceStatus).toContainText("Meta existing");
+  await expect(
+    page.getByLabel("Meta existing terminal").locator(".xterm-rows"),
+  ).toContainText("PC043_TARGET");
   await expect(
     page.locator(".session-item", { hasText: "Meta existing" }),
   ).toHaveCount(1);
@@ -53,8 +74,11 @@ test("assigns, opens, launches, and durably binds the two primary roles", async 
   const general = page.getByRole("button", { name: "General" });
   await general.click();
   await expect(page.locator(".pacium-role-group")).toBeHidden();
+  await expect(composer).toBeHidden();
   await page.getByRole("button", { name: "Pacium" }).click();
   await expect(meta).toBeVisible();
+  await expect(composer.getByLabel("Target")).toHaveValue("");
+  await expect(prompt).toHaveValue("");
   await expect(workspaceStatus).toContainText("Meta existing");
 
   const orchestrator = roleCard(page, "orchestrator");
