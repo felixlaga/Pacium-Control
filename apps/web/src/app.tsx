@@ -63,6 +63,13 @@ import {
   workspaceStatusText,
 } from "./panel-model.js";
 import {
+  IDLE_PACIUM_CONFIG,
+  acceptPaciumConfigResponse,
+  beginPaciumConfigRequest,
+  interruptPaciumConfigRequest,
+  type PaciumConfigViewState,
+} from "./pacium-config-model.js";
+import {
   TERMINAL_FONT_STACKS,
   loadPreferences,
   resolveDefaultLaunchPreset,
@@ -273,6 +280,9 @@ export function App() {
   const [repositoryVerificationBySession, setRepositoryVerificationBySession] =
     useState(new Map<string, RepositoryVerificationViewState>());
   const repositoryVerificationRef = useRef(repositoryVerificationBySession);
+  const [paciumConfig, setPaciumConfig] =
+    useState<PaciumConfigViewState>(IDLE_PACIUM_CONFIG);
+  const paciumConfigRef = useRef(paciumConfig);
 
   panelViewRef.current = panelView;
   selectedIdRef.current = selectedId;
@@ -283,6 +293,7 @@ export function App() {
   repositoryDiffRef.current = repositoryDiffByKey;
   repositoryHistoryRef.current = repositoryHistoryBySession;
   repositoryVerificationRef.current = repositoryVerificationBySession;
+  paciumConfigRef.current = paciumConfig;
 
   const effectiveTheme = resolveEffectiveTheme(
     preferences.theme,
@@ -303,6 +314,13 @@ export function App() {
     if (event.type === "connection") {
       setConnection(event.state);
       if (event.state !== "connected") {
+        const interruptedPaciumConfig = interruptPaciumConfigRequest(
+          paciumConfigRef.current,
+        );
+        if (interruptedPaciumConfig !== paciumConfigRef.current) {
+          paciumConfigRef.current = interruptedPaciumConfig;
+          setPaciumConfig(interruptedPaciumConfig);
+        }
         let changed = false;
         const next = new Map(repositoryChangesRef.current);
         for (const [sessionId, state] of next) {
@@ -359,6 +377,25 @@ export function App() {
       return;
     }
     if (event.type === "pacium.config.requested") {
+      const next = beginPaciumConfigRequest(
+        paciumConfigRef.current,
+        event.requestId,
+        event.intent,
+      );
+      paciumConfigRef.current = next;
+      setPaciumConfig(next);
+      return;
+    }
+    if (event.message.type === "pacium.config") {
+      const accepted = acceptPaciumConfigResponse(
+        paciumConfigRef.current,
+        event.message.requestId,
+        event.message.observation,
+      );
+      if (accepted !== paciumConfigRef.current) {
+        paciumConfigRef.current = accepted;
+        setPaciumConfig(accepted);
+      }
       return;
     }
     if (event.message.type === "repository.changes") {
@@ -456,6 +493,14 @@ export function App() {
       event.message.type === "error" &&
       event.message.requestId !== undefined
     ) {
+      const interruptedPaciumConfig = interruptPaciumConfigRequest(
+        paciumConfigRef.current,
+        event.message.requestId,
+      );
+      if (interruptedPaciumConfig !== paciumConfigRef.current) {
+        paciumConfigRef.current = interruptedPaciumConfig;
+        setPaciumConfig(interruptedPaciumConfig);
+      }
       let changed = false;
       const next = new Map(repositoryVerificationRef.current);
       for (const [sessionId, state] of next) {
