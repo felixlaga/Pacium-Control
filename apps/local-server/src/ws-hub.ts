@@ -14,6 +14,11 @@ import {
   type PaciumConfigStore,
 } from "./pacium-config-store.js";
 import { presetCapabilities } from "./launch-presets.js";
+import {
+  createQueueDecisionService,
+  type QueueDecisionService,
+} from "./queue-decision-service.js";
+import { QueueDecisionStore } from "./queue-decision-store.js";
 import { QueueObserver } from "./queue-observer.js";
 import { SessionError, type SessionManager } from "./session-manager.js";
 
@@ -44,6 +49,10 @@ export class WebSocketHub {
     private readonly sessions: SessionManager,
     private readonly paciumConfig: PaciumConfigStore,
     private readonly queueObserver: QueueObserver = new QueueObserver(),
+    private readonly queueDecisions: QueueDecisionService = createQueueDecisionService(
+      queueObserver,
+      new QueueDecisionStore(config.dataDirectory),
+    ),
   ) {
     this.server.on("connection", (socket) => {
       this.handleConnection(socket);
@@ -425,11 +434,39 @@ export class WebSocketHub {
         });
         return;
       }
-      case "pacium.queue.item.inspect":
+      case "pacium.queue.item.inspect": {
+        let inspection = this.queueObserver.inspectItem(message);
+        const decisionState =
+          inspection.status === "ready"
+            ? await this.queueDecisions.inspect(message)
+            : null;
+        inspection = this.queueObserver.inspectItem(message);
         this.send(client.socket, {
           type: "pacium.queue.item",
           requestId: message.requestId,
-          inspection: this.queueObserver.inspectItem(message),
+          inspection,
+          decisionState: inspection.status === "ready" ? decisionState : null,
+        });
+        return;
+      }
+      case "pacium.queue.question.answer":
+        this.send(client.socket, {
+          type: "pacium.queue.decision",
+          requestId: message.requestId,
+          result: await this.queueDecisions.recordQuestionAnswer(
+            message,
+            message.payload,
+          ),
+        });
+        return;
+      case "pacium.queue.approval.decide":
+        this.send(client.socket, {
+          type: "pacium.queue.decision",
+          requestId: message.requestId,
+          result: await this.queueDecisions.recordApprovalDecision(
+            message,
+            message.payload,
+          ),
         });
         return;
       case "session.close":

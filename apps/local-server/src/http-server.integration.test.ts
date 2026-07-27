@@ -78,7 +78,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     );
     expect(welcome).toMatchObject({
       type: "server.welcome",
-      protocolVersion: 13,
+      protocolVersion: 14,
       capabilities: {
         launchPresets: [
           { id: "shell", available: true },
