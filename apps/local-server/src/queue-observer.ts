@@ -3,6 +3,7 @@ import { basename, dirname } from "node:path";
 
 import type {
   PaciumConfigObservation,
+  QueueDecisionSourceIdentity,
   QueueItemInspection,
   QueueItemInspectionIdentity,
   QueueSourceClassification,
@@ -76,6 +77,7 @@ export class QueueObserver {
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly watchDirectory: QueueWatchDirectory;
   private readonly watchers = new Map<string, QueueDirectoryWatcher>();
+  private workspaceId: string | null = null;
   private workspaceRevision: number | null = null;
 
   public constructor(options: QueueObserverOptions = {}) {
@@ -201,6 +203,34 @@ export class QueueObserver {
     };
   }
 
+  public decisionSourceIdentity(
+    identity: QueueItemInspectionIdentity,
+  ): QueueDecisionSourceIdentity | null {
+    const inspection = this.inspectItem(identity);
+    if (inspection.status !== "ready" || this.workspaceId === null) {
+      return null;
+    }
+    const classification = this.states.get(identity.sourceId)?.classification;
+    const candidate = classification?.candidate;
+    if (
+      classification?.status !== "candidate" ||
+      candidate == null ||
+      (candidate.type !== "question" && candidate.type !== "approval")
+    ) {
+      return null;
+    }
+    return {
+      workspaceId: this.workspaceId,
+      workspaceRevision: identity.workspaceRevision,
+      sourceId: identity.sourceId,
+      observationRevision: identity.observationRevision,
+      boundary: classification.boundary,
+      contentHash: identity.contentHash,
+      itemId: identity.itemId,
+      itemType: candidate.type,
+    };
+  }
+
   public async syncConfig(
     config: PaciumConfigObservation,
   ): Promise<QueueSourcesObservation> {
@@ -220,6 +250,8 @@ export class QueueObserver {
     this.readSequences.clear();
     const projected = queueSourcesFromConfig(config, this.now());
     this.aggregate = projected.aggregate;
+    this.workspaceId =
+      config.status === "ready" ? (config.workspace?.id ?? null) : null;
     this.workspaceRevision = projected.aggregate.workspaceRevision;
     for (const state of projected.states) {
       this.states.set(state.definition.id, state);
@@ -270,6 +302,7 @@ export class QueueObserver {
     this.clearResources();
     this.states.clear();
     this.readSequences.clear();
+    this.workspaceId = null;
     this.subscribers.clear();
   }
 

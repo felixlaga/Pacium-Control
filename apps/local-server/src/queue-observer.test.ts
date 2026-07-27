@@ -119,6 +119,16 @@ describe("queue observer", () => {
     expect(
       Buffer.from(ready.originalTextBase64, "base64").toString("utf8"),
     ).toBe(content);
+    expect(observer.decisionSourceIdentity(identity)).toEqual({
+      workspaceId: "primary",
+      workspaceRevision: 4,
+      sourceId: "needs-felix",
+      observationRevision: 2,
+      boundary: "whole_source_v1",
+      contentHash: "a".repeat(64),
+      itemId: candidate.itemId,
+      itemType: "question",
+    });
 
     content = "Review: Replacement";
     await observer.refresh();
@@ -127,6 +137,7 @@ describe("queue observer", () => {
       originalTextBase64: null,
       error: { code: "ITEM_STALE" },
     });
+    expect(observer.decisionSourceIdentity(identity)).toBeNull();
     expect(
       observer.inspectItem({ ...identity, sourceId: "arbitrary-path" }),
     ).toMatchObject({
