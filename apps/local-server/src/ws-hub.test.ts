@@ -7,10 +7,15 @@ import { describe, expect, it } from "vitest";
 import {
   boundRepositoryDiffResponse,
   boundRepositoryHistoryResponse,
+  boundVerificationResponse,
 } from "./ws-hub.js";
 
 type DiffResponse = Extract<ServerMessage, { type: "repository.diff" }>;
 type HistoryResponse = Extract<ServerMessage, { type: "repository.history" }>;
+type VerificationResponse = Extract<
+  ServerMessage,
+  { type: "repository.verification" }
+>;
 
 function response(patch: string): DiffResponse {
   const byteCount = new TextEncoder().encode(patch).byteLength;
@@ -88,6 +93,33 @@ describe("outbound history response bound", () => {
   });
 });
 
+describe("outbound verification response bound", () => {
+  it("preserves normal observations and removes excessive catalog evidence", () => {
+    const small = verificationResponse(1, ["/bin/pnpm", "verify"]);
+    expect(boundVerificationResponse(small)).toBe(small);
+
+    const excessive = verificationResponse(16, [
+      `/${"\\".repeat(4_000)}`,
+      ...Array.from({ length: 32 }, () => "\\".repeat(500)),
+    ]);
+    expect(Buffer.byteLength(JSON.stringify(excessive))).toBeGreaterThan(
+      MAX_APPLICATION_MESSAGE_BYTES,
+    );
+    const bounded = boundVerificationResponse(excessive);
+    expect(bounded.observation).toMatchObject({
+      status: "error",
+      presets: [],
+      run: null,
+      error: {
+        code: "invalid_state",
+      },
+    });
+    expect(Buffer.byteLength(JSON.stringify(bounded))).toBeLessThanOrEqual(
+      MAX_APPLICATION_MESSAGE_BYTES,
+    );
+  });
+});
+
 function historyResponse(
   commitCount: number,
   parentCount: number,
@@ -115,6 +147,33 @@ function historyResponse(
       observedAt: "2026-07-27T11:00:00.000Z",
       commits,
       truncated: commitCount === 50,
+      error: null,
+    },
+  };
+}
+
+function verificationResponse(
+  presetCount: number,
+  command: string[],
+): VerificationResponse {
+  return {
+    type: "repository.verification",
+    requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+    sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+    observation: {
+      status: "ready",
+      configured: true,
+      root: "/work/pacium",
+      observedAt: "2026-07-27T11:00:00.000Z",
+      presets: Array.from({ length: presetCount }, (_, index) => ({
+        id: `verify-${index}`,
+        label: `Verification ${index}`,
+        description: "Run configured verification",
+        executable: command[0]!,
+        args: command.slice(1),
+        timeoutMs: 600_000,
+      })),
+      run: null,
       error: null,
     },
   };
