@@ -88,17 +88,17 @@ terminal selection or focus.
 
 ## Failure model
 
-| Failure point               | Expected state                                  | Recovery              |
-| --------------------------- | ----------------------------------------------- | --------------------- |
-| Session has no repository   | `not_repository` response; PTY unchanged        | Choose repository cwd |
-| Repository identity degraded| Bounded error response                          | Refresh Overview      |
-| Git unavailable/timeout     | Bounded error without stderr/content            | Install/fix Git, retry|
-| Malformed/excess status     | Invalid-output error; no partial unsafe payload | Inspect Git directly  |
-| More than 500 files         | First deterministic 500 plus `truncated: true`  | Use Git/diff tools    |
-| Binary file                 | Binary label; line counts null                  | PC-035 may summarize  |
-| Deleted file stat           | Size null; deletion remains visible             | None                  |
-| Selection changes in flight | Response cached by original session only        | Open that session     |
-| Browser reconnect           | Changes state resets and reloads explicitly     | Reopen Changes        |
+| Failure point                | Expected state                                  | Recovery               |
+| ---------------------------- | ----------------------------------------------- | ---------------------- |
+| Session has no repository    | `not_repository` response; PTY unchanged        | Choose repository cwd  |
+| Repository identity degraded | Bounded error response                          | Refresh Overview       |
+| Git unavailable/timeout      | Bounded error without stderr/content            | Install/fix Git, retry |
+| Malformed/excess status      | Invalid-output error; no partial unsafe payload | Inspect Git directly   |
+| More than 500 files          | First deterministic 500 plus `truncated: true`  | Use Git/diff tools     |
+| Binary file                  | Binary label; line counts null                  | PC-035 may summarize   |
+| Deleted file stat            | Size null; deletion remains visible             | None                   |
+| Selection changes in flight  | Response cached by original session only        | Open that session      |
+| Browser reconnect            | Changes state resets and reloads explicitly     | Reopen Changes         |
 
 ## Compatibility
 
