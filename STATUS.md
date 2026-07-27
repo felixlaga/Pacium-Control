@@ -8,13 +8,16 @@ list/original-text inspector plus immutable local question/approval decisions
 and explicit compatible answer-file/role-prompt delivery, reconciliation,
 human-labelled lifecycle evidence, one bounded recovery retry, exact configured
 worker summaries, and read-only objective/plan plus recent-decision context are
-complete enough for continued slicing; optional Tailscale Serve access is next.
+complete enough for continued slicing. Optional Tailscale Serve access is
+implemented at the application boundary; the existing working-directory picker
+refresh is next.
 
 Pacium Control now has an executable React application, loopback local server,
 direct-PTY session manager, typed WebSocket protocol, and automated terminal,
 Git, queue, and Pacium-context tests. This proves the bounded local
 compatibility workflow described below; it does not prove provider-native
-agent management, remote access, durable PTYs, packaging, or release readiness.
+agent management, a real deployed tailnet/grants/public boundary, durable PTYs,
+packaging, or release readiness.
 
 ## Product direction
 
@@ -46,6 +49,12 @@ The secondary product is **Pacium mode**:
 - A three-panel React/Vite shell with xterm as the dominant workspace surface.
 - An in-memory direct-PTY session registry supporting create, list, input, resize, interrupt, exit, attach, snapshot, and deliberate close.
 - A loopback-only HTTP/WebSocket server with Host, Origin, ephemeral-token, path, schema, and payload-size checks.
+- Optional all-or-nothing Tailscale Serve startup configuration with one
+  canonical `*.ts.net` HTTPS Origin, bounded exact operator-login allowlist,
+  canonical local-Origin isolation, exact remote Host/Origin/login checks,
+  Funnel denial, and the unchanged ephemeral token for protected transport.
+- Protocol-18 per-socket Local or Tailscale/login evidence and a compact
+  accessible connection badge that clears stale identity on disconnect.
 - Bounded xterm headless snapshots that let a new browser transport attach to a still-live PTY.
 - A fixed server-owned Shell, Codex, and Claude Code launch catalog with honest executable availability.
 - A token-protected, read-only host directory browser with canonical paths, repository markers, filtering, hidden-folder control, breadcrumbs, and browser-local recent choices.
@@ -299,14 +308,16 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
   keyboard-accessible at 200% zoom.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
-- The protocol-version-17 boundary passed strict contract, atomic-store,
+- The protocol-version-18 boundary passed strict contract, atomic-store,
   canonical path/reference, authenticated WebSocket revision/conflict, PTY
   survival, bounded queue reader/observer/classifier, content-free bulk item
   evidence, exact-current base64 text inspection, stale/config/disconnect
   clearing, approval separation, source-conflict derivation, no-follow target
   reconciliation, human-labelled lifecycle, one-retry gating, bounded context
   file/decision projection, stale-revision rejection, exact configured-worker
-  projection, and browser request-state tests on this machine.
+  projection, browser request-state, optional Serve startup/request
+  classification, exact remote WSS, per-socket connection evidence, and
+  stale-identity tests on this machine.
 - Built server startup: served the application and health endpoint on `127.0.0.1:4174`.
 - Hostile bootstrap Origin: returned HTTP 403.
 
@@ -323,7 +334,10 @@ Evidence boundaries:
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
 - The current web bundle is 901.71 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
-- Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
+- Proxy-shaped Serve application tests do not prove the owner's real Tailscale
+  installation, DNS/certificate, deployed grants, Funnel/public/LAN state, or
+  revocation propagation. The active runbook keeps those as an explicit
+  release gate.
 
 ## Active decisions
 
@@ -351,10 +365,8 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Begin PC-077 with the accepted Tailscale Serve proxy contract while preserving
-the loopback-only application bind, exact HTTPS Origin, verified identity
-headers, and explicit operator allowlist. Then refresh the existing
-working-directory picker boundary before provider enrichment, durability, and
-packaging. Complete the pinned Node.js 24 clean-install, CI, broader
+Refresh the existing working-directory picker boundary and interaction before
+provider enrichment, durability, and packaging. Complete the real Tailscale
+Serve/grants/Funnel/public canary, pinned Node.js 24 clean-install, CI, broader
 browser/security, manual accessibility, and sustained-output gates before
 release.
