@@ -13,6 +13,7 @@ import {
   searchShortcutReference,
   type PaletteCommand,
 } from "./command-palette-model.js";
+import { handleModalKeyDown } from "./modal-focus.js";
 
 export type CommandPaletteView = "commands" | "shortcuts";
 
@@ -76,11 +77,6 @@ export function CommandPalette({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
-      return;
-    }
     if (view === "commands" && event.key === "ArrowDown") {
       event.preventDefault();
       setActiveId((current) => movePaletteSelection(results, current, 1));
@@ -96,9 +92,7 @@ export function CommandPalette({
       executeActive();
       return;
     }
-    if (event.key === "Tab") {
-      keepModalFocus(event, panelRef.current);
-    }
+    handleModalKeyDown(event, panelRef.current, onClose);
   };
 
   return (
@@ -337,31 +331,5 @@ function commandIcon(command: PaletteCommand): string {
       return "^C";
     case "review-session-termination":
       return "!";
-  }
-}
-
-function keepModalFocus(
-  event: KeyboardEvent<HTMLElement>,
-  panel: HTMLElement | null,
-): void {
-  if (panel === null) {
-    return;
-  }
-  const focusable = [
-    ...panel.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), input:not(:disabled), [tabindex]:not([tabindex="-1"])',
-    ),
-  ];
-  const first = focusable[0];
-  const last = focusable.at(-1);
-  if (first === undefined || last === undefined) {
-    return;
-  }
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
   }
 }
