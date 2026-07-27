@@ -6,6 +6,8 @@ import {
   decodeTerminalDataFrame,
   encodeTerminalDataFrame,
   MAX_TERMINAL_INPUT_CHARS,
+  PROTOCOL_VERSION,
+  SessionSummarySchema,
 } from "./protocol.js";
 
 describe("terminal binary frames", () => {
@@ -29,6 +31,10 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
+  it("advances the wire contract for required agent classification", () => {
+    expect(PROTOCOL_VERSION).toBe(4);
+  });
+
   it("accepts only server-owned launch preset identifiers", () => {
     const baseMessage = {
       type: "session.create",
@@ -178,6 +184,38 @@ describe("agent classification contract", () => {
       AgentClassificationSchema.safeParse({
         ...classification,
         confidence: "certain",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires classification on every session summary", () => {
+    const session = {
+      id: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+      epoch: 1,
+      displayName: "Meta",
+      cwd: "/tmp",
+      shell: "/usr/local/bin/codex",
+      launchPreset: "codex",
+      commandLabel: "Codex",
+      agentClassification: classification,
+      repositoryRoot: null,
+      repositoryName: null,
+      runtime: "pty",
+      processState: "live",
+      pid: 42,
+      cols: 80,
+      rows: 24,
+      createdAt: "2026-07-27T10:00:00.000Z",
+      exitedAt: null,
+      exitCode: null,
+      exitSignal: null,
+    };
+
+    expect(SessionSummarySchema.safeParse(session).success).toBe(true);
+    expect(
+      SessionSummarySchema.safeParse({
+        ...session,
+        agentClassification: undefined,
       }).success,
     ).toBe(false);
   });

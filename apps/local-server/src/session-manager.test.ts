@@ -82,6 +82,13 @@ describe("SessionManager", () => {
     expect(session).toMatchObject({
       launchPreset: "shell",
       commandLabel: "Shell",
+      agentClassification: {
+        type: "shell",
+        label: "Shell",
+        source: "launch_preset",
+        confidence: "confirmed",
+        observedAt: session.createdAt,
+      },
     });
 
     manager.shutdown();
@@ -194,6 +201,13 @@ describe("SessionManager", () => {
     expect(session).toMatchObject({
       launchPreset: "codex",
       commandLabel: "Codex",
+      agentClassification: {
+        type: "codex",
+        label: "Codex CLI",
+        source: "launch_preset",
+        confidence: "confirmed",
+        observedAt: session.createdAt,
+      },
       shell: "/opt/test/bin/codex",
     });
     expect(factory.createCalls[0]).toMatchObject({
