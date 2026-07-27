@@ -47,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for control context inspection", () => {
-    expect(PROTOCOL_VERSION).toBe(17);
+  it("advances the wire contract for connection authority evidence", () => {
+    expect(PROTOCOL_VERSION).toBe(18);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -864,6 +864,94 @@ describe("client protocol", () => {
         },
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("server connection authority evidence", () => {
+  const welcome = {
+    type: "server.welcome",
+    protocolVersion: PROTOCOL_VERSION,
+    serverId: "d5805287-d2b0-41f4-b80f-56c77d892cbc",
+    platform: "darwin",
+    defaultCwd: "/work/pacium",
+    capabilities: {
+      directPty: true,
+      reconnectSnapshot: true,
+      tmux: false,
+      launchPresets: [
+        {
+          id: "shell",
+          label: "Shell",
+          available: true,
+          unavailableReason: null,
+        },
+        {
+          id: "codex",
+          label: "Codex",
+          available: false,
+          unavailableReason: "Unavailable.",
+        },
+        {
+          id: "claude",
+          label: "Claude Code",
+          available: false,
+          unavailableReason: "Unavailable.",
+        },
+      ],
+    },
+  };
+
+  it("accepts strict local and bounded Tailscale connection evidence", () => {
+    expect(
+      ServerMessageSchema.safeParse({
+        ...welcome,
+        connection: { kind: "local" },
+      }).success,
+    ).toBe(true);
+    expect(
+      ServerMessageSchema.safeParse({
+        ...welcome,
+        connection: {
+          kind: "tailscale",
+          login: "owner@example.com",
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects claimed network, profile, device, and token evidence", () => {
+    for (const connection of [
+      {
+        kind: "local",
+        login: "owner@example.com",
+      },
+      {
+        kind: "tailscale",
+        login: "owner@example.com, other@example.com",
+      },
+      {
+        kind: "tailscale",
+        login: "owner@example.com",
+        displayName: "Owner",
+      },
+      {
+        kind: "tailscale",
+        login: "owner@example.com",
+        sourceIp: "100.64.0.1",
+      },
+      {
+        kind: "tailscale",
+        login: "owner@example.com",
+        accessToken: "secret",
+      },
+    ]) {
+      expect(
+        ServerMessageSchema.safeParse({
+          ...welcome,
+          connection,
+        }).success,
+      ).toBe(false);
+    }
   });
 });
 

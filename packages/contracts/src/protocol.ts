@@ -26,7 +26,7 @@ import {
   QueueResolutionResultSchema,
 } from "./queue-reconciliation.js";
 
-export const PROTOCOL_VERSION = 17 as const;
+export const PROTOCOL_VERSION = 18 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -65,6 +65,28 @@ export const LaunchPresetCapabilitySchema = z.object({
 export type LaunchPresetCapability = z.infer<
   typeof LaunchPresetCapabilitySchema
 >;
+
+export const ConnectionAccessSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("local") }).strict(),
+  z
+    .object({
+      kind: z.literal("tailscale"),
+      login: z
+        .string()
+        .min(3)
+        .max(254)
+        .regex(/^[\x21-\x2b\x2d-\x7e]+$/)
+        .refine(
+          (value) =>
+            value.indexOf("@") > 0 &&
+            value.indexOf("@") === value.lastIndexOf("@") &&
+            value.indexOf("@") < value.length - 1,
+          { message: "Tailscale login must be one exact provider login." },
+        ),
+    })
+    .strict(),
+]);
+export type ConnectionAccess = z.infer<typeof ConnectionAccessSchema>;
 
 export const ProcessStateSchema = z.enum([
   "creating",
@@ -1260,19 +1282,22 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
 
 export const ServerMessageSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("server.welcome"),
-    protocolVersion: z.literal(PROTOCOL_VERSION),
-    serverId: z.string().uuid(),
-    platform: z.string(),
-    defaultCwd: z.string(),
-    capabilities: z.object({
-      directPty: z.literal(true),
-      reconnectSnapshot: z.literal(true),
-      tmux: z.literal(false),
-      launchPresets: z.array(LaunchPresetCapabilitySchema).length(3),
-    }),
-  }),
+  z
+    .object({
+      type: z.literal("server.welcome"),
+      protocolVersion: z.literal(PROTOCOL_VERSION),
+      serverId: z.string().uuid(),
+      platform: z.string(),
+      defaultCwd: z.string(),
+      connection: ConnectionAccessSchema,
+      capabilities: z.object({
+        directPty: z.literal(true),
+        reconnectSnapshot: z.literal(true),
+        tmux: z.literal(false),
+        launchPresets: z.array(LaunchPresetCapabilitySchema).length(3),
+      }),
+    })
+    .strict(),
   z.object({
     type: z.literal("session.list"),
     requestId: RequestIdSchema,

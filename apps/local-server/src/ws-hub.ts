@@ -17,6 +17,7 @@ import {
 } from "./pacium-config-store.js";
 import { PaciumContextService } from "./pacium-context-service.js";
 import { presetCapabilities } from "./launch-presets.js";
+import { classifyRequestAccess, type RequestAccess } from "./remote-access.js";
 import {
   createQueueDecisionService,
   type QueueDecisionService,
@@ -82,8 +83,13 @@ export class WebSocketHub {
       },
     ),
   ) {
-    this.server.on("connection", (socket) => {
-      this.handleConnection(socket);
+    this.server.on("connection", (socket, request) => {
+      const access = classifyRequestAccess(request, this.config, "websocket");
+      if (access === null) {
+        socket.close(1008, "Connection authority is unavailable");
+        return;
+      }
+      this.handleConnection(socket, access);
     });
 
     this.unsubscribeData = sessions.onTerminalData((event) => {
@@ -158,7 +164,7 @@ export class WebSocketHub {
     this.server.close();
   }
 
-  private handleConnection(socket: WebSocket): void {
+  private handleConnection(socket: WebSocket, access: RequestAccess): void {
     const client: ConnectedClient = {
       socket,
       subscriptions: new Set(),
@@ -171,6 +177,7 @@ export class WebSocketHub {
       serverId: this.config.serverId,
       platform: process.platform,
       defaultCwd: this.config.defaultCwd,
+      connection: access,
       capabilities: {
         directPty: true,
         reconnectSnapshot: true,
