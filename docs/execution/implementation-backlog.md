@@ -333,6 +333,16 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-047 Implement immutable local decisions
 
 - Answer/deny/approve payload, actor label, timestamp, source identity, and decision hash.
+- Current status: protocol 14 uses separate bounded question-answer and
+  approval-decision requests, exact current identity/type revalidation, and a
+  server-assigned local actor, time, UUID, and canonical SHA-256 hash. One
+  private versioned `queue-state.json` serializes atomic immutable appends,
+  returns identical replays without writing, rejects competing decisions, and
+  recovers exact records after reload/restart. The inspector exposes a bounded
+  answer form or separately confirmed Approve/Deny controls, then replaces
+  them with the local immutable record. No decision is delivered,
+  acknowledged, applied, executed, or sent to a terminal; PC-048 owns that
+  compatibility boundary.
 
 ### PC-048 Deliver decisions compatibly
 
