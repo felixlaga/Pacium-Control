@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `55af59c2f95f206579c9b54a74713fc1a3d9bcb8`
 - Target milestone: Milestone 3 — Pacium mode
-- Status: In progress
+- Status: Completed
 
 ## Objective
 
@@ -406,3 +406,25 @@ evidence separately and states that none proves resulting Git/terminal work.
 - Security: one identity-free request, server-resolved accepted paths, bounded
   no-follow reads, inert text, excluded notes/targets, and no mutation preserve
   the browser-to-filesystem/terminal boundary.
+
+## Implementation result
+
+- Protocol 17, the bounded context reader/service, authenticated dispatch,
+  exact worker projection, correlated browser state, compact Worker group, and
+  Control-context inspector were implemented without changing `pacium.json`,
+  `queue-state.json`, or browser-storage schemas.
+- The final repository gate passed 111 test files and 675 tests. Production
+  output was 901.71 kB web JavaScript (238.22 kB gzip), 107.52 kB stylesheet
+  (16.85 kB gzip), and 328.37 kB local-server JavaScript.
+- The full headless Chromium suite passed 11/11 workflows in 33.0 seconds. The
+  focused PC-050 workflow passed in 5.9 seconds with real direct PTYs and
+  covered exact worker Open, context open/Refresh/Back/Escape, focus return,
+  refresh reconnection, mode exit, terminal preservation, 320 CSS px, forced
+  colors, and reduced motion.
+- Authenticated integration evidence reads exact accepted files without
+  mutation, excludes notes/targets/queue text from recent summaries, preserves
+  live PTY input, and reconstructs decision/transport/lifecycle evidence after
+  local-server restart.
+- The run used Node.js 26.4.0 instead of supported Node.js 24.18.x and retained
+  Vite's existing chunk-size warning. Pinned-runtime clean-install and manual
+  accessibility/visual review remain explicit release gates.
