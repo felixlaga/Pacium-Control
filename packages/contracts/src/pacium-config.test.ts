@@ -13,7 +13,9 @@ import {
   PaciumQueueSourceSchema,
   PaciumRepositorySchema,
   PaciumRolesSchema,
+  PaciumWorkspaceSchema,
   PaciumWorkerSchema,
+  type PaciumWorkspace,
 } from "./pacium-config.js";
 
 describe("Pacium config scalar contracts", () => {
@@ -225,5 +227,144 @@ describe("Pacium queue metadata contracts", () => {
         plan: null,
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("Pacium workspace graph contract", () => {
+  const metaSessionId = "03c2723f-e87a-4707-86af-d6fdb1e60f47";
+  const workerSessionId = "31158ce6-12ae-4677-b4c2-3c63f6262bd1";
+
+  function workspace(): PaciumWorkspace {
+    return {
+      id: "primary",
+      label: "Pacium",
+      repositories: [
+        {
+          id: "pacium",
+          label: "Pacium Control",
+          root: "/work/pacium",
+          verificationPresetIds: ["verify"],
+        },
+      ],
+      roles: {
+        meta: {
+          type: "session" as const,
+          sessionId: metaSessionId,
+        },
+        orchestrator: {
+          type: "launch_preset" as const,
+          launchPreset: "codex" as const,
+          repositoryId: "pacium",
+        },
+      },
+      workers: [
+        {
+          id: "api",
+          label: "API worker",
+          binding: {
+            type: "session" as const,
+            sessionId: workerSessionId,
+          },
+        },
+      ],
+      queueSources: [
+        {
+          id: "needs-felix",
+          label: "Needs Felix",
+          path: "/work/queue/NEEDS-FELIX",
+          format: "plain_text" as const,
+          requestingRole: "orchestrator" as const,
+          deliveryMethodId: "answers",
+        },
+      ],
+      deliveryMethods: [
+        {
+          id: "answers",
+          label: "Answers",
+          type: "answer_file" as const,
+          path: "/work/queue/PACIUM-ANSWERS",
+        },
+      ],
+      context: {
+        objective: {
+          format: "plain_text" as const,
+          path: "/work/context/OBJECTIVE",
+        },
+        plan: {
+          format: "plain_text" as const,
+          path: "/work/context/PLAN",
+        },
+      },
+    };
+  }
+
+  it("accepts one strict and fully referenced workspace", () => {
+    expect(PaciumWorkspaceSchema.safeParse(workspace()).success).toBe(true);
+  });
+
+  it("rejects dangling repository and delivery references", () => {
+    const danglingRepository = workspace();
+    const orchestrator = danglingRepository.roles.orchestrator;
+    if (orchestrator?.type === "launch_preset") {
+      orchestrator.repositoryId = "missing";
+    }
+    expect(PaciumWorkspaceSchema.safeParse(danglingRepository).success).toBe(
+      false,
+    );
+
+    const danglingDelivery = workspace();
+    danglingDelivery.queueSources[0]!.deliveryMethodId = "missing";
+    expect(PaciumWorkspaceSchema.safeParse(danglingDelivery).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects one live session in more than one slot", () => {
+    const duplicate = workspace();
+    const binding = duplicate.workers[0]!.binding;
+    if (binding.type === "session") {
+      binding.sessionId = metaSessionId;
+    }
+
+    expect(PaciumWorkspaceSchema.safeParse(duplicate).success).toBe(false);
+  });
+
+  it("rejects duplicate identities and source-answer path aliases", () => {
+    const duplicateRepository = workspace();
+    duplicateRepository.repositories.push({
+      ...duplicateRepository.repositories[0]!,
+    });
+    expect(PaciumWorkspaceSchema.safeParse(duplicateRepository).success).toBe(
+      false,
+    );
+
+    const alias = workspace();
+    const delivery = alias.deliveryMethods[0]!;
+    if (delivery.type === "answer_file") {
+      delivery.path = alias.queueSources[0]!.path;
+    }
+    expect(PaciumWorkspaceSchema.safeParse(alias).success).toBe(false);
+  });
+
+  it("requires configured role-prompt targets and distinct context paths", () => {
+    const missingRole = workspace();
+    missingRole.roles.meta = null;
+    missingRole.deliveryMethods = [
+      {
+        id: "meta-prompt",
+        label: "Meta prompt",
+        type: "role_prompt",
+        role: "meta",
+      },
+    ];
+    missingRole.queueSources[0]!.deliveryMethodId = "meta-prompt";
+    expect(PaciumWorkspaceSchema.safeParse(missingRole).success).toBe(false);
+
+    const duplicateContext = workspace();
+    duplicateContext.context.plan!.path =
+      duplicateContext.context.objective!.path;
+    expect(PaciumWorkspaceSchema.safeParse(duplicateContext).success).toBe(
+      false,
+    );
   });
 });

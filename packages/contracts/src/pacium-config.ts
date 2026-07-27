@@ -150,6 +150,25 @@ export const PaciumContextSchema = z
   .strict();
 export type PaciumContext = z.infer<typeof PaciumContextSchema>;
 
+export const PaciumWorkspaceSchema = z
+  .object({
+    id: PaciumIdentifierSchema,
+    label: PaciumLabelSchema,
+    repositories: z.array(PaciumRepositorySchema).max(MAX_PACIUM_REPOSITORIES),
+    roles: PaciumRolesSchema,
+    workers: z.array(PaciumWorkerSchema).max(MAX_PACIUM_WORKERS),
+    queueSources: z
+      .array(PaciumQueueSourceSchema)
+      .max(MAX_PACIUM_QUEUE_SOURCES),
+    deliveryMethods: z
+      .array(PaciumDeliveryMethodSchema)
+      .max(MAX_PACIUM_DELIVERY_METHODS),
+    context: PaciumContextSchema,
+  })
+  .strict()
+  .superRefine(validateWorkspaceGraph);
+export type PaciumWorkspace = z.infer<typeof PaciumWorkspaceSchema>;
+
 function hasControlCharacter(value: string): boolean {
   return [...value].some((character) => {
     const codePoint = character.codePointAt(0);
@@ -173,5 +192,192 @@ function addDuplicateIssues(
       });
     }
     seen.add(value);
+  }
+}
+
+function validateWorkspaceGraph(
+  workspace: {
+    repositories: readonly PaciumRepository[];
+    roles: PaciumRoles;
+    workers: readonly PaciumWorker[];
+    queueSources: readonly PaciumQueueSource[];
+    deliveryMethods: readonly PaciumDeliveryMethod[];
+    context: PaciumContext;
+  },
+  context: z.RefinementCtx,
+): void {
+  addDuplicateObjectIssues(
+    workspace.repositories,
+    ({ id }) => id,
+    context,
+    "repositories",
+    "Repository IDs must be unique.",
+  );
+  addDuplicateObjectIssues(
+    workspace.repositories,
+    ({ root }) => root,
+    context,
+    "repositories",
+    "Repository roots must be unique.",
+  );
+  addDuplicateObjectIssues(
+    workspace.workers,
+    ({ id }) => id,
+    context,
+    "workers",
+    "Worker IDs must be unique.",
+  );
+  addDuplicateObjectIssues(
+    workspace.queueSources,
+    ({ id }) => id,
+    context,
+    "queueSources",
+    "Queue source IDs must be unique.",
+  );
+  addDuplicateObjectIssues(
+    workspace.queueSources,
+    ({ path }) => path,
+    context,
+    "queueSources",
+    "Queue source paths must be unique.",
+  );
+  addDuplicateObjectIssues(
+    workspace.deliveryMethods,
+    ({ id }) => id,
+    context,
+    "deliveryMethods",
+    "Delivery method IDs must be unique.",
+  );
+  const answerMethods = workspace.deliveryMethods.filter(
+    (
+      method,
+    ): method is Extract<PaciumDeliveryMethod, { type: "answer_file" }> =>
+      method.type === "answer_file",
+  );
+  addDuplicateObjectIssues(
+    answerMethods,
+    ({ path }) => path,
+    context,
+    "deliveryMethods",
+    "Answer-file paths must be unique.",
+  );
+
+  const repositoryIds = new Set(workspace.repositories.map(({ id }) => id));
+  const deliveryIds = new Set(workspace.deliveryMethods.map(({ id }) => id));
+  for (const [index, source] of workspace.queueSources.entries()) {
+    if (
+      source.deliveryMethodId !== null &&
+      !deliveryIds.has(source.deliveryMethodId)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["queueSources", index, "deliveryMethodId"],
+        message: "Queue source references an unknown delivery method.",
+      });
+    }
+  }
+
+  const bindings = [
+    ...(workspace.roles.meta === null
+      ? []
+      : [{ path: ["roles", "meta"], binding: workspace.roles.meta }]),
+    ...(workspace.roles.orchestrator === null
+      ? []
+      : [
+          {
+            path: ["roles", "orchestrator"],
+            binding: workspace.roles.orchestrator,
+          },
+        ]),
+    ...workspace.workers.map(({ binding }, index) => ({
+      path: ["workers", index, "binding"],
+      binding,
+    })),
+  ];
+  const sessionBindings = new Set<string>();
+  for (const { binding, path } of bindings) {
+    if (
+      binding.type === "launch_preset" &&
+      binding.repositoryId !== null &&
+      !repositoryIds.has(binding.repositoryId)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: [...path, "repositoryId"],
+        message: "Binding references an unknown repository.",
+      });
+    }
+    if (binding.type !== "session") {
+      continue;
+    }
+    if (sessionBindings.has(binding.sessionId)) {
+      context.addIssue({
+        code: "custom",
+        path: [...path, "sessionId"],
+        message: "A live session can occupy only one Pacium slot.",
+      });
+    }
+    sessionBindings.add(binding.sessionId);
+  }
+
+  const configuredRoles = new Set<PaciumRoleId>();
+  if (workspace.roles.meta !== null) {
+    configuredRoles.add("meta");
+  }
+  if (workspace.roles.orchestrator !== null) {
+    configuredRoles.add("orchestrator");
+  }
+  for (const [index, method] of workspace.deliveryMethods.entries()) {
+    if (method.type === "role_prompt" && !configuredRoles.has(method.role)) {
+      context.addIssue({
+        code: "custom",
+        path: ["deliveryMethods", index, "role"],
+        message: "Role-prompt delivery requires a configured role.",
+      });
+    }
+  }
+
+  const sourcePaths = new Set(workspace.queueSources.map(({ path }) => path));
+  for (const [index, method] of workspace.deliveryMethods.entries()) {
+    if (method.type === "answer_file" && sourcePaths.has(method.path)) {
+      context.addIssue({
+        code: "custom",
+        path: ["deliveryMethods", index, "path"],
+        message: "An answer file cannot also be a queue source.",
+      });
+    }
+  }
+
+  if (
+    workspace.context.objective !== null &&
+    workspace.context.plan !== null &&
+    workspace.context.objective.path === workspace.context.plan.path
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["context", "plan", "path"],
+      message: "Objective and plan sources must use distinct paths.",
+    });
+  }
+}
+
+function addDuplicateObjectIssues<T>(
+  values: readonly T[],
+  key: (value: T) => string,
+  context: z.RefinementCtx,
+  path: string,
+  message: string,
+): void {
+  const seen = new Set<string>();
+  for (const [index, value] of values.entries()) {
+    const identity = key(value);
+    if (seen.has(identity)) {
+      context.addIssue({
+        code: "custom",
+        path: [path, index],
+        message,
+      });
+    }
+    seen.add(identity);
   }
 }
