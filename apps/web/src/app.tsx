@@ -141,6 +141,15 @@ import {
   type TerminalTab,
 } from "./session-model.js";
 import {
+  IDLE_WORKSPACE_MODE_CHORD,
+  advanceWorkspaceModeChord,
+} from "./workspace-mode-shortcut.js";
+import {
+  loadWorkspaceMode,
+  saveWorkspaceMode,
+  type WorkspaceMode,
+} from "./workspace-mode.js";
+import {
   MAX_SPLIT_PANES,
   assignSessionToPane,
   clearSessionFromLayout,
@@ -209,6 +218,11 @@ export function App() {
   const renameInvokerRef = useRef<HTMLElement | null>(null);
   const settingsInvokerRef = useRef<HTMLElement | null>(null);
   const transportRef = useRef<PaciumTransport | null>(null);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() =>
+    loadWorkspaceMode(window.localStorage),
+  );
+  const workspaceModeRef = useRef(workspaceMode);
+  const workspaceModeChordRef = useRef(IDLE_WORKSPACE_MODE_CHORD);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionListReady, setSessionListReady] = useState(false);
@@ -294,6 +308,7 @@ export function App() {
   repositoryHistoryRef.current = repositoryHistoryBySession;
   repositoryVerificationRef.current = repositoryVerificationBySession;
   paciumConfigRef.current = paciumConfig;
+  workspaceModeRef.current = workspaceMode;
 
   const effectiveTheme = resolveEffectiveTheme(
     preferences.theme,
@@ -1014,8 +1029,9 @@ export function App() {
         sessions,
         sidebarOpen: panelView.sidebarOpen,
         inspectorOpen: panelView.inspectorOpen,
+        workspaceMode,
       }),
-    [layout, panelView, selectedId, sessions],
+    [layout, panelView, selectedId, sessions, workspaceMode],
   );
 
   useEffect(() => {
@@ -1491,6 +1507,26 @@ export function App() {
     setPanelVisibility(toggleInspector(panelViewRef.current ?? panelView));
   };
 
+  const changeWorkspaceMode = useCallback((next: WorkspaceMode) => {
+    if (workspaceModeRef.current === next) {
+      return;
+    }
+    workspaceModeRef.current = next;
+    setWorkspaceMode(next);
+    const saved = saveWorkspaceMode(window.localStorage, next);
+    setNotice(
+      saved
+        ? `${next === "pacium" ? "Pacium" : "General"} mode active. Terminal selection and layout are unchanged.`
+        : `${next === "pacium" ? "Pacium" : "General"} mode is active for this page, but this browser could not save it for refresh.`,
+    );
+  }, []);
+
+  const toggleWorkspaceMode = useCallback(() => {
+    changeWorkspaceMode(
+      workspaceModeRef.current === "pacium" ? "general" : "pacium",
+    );
+  }, [changeWorkspaceMode]);
+
   const executePaletteCommand = (command: PaletteCommand) => {
     if (!command.enabled) {
       return;
@@ -1513,6 +1549,9 @@ export function App() {
         return;
       case "toggle-inspector":
         toggleInspectorPanel();
+        return;
+      case "toggle-workspace-mode":
+        toggleWorkspaceMode();
         return;
       case "split-pane":
         splitPane(command.action.direction);
@@ -1585,13 +1624,36 @@ export function App() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      const editable = isEditableTarget(event.target);
+      const modeChord = advanceWorkspaceModeChord(
+        workspaceModeChordRef.current,
+        {
+          code: event.code,
+          now: performance.now(),
+          blocked:
+            editable || modalOpen || capturedPaneId !== null || event.repeat,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          shiftKey: event.shiftKey,
+          altKey: event.altKey,
+        },
+      );
+      workspaceModeChordRef.current = modeChord.state;
+      if (modeChord.handled) {
+        event.preventDefault();
+        if (modeChord.toggle) {
+          toggleWorkspaceMode();
+        }
+        return;
+      }
+
       const shortcut = resolveWorkspaceShortcut({
         code: event.code,
         metaKey: event.metaKey,
         ctrlKey: event.ctrlKey,
         shiftKey: event.shiftKey,
         altKey: event.altKey,
-        editable: isEditableTarget(event.target),
+        editable,
         dialogOpen: modalOpen,
         terminalCaptured: capturedPaneId !== null,
       });
@@ -1667,7 +1729,7 @@ export function App() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [capturedPaneId, modalOpen, tabs]);
+  }, [capturedPaneId, modalOpen, tabs, toggleWorkspaceMode]);
 
   return (
     <div
