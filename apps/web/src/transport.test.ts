@@ -4,8 +4,10 @@ import {
   fetchDirectoryListing,
   paciumConfigGetMessage,
   paciumConfigReplaceMessage,
+  queueApprovalDecisionMessage,
   queueItemInspectMessage,
   queueObserveMessage,
+  queueQuestionAnswerMessage,
   repositoryChangesMessage,
   repositoryDiffMessage,
   repositoryHistoryMessage,
@@ -169,6 +171,52 @@ describe("queue observation transport", () => {
     expect(queueItemInspectMessage(identity, requestId)).not.toHaveProperty(
       "originalText",
     );
+  });
+
+  it("builds structurally separate question and approval decisions", () => {
+    const identity = {
+      workspaceRevision: 4,
+      sourceId: "needs-felix",
+      observationRevision: 7,
+      contentHash: "a".repeat(64),
+      itemId: "b".repeat(64),
+    };
+    expect(
+      queueQuestionAnswerMessage(
+        identity,
+        {
+          answer: "Use the smaller verified slice.",
+          note: null,
+        },
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ),
+    ).toEqual({
+      type: "pacium.queue.question.answer",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ...identity,
+      payload: {
+        answer: "Use the smaller verified slice.",
+        note: null,
+      },
+    });
+    expect(
+      queueApprovalDecisionMessage(
+        identity,
+        {
+          outcome: "denied",
+          note: "Risk is not bounded.",
+        },
+        "5cf69c03-dfb0-4c9c-8373-c501e30af3d0",
+      ),
+    ).toEqual({
+      type: "pacium.queue.approval.decide",
+      requestId: "5cf69c03-dfb0-4c9c-8373-c501e30af3d0",
+      ...identity,
+      payload: {
+        outcome: "denied",
+        note: "Risk is not bounded.",
+      },
+    });
   });
 });
 

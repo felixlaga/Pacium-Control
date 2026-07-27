@@ -6,8 +6,10 @@ import {
   type ClientMessage,
   type DirectoryListing,
   type LaunchPresetId,
+  type QueueApprovalDecisionPayload,
   type QueueItemInspectionIdentity,
   type PaciumWorkspace,
+  type QueueQuestionAnswerPayload,
   type ServerMessage,
   type TerminalDataFrame,
 } from "@pacium/contracts";
@@ -209,6 +211,24 @@ export class PaciumTransport {
   ): string {
     const requestId = crypto.randomUUID();
     this.send(queueItemInspectMessage(identity, requestId));
+    return requestId;
+  }
+
+  public recordQueueQuestionAnswer(
+    identity: QueueItemInspectionIdentity,
+    payload: QueueQuestionAnswerPayload,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(queueQuestionAnswerMessage(identity, payload, requestId));
+    return requestId;
+  }
+
+  public recordQueueApprovalDecision(
+    identity: QueueItemInspectionIdentity,
+    payload: QueueApprovalDecisionPayload,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(queueApprovalDecisionMessage(identity, payload, requestId));
     return requestId;
   }
 
@@ -500,6 +520,40 @@ export function queueItemInspectMessage(
     observationRevision: identity.observationRevision,
     contentHash: identity.contentHash,
     itemId: identity.itemId,
+  };
+}
+
+export function queueQuestionAnswerMessage(
+  identity: QueueItemInspectionIdentity,
+  payload: QueueQuestionAnswerPayload,
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.queue.question.answer" }> {
+  return {
+    type: "pacium.queue.question.answer",
+    requestId,
+    workspaceRevision: identity.workspaceRevision,
+    sourceId: identity.sourceId,
+    observationRevision: identity.observationRevision,
+    contentHash: identity.contentHash,
+    itemId: identity.itemId,
+    payload,
+  };
+}
+
+export function queueApprovalDecisionMessage(
+  identity: QueueItemInspectionIdentity,
+  payload: QueueApprovalDecisionPayload,
+  requestId: string,
+): Extract<ClientMessage, { type: "pacium.queue.approval.decide" }> {
+  return {
+    type: "pacium.queue.approval.decide",
+    requestId,
+    workspaceRevision: identity.workspaceRevision,
+    sourceId: identity.sourceId,
+    observationRevision: identity.observationRevision,
+    contentHash: identity.contentHash,
+    itemId: identity.itemId,
+    payload,
   };
 }
 
