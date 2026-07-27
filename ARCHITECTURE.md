@@ -141,11 +141,12 @@ The first queue adapter observes existing files, tracks provenance, presents que
 
 ## State
 
-The current server-owned durable state is intentionally limited to one
-versioned file in a configurable local data directory:
+The current server-owned durable state is intentionally limited to two
+versioned files in a configurable local data directory:
 
 ```text
 pacium.json
+queue-state.json
 ```
 
 `pacium.json` owns only the future Pacium-mode workspace definition: explicit
@@ -153,13 +154,27 @@ role/preset bindings, repositories, worker slots, and path metadata for queue,
 delivery, objective, and plan consumers. It owns no live process, terminal,
 Git, provider, verification-command, or file-content truth.
 
+`queue-state.json` owns only bounded immutable local question/approval
+decisions and their single compatible delivery attempts. Schema 2 references
+every attempt to an exact decision/hash, validates recomputable hashes, and
+records target snapshots, payload hashes, intent time, and
+delivered/failed/unknown evidence. Valid schema-1 decision-only state remains
+readable and migrates atomically on the first later mutation. It contains no
+queue source text, provider token, environment, terminal transcript, or
+generic command.
+
+Delivery intent is persisted before the one configured answer-file or
+role-prompt side effect. The answer-file adapter creates one private
+no-clobber file; the role adapter writes one fixed-shape comment line to one
+exact live configured PTY. A completed or uncertain attempt is never replayed.
+
 Writes use complete schema/reference validation, optimistic revisions, a
 private same-directory temporary file, atomic rename, and directory sync.
 Invalid state is preserved and degrades Pacium configuration only. Browser
 tabs, splits, settings, and attention cursors remain browser-owned; terminal
-history is bounded and ephemeral. Queue provenance state and caches remain
-future slices, not current files. Provider credentials and complete environment
-data are excluded.
+history is bounded and ephemeral. Queue observation/classification caches
+remain process-local and disposable. Provider credentials and complete
+environment data are excluded.
 
 ## Security boundary
 

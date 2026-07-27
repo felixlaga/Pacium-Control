@@ -2,8 +2,8 @@
 
 PC-040 introduced one server-owned configuration document for Pacium mode
 consumers. Later slices added the Pacium toggle, role binding, prompt
-targeting, and bounded queue-source observation. File delivery and
-objective/plan reads remain absent.
+targeting, bounded queue-source observation, immutable decisions, and explicit
+compatible delivery. Objective/plan reads remain absent.
 
 ## Location
 
@@ -307,9 +307,31 @@ fresh exact inspection.
 A ready exact item carries a separate `open | decided | unavailable` decision
 state. `decided` includes the stored record; `unavailable` uses a fixed safe
 diagnostic and exposes no mutation control. Source/config drift, a type
-mismatch, unsafe state, or disconnect fails closed. Decision recording grants
-no delivery, acknowledgement, provider callback, terminal input, shell, or
-execution authority. PC-048 owns compatible delivery.
+mismatch, unsafe state, or disconnect fails closed. Decision recording itself
+grants no delivery, acknowledgement, provider callback, terminal input, shell,
+or execution authority.
+
+Protocol 15 adds one separate identity-only delivery mutation:
+
+```text
+pacium.queue.decision.deliver(requestId, decisionId, decisionHash)
+pacium.queue.delivery(requestId, result)
+```
+
+The browser cannot submit a method, path, role, session, payload, terminal
+bytes, command, or retry flag. The server resolves and revalidates the exact
+decision, current source identity, workspace revision, configured method, and
+accepted target. It persists one hashed intent before creating an answer file
+or sending one role-prompt line. A duplicate joins the existing attempt;
+completed or uncertain attempts are not replayed.
+
+Valid queue-state schema 1 remains readable. The first later mutation writes
+schema 2 with unchanged decisions plus at most one target/payload snapshot and
+outcome per decision. Answer files contain deterministic
+`pacium_decision_v1` JSON and use private no-clobber creation. Role prompts are
+one bounded JSON-escaped comment line plus one carriage return to the exact
+configured live role session. PTY acceptance proves only terminal transport,
+not provider handling, acknowledgement, application, or completion.
 
 ## Atomicity and recovery
 
@@ -345,12 +367,14 @@ arguments, executables, environments, signals, terminal bytes, queue source
 content, objective/plan content, actor identity, timestamps, decision
 identifiers or hashes, verification definitions, or generic write targets.
 The only accepted decision content is a protocol-14 bounded question answer or
-approval outcome plus an optional bounded note for the exact current item.
+approval outcome plus an optional bounded note for the exact current item. A
+protocol-15 delivery request contains only its immutable decision identity.
 
 Configured paths are metadata candidates until the local server canonicalizes
 them. Queue observation can read only the accepted queue-source subset after
 canonicalization; classification derives only bounded data-only metadata and
 does not expose, render, execute, or log contents in bulk. Pacium persists only
-application-owned decision answer/outcome/note content, never the queue source
-text. It does not persist provider tokens, passwords, full environments,
-classifications, terminal transcripts, delivery attempts, or acknowledgements.
+application-owned decision answer/outcome/note content and bounded delivery
+intent/outcome evidence, never the queue source text. It does not persist
+provider tokens, passwords, full environments, classifications, terminal
+transcripts, or acknowledgements.

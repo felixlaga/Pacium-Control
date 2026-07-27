@@ -166,9 +166,22 @@ Prefer bounded in-memory scrollback. If diagnostic export is added, it must be e
 - If state is corrupt, unsafe, unsupported, oversized, full, or has unknown
   post-rename durability, fail mutation closed while preserving terminal and
   read-only queue operation.
-- Record decision provenance separately from delivery. A local decision is not
-  delivered, acknowledged, applied, authorized provider action, or terminal
-  input.
+- Record decision provenance before and separately from delivery. Recording a
+  local decision is not delivery, acknowledgement, application, authorized
+  provider action, or terminal input.
+- Accept delivery requests containing only the immutable decision ID/hash.
+  Resolve source, method, path, role, session ID/epoch, and serialized payload
+  exclusively from current server-owned state and exact runtime evidence.
+- Persist one hashed delivery intent before invoking a transport. Join a
+  duplicate request to that attempt; never replay a completed, failed, or
+  unknown attempt in the current slice.
+- Create answer files privately with deterministic bounded bytes and atomic
+  no-clobber publication. Reject existing, symlinked, unsafe, or drifted
+  targets without choosing another path.
+- Send role-prompt decisions only as one bounded JSON-escaped,
+  comment-prefixed line to the exact configured live PTY. Treat PTY write
+  acceptance as transport evidence only, never provider handling or approval
+  execution.
 - Surface conflicts instead of choosing one answer automatically.
 
 ## Required security tests
@@ -183,6 +196,9 @@ Prefer bounded in-memory scrollback. If diagnostic export is added, it must be e
 - queue content interpreted as data, never executable code;
 - forged queue-decision identity/actor/hash fields, cross-type requests,
   duplicate replays, competing decisions, and restart recovery;
+- forged queue-delivery target/payload/path/role/session/retry fields,
+  answer-file no-clobber and symlink boundaries, shell-safe role-prompt bytes,
+  intent-before-effect ordering, duplicate suppression, and unknown recovery;
 - secret scanning of logs and persisted state.
 
 ## Future expansion
