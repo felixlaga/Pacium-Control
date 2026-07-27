@@ -19,6 +19,8 @@ import {
   type PaciumHttpServer,
 } from "./http-server.js";
 import { SessionManager } from "./session-manager.js";
+import type { VerificationCatalog } from "./verification-config.js";
+import { VerificationRunner } from "./verification-runner.js";
 
 interface PendingMessage {
   predicate: (message: ServerMessage) => boolean;
@@ -521,6 +523,145 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await once(client.socket, "close");
   });
 
+  it("runs and cancels configured verification without touching the PTY", async () => {
+    const factory = new FakePtyFactory();
+    const runner = new VerificationRunner({
+      environment: {},
+      observeHead: () => Promise.resolve("a".repeat(40)),
+      terminationGraceMs: 50,
+    });
+    const catalog: VerificationCatalog = {
+      configured: true,
+      repositories: [
+        {
+          root: process.cwd(),
+          presets: [
+            {
+              id: "pass",
+              label: "Pass",
+              description: "Return deterministic evidence",
+              executable: process.execPath,
+              args: ["-e", "process.stdout.write('verified\\n')"],
+              timeoutMs: 2_000,
+            },
+            {
+              id: "wait",
+              label: "Wait",
+              description: "Wait for explicit cancellation",
+              executable: process.execPath,
+              args: ["-e", "setInterval(() => {}, 1000)"],
+              timeoutMs: 2_000,
+            },
+          ],
+        },
+      ],
+    };
+    const setup = await startTestServer(factory, undefined, {
+      catalog,
+      runner,
+    });
+    application = setup.application;
+    manager = setup.manager;
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    const session = await createTestSession(client);
+
+    const passRequestId = "e110b9e7-dcdd-4054-8f7b-7f5549b9cb38";
+    client.socket.send(
+      JSON.stringify({
+        type: "repository.verification.run",
+        requestId: passRequestId,
+        sessionId: session.id,
+        presetId: "pass",
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "repository.verification" &&
+          message.requestId === passRequestId,
+      ),
+    ).resolves.toMatchObject({
+      observation: {
+        status: "ready",
+        presets: [{ id: "pass" }, { id: "wait" }],
+        run: { presetId: "pass", status: "running" },
+      },
+    });
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "repository.verification.updated" &&
+          message.observation.run?.presetId === "pass" &&
+          message.observation.run.status === "passed",
+      ),
+    ).resolves.toMatchObject({
+      observation: {
+        run: { status: "passed", stdout: "verified\n", exitCode: 0 },
+      },
+    });
+
+    const waitRequestId = "0b3b1f46-f209-44a3-8767-16c9de181156";
+    client.socket.send(
+      JSON.stringify({
+        type: "repository.verification.run",
+        requestId: waitRequestId,
+        sessionId: session.id,
+        presetId: "wait",
+      }),
+    );
+    const waiting = await nextMessage(
+      client,
+      (message) =>
+        message.type === "repository.verification" &&
+        message.requestId === waitRequestId,
+    );
+    if (
+      waiting.type !== "repository.verification" ||
+      waiting.observation.run === null
+    ) {
+      throw new Error("Expected an active verification response.");
+    }
+
+    const cancelRequestId = "9e72ea62-e8f8-49bb-a729-9c3730250f06";
+    client.socket.send(
+      JSON.stringify({
+        type: "repository.verification.cancel",
+        requestId: cancelRequestId,
+        sessionId: session.id,
+        runId: waiting.observation.run.runId,
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "repository.verification" &&
+          message.requestId === cancelRequestId,
+      ),
+    ).resolves.toMatchObject({
+      observation: { run: { presetId: "wait", status: "cancelling" } },
+    });
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "repository.verification.updated" &&
+          message.observation.run?.presetId === "wait" &&
+          message.observation.run.status === "cancelled",
+      ),
+    ).resolves.toMatchObject({
+      observation: {
+        run: { status: "cancelled", signal: "SIGTERM" },
+      },
+    });
+    expect(factory.processes[0]?.signals).toEqual([]);
+    client.socket.close();
+    await once(client.socket, "close");
+  });
+
   it("rejects an invalid local access token", async () => {
     const setup = await startTestServer(new FakePtyFactory());
     application = setup.application;
@@ -589,6 +730,10 @@ describe("localhost HTTP and WebSocket boundary", () => {
 async function startTestServer(
   factory: FakePtyFactory,
   hostActions?: HostActions,
+  verification?: {
+    catalog: VerificationCatalog;
+    runner: VerificationRunner;
+  },
 ): Promise<{
   application: PaciumHttpServer;
   manager: SessionManager;
@@ -605,7 +750,7 @@ async function startTestServer(
     homeDirectory: process.env.HOME ?? process.cwd(),
     shell: "/bin/zsh",
     environmentKeys: [],
-    verificationCatalog: {
+    verificationCatalog: verification?.catalog ?? {
       configured: false,
       repositories: [],
     },
@@ -740,6 +885,8 @@ async function startTestServer(
         truncated: false,
         error: null,
       }),
+    config.verificationCatalog,
+    verification?.runner,
   );
   const application = createPaciumHttpServer(config, manager);
   application.server.listen(0, config.host);
