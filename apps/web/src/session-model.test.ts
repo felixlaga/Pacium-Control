@@ -92,6 +92,7 @@ describe("workspace shortcuts", () => {
     altKey: false,
     editable: false,
     dialogOpen: false,
+    terminalCaptured: false,
   };
 
   it("maps creation, navigation, numbered selection, and capture escape", () => {
@@ -122,6 +123,24 @@ describe("workspace shortcuts", () => {
         shiftKey: true,
       }),
     ).toEqual({ type: "exit-terminal-capture" });
+    expect(
+      resolveWorkspaceShortcut({ ...baseKeys, code: "Backslash" }),
+    ).toEqual({ type: "split-horizontal" });
+    expect(
+      resolveWorkspaceShortcut({
+        ...baseKeys,
+        code: "Backslash",
+        shiftKey: true,
+      }),
+    ).toEqual({ type: "split-vertical" });
+    expect(
+      resolveWorkspaceShortcut({
+        ...baseKeys,
+        code: "BracketRight",
+        metaKey: false,
+        altKey: true,
+      }),
+    ).toEqual({ type: "next-pane" });
   });
 
   it("does not steal normal shortcuts from editable controls", () => {
@@ -131,6 +150,13 @@ describe("workspace shortcuts", () => {
         code: "KeyT",
         shiftKey: true,
         editable: true,
+      }),
+    ).toBeNull();
+    expect(
+      resolveWorkspaceShortcut({
+        ...baseKeys,
+        code: "Backslash",
+        terminalCaptured: true,
       }),
     ).toBeNull();
   });
