@@ -123,6 +123,12 @@ function providerActivity(input: {
       threadId: "thread-1",
       turnId: "turn-1",
       itemType: null,
+      modelContextWindow: null,
+      totalInputTokens: null,
+      totalCachedInputTokens: null,
+      totalOutputTokens: null,
+      totalReasoningOutputTokens: null,
+      totalTokens: null,
     },
   };
 }

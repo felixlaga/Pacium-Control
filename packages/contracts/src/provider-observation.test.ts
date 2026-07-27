@@ -56,6 +56,12 @@ function snapshot(
           threadId: "thread-1",
           turnId: "turn-1",
           itemType: null,
+          modelContextWindow: null,
+          totalInputTokens: null,
+          totalCachedInputTokens: null,
+          totalOutputTokens: null,
+          totalReasoningOutputTokens: null,
+          totalTokens: null,
         },
       },
     ],
@@ -96,6 +102,12 @@ describe("provider observation contract", () => {
               threadId: "thread-1",
               turnId: "turn-1",
               itemType: null,
+              modelContextWindow: null,
+              totalInputTokens: null,
+              totalCachedInputTokens: null,
+              totalOutputTokens: null,
+              totalReasoningOutputTokens: null,
+              totalTokens: null,
             },
           },
           {
@@ -108,6 +120,12 @@ describe("provider observation contract", () => {
               threadId: "thread-1",
               turnId: "turn-1",
               itemType: null,
+              modelContextWindow: null,
+              totalInputTokens: null,
+              totalCachedInputTokens: null,
+              totalOutputTokens: null,
+              totalReasoningOutputTokens: null,
+              totalTokens: null,
             },
           },
         ],
@@ -118,6 +136,46 @@ describe("provider observation contract", () => {
       "approval_requested",
       "question_requested",
     ]);
+  });
+
+  it("accepts bounded Codex usage while rejecting invalid totals", () => {
+    const activity = snapshot().activities[0]!;
+    const usage = {
+      ...activity,
+      id: "usage-1",
+      kind: "usage_updated" as const,
+      extension: {
+        provider: "codex" as const,
+        eventType: "usage_update" as const,
+        threadId: "thread-1",
+        turnId: "turn-1",
+        itemType: null,
+        modelContextWindow: 200_000,
+        totalInputTokens: 12_000,
+        totalCachedInputTokens: 8_000,
+        totalOutputTokens: 900,
+        totalReasoningOutputTokens: 400,
+        totalTokens: 12_900,
+      },
+    };
+
+    expect(
+      ProviderObservationSnapshotSchema.safeParse(
+        snapshot({ activities: [usage] }),
+      ).success,
+    ).toBe(true);
+    expect(
+      ProviderObservationSnapshotSchema.safeParse(
+        snapshot({
+          activities: [
+            {
+              ...usage,
+              extension: { ...usage.extension, totalTokens: -1 },
+            },
+          ],
+        }),
+      ).success,
+    ).toBe(false);
   });
 
   it("rejects cross-provider extensions and unknown fields", () => {
