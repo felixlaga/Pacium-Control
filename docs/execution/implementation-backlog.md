@@ -119,6 +119,7 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-027 Implement preferences
 
 - Theme, density, terminal font, scrollback limit, notification settings, and default preset.
+- Current status: versioned browser-local settings implement system/dark/light themes, compact/comfortable density, three controlled terminal font stacks, bounded font size/line height/scrollback, available-preset defaulting, and a stored quiet notification level for PC-032. Settings are reachable from the header, `Cmd/Ctrl ,`, and command palette. Notification delivery and rendered browser/accessibility validation remain pending.
 
 ### PC-028 Implement responsive layout and accessibility baseline
 

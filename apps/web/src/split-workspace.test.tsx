@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import type { SessionSummary } from "@pacium/contracts";
+import { DEFAULT_TERMINAL_DISPLAY_PREFERENCES } from "@pacium/terminal-ui";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -63,6 +64,7 @@ describe("split workspace rendering", () => {
         capturedPaneId={null}
         layout={layout}
         sessions={[session]}
+        terminalPreferences={DEFAULT_TERMINAL_DISPLAY_PREFERENCES}
         terminalRefs={{ current: new Map() }}
       />,
     );
@@ -99,6 +101,7 @@ describe("split workspace rendering", () => {
         capturedPaneId={null}
         layout={layout}
         sessions={[session, secondSession]}
+        terminalPreferences={DEFAULT_TERMINAL_DISPLAY_PREFERENCES}
         terminalRefs={{ current: new Map() }}
       />,
     );

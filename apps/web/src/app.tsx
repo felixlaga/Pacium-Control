@@ -6,7 +6,10 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import type { TerminalSurfaceHandle } from "@pacium/terminal-ui";
+import {
+  type TerminalDisplayPreferences,
+  type TerminalSurfaceHandle,
+} from "@pacium/terminal-ui";
 import type {
   DirectoryListing,
   LaunchPresetCapability,
@@ -27,6 +30,15 @@ import {
   type PaletteCommand,
 } from "./command-palette-model.js";
 import { DirectoryPicker } from "./directory-picker.js";
+import {
+  TERMINAL_FONT_STACKS,
+  loadPreferences,
+  resolveDefaultLaunchPreset,
+  resolveEffectiveTheme,
+  savePreferences,
+  type WorkspacePreferences,
+} from "./preferences-model.js";
+import { PreferencesDialog } from "./preferences.js";
 import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
 import {
   duplicateSessionInput,
@@ -110,6 +122,7 @@ export function App() {
     createSplitLayout(`pane-${crypto.randomUUID()}`),
   );
   const paletteInvokerRef = useRef<HTMLElement | null>(null);
+  const settingsInvokerRef = useRef<HTMLElement | null>(null);
   const transportRef = useRef<PaciumTransport | null>(null);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -139,10 +152,32 @@ export function App() {
   const [paletteView, setPaletteView] = useState<CommandPaletteView | null>(
     null,
   );
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [preferences, setPreferences] = useState<WorkspacePreferences>(() =>
+    loadPreferences(window.localStorage),
+  );
+  const [systemPrefersDark, setSystemPrefersDark] = useState(
+    () => window.matchMedia("(prefers-color-scheme: dark)").matches,
+  );
 
   selectedIdRef.current = selectedId;
   tabsRef.current = tabs;
   layoutRef.current = layout;
+
+  const effectiveTheme = resolveEffectiveTheme(
+    preferences.theme,
+    systemPrefersDark,
+  );
+  const terminalPreferences = useMemo<TerminalDisplayPreferences>(
+    () => ({
+      fontFamily: TERMINAL_FONT_STACKS[preferences.terminalFont],
+      fontSize: preferences.terminalFontSize,
+      lineHeight: preferences.terminalLineHeight,
+      scrollback: preferences.terminalScrollback,
+      theme: effectiveTheme,
+    }),
+    [effectiveTheme, preferences],
+  );
 
   const onTransportEvent = useCallback((event: TransportEvent) => {
     if (event.type === "connection") {
@@ -183,6 +218,19 @@ export function App() {
       transportRef.current = null;
     };
   }, [onTransportEvent]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const update = () => setSystemPrefersDark(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = effectiveTheme;
+    document.documentElement.dataset.density = preferences.density;
+  }, [effectiveTheme, preferences.density]);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -533,6 +581,40 @@ export function App() {
     });
   };
 
+  const openSettings = () => {
+    const activeElement = document.activeElement;
+    settingsInvokerRef.current =
+      activeElement instanceof HTMLElement && activeElement !== document.body
+        ? activeElement
+        : document.getElementById("settings-trigger");
+    setCapturedPaneId(null);
+    setSettingsOpen(true);
+  };
+
+  const closeSettings = () => {
+    setSettingsOpen(false);
+    const target = settingsInvokerRef.current;
+    window.requestAnimationFrame(() => {
+      if (target?.isConnected) {
+        target.focus();
+        return;
+      }
+      document.getElementById("settings-trigger")?.focus();
+    });
+  };
+
+  const applyPreferences = (next: WorkspacePreferences) => {
+    setPreferences(next);
+    setSettingsOpen(false);
+    if (savePreferences(window.localStorage, next)) {
+      setNotice("Workspace settings applied and saved in this browser.");
+      return;
+    }
+    setNotice(
+      "Workspace settings are active, but this browser could not save them for refresh.",
+    );
+  };
+
   const executePaletteCommand = (command: PaletteCommand) => {
     if (!command.enabled) {
       return;
@@ -546,6 +628,9 @@ export function App() {
     switch (command.action.type) {
       case "new-terminal":
         setCreateOpen(true);
+        return;
+      case "open-settings":
+        openSettings();
         return;
       case "split-pane":
         splitPane(command.action.direction);
@@ -613,7 +698,8 @@ export function App() {
     createOpen ||
     actionSession !== null ||
     renameSession !== null ||
-    paletteView !== null;
+    paletteView !== null ||
+    settingsOpen;
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -648,6 +734,9 @@ export function App() {
           return;
         case "open-shortcut-reference":
           openPalette("shortcuts");
+          return;
+        case "open-settings":
+          openSettings();
           return;
         case "new-terminal":
           setCreateOpen(true);
@@ -816,6 +905,16 @@ export function App() {
             >
               Commands
               <kbd>⌘K</kbd>
+            </button>
+            <button
+              aria-keyshortcuts="Meta+, Control+,"
+              aria-label="Open workspace settings"
+              id="settings-trigger"
+              onClick={openSettings}
+              title="Workspace settings (Cmd/Ctrl ,)"
+              type="button"
+            >
+              <span aria-hidden="true">⚙</span>
             </button>
             <button
               disabled={selectedSession?.processState !== "live"}
@@ -1081,6 +1180,7 @@ export function App() {
                 setSelectedId(getFocusedPane(next)?.sessionId ?? null);
               }}
               sessions={sessions}
+              terminalPreferences={terminalPreferences}
               terminalRefs={terminalRefs}
             />
           )}
@@ -1143,10 +1243,22 @@ export function App() {
       {createOpen && (
         <CreateTerminalDialog
           defaultCwd={defaultCwd}
+          defaultLaunchPreset={resolveDefaultLaunchPreset(
+            preferences.defaultLaunchPreset,
+            launchPresets,
+          )}
           launchPresets={launchPresets}
           loadDirectories={loadDirectories}
           onCancel={() => setCreateOpen(false)}
           onCreate={createSession}
+        />
+      )}
+      {settingsOpen && (
+        <PreferencesDialog
+          launchPresets={launchPresets}
+          onApply={applyPreferences}
+          onCancel={closeSettings}
+          preferences={preferences}
         />
       )}
       {paletteView !== null && (
@@ -1327,12 +1439,14 @@ function upsertSession(
 
 function CreateTerminalDialog({
   defaultCwd,
+  defaultLaunchPreset,
   launchPresets,
   loadDirectories,
   onCancel,
   onCreate,
 }: {
   defaultCwd: string;
+  defaultLaunchPreset: LaunchPresetId;
   launchPresets: LaunchPresetCapability[];
   loadDirectories: (path?: string) => Promise<DirectoryListing>;
   onCancel: () => void;
@@ -1344,7 +1458,8 @@ function CreateTerminalDialog({
 }) {
   const [cwd, setCwd] = useState(defaultCwd);
   const [displayName, setDisplayName] = useState("");
-  const [launchPreset, setLaunchPreset] = useState<LaunchPresetId>("shell");
+  const [launchPreset, setLaunchPreset] =
+    useState<LaunchPresetId>(defaultLaunchPreset);
   const [pickerOpen, setPickerOpen] = useState(false);
   const selectedPreset = launchPresets.find(
     (preset) => preset.id === launchPreset,

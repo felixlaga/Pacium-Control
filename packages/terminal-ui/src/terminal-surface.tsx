@@ -9,6 +9,12 @@ import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 
+import {
+  DEFAULT_TERMINAL_DISPLAY_PREFERENCES,
+  terminalOptionsForPreferences,
+  type TerminalDisplayPreferences,
+} from "./terminal-preferences.js";
+
 export interface TerminalSnapshot {
   data: string;
   cols: number;
@@ -30,31 +36,8 @@ export interface TerminalSurfaceProps {
   onCaptureChange?: (captured: boolean) => void;
   onInput: (data: string) => void;
   onResize: (cols: number, rows: number) => void;
+  preferences?: TerminalDisplayPreferences;
 }
-
-const TERMINAL_THEME = {
-  background: "#101113",
-  foreground: "#e7e7e9",
-  cursor: "#8b7cf6",
-  cursorAccent: "#101113",
-  selectionBackground: "#6658cc66",
-  black: "#202126",
-  brightBlack: "#6d7078",
-  red: "#ec6a75",
-  brightRed: "#f07b85",
-  green: "#92c353",
-  brightGreen: "#a4d467",
-  yellow: "#e6b450",
-  brightYellow: "#f2c866",
-  blue: "#6aa6f8",
-  brightBlue: "#86b7fa",
-  magenta: "#b79bf8",
-  brightMagenta: "#c8b2fa",
-  cyan: "#64c5da",
-  brightCyan: "#7bd5e5",
-  white: "#d9d9dc",
-  brightWhite: "#ffffff",
-} as const;
 
 export const TerminalSurface = forwardRef<
   TerminalSurfaceHandle,
@@ -67,6 +50,7 @@ export const TerminalSurface = forwardRef<
     onCaptureChange,
     onInput,
     onResize,
+    preferences = DEFAULT_TERMINAL_DISPLAY_PREFERENCES,
   },
   forwardedRef,
 ) {
@@ -120,12 +104,7 @@ export const TerminalSurface = forwardRef<
       cursorBlink: true,
       cursorStyle: "bar",
       disableStdin: disabled,
-      fontFamily:
-        '"SFMono-Regular", "SF Mono", "Cascadia Code", "Roboto Mono", monospace',
-      fontSize: 13,
-      lineHeight: 1.35,
-      scrollback: 2_000,
-      theme: TERMINAL_THEME,
+      ...terminalOptionsForPreferences(preferences),
     });
     const fitAddon = new FitAddon();
     terminal.loadAddon(fitAddon);
@@ -172,6 +151,29 @@ export const TerminalSurface = forwardRef<
       terminalRef.current.options.disableStdin = disabled;
     }
   }, [disabled]);
+
+  useEffect(() => {
+    const terminal = terminalRef.current;
+    const fitAddon = fitAddonRef.current;
+    if (terminal === null || fitAddon === null) {
+      return;
+    }
+    const options = terminalOptionsForPreferences(preferences);
+    terminal.options.fontFamily = options.fontFamily;
+    terminal.options.fontSize = options.fontSize;
+    terminal.options.lineHeight = options.lineHeight;
+    terminal.options.scrollback = options.scrollback;
+    terminal.options.theme = options.theme;
+
+    const animationFrame = requestAnimationFrame(() => fitAddon.fit());
+    return () => cancelAnimationFrame(animationFrame);
+  }, [
+    preferences.fontFamily,
+    preferences.fontSize,
+    preferences.lineHeight,
+    preferences.scrollback,
+    preferences.theme,
+  ]);
 
   const style = {
     "--terminal-opacity": disabled ? 0.58 : 1,

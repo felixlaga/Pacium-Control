@@ -107,6 +107,9 @@ describe("workspace shortcuts", () => {
         shiftKey: true,
       }),
     ).toEqual({ type: "open-shortcut-reference" });
+    expect(resolveWorkspaceShortcut({ ...baseKeys, code: "Comma" })).toEqual({
+      type: "open-settings",
+    });
     expect(
       resolveWorkspaceShortcut({
         ...baseKeys,
@@ -184,6 +187,13 @@ describe("workspace shortcuts", () => {
         metaKey: false,
         shiftKey: true,
         dialogOpen: true,
+      }),
+    ).toBeNull();
+    expect(
+      resolveWorkspaceShortcut({
+        ...baseKeys,
+        code: "Comma",
+        editable: true,
       }),
     ).toBeNull();
   });
