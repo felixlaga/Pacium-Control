@@ -1,6 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 
+import type { TailscaleServeConfig } from "./config.js";
+
 export const SECURITY_HEADERS = {
   "cache-control": "no-store",
   "content-security-policy":
@@ -11,6 +13,18 @@ export const SECURITY_HEADERS = {
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
 } as const;
+
+export function buildSecurityHeaders(
+  tailscaleServe: TailscaleServeConfig | null,
+): Readonly<Record<string, string>> {
+  if (tailscaleServe === null) {
+    return SECURITY_HEADERS;
+  }
+  return {
+    ...SECURITY_HEADERS,
+    "content-security-policy": `default-src 'self'; connect-src 'self' ws://127.0.0.1:* ws://localhost:* wss://${tailscaleServe.hostname}; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`,
+  };
+}
 
 export function isAllowedOrigin(
   origin: string | undefined,

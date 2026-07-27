@@ -16,7 +16,7 @@ import {
   browseHostDirectories,
   DirectoryBrowserError,
 } from "./directory-browser.js";
-import { SECURITY_HEADERS, isValidAccessToken } from "./security.js";
+import { buildSecurityHeaders, isValidAccessToken } from "./security.js";
 import { classifyRequestAccess, type RequestAccess } from "./remote-access.js";
 import type { PaciumConfigStore } from "./pacium-config-store.js";
 import { QueueObserver } from "./queue-observer.js";
@@ -87,7 +87,7 @@ async function routeRequest(
   config: ServerConfig,
   webRoot: string,
 ): Promise<void> {
-  applySecurityHeaders(response);
+  applySecurityHeaders(response, config);
 
   const requestUrl = parseRequestUrl(request);
   if (requestUrl === undefined) {
@@ -334,8 +334,13 @@ function hasEmptyRequestBody(request: IncomingMessage): boolean {
   );
 }
 
-function applySecurityHeaders(response: ServerResponse): void {
-  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+function applySecurityHeaders(
+  response: ServerResponse,
+  config: ServerConfig,
+): void {
+  for (const [name, value] of Object.entries(
+    buildSecurityHeaders(config.tailscaleServe),
+  )) {
     response.setHeader(name, value);
   }
 }
