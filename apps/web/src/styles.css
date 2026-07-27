@@ -2016,6 +2016,7 @@ kbd {
 .queue-original-text,
 .queue-meaning,
 .queue-decision-panel,
+.queue-delivery-panel,
 .queue-provenance {
   padding: 14px;
   border-bottom: 1px solid var(--border);
@@ -2024,6 +2025,7 @@ kbd {
 .queue-original-text h3,
 .queue-meaning h3,
 .queue-decision-panel h3,
+.queue-delivery-panel h3,
 .queue-provenance h3 {
   margin: 0 0 10px;
   color: var(--text-faint);
@@ -2214,6 +2216,126 @@ kbd {
   line-height: 1.5;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.queue-delivery-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  border-left: 2px solid var(--border-strong);
+  background: color-mix(in srgb, var(--panel-soft) 35%, transparent);
+}
+
+.queue-delivery-panel .inspector-section-heading {
+  margin: 0;
+}
+
+.queue-delivery-panel .inspector-section-heading h3 {
+  margin: 0;
+}
+
+.queue-delivery-panel .inspector-section-heading > span {
+  color: var(--text-faint);
+  font-size: 8px;
+}
+
+.queue-delivery-panel > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.queue-delivery-panel.state-ready,
+.queue-delivery-panel.state-delivering {
+  border-left-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 4%, transparent);
+}
+
+.queue-delivery-panel.state-delivered {
+  border-left-color: var(--green);
+  background: color-mix(in srgb, var(--green) 4%, transparent);
+}
+
+.queue-delivery-panel.state-failed,
+.queue-delivery-panel.state-unavailable {
+  border-left-color: var(--red);
+  background: color-mix(in srgb, var(--red) 4%, transparent);
+}
+
+.queue-delivery-panel.state-unknown {
+  border-left-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 6%, transparent);
+}
+
+.queue-delivery-target,
+.queue-delivery-evidence {
+  margin: 0;
+}
+
+.queue-delivery-target code,
+.queue-delivery-evidence code {
+  overflow-wrap: anywhere;
+}
+
+.queue-delivery-confirmation {
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.queue-delivery-confirmation summary {
+  color: var(--text);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 620;
+}
+
+.queue-delivery-confirmation > p {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.queue-delivery-confirmation button {
+  width: 100%;
+  min-height: 30px;
+  margin-top: 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--accent-soft);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 620;
+}
+
+.queue-delivery-confirmation button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.queue-delivery-error {
+  display: grid;
+  gap: 4px;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--amber) 42%, var(--border));
+  border-radius: 6px;
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 5%, transparent);
+}
+
+.queue-delivery-error strong {
+  font-size: 9px;
+}
+
+.queue-delivery-error p {
+  margin: 0;
+  font-size: 8px;
+  line-height: 1.45;
 }
 
 .queue-original-text .inspector-section-heading {
@@ -5906,6 +6028,9 @@ html[data-density="comfortable"] .terminal-panel {
   .pacium-queue-inspector-heading,
   .queue-original-text pre,
   .queue-decision-panel,
+  .queue-delivery-panel,
+  .queue-delivery-confirmation,
+  .queue-delivery-error,
   .queue-approval-confirmation,
   .queue-decision-error,
   .queue-inspector-message,
