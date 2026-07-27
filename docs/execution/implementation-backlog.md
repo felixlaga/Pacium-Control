@@ -287,7 +287,17 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 
 ### PC-044 Observe queue files
 
-- Stable reads, debounce, content size limits, source hashes, offsets/revisions, original text, and parse diagnostics.
+- Stable reads, debounce, content-size limits, source hashes, source revisions,
+  and bounded original text for later parsing.
+- Current status: protocol 11 observes only accepted configured queue-source
+  paths through bounded no-follow stable reads and canonical-parent watchers.
+  It keeps at most 64 KiB of complete UTF-8 source text in local-server memory,
+  computes SHA-256 only for stable/empty evidence, deduplicates unchanged
+  observations, rejects stale config generations, and presents compact
+  content-free source health only in Pacium mode. Explicit Refresh, reconnect,
+  watcher disposal, hostile files, and byte-for-byte source/config preservation
+  are covered. Item boundaries, parse diagnostics, durable provenance,
+  decisions, delivery, and queue text in the browser remain PC-045 onward.
 
 ### PC-045 Classify queue items
 
