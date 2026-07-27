@@ -14,6 +14,7 @@ import {
   type PaciumConfigStore,
 } from "./pacium-config-store.js";
 import { presetCapabilities } from "./launch-presets.js";
+import { QueueObserver } from "./queue-observer.js";
 import { SessionError, type SessionManager } from "./session-manager.js";
 
 interface ConnectedClient {
@@ -36,11 +37,13 @@ export class WebSocketHub {
   private readonly clients = new Set<ConnectedClient>();
   private readonly unsubscribeData: () => void;
   private readonly unsubscribeSessions: () => void;
+  private readonly unsubscribeQueue: () => void;
 
   public constructor(
     private readonly config: ServerConfig,
     private readonly sessions: SessionManager,
     private readonly paciumConfig: PaciumConfigStore,
+    private readonly queueObserver: QueueObserver = new QueueObserver(),
   ) {
     this.server.on("connection", (socket) => {
       this.handleConnection(socket);
@@ -93,11 +96,20 @@ export class WebSocketHub {
             };
       this.broadcast(message);
     });
+
+    this.unsubscribeQueue = queueObserver.subscribe((observation) => {
+      this.broadcast({
+        type: "pacium.queue.sources.updated",
+        observation,
+      });
+    });
   }
 
   public dispose(): void {
     this.unsubscribeData();
     this.unsubscribeSessions();
+    this.unsubscribeQueue();
+    this.queueObserver.dispose();
     for (const client of this.clients) {
       client.socket.close(1001, "Pacium server is shutting down");
     }
@@ -380,22 +392,39 @@ export class WebSocketHub {
         );
         return;
       case "pacium.config.get":
+        {
+          const observation = await this.paciumConfig.inspect();
+          this.send(client.socket, {
+            type: "pacium.config",
+            requestId: message.requestId,
+            observation,
+          });
+          await this.queueObserver.syncConfig(observation);
+        }
+        return;
+      case "pacium.config.replace": {
+        const observation = await this.paciumConfig.replace(
+          message.expectedRevision,
+          message.workspace,
+        );
         this.send(client.socket, {
           type: "pacium.config",
           requestId: message.requestId,
-          observation: await this.paciumConfig.inspect(),
+          observation,
         });
+        await this.queueObserver.syncConfig(observation);
         return;
-      case "pacium.config.replace":
+      }
+      case "pacium.queue.observe": {
+        const config = await this.paciumConfig.inspect();
+        const observation = await this.queueObserver.syncConfig(config);
         this.send(client.socket, {
-          type: "pacium.config",
+          type: "pacium.queue.sources",
           requestId: message.requestId,
-          observation: await this.paciumConfig.replace(
-            message.expectedRevision,
-            message.workspace,
-          ),
+          observation,
         });
         return;
+      }
       case "session.close":
         this.sessions.close(
           message.sessionId,

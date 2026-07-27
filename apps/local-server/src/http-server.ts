@@ -24,6 +24,7 @@ import {
   isValidAccessToken,
 } from "./security.js";
 import type { PaciumConfigStore } from "./pacium-config-store.js";
+import { QueueObserver } from "./queue-observer.js";
 import type { SessionManager } from "./session-manager.js";
 import { WebSocketHub } from "./ws-hub.js";
 
@@ -36,9 +37,14 @@ export function createPaciumHttpServer(
   config: ServerConfig,
   sessions: SessionManager,
   paciumConfig: PaciumConfigStore,
+  queueObserver: QueueObserver = new QueueObserver(),
 ): PaciumHttpServer {
   const webRoot = fileURLToPath(new URL("../../web/dist/", import.meta.url));
-  const hub = new WebSocketHub(config, sessions, paciumConfig);
+  const hub = new WebSocketHub(config, sessions, paciumConfig, queueObserver);
+  void paciumConfig
+    .inspect()
+    .then((observation) => queueObserver.syncConfig(observation))
+    .catch(() => undefined);
   const server = createServer((request, response) => {
     void routeRequest(request, response, config, webRoot);
   });
@@ -70,6 +76,7 @@ export function createPaciumHttpServer(
     server,
     async close() {
       hub.dispose();
+      queueObserver.dispose();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => {
           if (error === undefined) {

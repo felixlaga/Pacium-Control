@@ -3,6 +3,7 @@ import { createPaciumHttpServer } from "./http-server.js";
 import { createHostActions } from "./host-actions.js";
 import { createPaciumConfigStore } from "./pacium-config-service.js";
 import { NodePtyFactory } from "./pty-adapter.js";
+import { QueueObserver } from "./queue-observer.js";
 import { SessionManager } from "./session-manager.js";
 import { VerificationRunner } from "./verification-runner.js";
 
@@ -22,7 +23,13 @@ const sessions = new SessionManager(
   verificationRunner,
 );
 const paciumConfig = createPaciumConfigStore(config, sessions);
-const application = createPaciumHttpServer(config, sessions, paciumConfig);
+const queueObserver = new QueueObserver();
+const application = createPaciumHttpServer(
+  config,
+  sessions,
+  paciumConfig,
+  queueObserver,
+);
 
 application.server.listen(config.port, config.host, () => {
   process.stdout.write(
