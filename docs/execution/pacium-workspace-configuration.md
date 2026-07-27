@@ -144,13 +144,13 @@ The configuration contract itself:
 - does not by itself open, watch, create, append, or deliver a configured file;
 - no role prompt is sent and no terminal input is generated.
 
-Protocol 11 gives the queue observer separate read-only authority for accepted
+Protocol 12 gives the queue observer separate read-only authority for accepted
 queue-source paths only. It watches canonical parent directories and performs
 bounded no-follow stable reads of at most 64 KiB. Complete UTF-8 text is kept
-only in process memory for later queue parsing; browser messages contain only
-status, byte length, modification time, SHA-256 provenance, and bounded error
-evidence. Objective, plan, and answer-file paths are still never opened by this
-slice.
+only in process memory for later queue inspection; browser messages contain
+only status, byte length, modification time, SHA-256 provenance, bounded error,
+and content-free whole-source classification evidence. Objective, plan, and
+answer-file paths are still never opened by this slice.
 
 Queue text remains untrusted data. Configuration and observation never grant
 command, prompt, delivery, or shell authority.
@@ -173,7 +173,7 @@ command, prompt, delivery, or shell authority.
 The 96 KiB file ceiling leaves deterministic room inside the 128 KiB
 application-message envelope.
 
-## Protocol 11
+## Protocol 12
 
 The authenticated WebSocket protocol retains the protocol-10 configuration
 operations:
@@ -199,7 +199,7 @@ observation. Reconnect performs a fresh get. A lost replacement response must
 be resolved by get; the browser never assumes that request intent became
 durable state.
 
-Protocol 11 adds content-free queue-source observation:
+Protocol 11 introduced content-free queue-source observation:
 
 ```text
 pacium.queue.observe(requestId)
@@ -219,6 +219,19 @@ Only `stable` and `empty` contain a complete SHA-256 hash. No queue path, label,
 requesting role, original text, parsed text, command, decision, or delivery
 payload crosses this protocol boundary; the browser joins metadata to the
 matching accepted config revision and source ID.
+
+Protocol 12 adds nullable classification metadata to stable nonempty source
+evidence. One complete document is at most one `whole_source_v1` candidate with
+a deterministic source/hash-bound item ID, type
+(`question | approval | failure | review | unknown`), confidence, and fixed
+bounded diagnostics. Empty, pending, or degraded sources contain no
+classification.
+
+An approval classification requires the exact supported
+`Approval request: <concrete action>` marker. Conversational permission words,
+commands, filenames, roles, and question marks never infer approval. Protocol
+12 still contains no original text, title, excerpt, parsed action, answer,
+decision, delivery, provider callback, or execution authority.
 
 ## Atomicity and recovery
 
@@ -256,6 +269,7 @@ write targets.
 
 Configured paths are metadata candidates until the local server canonicalizes
 them. Queue observation can read only the accepted queue-source subset after
-canonicalization; it does not expose or log their contents. Pacium does not
-persist provider tokens, passwords, full environments, queue text, or terminal
-transcripts.
+canonicalization; classification derives only bounded data-only metadata and
+does not expose, render, execute, or log contents. Pacium does not persist
+provider tokens, passwords, full environments, queue text, classifications, or
+terminal transcripts.
