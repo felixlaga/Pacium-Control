@@ -226,6 +226,14 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-038 Implement recent-activity summary
 
 - Deterministic facts from process, terminal attention, and Git changes; optional agent narrative remains labelled.
+- Current status: a lazy fifth Activity inspector projects only the selected
+  session's current attention, direct-PTY lifecycle, bounded changed-file
+  observation, three newest local-HEAD commits, and current/latest verification
+  run. Observed and occurred timestamps remain distinct; source availability,
+  partial errors, refresh, stale-response rejection, reconnect, five-tab
+  keyboard navigation, and 320 CSS px layouts reuse existing protocol-9
+  evidence without polling, persistence, terminal parsing, provider narrative,
+  or a new event service.
 
 ## Epic 4 — Pacium mode
 
