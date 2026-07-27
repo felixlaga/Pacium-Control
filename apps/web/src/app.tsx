@@ -192,6 +192,13 @@ export function App() {
     () => loadAttentionInbox(window.localStorage),
   );
   const attentionInboxRef = useRef(attentionInbox);
+  const [notificationPermission, setNotificationPermission] = useState<
+    NotificationPermission | "unsupported"
+  >(() =>
+    typeof Notification === "undefined"
+      ? "unsupported"
+      : Notification.permission,
+  );
   const [systemPrefersDark, setSystemPrefersDark] = useState(
     () => window.matchMedia("(prefers-color-scheme: dark)").matches,
   );
@@ -735,6 +742,27 @@ export function App() {
     setNotice(
       "Workspace settings are active, but this browser could not save them for refresh.",
     );
+  };
+
+  const requestNotificationPermission = async () => {
+    if (typeof Notification === "undefined") {
+      setNotificationPermission("unsupported");
+      setNotice("This browser does not support local notifications.");
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      setNotice(
+        permission === "granted"
+          ? "Browser alerts allowed. Delivery still follows your notification setting."
+          : "Browser alerts were not allowed. Pacium will keep attention inside the app.",
+      );
+    } catch {
+      setNotice(
+        "The browser could not request notification permission. Pacium will keep attention inside the app.",
+      );
+    }
   };
 
   const setPanelVisibility = (next: typeof panelView) => {
@@ -1526,8 +1554,12 @@ export function App() {
       {settingsOpen && (
         <PreferencesDialog
           launchPresets={launchPresets}
+          notificationPermission={notificationPermission}
           onApply={applyPreferences}
           onCancel={closeSettings}
+          onRequestNotificationPermission={() => {
+            void requestNotificationPermission();
+          }}
           preferences={preferences}
         />
       )}

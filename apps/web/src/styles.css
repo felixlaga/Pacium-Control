@@ -2286,6 +2286,21 @@ kbd {
   gap: 5px;
 }
 
+.notification-permission {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 8px;
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.notification-permission button {
+  flex: 0 0 auto;
+}
+
 .preference-field {
   display: grid;
   min-height: 54px;
