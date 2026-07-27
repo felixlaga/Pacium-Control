@@ -114,9 +114,23 @@ export function classifyQueueItem(
 }
 
 function matchMarker(line: string): Marker | null {
-  return (
-    VALID_MARKERS.find(({ pattern }) => pattern.test(line))?.marker ?? null
-  );
+  const matched =
+    VALID_MARKERS.find(({ pattern }) => pattern.test(line))?.marker ?? null;
+  if (matched === null) {
+    return null;
+  }
+  const suffix = line.slice(line.indexOf(":") + 1);
+  return hasTerminalControl(suffix) ? null : matched;
+}
+
+function hasTerminalControl(value: string): boolean {
+  return [...value].some((character) => {
+    const codePoint = character.codePointAt(0);
+    return (
+      codePoint !== undefined &&
+      (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f))
+    );
+  });
 }
 
 function candidate(

@@ -68,6 +68,8 @@ describe("queue item classifier", () => {
   it.each([
     "# Approval request:",
     "Approval request:   ",
+    "Approval request: \u0007",
+    "Approval request: Run\u001b[31m",
     "# Question:",
     "ERROR:",
     "Review: ",
