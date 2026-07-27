@@ -182,9 +182,9 @@ and repository file content never enter the projection.
 - Security: repository/terminal/verification content exclusion, plain-text
   commit subjects, no terminal input, no command execution, no persistence, and
   no new WebSocket authority.
-- Performance: at most one attention item, two process items, one changes item,
-  three commits, one verification item, and a fixed total of eight recent
-  facts; no polling and no repeated idle-source request loop.
+- Performance: one current attention card, at most two process facts, one
+  changes fact, three commits, one verification fact, and a fixed seven-fact
+  recent list; no polling and no repeated idle-source request loop.
 
 ## Documentation changes
 
