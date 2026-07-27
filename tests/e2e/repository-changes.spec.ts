@@ -86,6 +86,40 @@ test("changed files load lazily without changing terminal selection", async ({
   ).toBeVisible();
   await expect(workspaceStatus).toContainText("Oversight fixture");
 
+  const openDiff = changesPanel.getByRole("button", {
+    name: "Open diff for file.txt",
+  });
+  await openDiff.click();
+  const diffPanel = page.getByRole("tabpanel", { name: "Changes" });
+  await expect(diffPanel.locator(".repository-diff-heading strong")).toHaveText(
+    "file.txt",
+  );
+  await expect(diffPanel.locator(".diff-line.is-deletion")).toContainText(
+    "before",
+  );
+  await expect(diffPanel.locator(".diff-line.is-addition")).toContainText(
+    "after",
+  );
+
+  const search = diffPanel.getByRole("searchbox", { name: "Search diff" });
+  await search.fill("after");
+  await expect(diffPanel.getByRole("status")).toHaveText("1 matching line");
+  await search.press("Escape");
+  await expect(search).toHaveValue("");
+
+  const wrap = diffPanel.getByRole("button", { name: "Wrap" });
+  await wrap.click();
+  await expect(wrap).toHaveAttribute("aria-pressed", "true");
+  await diffPanel.getByRole("button", { name: "Collapse all" }).click();
+  await expect(
+    diffPanel.getByRole("button", { name: "Expand all" }),
+  ).toBeVisible();
+
+  await diffPanel.focus();
+  await diffPanel.press("Escape");
+  await expect(openDiff).toBeFocused();
+  await expect(changesPanel).toContainText("1 reported change");
+
   await changesTab.focus();
   await changesTab.press("ArrowLeft");
   await expect(overviewTab).toBeFocused();
