@@ -70,16 +70,16 @@ Add a bounded ephemeral palette catalog derived from current sessions, selected 
 
 ## Failure model
 
-| Failure point                         | Expected state                                              | Recovery                                      |
-| ------------------------------------- | ----------------------------------------------------------- | --------------------------------------------- |
-| Selected session disappears           | Stale command is ignored and a bounded notice is shown      | Reopen palette from current state             |
-| Query has no matches                  | Explicit no-results state; terminal and PTYs are unchanged  | Edit or clear query                           |
-| Command is unavailable                | Row explains the reason and cannot dispatch                 | Select an applicable command                  |
-| Transport-backed command fails        | Existing typed result/notice behavior remains authoritative | Retry from refreshed session state            |
-| Palette opens during reconnect        | Local navigation remains usable; server actions are labelled | Wait for connection or choose local action    |
-| Invoking element disappears on close  | Focus moves to the workspace fallback                       | Continue with normal tab navigation           |
-| Terminal capture owns keyboard        | Palette shortcut is ignored and bytes retain terminal owner | Use escape chord, then open palette            |
-| Destructive result is selected        | Review surface opens; no process mutation occurs            | Confirm deliberately or cancel                |
+| Failure point                        | Expected state                                               | Recovery                                   |
+| ------------------------------------ | ------------------------------------------------------------ | ------------------------------------------ |
+| Selected session disappears          | Stale command is ignored and a bounded notice is shown       | Reopen palette from current state          |
+| Query has no matches                 | Explicit no-results state; terminal and PTYs are unchanged   | Edit or clear query                        |
+| Command is unavailable               | Row explains the reason and cannot dispatch                  | Select an applicable command               |
+| Transport-backed command fails       | Existing typed result/notice behavior remains authoritative  | Retry from refreshed session state         |
+| Palette opens during reconnect       | Local navigation remains usable; server actions are labelled | Wait for connection or choose local action |
+| Invoking element disappears on close | Focus moves to the workspace fallback                        | Continue with normal tab navigation        |
+| Terminal capture owns keyboard       | Palette shortcut is ignored and bytes retain terminal owner  | Use escape chord, then open palette        |
+| Destructive result is selected       | Review surface opens; no process mutation occurs             | Confirm deliberately or cancel             |
 
 ## Compatibility
 
