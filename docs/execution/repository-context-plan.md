@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `9eff80a`
 - Target milestone: Milestone 2
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -140,3 +140,16 @@ shows the current evidence and a refresh button.
 - Architecture: Git remains authoritative; Pacium keeps one current bounded
   observation.
 - Security: fixed read-only commands, no shell, no Git mutations.
+
+## Result
+
+Protocol 5 now carries one strict repository observation on every session.
+Fixed, prompt-disabled Git commands derive canonical root, branch or
+detached/unborn HEAD, full commit, main/linked worktree kind, and observation
+time with a 750 ms per-command timeout and 32 KiB output bound. Explicit
+refresh replaces only that observation and emits the normal session update;
+tests confirm the PTY identity and signals remain unchanged. The selected
+session inspector renders ready, absent, and degraded evidence with a visible
+Refresh control. Changed files, dirty state, diff, history, and verification
+remain assigned to PC-034 through PC-037. Full verification passes with 34 test
+files and 141 tests, and all four Chromium regressions pass.

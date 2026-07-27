@@ -38,18 +38,18 @@ terminates the PTY.
 
 ## Acceptance criteria
 
-- [ ] Canonical repository root is obtained from Git for a session cwd.
-- [ ] Branch and full HEAD commit match direct Git inspection.
-- [ ] Detached HEAD and unborn branch are explicit states.
-- [ ] Main and linked worktrees are distinguished.
-- [ ] Non-repository folders remain valid terminal working directories.
-- [ ] Inspection commands use fixed arguments, bounded output, and a timeout.
-- [ ] Repository strings are schema-bounded and rendered as text.
-- [ ] Explicit refresh updates context without changing the PTY.
-- [ ] Git absence, timeout, malformed output, or command failure produces a
+- [x] Canonical repository root is obtained from Git for a session cwd.
+- [x] Branch and full HEAD commit match direct Git inspection.
+- [x] Detached HEAD and unborn branch are explicit states.
+- [x] Main and linked worktrees are distinguished.
+- [x] Non-repository folders remain valid terminal working directories.
+- [x] Inspection commands use fixed arguments, bounded output, and a timeout.
+- [x] Repository strings are schema-bounded and rendered as text.
+- [x] Explicit refresh updates context without changing the PTY.
+- [x] Git absence, timeout, malformed output, or command failure produces a
       bounded degraded state or no-repository state without breaking terminal
       creation and use.
-- [ ] Full verification and browser regressions pass.
+- [x] Full verification and browser regressions pass.
 
 ## User experience
 
@@ -117,3 +117,19 @@ inspection error explains that the terminal survived and offers retry.
 
 - Dirty/clean worktree status is intentionally assigned to PC-034 so this slice
   can establish the repository identity and refresh boundary first.
+
+## Implementation evidence
+
+- Five inspector tests cover fixed commands, main/linked, branch/detached/unborn,
+  ordinary folders, missing Git, timeout, malformed output, bounded output, and
+  a root-containment failure.
+- Protocol tests enforce cross-field repository invariants and reject a refresh
+  payload containing a command.
+- Session and WebSocket tests show refresh emits protocol-5 evidence without
+  replacing, signalling, or stopping the PTY.
+- Rendered tests cover ready, detached, unborn, degraded, and non-repository
+  states using textual labels.
+- Direct fixed Git commands returned this checkout’s canonical root, branch
+  `codex/repository-context`, and exact 40-character HEAD.
+- `pnpm verify` passes with 34 test files and 141 tests.
+- `pnpm test:e2e` passes all four Chromium regressions.
