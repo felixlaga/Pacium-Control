@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `a0d49d9`
 - Target milestone: Milestone 2
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -197,3 +197,23 @@ never sends commit data to a terminal.
 - Architecture: Git remains authoritative; history state is disposable.
 - Security: fixed local HEAD, no shell/pager/network, strict output/message
   bounds, and text-only rendering.
+
+## Result
+
+Completed on 2026-07-27 as the planned protocol-8 vertical slice.
+
+- A command-free selected-session request runs one fixed, local, no-pager
+  `HEAD` history read with a 1.5 second timeout and 256 KiB raw-output ceiling.
+- Fixed NUL framing produces at most 50 validated records from a 51-record
+  window; IDs, parents, author names, ISO dates, subjects, errors, and the final
+  WebSocket message are bounded.
+- The inspector now has accessible Overview, Changes, and History tabs with
+  cyclic arrow navigation. History loads lazily, retains prior evidence during
+  Refresh, rejects stale/cross-session responses, recovers pending state on
+  disconnect, and renders local commit evidence only as text.
+- `pnpm verify` passed 51 files and 227 tests plus both production builds.
+- `pnpm test:e2e` passed all six Chromium workflows, including deterministic
+  real-Git History evidence and its 320 CSS px layout.
+- Manual in-app-browser visual review could not be performed because no browser
+  backend was connected; that broader release evidence remains open and is not
+  represented as completed here.

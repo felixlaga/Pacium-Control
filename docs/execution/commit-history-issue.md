@@ -46,25 +46,25 @@ patches, or affecting the PTY.
 
 ## Acceptance criteria
 
-- [ ] History is derived from the selected session’s canonical repository root
+- [x] History is derived from the selected session’s canonical repository root
       and fixed current `HEAD`, with no browser-selected revision or command
       arguments.
-- [ ] Git runs read-only without a shell, pager, signature display, prompts,
+- [x] Git runs read-only without a shell, pager, signature display, prompts,
       optional locks, or network access.
-- [ ] At most 50 commits are returned in deterministic newest-first reachability
+- [x] At most 50 commits are returned in deterministic newest-first reachability
       order, with honest truncation and unborn/empty behavior.
-- [ ] Commit IDs, parent IDs, author names, subjects, timestamps, errors, raw
+- [x] Commit IDs, parent IDs, author names, subjects, timestamps, errors, raw
       output, record counts, and final serialized responses are strictly
       bounded and validated.
-- [ ] Subjects and author names render only as untrusted text; control
+- [x] Subjects and author names render only as untrusted text; control
       characters cannot alter layout, inject markup, or become terminal input.
-- [ ] History loads lazily, refreshes explicitly, rejects stale responses, and
+- [x] History loads lazily, refreshes explicitly, rejects stale responses, and
       interrupts pending state honestly across disconnects.
-- [ ] Opening, refreshing, navigating, or failing History preserves terminal
+- [x] Opening, refreshing, navigating, or failing History preserves terminal
       selection, focus model, process state, and PTY lifecycle.
-- [ ] Ready, truncated, unborn/empty, non-repository, timeout, invalid-output,
+- [x] Ready, truncated, unborn/empty, non-repository, timeout, invalid-output,
       and unavailable-Git states explain freshness and the next useful action.
-- [ ] Parser, contract, real-Git, session/WebSocket, rendering/state, full
+- [x] Parser, contract, real-Git, session/WebSocket, rendering/state, full
       verification, and browser regression evidence pass.
 
 ## User experience
@@ -152,3 +152,22 @@ rather than implying complete history.
 - Configured-base relationships remain intentionally deferred until Pacium has
   a server-owned workspace/base configuration; guessing `main`, `master`, or
   an upstream would be inaccurate.
+
+## Completion evidence
+
+Completed on 2026-07-27.
+
+- `pnpm verify`: formatting, lint, type checking, 51 test files and 227 tests,
+  and both production bundles passed.
+- `pnpm test:e2e`: all six Chromium workflows passed; the deterministic
+  real-Git history workflow exercised lazy load, exact local subject/author/hash
+  evidence, Refresh, three-tab keyboard movement, unchanged terminal selection,
+  and the 320 CSS px inspector.
+- Real-Git fixtures passed for linear, merge, unusual control-character,
+  detached, 51-record truncated, and unborn histories.
+- Protocol, parser, process limits, session manager, WebSocket dispatch,
+  serialized-message fallback, browser transport/state, hostile text
+  rendering, reconnect interruption, and PTY-survival tests passed.
+- The connected in-app browser backend remained unavailable, so independent
+  manual visual review remains a release-level evidence gap rather than part of
+  this automated completion claim.
