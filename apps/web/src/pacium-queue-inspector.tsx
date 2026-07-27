@@ -15,12 +15,14 @@ import {
 
 export function PaciumQueueInspector({
   onBack,
+  onDeliver,
   onRecordApproval,
   onRecordQuestion,
   requestingSessionLabel,
   state,
 }: {
   onBack: () => void;
+  onDeliver: () => void;
   onRecordApproval: (payload: QueueApprovalDecisionPayload) => void;
   onRecordQuestion: (payload: QueueQuestionAnswerPayload) => void;
   requestingSessionLabel: string | null;
@@ -101,6 +103,7 @@ export function PaciumQueueInspector({
             state={state}
           />
           <PaciumQueueDecisionPanel
+            onDeliver={onDeliver}
             onRecordApproval={onRecordApproval}
             onRecordQuestion={onRecordQuestion}
             state={state}

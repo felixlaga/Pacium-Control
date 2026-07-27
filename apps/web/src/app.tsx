@@ -18,6 +18,7 @@ import type {
   PaciumBinding,
   PaciumRoleId,
   QueueApprovalDecisionPayload,
+  QueueDeliveryResult,
   QueueQuestionAnswerPayload,
   ServerMessage,
   SessionSummary,
@@ -105,12 +106,15 @@ import {
 import {
   CLOSED_QUEUE_INSPECTION,
   acceptQueueDecision,
+  acceptQueueDelivery,
   acceptQueueItemInspection,
   beginQueueDecision,
+  beginQueueDelivery,
   beginQueueItemInspection,
   closeQueueItemInspection,
   interruptQueueItemInspection,
   interruptQueueDecision,
+  interruptQueueDelivery,
   reconcileQueueItemInspection,
   reconcileQueueItemInspectionConfig,
   type PaciumQueueInspectionState,
@@ -613,6 +617,7 @@ export function App() {
         event.message.requestId,
         event.message.inspection,
         event.message.decisionState,
+        event.message.deliveryState,
       );
       if (accepted !== paciumQueueInspectionRef.current) {
         paciumQueueInspectionRef.current = accepted;
@@ -627,15 +632,44 @@ export function App() {
         event.message.result,
       );
       if (accepted !== paciumQueueInspectionRef.current) {
-        paciumQueueInspectionRef.current = accepted;
-        setPaciumQueueInspection(accepted);
+        let next = accepted;
+        if (
+          (event.message.result.status === "recorded" ||
+            event.message.result.status === "existing") &&
+          accepted.selection !== null &&
+          transportRef.current !== null
+        ) {
+          const inspectionRequestId =
+            transportRef.current.requestQueueItemInspection(
+              accepted.selection.identity,
+            );
+          next = beginQueueItemInspection(
+            accepted.selection,
+            inspectionRequestId,
+          );
+        }
+        paciumQueueInspectionRef.current = next;
+        setPaciumQueueInspection(next);
         setNotice(
           event.message.result.status === "recorded"
-            ? "Immutable local decision recorded. Nothing was delivered or executed."
+            ? "Immutable local decision recorded. Checking its accepted delivery method; nothing is sent automatically."
             : event.message.result.status === "existing"
-              ? "The existing immutable decision was recovered. Nothing was delivered or executed."
+              ? "The existing immutable decision was recovered. Checking its accepted delivery method; nothing is sent automatically."
               : `${event.message.result.error?.message ?? "The decision was not recorded."} Pacium did not retry or deliver anything.`,
         );
+      }
+      return;
+    }
+    if (event.message.type === "pacium.queue.delivery") {
+      const accepted = acceptQueueDelivery(
+        paciumQueueInspectionRef.current,
+        event.message.requestId,
+        event.message.result,
+      );
+      if (accepted !== paciumQueueInspectionRef.current) {
+        paciumQueueInspectionRef.current = accepted;
+        setPaciumQueueInspection(accepted);
+        setNotice(queueDeliveryNotice(event.message.result));
       }
       return;
     }
@@ -858,6 +892,19 @@ export function App() {
         setPaciumQueue(interruptedQueue);
         setNotice(
           `Queue source refresh failed. ${event.message.message} Terminals and source files are unchanged.`,
+        );
+        return;
+      }
+      const interruptedDelivery = interruptQueueDelivery(
+        paciumQueueInspectionRef.current,
+        event.message.requestId,
+        `Delivery outcome is not confirmed. ${event.message.message}`,
+      );
+      if (interruptedDelivery !== paciumQueueInspectionRef.current) {
+        paciumQueueInspectionRef.current = interruptedDelivery;
+        setPaciumQueueInspection(interruptedDelivery);
+        setNotice(
+          "Delivery outcome is not confirmed. Pacium did not retry; reopen the exact item to inspect durable state.",
         );
         return;
       }
@@ -2264,6 +2311,36 @@ export function App() {
     );
   };
 
+  const deliverQueueDecision = () => {
+    const transport = transportRef.current;
+    const current = paciumQueueInspectionRef.current;
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      current.status !== "ready" ||
+      current.decisionState?.status !== "decided" ||
+      current.deliveryState?.status !== "ready"
+    ) {
+      setNotice(
+        "This exact immutable decision is not ready for delivery. No target or terminal was changed.",
+      );
+      return;
+    }
+    const decision = current.decisionState.decision;
+    const requestId = transport.deliverQueueDecision(
+      decision.decisionId,
+      decision.decisionHash,
+    );
+    const submitting = beginQueueDelivery(current, requestId);
+    paciumQueueInspectionRef.current = submitting;
+    setPaciumQueueInspection(submitting);
+    setNotice(
+      current.deliveryState.target.type === "answer_file"
+        ? "Publishing the immutable decision to the one accepted answer-file target. Existing files are never overwritten."
+        : `Sending one comment-prefixed decision line to the accepted ${roleLabel(current.deliveryState.target.role)} session. Terminal acceptance will not confirm agent handling.`,
+    );
+  };
+
   const closePaciumQueueInspector = () => {
     const sourceId =
       paciumQueueInspectionRef.current.selection?.identity.sourceId ?? null;
@@ -3092,6 +3169,7 @@ export function App() {
         {paciumQueueInspection.selection !== null ? (
           <PaciumQueueInspector
             onBack={closePaciumQueueInspector}
+            onDeliver={deliverQueueDecision}
             onRecordApproval={recordQueueApprovalDecision}
             onRecordQuestion={recordQueueQuestionAnswer}
             requestingSessionLabel={queueRequestingSessionLabel}
@@ -3758,6 +3836,21 @@ function compactPath(path: string): string {
     return path;
   }
   return `…/${parts.slice(-2).join("/")}`;
+}
+
+function queueDeliveryNotice(result: QueueDeliveryResult): string {
+  if (result.status === "delivered") {
+    return result.state.target?.type === "role_prompt"
+      ? "Terminal input accepted for the configured role. Agent handling is not confirmed."
+      : "The private answer file was created at the configured target.";
+  }
+  if (result.status === "existing") {
+    return "The existing immutable delivery attempt was recovered. Pacium did not invoke the transport again.";
+  }
+  if (result.status === "unknown") {
+    return "Delivery outcome is unknown. The side effect may have occurred, and Pacium will not retry it.";
+  }
+  return `${result.state.error?.message ?? "Delivery did not complete."} Pacium did not retry or choose another target.`;
 }
 
 function formatTime(iso: string): string {

@@ -12,6 +12,7 @@ describe("Pacium queue item inspector", () => {
     const markup = renderToStaticMarkup(
       <PaciumQueueInspector
         onBack={() => undefined}
+        onDeliver={() => undefined}
         onRecordApproval={() => undefined}
         onRecordQuestion={() => undefined}
         requestingSessionLabel="Meta shell"
@@ -40,6 +41,7 @@ describe("Pacium queue item inspector", () => {
     const loading = renderToStaticMarkup(
       <PaciumQueueInspector
         onBack={() => undefined}
+        onDeliver={() => undefined}
         onRecordApproval={() => undefined}
         onRecordQuestion={() => undefined}
         requestingSessionLabel={null}
@@ -58,6 +60,7 @@ describe("Pacium queue item inspector", () => {
     const stale = renderToStaticMarkup(
       <PaciumQueueInspector
         onBack={() => undefined}
+        onDeliver={() => undefined}
         onRecordApproval={() => undefined}
         onRecordQuestion={() => undefined}
         requestingSessionLabel={null}
