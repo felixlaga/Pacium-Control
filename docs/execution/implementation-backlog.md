@@ -209,6 +209,19 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-037 Implement verification presets
 
 - Explicit configured commands, bounded output, timeout, result, commit association, and cancellation.
+- Current status: protocol 9 exposes inspect, run, cancel, response, and update
+  messages that contain only session, preset, request, and run identities.
+  An optional strict version-1 JSON file outside configured repositories owns
+  canonical roots and absolute executable/argument definitions. The local
+  runner uses no implicit shell, permits one run per session and two globally,
+  applies a ten-minute timeout ceiling and two-second cancellation grace,
+  retains at most 24 KiB each of control-normalized stdout/stderr, and records
+  pass/fail/timeout/cancel/error plus fresh start/end HEAD evidence. The lazy
+  Checks tab shows exact argv and local authority, explicit Run/Cancel,
+  reconnect inspection, result/truncation/HEAD-change evidence, four-tab
+  keyboard navigation, and narrow layout without PTY impact. Durable history,
+  automatic checks, browser configuration editing, frozen-worktree claims, and
+  hard-crash recovery remain out of scope.
 
 ### PC-038 Implement recent-activity summary
 
