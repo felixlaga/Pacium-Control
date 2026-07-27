@@ -2015,6 +2015,7 @@ kbd {
 
 .queue-original-text,
 .queue-meaning,
+.queue-decision-panel,
 .queue-provenance {
   padding: 14px;
   border-bottom: 1px solid var(--border);
@@ -2022,6 +2023,7 @@ kbd {
 
 .queue-original-text h3,
 .queue-meaning h3,
+.queue-decision-panel h3,
 .queue-provenance h3 {
   margin: 0 0 10px;
   color: var(--text-faint);
@@ -2029,6 +2031,178 @@ kbd {
   font-weight: 650;
   letter-spacing: 0.07em;
   text-transform: uppercase;
+}
+
+.queue-decision-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.queue-decision-panel .inspector-section-heading {
+  margin: 0;
+}
+
+.queue-decision-panel .inspector-section-heading h3 {
+  margin: 0;
+}
+
+.queue-decision-panel .inspector-section-heading > span {
+  color: var(--text-faint);
+  font-size: 8px;
+}
+
+.queue-decision-panel form,
+.queue-decision-panel form > label,
+.queue-decision-panel > div,
+.queue-decision-panel > div > label {
+  display: grid;
+  gap: 8px;
+}
+
+.queue-decision-panel label {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 560;
+}
+
+.queue-decision-panel label > span {
+  margin-left: 4px;
+  color: var(--text-faint);
+  font-size: 8px;
+  font-weight: 450;
+}
+
+.queue-decision-panel textarea {
+  width: 100%;
+  min-height: 68px;
+  padding: 9px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--bg);
+  font-size: 9px;
+  font-weight: 450;
+  line-height: 1.5;
+}
+
+.queue-decision-panel textarea::placeholder {
+  color: var(--text-faint);
+}
+
+.queue-decision-panel button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: var(--panel-raised);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 580;
+}
+
+.queue-decision-panel button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--text);
+  background: var(--panel-soft);
+}
+
+.queue-decision-panel button.primary {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.queue-decision-panel button:disabled,
+.queue-decision-panel textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.queue-decision-panel form > p,
+.queue-decision-panel > div > p,
+.queue-decision-panel.state-decided > p,
+.queue-decision-panel.state-unavailable > p {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.queue-approval-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.queue-approval-confirmation {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--border));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--amber) 6%, transparent);
+}
+
+.queue-approval-confirmation.outcome-denied {
+  border-color: color-mix(in srgb, var(--red) 38%, var(--border));
+  background: color-mix(in srgb, var(--red) 5%, transparent);
+}
+
+.queue-approval-confirmation strong {
+  color: var(--text);
+  font-size: 9px;
+}
+
+.queue-approval-confirmation p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.queue-approval-confirmation > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.queue-decision-error {
+  display: grid;
+  gap: 4px;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--red) 40%, var(--border));
+  border-radius: 6px;
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 5%, transparent);
+}
+
+.queue-decision-error strong {
+  font-size: 9px;
+}
+
+.queue-decision-error p {
+  margin: 0;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.queue-decision-panel.state-decided,
+.queue-decision-panel.state-unavailable {
+  border-left: 2px solid var(--green);
+  background: color-mix(in srgb, var(--green) 3%, transparent);
+}
+
+.queue-decision-panel.state-unavailable {
+  border-left-color: var(--red);
+  background: color-mix(in srgb, var(--red) 3%, transparent);
+}
+
+.queue-decision-text {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .queue-original-text .inspector-section-heading {
@@ -5720,6 +5894,9 @@ html[data-density="comfortable"] .terminal-panel {
   .pacium-queue-source,
   .pacium-queue-inspector-heading,
   .queue-original-text pre,
+  .queue-decision-panel,
+  .queue-approval-confirmation,
+  .queue-decision-error,
   .queue-inspector-message,
   .queue-inspector-safety,
   .pacium-role-binding-dialog,
