@@ -47,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for provider observations", () => {
-    expect(PROTOCOL_VERSION).toBe(19);
+  it("advances the wire contract for Claude observations", () => {
+    expect(PROTOCOL_VERSION).toBe(20);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {

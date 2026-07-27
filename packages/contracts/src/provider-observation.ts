@@ -152,6 +152,21 @@ export const ClaudeActivityExtensionSchema = z
     ]),
     providerSessionId: z.string().min(1).max(200).nullable(),
     toolName: z.string().min(1).max(120).nullable(),
+    modelId: z.string().min(1).max(120).nullable(),
+    contextUsedPercent: z.number().min(0).max(100).nullable(),
+    totalCostUsd: z.number().finite().nonnegative().max(1_000_000).nullable(),
+    totalInputTokens: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable(),
+    totalOutputTokens: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable(),
   })
   .strict();
 

@@ -133,6 +133,11 @@ describe("provider observation contract", () => {
                 eventType: "tool_start",
                 providerSessionId: "claude-1",
                 toolName: "Bash",
+                modelId: null,
+                contextUsedPercent: null,
+                totalCostUsd: null,
+                totalInputTokens: null,
+                totalOutputTokens: null,
               },
             },
           ],
@@ -300,6 +305,69 @@ describe("provider observation contract", () => {
           ),
         }),
       ).success,
+    ).toBe(false);
+  });
+
+  it("accepts bounded typed Claude status usage", () => {
+    const result = ProviderObservationSnapshotSchema.parse({
+      ...snapshot(),
+      provider: "claude",
+      activities: [
+        {
+          id: "claude-status-1",
+          kind: "usage_updated",
+          source: "hook",
+          confidence: "high",
+          occurredAt: observedAt,
+          observedAt,
+          summary: "Claude status snapshot updated.",
+          extension: {
+            provider: "claude",
+            eventType: "status",
+            providerSessionId: "claude-session-1",
+            toolName: null,
+            modelId: "claude-opus-5",
+            contextUsedPercent: 41.5,
+            totalCostUsd: 1.25,
+            totalInputTokens: 12_000,
+            totalOutputTokens: 900,
+          },
+        },
+      ],
+    });
+
+    expect(result.activities[0]?.extension).toMatchObject({
+      provider: "claude",
+      eventType: "status",
+      contextUsedPercent: 41.5,
+      totalInputTokens: 12_000,
+    });
+  });
+
+  it("rejects impossible Claude status usage", () => {
+    const claudeStatus = {
+      provider: "claude",
+      eventType: "status",
+      providerSessionId: "claude-session-1",
+      toolName: null,
+      modelId: "claude-opus-5",
+      contextUsedPercent: 101,
+      totalCostUsd: -1,
+      totalInputTokens: -1,
+      totalOutputTokens: 1.5,
+    };
+
+    expect(
+      ProviderObservationSnapshotSchema.safeParse({
+        ...snapshot(),
+        provider: "claude",
+        activities: [
+          {
+            ...snapshot().activities[0]!,
+            extension: claudeStatus,
+          },
+        ],
+      }).success,
     ).toBe(false);
   });
 });
