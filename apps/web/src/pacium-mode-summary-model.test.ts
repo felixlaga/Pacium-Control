@@ -128,8 +128,9 @@ describe("Pacium mode configuration summary", () => {
       ],
     });
     expect(summary.detail).toContain(
-      "Primary roles, queue items, and immutable local decisions resolve below",
+      "immutable local decisions, and explicit compatible delivery resolve below",
     );
+    expect(summary.detail).toContain("Nothing is delivered automatically");
   });
 });
 
