@@ -5,6 +5,7 @@ import {
   IDLE_REPOSITORY_CHANGES,
   acceptRepositoryChangesResponse,
   beginRepositoryChangesRequest,
+  interruptRepositoryChangesRequest,
   visibleRepositoryChanges,
 } from "./repository-changes-model.js";
 
@@ -59,5 +60,28 @@ describe("repository changes request state", () => {
         observation,
       ),
     ).toBe(IDLE_REPOSITORY_CHANGES);
+  });
+
+  it("recovers from an interrupted request without discarding prior evidence", () => {
+    const firstLoading = beginRepositoryChangesRequest(
+      IDLE_REPOSITORY_CHANGES,
+      "request-1",
+    );
+    expect(interruptRepositoryChangesRequest(firstLoading)).toBe(
+      IDLE_REPOSITORY_CHANGES,
+    );
+
+    const loaded = acceptRepositoryChangesResponse(
+      firstLoading,
+      "request-1",
+      observation,
+    );
+    const refreshing = beginRepositoryChangesRequest(loaded, "request-2");
+    expect(interruptRepositoryChangesRequest(refreshing)).toEqual({
+      status: "loaded",
+      requestId: "request-2",
+      observation,
+    });
+    expect(interruptRepositoryChangesRequest(loaded)).toBe(loaded);
   });
 });

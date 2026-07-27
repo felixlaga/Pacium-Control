@@ -48,6 +48,22 @@ export function acceptRepositoryChangesResponse(
   };
 }
 
+export function interruptRepositoryChangesRequest(
+  current: RepositoryChangesViewState,
+): RepositoryChangesViewState {
+  if (current.status !== "loading") {
+    return current;
+  }
+  if (current.previous === null) {
+    return IDLE_REPOSITORY_CHANGES;
+  }
+  return {
+    status: "loaded",
+    requestId: current.requestId,
+    observation: current.previous,
+  };
+}
+
 export function visibleRepositoryChanges(
   state: RepositoryChangesViewState,
 ): GitChangesObservation | null {
