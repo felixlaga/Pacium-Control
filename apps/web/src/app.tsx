@@ -70,6 +70,18 @@ import {
   type WorkspacePreferences,
 } from "./preferences-model.js";
 import { PreferencesDialog } from "./preferences.js";
+import {
+  InspectorTabs,
+  RepositoryChangesPanel,
+  type InspectorTab,
+} from "./repository-changes.js";
+import {
+  IDLE_REPOSITORY_CHANGES,
+  acceptRepositoryChangesResponse,
+  beginRepositoryChangesRequest,
+  interruptRepositoryChangesRequest,
+  type RepositoryChangesViewState,
+} from "./repository-changes-model.js";
 import { RepositoryContextCard } from "./repository-context.js";
 import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
 import {
@@ -212,12 +224,18 @@ export function App() {
   const [panelView, setPanelView] = useState(() =>
     loadPanelView(window.localStorage, window.innerWidth),
   );
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("overview");
+  const [repositoryChangesBySession, setRepositoryChangesBySession] = useState(
+    new Map<string, RepositoryChangesViewState>(),
+  );
+  const repositoryChangesRef = useRef(repositoryChangesBySession);
 
   panelViewRef.current = panelView;
   selectedIdRef.current = selectedId;
   tabsRef.current = tabs;
   layoutRef.current = layout;
   attentionInboxRef.current = attentionInbox;
+  repositoryChangesRef.current = repositoryChangesBySession;
 
   const effectiveTheme = resolveEffectiveTheme(
     preferences.theme,
@@ -237,6 +255,21 @@ export function App() {
   const onTransportEvent = useCallback((event: TransportEvent) => {
     if (event.type === "connection") {
       setConnection(event.state);
+      if (event.state !== "connected") {
+        let changed = false;
+        const next = new Map(repositoryChangesRef.current);
+        for (const [sessionId, state] of next) {
+          const interrupted = interruptRepositoryChangesRequest(state);
+          if (interrupted !== state) {
+            next.set(sessionId, interrupted);
+            changed = true;
+          }
+        }
+        if (changed) {
+          repositoryChangesRef.current = next;
+          setRepositoryChangesBySession(next);
+        }
+      }
       return;
     }
     if (event.type === "transport.error") {
@@ -245,6 +278,23 @@ export function App() {
     }
     if (event.type === "terminal.data") {
       applyTerminalFrame(event.frame, syncRefs, terminalRefs);
+      return;
+    }
+    if (event.message.type === "repository.changes") {
+      const current =
+        repositoryChangesRef.current.get(event.message.sessionId) ??
+        IDLE_REPOSITORY_CHANGES;
+      const accepted = acceptRepositoryChangesResponse(
+        current,
+        event.message.requestId,
+        event.message.observation,
+      );
+      if (accepted !== current) {
+        const next = new Map(repositoryChangesRef.current);
+        next.set(event.message.sessionId, accepted);
+        repositoryChangesRef.current = next;
+        setRepositoryChangesBySession(next);
+      }
       return;
     }
     applyServerMessage(
@@ -263,6 +313,27 @@ export function App() {
       setNotice,
     );
   }, []);
+
+  const requestRepositoryChanges = useCallback(
+    (sessionId: string) => {
+      const transport = transportRef.current;
+      if (connection !== "connected" || transport === null) {
+        setNotice(
+          "Changed-file evidence needs a live Pacium connection. The terminal process is unaffected.",
+        );
+        return;
+      }
+      const requestId = transport.requestRepositoryChanges(sessionId);
+      const current =
+        repositoryChangesRef.current.get(sessionId) ?? IDLE_REPOSITORY_CHANGES;
+      const nextState = beginRepositoryChangesRequest(current, requestId);
+      const next = new Map(repositoryChangesRef.current);
+      next.set(sessionId, nextState);
+      repositoryChangesRef.current = next;
+      setRepositoryChangesBySession(next);
+    },
+    [connection],
+  );
 
   useEffect(() => {
     const transport = new PaciumTransport(onTransportEvent);
@@ -372,6 +443,29 @@ export function App() {
     () => sessions.find((session) => session.id === selectedId) ?? null,
     [selectedId, sessions],
   );
+  const selectedRepositoryChanges =
+    selectedId === null
+      ? IDLE_REPOSITORY_CHANGES
+      : (repositoryChangesBySession.get(selectedId) ?? IDLE_REPOSITORY_CHANGES);
+
+  useEffect(() => {
+    if (
+      inspectorTab !== "changes" ||
+      selectedId === null ||
+      connection !== "connected" ||
+      selectedRepositoryChanges.status !== "idle"
+    ) {
+      return;
+    }
+    requestRepositoryChanges(selectedId);
+  }, [
+    connection,
+    inspectorTab,
+    requestRepositoryChanges,
+    selectedId,
+    selectedRepositoryChanges.status,
+  ]);
+
   const actionSession =
     sessions.find(({ id }) => id === actionSessionId) ?? null;
   const renameSession =
@@ -1569,72 +1663,96 @@ export function App() {
             </button>
           </span>
         </header>
-        {selectedSession === null ? (
-          <p className="inspector-empty">
-            Runtime details and agent context appear here.
-          </p>
-        ) : (
-          <dl className="metadata">
-            <Metadata label="State">
-              <span className="state-value">
-                <StatusDot state={selectedSession.processState} />
-                {selectedSession.processState}
-              </span>
-            </Metadata>
-            <Metadata label="Runtime">Direct PTY</Metadata>
-            <Metadata label="Preset">{selectedSession.commandLabel}</Metadata>
-            <Metadata label="Command">{selectedSession.shell}</Metadata>
-            <Metadata label="Process">
-              {selectedSession.pid ?? "Exited"}
-            </Metadata>
-            <Metadata label="Started">
-              {formatTime(selectedSession.createdAt)}
-            </Metadata>
-            {selectedSession.exitedAt !== null && (
-              <Metadata label="Exited">
-                {formatTime(selectedSession.exitedAt)}
-              </Metadata>
+        <InspectorTabs active={inspectorTab} onChange={setInspectorTab} />
+        {inspectorTab === "overview" ? (
+          <div
+            aria-labelledby="inspector-overview-tab"
+            id="inspector-overview-panel"
+            role="tabpanel"
+            tabIndex={0}
+          >
+            {selectedSession === null ? (
+              <p className="inspector-empty">
+                Runtime details and agent context appear here.
+              </p>
+            ) : (
+              <dl className="metadata">
+                <Metadata label="State">
+                  <span className="state-value">
+                    <StatusDot state={selectedSession.processState} />
+                    {selectedSession.processState}
+                  </span>
+                </Metadata>
+                <Metadata label="Runtime">Direct PTY</Metadata>
+                <Metadata label="Preset">
+                  {selectedSession.commandLabel}
+                </Metadata>
+                <Metadata label="Command">{selectedSession.shell}</Metadata>
+                <Metadata label="Process">
+                  {selectedSession.pid ?? "Exited"}
+                </Metadata>
+                <Metadata label="Started">
+                  {formatTime(selectedSession.createdAt)}
+                </Metadata>
+                {selectedSession.exitedAt !== null && (
+                  <Metadata label="Exited">
+                    {formatTime(selectedSession.exitedAt)}
+                  </Metadata>
+                )}
+              </dl>
             )}
-          </dl>
-        )}
-        <section className="inspector-section repository-section">
-          <div className="inspector-section-heading">
-            <h2>Repository</h2>
-            {selectedSession !== null && (
-              <button
-                disabled={connection !== "connected"}
-                onClick={refreshSelectedRepository}
-                title="Refresh branch, HEAD, and worktree evidence"
-                type="button"
-              >
-                Refresh
-              </button>
-            )}
+            <section className="inspector-section repository-section">
+              <div className="inspector-section-heading">
+                <h2>Repository</h2>
+                {selectedSession !== null && (
+                  <button
+                    disabled={connection !== "connected"}
+                    onClick={refreshSelectedRepository}
+                    title="Refresh branch, HEAD, and worktree evidence"
+                    type="button"
+                  >
+                    Refresh
+                  </button>
+                )}
+              </div>
+              {selectedSession !== null && (
+                <RepositoryContextCard
+                  repository={selectedSession.repository}
+                />
+              )}
+            </section>
+            <section className="inspector-section">
+              <h2>Agent evidence</h2>
+              {selectedSession !== null && (
+                <AgentClassificationCard
+                  classification={selectedSession.agentClassification}
+                />
+              )}
+            </section>
+            <section className="inspector-section attention-section">
+              {selectedAttention !== null &&
+                selectedAttentionCursor !== null && (
+                  <>
+                    <AttentionCursorHeader
+                      muted={selectedAttentionCursor.muted}
+                      onToggleMuted={toggleSelectedSessionMuted}
+                      unread={selectedAttentionUnread}
+                    />
+                    <AttentionEvidenceCard attention={selectedAttention} />
+                  </>
+                )}
+            </section>
           </div>
-          {selectedSession !== null && (
-            <RepositoryContextCard repository={selectedSession.repository} />
-          )}
-        </section>
-        <section className="inspector-section">
-          <h2>Agent evidence</h2>
-          {selectedSession !== null && (
-            <AgentClassificationCard
-              classification={selectedSession.agentClassification}
-            />
-          )}
-        </section>
-        <section className="inspector-section attention-section">
-          {selectedAttention !== null && selectedAttentionCursor !== null && (
-            <>
-              <AttentionCursorHeader
-                muted={selectedAttentionCursor.muted}
-                onToggleMuted={toggleSelectedSessionMuted}
-                unread={selectedAttentionUnread}
-              />
-              <AttentionEvidenceCard attention={selectedAttention} />
-            </>
-          )}
-        </section>
+        ) : (
+          <RepositoryChangesPanel
+            onRefresh={() => {
+              if (selectedId !== null) {
+                requestRepositoryChanges(selectedId);
+              }
+            }}
+            state={selectedRepositoryChanges}
+          />
+        )}
       </aside>
 
       {createOpen && (
