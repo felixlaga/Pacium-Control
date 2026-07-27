@@ -108,9 +108,7 @@ function providerActivity(input: {
   observedAt: string;
   summary: string;
   eventType: "approval_request" | "question_request";
-}): NonNullable<
-  SessionSummary["providerObservation"]
->["activities"][number] {
+}): NonNullable<SessionSummary["providerObservation"]>["activities"][number] {
   return {
     id: input.id,
     kind: input.kind,

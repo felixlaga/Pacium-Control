@@ -156,9 +156,7 @@ function providerFacts(session: SessionSummary): ActivityFact[] {
     title: providerActivityTitle(activity.kind),
     detail: `${providerLabel(observation.provider)} · ${providerSourceLabel(
       activity.source,
-    )} · ${providerConfidenceLabel(activity.confidence)} · ${
-      activity.summary
-    }`,
+    )} · ${providerConfidenceLabel(activity.confidence)} · ${activity.summary}`,
     timestamp: activity.occurredAt,
     timestampMeaning: "occurred",
   }));
@@ -277,9 +275,7 @@ function providerSourceSummary(
     {
       id: "provider",
       label: `${providerLabel(observation.provider)} observer`,
-      status: stale
-        ? "stale"
-        : providerHealthStatus(observation.health.state),
+      status: stale ? "stale" : providerHealthStatus(observation.health.state),
       detail,
     },
   ];
@@ -477,9 +473,7 @@ function plural(count: number, singular: string): string {
 }
 
 function providerHealthStatus(
-  state: NonNullable<
-    SessionSummary["providerObservation"]
-  >["health"]["state"],
+  state: NonNullable<SessionSummary["providerObservation"]>["health"]["state"],
 ): ActivitySourceStatus {
   switch (state) {
     case "ready":

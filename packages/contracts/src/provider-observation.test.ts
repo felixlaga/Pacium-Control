@@ -152,10 +152,7 @@ describe("provider observation contract", () => {
     expect(
       ProviderObservationSnapshotSchema.safeParse(
         snapshot({
-          capabilities: [
-            valid.capabilities[0]!,
-            valid.capabilities[0]!,
-          ],
+          capabilities: [valid.capabilities[0]!, valid.capabilities[0]!],
         }),
       ).success,
     ).toBe(false);

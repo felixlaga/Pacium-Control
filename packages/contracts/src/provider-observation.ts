@@ -38,9 +38,7 @@ export const ProviderCapabilityIdSchema = z.enum([
   "usage",
   "completion",
 ]);
-export type ProviderCapabilityId = z.infer<
-  typeof ProviderCapabilityIdSchema
->;
+export type ProviderCapabilityId = z.infer<typeof ProviderCapabilityIdSchema>;
 
 export const ProviderCapabilitySchema = z
   .object({
@@ -201,9 +199,7 @@ export const ProviderActivityKindSchema = z.enum([
   "session_completed",
   "failed",
 ]);
-export type ProviderActivityKind = z.infer<
-  typeof ProviderActivityKindSchema
->;
+export type ProviderActivityKind = z.infer<typeof ProviderActivityKindSchema>;
 
 export const ProviderActivitySchema = z
   .object({
@@ -239,7 +235,11 @@ const SENSITIVE_DIAGNOSTIC_KEY =
 
 export const ProviderDiagnosticFieldSchema = z
   .object({
-    name: z.string().min(1).max(80).regex(/^[a-zA-Z0-9_.-]+$/),
+    name: z
+      .string()
+      .min(1)
+      .max(80)
+      .regex(/^[a-zA-Z0-9_.-]+$/),
     value: ProviderDiagnosticScalarSchema,
   })
   .strict()
@@ -254,7 +254,11 @@ export const ProviderDiagnosticFieldSchema = z
 
 export const ProviderDiagnosticSchema = z
   .object({
-    code: z.string().min(1).max(80).regex(/^[a-zA-Z0-9_.-]+$/),
+    code: z
+      .string()
+      .min(1)
+      .max(80)
+      .regex(/^[a-zA-Z0-9_.-]+$/),
     severity: z.enum(["info", "warning", "error"]),
     message: z.string().min(1).max(300),
     observedAt: z.string().datetime(),
@@ -283,9 +287,7 @@ export const ProviderObservationSnapshotSchema = z
       .array(ProviderCapabilitySchema)
       .max(MAX_PROVIDER_CAPABILITIES),
     attention: ProviderAttentionSchema.nullable(),
-    activities: z
-      .array(ProviderActivitySchema)
-      .max(MAX_PROVIDER_ACTIVITIES),
+    activities: z.array(ProviderActivitySchema).max(MAX_PROVIDER_ACTIVITIES),
     diagnostics: z
       .array(ProviderDiagnosticSchema)
       .max(MAX_PROVIDER_DIAGNOSTICS),

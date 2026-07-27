@@ -90,7 +90,10 @@ export function deriveProcessAttention(
   session: SessionSummary,
   observedAt: string,
 ): AttentionResult {
-  return reduceAttention([processAttentionObservation(session, observedAt)], observedAt);
+  return reduceAttention(
+    [processAttentionObservation(session, observedAt)],
+    observedAt,
+  );
 }
 
 export function deriveSessionAttention(
@@ -158,8 +161,7 @@ function processAttentionObservation(
     confidence: "low",
     observedAt,
     staleAfter: addMinutes(observedAt, 5),
-    reason:
-      "Process is live; no provider activity observer is connected yet.",
+    reason: "Process is live; no provider activity observer is connected yet.",
   };
 }
 

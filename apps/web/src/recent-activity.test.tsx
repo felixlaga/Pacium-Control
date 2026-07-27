@@ -22,7 +22,8 @@ const activity: RecentActivity = {
       id: "provider:codex:approval-1",
       source: "provider",
       title: "Approval requested",
-      detail: "Codex · Provider native · Confirmed · Command approval requested.",
+      detail:
+        "Codex · Provider native · Confirmed · Command approval requested.",
       timestamp: "2026-07-27T10:06:00.000Z",
       timestampMeaning: "occurred",
     },
