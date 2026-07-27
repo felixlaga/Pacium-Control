@@ -405,6 +405,17 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-060 Define provider observation contract
 
 - Capabilities, version, health, source, confidence, freshness, typed extension data, and bounded raw diagnostics.
+- Current status: protocol 19 carries one strict version-1 provider snapshot on
+  each Claude Code or Codex session and forbids provider state on shell
+  sessions. Fixed bounds cover capabilities, activity, diagnostics, strings,
+  scalar diagnostic fields, timestamps, uniqueness, and provider-matched typed
+  extensions; secret-like diagnostic keys and arbitrary raw payloads are
+  rejected. Provider attention enters the existing source-precedence/staleness
+  reducer, while validated provider facts and observer
+  ready/degraded/stale/unavailable health appear in the Activity inspector.
+  Sessions currently start honestly unavailable with unknown capabilities.
+  Live Claude/Codex detection, transport, ingestion, approval/question
+  responses, persistence, and runtime control remain PC-061/PC-062 work.
 
 ### PC-061 Implement Claude observer
 
