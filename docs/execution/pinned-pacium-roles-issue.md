@@ -61,39 +61,39 @@ honest and leave all terminal processes available.
 
 ## Acceptance criteria
 
-- [ ] Pacium mode always presents Meta then Orchestrator with stable accessible
+- [x] Pacium mode always presents Meta then Orchestrator with stable accessible
       labels; General mode presents neither role card.
-- [ ] A session binding resolves only by its immutable session ID. A current
+- [x] A session binding resolves only by its immutable session ID. A current
       live session is labelled Connected, an ended session is labelled Ended,
       and an absent session is labelled Missing without name-based inference.
-- [ ] Opening a resolved role uses the existing tab, split, selection, attach,
+- [x] Opening a resolved role uses the existing tab, split, selection, attach,
       snapshot, and terminal-input path; it does not create or duplicate a PTY.
-- [ ] A launch-preset binding shows its exact fixed preset and configured
+- [x] A launch-preset binding shows its exact fixed preset and configured
       repository or server-default directory. Unavailable presets and
       disconnected transport cannot be launched.
-- [ ] A successful preset launch creates one direct PTY through
+- [x] A successful preset launch creates one direct PTY through
       `session.create`, then replaces only that role binding with the exact
       created session ID at the accepted config revision.
-- [ ] If PTY launch fails, config is unchanged. If the PTY starts but role
+- [x] If PTY launch fails, config is unchanged. If the PTY starts but role
       replacement fails, the new ordinary terminal survives visibly and the
       role remains unchanged until a fresh config read and explicit retry.
-- [ ] The binding editor lists only current live sessions not already assigned
+- [x] The binding editor lists only current live sessions not already assigned
       to another role/worker slot, plus server-owned available fixed presets.
-- [ ] Saving one role preserves workspace ID/label, repositories, the other
+- [x] Saving one role preserves workspace ID/label, repositories, the other
       role, workers, queue sources, delivery methods, and context byte-for-byte
       at the browser contract level.
-- [ ] First setup creates only the minimal strict workspace and the selected
+- [x] First setup creates only the minimal strict workspace and the selected
       role; it reads or creates no queue/context/delivery path.
-- [ ] Config replacement uses the accepted revision, disables duplicate
+- [x] Config replacement uses the accepted revision, disables duplicate
       submission, never blindly retries a conflict/lost response, and performs
       an explicit fresh get for recovery.
-- [ ] Config loading, unconfigured, invalid/error, replacing, disconnected,
+- [x] Config loading, unconfigured, invalid/error, replacing, disconnected,
       unavailable-preset, ended, and missing states say what is known and which
       terminals survived.
-- [ ] Role actions are available by mouse and keyboard, use visible focus, and
+- [x] Role actions are available by mouse and keyboard, use visible focus, and
       remain usable at 320 CSS px, 200% zoom, forced colors, and reduced motion.
-- [ ] No protocol/schema expansion or terminal-byte parsing is introduced.
-- [ ] Focused tests, `pnpm verify`, and `pnpm test:e2e` pass with synchronized
+- [x] No protocol/schema expansion or terminal-byte parsing is introduced.
+- [x] Focused tests, `pnpm verify`, and `pnpm test:e2e` pass with synchronized
       issue, plan, status, backlog, README, and changelog evidence.
 
 ## User experience
@@ -222,3 +222,23 @@ the operator to refresh configuration and bind it explicitly.
   footer or a dedicated composer; PC-042 exposes no prompt input.
 - Optional tmux bindings require a future schema/adapter slice and are not
   represented as direct-session bindings.
+
+## Completion evidence
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 72 test
+  files and 380 tests, plus the 787.01 kB web and 166.07 kB local-server
+  production bundles.
+- `pnpm test:e2e` passed all nine Chromium workflows with disposable
+  server-owned Pacium state.
+- Unit and semantic evidence covers exact-ID role resolution, every process and
+  config state, disconnected evidence, preset/repository availability,
+  occupied-slot filtering, minimal workspace construction, one-role immutable
+  replacement, strict create correlation, hostile text, and dialog actions.
+- Real browser evidence assigned an existing PTY to Meta, opened it without
+  duplication, changed modes without context loss, assigned an Orchestrator
+  fixed preset, launched one PTY, bound its exact created session ID, and
+  restored both roles after refresh.
+- Responsive browser evidence covers two stable cards, modal first/return
+  focus, 320 CSS px, 200% zoom, forced colors, and reduced motion.
+- The implementation is split across 22 coherent commits before issue, plan,
+  and changelog closeout.
