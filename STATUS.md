@@ -158,9 +158,9 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 75 test files and 410 tests,
-  plus web and local-server production builds passed.
-- `pnpm test:e2e`: nine Chromium workflows passed for skip navigation, panel
+- `pnpm verify`: formatting, lint, type checking, 81 test files and 451 tests,
+  plus the 801.90 kB web and 185.93 kB local-server production builds passed.
+- `pnpm test:e2e`: ten Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
   changed-file/diff/history/Activity inspection, and configured verification
@@ -178,11 +178,18 @@ Verified on 2026-07-27 in the current macOS Apple-silicon checkout:
   `Ctrl+Enter`, observed the marker only in Meta's real PTY, and cleared scope
   after the matching result, mode exit, and refresh. The composer remained
   usable at 320 CSS px, 200% zoom, forced colors, and reduced motion.
+- PC-044 browser evidence observed a disposable real queue source, displayed
+  stable byte/hash/freshness metadata without rendering its private text,
+  refreshed changed evidence, preserved the selected real PTY, hid the source
+  surface in General mode, and cleaned its test session. Responsive coverage
+  proved the labelled region and Refresh at 320 CSS px, 200% zoom, forced
+  colors, and reduced motion.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
 - The protocol-version-11 boundary passed strict contract, atomic-store,
   canonical path/reference, authenticated WebSocket revision/conflict, PTY
-  survival, and browser request-state tests on this machine.
+  survival, bounded queue reader/observer, content-free source evidence, and
+  browser request-state tests on this machine.
 - Built server startup: served the application and health endpoint on `127.0.0.1:4174`.
 - Hostile bootstrap Origin: returned HTTP 403.
 
@@ -197,7 +204,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 794.93 kB before gzip and emits Vite's chunk-size
+- The current web bundle is 801.90 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
 - Tailscale Serve access is accepted and specified by ADR-0016 but is not implemented or security-validated yet.
 
@@ -227,7 +234,8 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Begin PC-044 with bounded, provenance-preserving observation of configured
-queue files without executing their contents or changing source files.
-Complete the pinned Node.js 24 clean-install, CI, broader browser/security,
-manual accessibility, and sustained-output gates before release.
+Begin PC-045 with conservative classification of bounded stable queue text,
+keeping ordinary questions distinct from approval requests and retaining
+explicit source provenance. Complete the pinned Node.js 24 clean-install, CI,
+broader browser/security, manual accessibility, and sustained-output gates
+before release.
