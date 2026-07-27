@@ -211,9 +211,7 @@ describe("Pacium config atomic replacement", () => {
     });
     const store = new PaciumConfigStore(fixture.dataDirectory, {
       io: {
-        rename: async () => {
-          throw new Error("injected rename failure");
-        },
+        rename: () => Promise.reject(new Error("injected rename failure")),
       },
       randomId: () => "rename-failure",
     });
@@ -234,9 +232,8 @@ describe("Pacium config atomic replacement", () => {
     const fixture = await configFixture();
     const store = new PaciumConfigStore(fixture.dataDirectory, {
       io: {
-        syncDirectory: async () => {
-          throw new Error("injected directory sync failure");
-        },
+        syncDirectory: () =>
+          Promise.reject(new Error("injected directory sync failure")),
       },
       randomId: () => "sync-failure",
     });
