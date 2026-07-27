@@ -2,6 +2,8 @@ import type {
   PaciumConfigObservation,
   PaciumQueueSource,
   QueueDecisionResult,
+  QueueDeliveryResult,
+  QueueDeliveryState,
   QueueItemConfidence,
   QueueItemDecisionState,
   QueueItemInspection,
@@ -35,6 +37,10 @@ export interface PaciumQueueInspectionState {
   decisionRequestId: string | null;
   decisionStatus: "idle" | "submitting" | "error";
   decisionErrorMessage: string | null;
+  deliveryState: QueueDeliveryState | null;
+  deliveryRequestId: string | null;
+  deliveryStatus: "idle" | "submitting" | "error";
+  deliveryErrorMessage: string | null;
 }
 
 export interface QueueItemInspectionEvidence extends QueueItemInspectionIdentity {
@@ -56,6 +62,10 @@ export const CLOSED_QUEUE_INSPECTION: PaciumQueueInspectionState = {
   decisionRequestId: null,
   decisionStatus: "idle",
   decisionErrorMessage: null,
+  deliveryState: null,
+  deliveryRequestId: null,
+  deliveryStatus: "idle",
+  deliveryErrorMessage: null,
 };
 
 export function queueItemSelection(
@@ -112,6 +122,10 @@ export function beginQueueItemInspection(
     decisionRequestId: null,
     decisionStatus: "idle",
     decisionErrorMessage: null,
+    deliveryState: null,
+    deliveryRequestId: null,
+    deliveryStatus: "idle",
+    deliveryErrorMessage: null,
   };
 }
 
@@ -120,6 +134,7 @@ export function acceptQueueItemInspection(
   requestId: string,
   inspection: QueueItemInspection,
   decisionState: QueueItemDecisionState | null,
+  deliveryState: QueueDeliveryState | null = null,
 ): PaciumQueueInspectionState {
   if (
     state.requestId !== requestId ||
@@ -137,6 +152,13 @@ export function acceptQueueItemInspection(
       inspection: inspectionEvidence(inspection),
       errorMessage: inspection.error.message,
       decisionState: null,
+      decisionRequestId: null,
+      decisionStatus: "idle",
+      decisionErrorMessage: null,
+      deliveryState: null,
+      deliveryRequestId: null,
+      deliveryStatus: "idle",
+      deliveryErrorMessage: null,
     };
   }
   const originalText = decodeQueueItemText(
@@ -153,6 +175,13 @@ export function acceptQueueItemInspection(
       errorMessage:
         "The queue item text could not be decoded safely. The source file and terminals were not changed.",
       decisionState: null,
+      decisionRequestId: null,
+      decisionStatus: "idle",
+      decisionErrorMessage: null,
+      deliveryState: null,
+      deliveryRequestId: null,
+      deliveryStatus: "idle",
+      deliveryErrorMessage: null,
     };
   }
   return {
@@ -163,6 +192,10 @@ export function acceptQueueItemInspection(
     inspection: inspectionEvidence(inspection),
     errorMessage: null,
     decisionState,
+    deliveryState,
+    deliveryRequestId: null,
+    deliveryStatus: "idle",
+    deliveryErrorMessage: null,
   };
 }
 
@@ -208,6 +241,10 @@ export function acceptQueueDecision(
         decision: result.decision,
         error: null,
       },
+      deliveryState: null,
+      deliveryRequestId: null,
+      deliveryStatus: "idle",
+      deliveryErrorMessage: null,
     };
   }
   const error = result.error;
@@ -226,6 +263,10 @@ export function acceptQueueDecision(
       decisionRequestId: null,
       decisionStatus: "error",
       decisionErrorMessage: error.message,
+      deliveryState: null,
+      deliveryRequestId: null,
+      deliveryStatus: "idle",
+      deliveryErrorMessage: null,
     };
   }
   return {
@@ -249,6 +290,68 @@ export function interruptQueueDecision(
     decisionRequestId: null,
     decisionStatus: "error",
     decisionErrorMessage: message,
+  };
+}
+
+export function beginQueueDelivery(
+  state: PaciumQueueInspectionState,
+  requestId: string,
+): PaciumQueueInspectionState {
+  if (
+    state.status !== "ready" ||
+    state.decisionState?.status !== "decided" ||
+    state.deliveryState?.status !== "ready" ||
+    state.deliveryStatus === "submitting"
+  ) {
+    return state;
+  }
+  return {
+    ...state,
+    deliveryRequestId: requestId,
+    deliveryStatus: "submitting",
+    deliveryErrorMessage: null,
+  };
+}
+
+export function acceptQueueDelivery(
+  state: PaciumQueueInspectionState,
+  requestId: string,
+  result: QueueDeliveryResult,
+): PaciumQueueInspectionState {
+  const decision =
+    state.decisionState?.status === "decided"
+      ? state.decisionState.decision
+      : null;
+  if (
+    state.deliveryRequestId !== requestId ||
+    decision === null ||
+    result.decisionId !== decision.decisionId ||
+    result.decisionHash !== decision.decisionHash
+  ) {
+    return state;
+  }
+  return {
+    ...state,
+    deliveryState: result.state,
+    deliveryRequestId: null,
+    deliveryStatus: "idle",
+    deliveryErrorMessage: null,
+  };
+}
+
+export function interruptQueueDelivery(
+  state: PaciumQueueInspectionState,
+  requestId: string,
+  message: string,
+): PaciumQueueInspectionState {
+  if (state.deliveryRequestId !== requestId) {
+    return state;
+  }
+  return {
+    ...state,
+    deliveryRequestId: null,
+    deliveryStatus: "error",
+    deliveryErrorMessage: message,
   };
 }
 
@@ -285,6 +388,13 @@ export function interruptQueueItemInspection(
     inspection: null,
     errorMessage: message,
     decisionState: null,
+    decisionRequestId: null,
+    decisionStatus: "idle",
+    decisionErrorMessage: null,
+    deliveryState: null,
+    deliveryRequestId: null,
+    deliveryStatus: "idle",
+    deliveryErrorMessage: null,
   };
 }
 
@@ -324,6 +434,10 @@ export function reconcileQueueItemInspection(
     decisionRequestId: null,
     decisionStatus: "idle",
     decisionErrorMessage: null,
+    deliveryState: null,
+    deliveryRequestId: null,
+    deliveryStatus: "idle",
+    deliveryErrorMessage: null,
   };
 }
 
@@ -352,6 +466,10 @@ export function reconcileQueueItemInspectionConfig(
     decisionRequestId: null,
     decisionStatus: "idle",
     decisionErrorMessage: null,
+    deliveryState: null,
+    deliveryRequestId: null,
+    deliveryStatus: "idle",
+    deliveryErrorMessage: null,
   };
 }
 

@@ -3,13 +3,16 @@ import { describe, expect, it } from "vitest";
 import {
   CLOSED_QUEUE_INSPECTION,
   acceptQueueDecision,
+  acceptQueueDelivery,
   acceptQueueItemInspection,
   beginQueueDecision,
+  beginQueueDelivery,
   beginQueueItemInspection,
   closeQueueItemInspection,
   decodeQueueItemText,
   interruptQueueItemInspection,
   interruptQueueDecision,
+  interruptQueueDelivery,
   queueItemSelection,
   reconcileQueueItemInspection,
   reconcileQueueItemInspectionConfig,
@@ -289,6 +292,74 @@ describe("queue item inspection state", () => {
       decisionStatus: "error",
     });
   });
+
+  it("accepts only one correlated explicit delivery outcome", () => {
+    const selection = queueItemSelection(source(), observation(), 4)!;
+    const ready = acceptQueueItemInspection(
+      beginQueueItemInspection(selection, "inspect-1"),
+      "inspect-1",
+      detail(),
+      decided(),
+      readyDelivery(),
+    );
+    const submitting = beginQueueDelivery(ready, "delivery-1");
+    expect(submitting).toMatchObject({
+      deliveryRequestId: "delivery-1",
+      deliveryStatus: "submitting",
+    });
+    expect(
+      acceptQueueDelivery(submitting, "unrelated", deliveredResult()),
+    ).toBe(submitting);
+    expect(
+      acceptQueueDelivery(submitting, "delivery-1", {
+        ...deliveredResult(),
+        decisionHash: "f".repeat(64),
+      }),
+    ).toBe(submitting);
+    expect(
+      acceptQueueDelivery(submitting, "delivery-1", deliveredResult()),
+    ).toMatchObject({
+      deliveryRequestId: null,
+      deliveryStatus: "idle",
+      deliveryErrorMessage: null,
+      deliveryState: {
+        status: "delivered",
+        delivery: {
+          outcome: {
+            status: "delivered",
+            evidence: { kind: "answer_file_created" },
+          },
+        },
+      },
+    });
+  });
+
+  it("does not retry an interrupted delivery request", () => {
+    const selection = queueItemSelection(source(), observation(), 4)!;
+    const ready = acceptQueueItemInspection(
+      beginQueueItemInspection(selection, "inspect-1"),
+      "inspect-1",
+      detail(),
+      decided(),
+      readyDelivery(),
+    );
+    const submitting = beginQueueDelivery(ready, "delivery-1");
+    expect(interruptQueueDelivery(submitting, "unrelated", "failed")).toBe(
+      submitting,
+    );
+    expect(
+      interruptQueueDelivery(
+        submitting,
+        "delivery-1",
+        "Delivery outcome requires inspection.",
+      ),
+    ).toMatchObject({
+      deliveryRequestId: null,
+      deliveryStatus: "error",
+      deliveryErrorMessage: "Delivery outcome requires inspection.",
+      deliveryState: { status: "ready" },
+    });
+  });
 });
 
 function source() {
@@ -398,6 +469,71 @@ function decisionResult() {
       decisionHash: "c".repeat(64),
     },
     error: null,
+  };
+}
+
+function decided() {
+  return {
+    status: "decided" as const,
+    decision: decisionResult().decision,
+    error: null,
+  };
+}
+
+function readyDelivery() {
+  return {
+    status: "ready" as const,
+    decisionId: decisionResult().decision.decisionId,
+    decisionHash: decisionResult().decision.decisionHash,
+    target: answerTarget(),
+    delivery: null,
+    error: null,
+  };
+}
+
+function deliveredResult() {
+  const target = answerTarget();
+  const payloadHash = "d".repeat(64);
+  return {
+    status: "delivered" as const,
+    decisionId: decisionResult().decision.decisionId,
+    decisionHash: decisionResult().decision.decisionHash,
+    state: {
+      status: "delivered" as const,
+      decisionId: decisionResult().decision.decisionId,
+      decisionHash: decisionResult().decision.decisionHash,
+      target,
+      delivery: {
+        deliveryId: "4699b11f-94d3-430a-960e-1c574a03db41",
+        decisionId: decisionResult().decision.decisionId,
+        decisionHash: decisionResult().decision.decisionHash,
+        target,
+        payloadHash,
+        payloadByteLength: 512,
+        requestedAt: "2026-07-27T12:06:00.000Z",
+        outcome: {
+          status: "delivered" as const,
+          recordedAt: "2026-07-27T12:06:01.000Z",
+          evidence: {
+            kind: "answer_file_created" as const,
+            byteLength: 512,
+            contentHash: payloadHash,
+          },
+          error: null,
+        },
+        deliveryHash: "e".repeat(64),
+      },
+      error: null,
+    },
+  };
+}
+
+function answerTarget() {
+  return {
+    type: "answer_file" as const,
+    methodId: "answers",
+    methodLabel: "Pacium answers",
+    path: "/queue/PACIUM-ANSWERS",
   };
 }
 
