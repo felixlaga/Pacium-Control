@@ -38,6 +38,9 @@ interface TestClient {
   pendingFrames: PendingFrame[];
 }
 
+const TEST_DIFF_PATCH = "@@ -1 +1 @@\n-old\n+new\n";
+const TEST_DIFF_BYTES = Buffer.byteLength(TEST_DIFF_PATCH);
+
 describe("localhost HTTP and WebSocket boundary", () => {
   let application: PaciumHttpServer | undefined;
   let manager: SessionManager | undefined;
@@ -62,7 +65,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     );
     expect(welcome).toMatchObject({
       type: "server.welcome",
-      protocolVersion: 6,
+      protocolVersion: 7,
       capabilities: {
         launchPresets: [
           { id: "shell", available: true },
@@ -342,6 +345,61 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await once(client.socket, "close");
   });
 
+  it("returns one bounded session-owned diff and rejects unsafe selectors", async () => {
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(factory);
+    application = setup.application;
+    manager = setup.manager;
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    const session = await createTestSession(client);
+    const requestId = "053a6ddc-aa22-48f4-a882-c2668db9dc42";
+
+    client.socket.send(
+      JSON.stringify({
+        type: "repository.diff",
+        requestId,
+        sessionId: session.id,
+        path: "README.md",
+      }),
+    );
+    const response = await nextMessage(
+      client,
+      (message) =>
+        message.type === "repository.diff" && message.requestId === requestId,
+    );
+    if (response.type !== "repository.diff") {
+      throw new Error("Expected a repository diff response.");
+    }
+    expect(response.sessionId).toBe(session.id);
+    expect(response.observation.status).toBe("ready");
+    expect(response.observation.path).toBe("README.md");
+    expect(response.observation.sections[0]?.patch).toBe(TEST_DIFF_PATCH);
+
+    const invalidRequestId = "9e9ab3f8-a6ab-41b7-8010-b9fe76d62cdf";
+    client.socket.send(
+      JSON.stringify({
+        type: "repository.diff",
+        requestId: invalidRequestId,
+        sessionId: session.id,
+        path: "../../escape",
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "error" && message.requestId === invalidRequestId,
+      ),
+    ).resolves.toMatchObject({
+      type: "error",
+      code: "INVALID_MESSAGE",
+    });
+    expect(factory.processes[0]?.signals).toEqual([]);
+    client.socket.close();
+    await once(client.socket, "close");
+  });
+
   it("rejects an invalid local access token", async () => {
     const setup = await startTestServer(new FakePtyFactory());
     application = setup.application;
@@ -517,6 +575,26 @@ async function startTestServer(
           conflictCount: 0,
         },
         truncated: false,
+        error: null,
+      }),
+    (repository, path, observedAt) =>
+      Promise.resolve({
+        status: "ready",
+        root: repository.root,
+        headCommit: repository.headCommit,
+        path,
+        previousPath: null,
+        observedAt: observedAt ?? "2026-07-27T10:00:00.000Z",
+        sections: [
+          {
+            source: "combined",
+            patch: TEST_DIFF_PATCH,
+            byteCount: TEST_DIFF_BYTES,
+            lineCount: 3,
+          },
+        ],
+        patchBytes: TEST_DIFF_BYTES,
+        patchLines: 3,
         error: null,
       }),
   );
