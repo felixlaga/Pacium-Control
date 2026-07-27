@@ -19,6 +19,7 @@ import {
   createQueueDecisionService,
   type QueueDecisionService,
 } from "./queue-decision-service.js";
+import { QueueDeliveryService } from "./queue-delivery-service.js";
 import { QueueDecisionStore } from "./queue-decision-store.js";
 import { QueueObserver } from "./queue-observer.js";
 import { SessionError, type SessionManager } from "./session-manager.js";
@@ -50,9 +51,18 @@ export class WebSocketHub {
     private readonly sessions: SessionManager,
     private readonly paciumConfig: PaciumConfigStore,
     private readonly queueObserver: QueueObserver = new QueueObserver(),
+    queueState: QueueDecisionStore = new QueueDecisionStore(
+      config.dataDirectory,
+    ),
     private readonly queueDecisions: QueueDecisionService = createQueueDecisionService(
       queueObserver,
-      new QueueDecisionStore(config.dataDirectory),
+      queueState,
+    ),
+    private readonly queueDeliveries: QueueDeliveryService = new QueueDeliveryService(
+      paciumConfig,
+      queueObserver,
+      queueState,
+      sessions,
     ),
   ) {
     this.server.on("connection", (socket) => {
@@ -442,12 +452,23 @@ export class WebSocketHub {
           inspection.status === "ready"
             ? await this.queueDecisions.inspect(identity)
             : null;
+        const deliveryState =
+          decisionState?.status === "decided"
+            ? await this.queueDeliveries.inspect(
+                decisionState.decision.decisionId,
+                decisionState.decision.decisionHash,
+              )
+            : null;
         inspection = this.queueObserver.inspectItem(identity);
         this.send(client.socket, {
           type: "pacium.queue.item",
           requestId: message.requestId,
           inspection,
           decisionState: inspection.status === "ready" ? decisionState : null,
+          deliveryState:
+            inspection.status === "ready" && decisionState?.status === "decided"
+              ? deliveryState
+              : null,
         });
         return;
       }
@@ -476,6 +497,16 @@ export class WebSocketHub {
             ),
           });
         }
+        return;
+      case "pacium.queue.decision.deliver":
+        this.send(client.socket, {
+          type: "pacium.queue.delivery",
+          requestId: message.requestId,
+          result: await this.queueDeliveries.deliver(
+            message.decisionId,
+            message.decisionHash,
+          ),
+        });
         return;
       case "session.close":
         this.sessions.close(
