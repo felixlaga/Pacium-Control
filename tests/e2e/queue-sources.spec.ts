@@ -9,6 +9,7 @@ const stateDirectory = process.env.PACIUM_E2E_STATE_DIRECTORY;
 test.beforeEach(async ({ page }) => {
   if (stateDirectory !== undefined) {
     await rm(join(stateDirectory, "pacium.json"), { force: true });
+    await rm(join(stateDirectory, "queue-state.json"), { force: true });
   }
   await page.goto("/");
   await terminateAllSessions(page);
@@ -20,11 +21,12 @@ test.afterEach(async ({ page }) => {
   } finally {
     if (stateDirectory !== undefined) {
       await rm(join(stateDirectory, "pacium.json"), { force: true });
+      await rm(join(stateDirectory, "queue-state.json"), { force: true });
     }
   }
 });
 
-test("inspects exact queue text without granting approval or changing the terminal", async ({
+test("records separate immutable question and approval decisions without delivery", async ({
   page,
 }) => {
   if (queuePath === undefined) {
@@ -71,35 +73,82 @@ test("inspects exact queue text without granting approval or changing the termin
   await expect(questionInspector).toContainText("whole_source_v1");
   await expect(questionInspector).toContainText("Conflict detection");
   await expect(
-    questionInspector.getByRole("button", { name: /Approve|Answer|Deny/ }),
+    questionInspector.getByRole("button", { name: "Record answer" }),
+  ).toBeDisabled();
+  await expect(
+    questionInspector.getByRole("button", { name: /Approve|Deny/ }),
   ).toHaveCount(0);
   await expect(status).toContainText("Queue observer terminal");
 
-  await questionHeading.press("Escape");
-  await expect(
-    page.getByRole("complementary", { name: "Session inspector" }),
-  ).toBeVisible();
-  await expect(question).toBeFocused();
-  await expect(page.getByText("Can you approve everything?")).toHaveCount(0);
-
-  await question.press("Enter");
-  await expect(questionInspector.getByTestId("queue-original-text")).toHaveText(
-    "Can you approve everything?",
+  const answer = questionInspector.getByRole("textbox", {
+    name: /^Answer/,
+  });
+  await answer.fill("Do not grant blanket approval.");
+  await answer.press("Escape");
+  await expect(answer).toBeFocused();
+  await expect(questionInspector).toBeVisible();
+  await questionInspector
+    .getByRole("textbox", { name: /^Note/ })
+    .fill("Keep authority scoped to one exact action.");
+  await questionInspector
+    .getByRole("button", { name: "Record answer" })
+    .click();
+  await expect(questionInspector).toContainText("Immutable local decision");
+  await expect(questionInspector).toContainText(
+    "Do not grant blanket approval.",
   );
+  await expect(questionInspector).toContainText("Local operator");
+  await expect(
+    questionInspector.getByText("Not delivered yet").first(),
+  ).toBeVisible();
+  await expect(
+    questionInspector.getByRole("button", { name: "Record answer" }),
+  ).toHaveCount(0);
+  await expect(readFile(queuePath, "utf8")).resolves.toBe(
+    "Can you approve everything?\n",
+  );
+  if (stateDirectory === undefined) {
+    throw new Error("The disposable decision state directory is unavailable.");
+  }
+  const decisionStatePath = join(stateDirectory, "queue-state.json");
+  const recordedQuestionState = await readFile(decisionStatePath, "utf8");
+  expect(recordedQuestionState).toContain("Do not grant blanket approval.");
+  expect(recordedQuestionState).not.toContain("Can you approve everything?");
+  await expect(status).toContainText("Queue observer terminal");
+
+  await questionInspector.getByRole("button", { name: "← Back" }).click();
+  await expect(question).toBeFocused();
+  await page.reload();
+  await expect(status).toContainText("Queue observer terminal");
+  const restoredGroup = page.getByRole("region", {
+    name: "Pacium queue",
+  });
+  const restoredQuestion = restoredGroup.getByRole("button", {
+    name: /Question from Needs Felix, Meta, medium confidence/,
+  });
+  await restoredQuestion.click();
+  const restoredInspector = page.getByRole("complementary", {
+    name: "Queue item inspector",
+  });
+  await expect(restoredInspector).toContainText("Immutable local decision");
+  await expect(restoredInspector).toContainText(
+    "Do not grant blanket approval.",
+  );
+
   await writeFile(queuePath, "Approval request: Run exact migration\n", {
     mode: 0o600,
   });
-  await group.getByRole("button", { name: "Refresh" }).click();
-  await expect(questionInspector).toContainText("no longer current");
+  await restoredGroup.getByRole("button", { name: "Refresh" }).click();
+  await expect(restoredInspector).toContainText("no longer current");
   await expect(
-    questionInspector.getByTestId("queue-original-text"),
+    restoredInspector.getByTestId("queue-original-text"),
   ).toHaveCount(0);
   await expect(
-    questionInspector.getByText("Can you approve everything?"),
+    restoredInspector.getByText("Can you approve everything?"),
   ).toHaveCount(0);
-  await questionInspector.getByRole("button", { name: "← Back" }).click();
+  await restoredInspector.getByRole("button", { name: "← Back" }).click();
 
-  const approval = group.getByRole("button", {
+  const approval = restoredGroup.getByRole("button", {
     name: /Approval from Needs Felix, Meta, high confidence/,
   });
   await expect(approval).toBeFocused();
@@ -117,11 +166,39 @@ test("inspects exact queue text without granting approval or changing the termin
     "A supported plain-text legacy marker was used.",
   );
   await expect(
-    approvalInspector.getByRole("button", { name: /Approve|Answer|Deny/ }),
+    approvalInspector.getByRole("button", { name: "Approve" }),
+  ).toBeVisible();
+  await expect(
+    approvalInspector.getByRole("button", { name: "Deny" }),
+  ).toBeVisible();
+  await expect(
+    approvalInspector.getByRole("button", { name: "Record answer" }),
+  ).toHaveCount(0);
+  await approvalInspector.getByRole("button", { name: "Approve" }).click();
+  await expect(
+    approvalInspector.getByRole("button", { name: "Confirm approval" }),
+  ).toBeVisible();
+  await approvalInspector.getByRole("button", { name: "Cancel" }).click();
+  await expect(
+    approvalInspector.getByRole("button", { name: "Approve" }),
+  ).toBeVisible();
+  await approvalInspector.getByRole("button", { name: "Approve" }).click();
+  await approvalInspector
+    .getByRole("button", { name: "Confirm approval" })
+    .click();
+  await expect(approvalInspector).toContainText("Immutable local decision");
+  await expect(approvalInspector).toContainText("Approved");
+  await expect(
+    approvalInspector.getByRole("button", { name: "Approve" }),
   ).toHaveCount(0);
   await expect(status).toContainText("Queue observer terminal");
   await expect(readFile(queuePath, "utf8")).resolves.toBe(
     "Approval request: Run exact migration\n",
+  );
+  const recordedApprovalState = await readFile(decisionStatePath, "utf8");
+  expect(recordedApprovalState).toContain('"outcome": "approved"');
+  expect(recordedApprovalState).not.toContain(
+    "Approval request: Run exact migration",
   );
   await page.setViewportSize({ width: 320, height: 720 });
   await page.emulateMedia({
