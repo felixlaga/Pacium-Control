@@ -6,6 +6,9 @@ import {
   MAX_PACIUM_PATH_CHARS,
   PaciumAbsolutePathSchema,
   PaciumBindingSchema,
+  PaciumConfigDocumentSchema,
+  PaciumConfigObservationSchema,
+  PaciumConfigReplaceSchema,
   PaciumContextSchema,
   PaciumDeliveryMethodSchema,
   PaciumIdentifierSchema,
@@ -300,6 +303,76 @@ describe("Pacium workspace graph contract", () => {
 
   it("accepts one strict and fully referenced workspace", () => {
     expect(PaciumWorkspaceSchema.safeParse(workspace()).success).toBe(true);
+  });
+
+  it("wraps the workspace in one strict versioned revision document", () => {
+    expect(
+      PaciumConfigDocumentSchema.safeParse({
+        schemaVersion: 1,
+        revision: 1,
+        workspace: workspace(),
+      }).success,
+    ).toBe(true);
+    expect(
+      PaciumConfigDocumentSchema.safeParse({
+        schemaVersion: 2,
+        revision: 1,
+        workspace: workspace(),
+      }).success,
+    ).toBe(false);
+    expect(
+      PaciumConfigReplaceSchema.safeParse({
+        expectedRevision: 0,
+        workspace: workspace(),
+      }).success,
+    ).toBe(true);
+    expect(
+      PaciumConfigReplaceSchema.safeParse({
+        expectedRevision: -1,
+        workspace: workspace(),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("keeps ready, unconfigured, and error observations disjoint", () => {
+    expect(
+      PaciumConfigObservationSchema.safeParse({
+        status: "unconfigured",
+        revision: null,
+        workspace: null,
+        error: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      PaciumConfigObservationSchema.safeParse({
+        status: "ready",
+        revision: 4,
+        workspace: workspace(),
+        error: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      PaciumConfigObservationSchema.safeParse({
+        status: "error",
+        revision: null,
+        workspace: null,
+        error: {
+          code: "invalid_file",
+          message: "Pacium config contains invalid JSON.",
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      PaciumConfigObservationSchema.safeParse({
+        status: "error",
+        revision: 4,
+        workspace: workspace(),
+        error: {
+          code: "invalid_file",
+          message: "Invalid.",
+        },
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects dangling repository and delivery references", () => {

@@ -169,6 +169,82 @@ export const PaciumWorkspaceSchema = z
   .superRefine(validateWorkspaceGraph);
 export type PaciumWorkspace = z.infer<typeof PaciumWorkspaceSchema>;
 
+export const PaciumConfigDocumentSchema = z
+  .object({
+    schemaVersion: z.literal(PACIUM_CONFIG_SCHEMA_VERSION),
+    revision: z.number().int().positive().safe(),
+    workspace: PaciumWorkspaceSchema,
+  })
+  .strict();
+export type PaciumConfigDocument = z.infer<typeof PaciumConfigDocumentSchema>;
+
+export const PaciumConfigReplaceSchema = z
+  .object({
+    expectedRevision: z.number().int().nonnegative().safe(),
+    workspace: PaciumWorkspaceSchema,
+  })
+  .strict();
+export type PaciumConfigReplace = z.infer<typeof PaciumConfigReplaceSchema>;
+
+export const PaciumConfigObservationSchema = z
+  .object({
+    status: z.enum(["unconfigured", "ready", "error"]),
+    revision: z.number().int().positive().safe().nullable(),
+    workspace: PaciumWorkspaceSchema.nullable(),
+    error: z
+      .object({
+        code: z.enum([
+          "invalid_file",
+          "unsupported_version",
+          "unsafe_permissions",
+          "filesystem_error",
+        ]),
+        message: z.string().min(1).max(200),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict()
+  .superRefine((observation, context) => {
+    if (
+      observation.status === "ready" &&
+      (observation.revision === null ||
+        observation.workspace === null ||
+        observation.error !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "Ready Pacium config requires revision and workspace evidence.",
+      });
+    }
+    if (
+      observation.status === "unconfigured" &&
+      (observation.revision !== null ||
+        observation.workspace !== null ||
+        observation.error !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Unconfigured Pacium config cannot contain state evidence.",
+      });
+    }
+    if (
+      observation.status === "error" &&
+      (observation.revision !== null ||
+        observation.workspace !== null ||
+        observation.error === null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Pacium config errors contain only bounded error evidence.",
+      });
+    }
+  });
+export type PaciumConfigObservation = z.infer<
+  typeof PaciumConfigObservationSchema
+>;
+
 function hasControlCharacter(value: string): boolean {
   return [...value].some((character) => {
     const codePoint = character.codePointAt(0);
