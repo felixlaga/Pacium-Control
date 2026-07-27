@@ -1,6 +1,6 @@
 # Observe configured queue files without modifying them
 
-**Status:** In progress
+**Status:** Complete
 
 ## Problem
 
@@ -77,42 +77,42 @@ remain unchanged.
 
 ## Acceptance criteria
 
-- [ ] Observation starts only from a ready accepted Pacium configuration and
+- [x] Observation starts only from a ready accepted Pacium configuration and
       only for its exact configured queue-source paths.
-- [ ] Unconfigured or invalid configuration produces bounded honest state,
+- [x] Unconfigured or invalid configuration produces bounded honest state,
       starts no source watcher, and leaves General mode and PTYs unchanged.
-- [ ] A stable regular UTF-8 file of at most 64 KiB produces exact byte length,
+- [x] A stable regular UTF-8 file of at most 64 KiB produces exact byte length,
       SHA-256 hash, observation time, process-local revision, and bounded
       original text retained only in server memory.
-- [ ] An empty file is distinct from missing and remains a valid complete
+- [x] An empty file is distinct from missing and remains a valid complete
       observation with the SHA-256 hash of empty content.
-- [ ] Missing, oversized, invalid-UTF-8, symlink/non-regular, permission/read,
+- [x] Missing, oversized, invalid-UTF-8, symlink/non-regular, permission/read,
       changing-read, and watcher failures are distinct and contain no stale
       text or hash presented as current.
-- [ ] Reads use no-follow/open-file identity checks and reject a path whose
+- [x] Reads use no-follow/open-file identity checks and reject a path whose
       device, inode, size, or modification evidence changes during observation.
-- [ ] Filesystem bursts are debounced; a partial or unstable read is never
+- [x] Filesystem bursts are debounced; a partial or unstable read is never
       promoted to stable and retry work remains bounded.
-- [ ] Atomic replacement, file creation after missing, content rewrite,
+- [x] Atomic replacement, file creation after missing, content rewrite,
       truncation, and deletion produce a newer source revision without server
       restart or browser refresh.
-- [ ] Re-reading unchanged bytes does not increment the source revision or
+- [x] Re-reading unchanged bytes does not increment the source revision or
       broadcast a duplicate source update.
-- [ ] Config replacement removes obsolete watchers/timers, adds new sources,
+- [x] Config replacement removes obsolete watchers/timers, adds new sources,
       and cannot leak an update from a prior source generation into the current
       workspace revision.
-- [ ] Queue text never enters logs, HTML, terminal input, provider prompts,
+- [x] Queue text never enters logs, HTML, terminal input, provider prompts,
       durable files, notifications, or generic errors.
-- [ ] Browser messages contain only source metadata and never original text.
-- [ ] Pacium mode shows each configured source in stable config order with
+- [x] Browser messages contain only source metadata and never original text.
+- [x] Pacium mode shows each configured source in stable config order with
       honest status/freshness and escaped labels/paths; General mode shows no
       queue-source surface.
-- [ ] Queue observation never changes terminal selection, layout, inspector
+- [x] Queue observation never changes terminal selection, layout, inspector
       state, keyboard capture, source files, delivery files, repositories, or
       `pacium.json`.
-- [ ] Refresh, reconnect, browser close/reopen, and server shutdown do not
+- [x] Refresh, reconnect, browser close/reopen, and server shutdown do not
       duplicate work, leak watchers/timers, or mutate queue sources.
-- [ ] Protocol, unit, fault, integration, security, semantic, and browser tests
+- [x] Protocol, unit, fault, integration, security, semantic, and browser tests
       pass with synchronized issue, plan, README, status, backlog, and
       changelog evidence.
 
