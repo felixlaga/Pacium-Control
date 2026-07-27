@@ -18,6 +18,9 @@ describe("Pacium configured worker rendering", () => {
     expect(markup).toContain(">Open</button>");
     expect(markup).toContain("Process observed · Low confidence");
     expect(markup).toContain("authorship unverified");
+    expect(markup).toContain(
+      '<span class="visually-hidden">Process observed · Low confidence',
+    );
   });
 
   it("escapes hostile labels and evidence", () => {

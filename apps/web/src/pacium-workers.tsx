@@ -116,6 +116,7 @@ function Evidence({
     <div title={detail}>
       <dt>{label}</dt>
       <dd>{value}</dd>
+      <span className="visually-hidden">{detail}</span>
     </div>
   );
 }
