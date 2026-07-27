@@ -34,7 +34,7 @@ pnpm start
 
 Then open `http://127.0.0.1:4174`.
 
-The current slice can launch available Shell, Codex, and Claude Code presets; browse host directories through a compact repository-aware picker; group sessions by repository; and arrange up to four live terminals in tabs and nested splits. A contextual command palette searches sessions, workspace commands, split controls, and session actions. Browser-local settings control system/dark/light appearance, workspace density, live terminal typography and scrollback, launch default, and the future attention-notification preference. A shared session menu supports rename, duplicate, ended-session relaunch, directory copy, host repository reveal, interrupt, view closure, and confirmed termination. Tabs and panes are browser-owned views: closing either does not stop the underlying PTY. Sessions survive browser refresh but not local-server restart.
+The current slice can launch available Shell, Codex, and Claude Code presets; browse host directories through a compact repository-aware picker; group sessions by repository; and arrange up to four live terminals in tabs and nested splits. A contextual command palette searches sessions, workspace commands, split controls, and session actions. Browser-local settings control system/dark/light appearance, workspace density, live terminal typography and scrollback, launch default, and the future attention-notification preference. The session sidebar and inspector can collapse into responsive drawers without changing terminal state, while the status bar always identifies connection, selection, and keyboard ownership. A shared session menu supports rename, duplicate, ended-session relaunch, directory copy, host repository reveal, interrupt, view closure, and confirmed termination. Tabs and panes are browser-owned views: closing either does not stop the underlying PTY. Sessions survive browser refresh but not local-server restart.
 
 Session actions are available from the workspace header, each terminal pane, and a session or tab context menu. “Reveal repository” always opens Finder or the Linux file manager on the Pacium host, including when the browser connects through Tailscale Serve.
 
@@ -42,6 +42,8 @@ Current keyboard shortcuts:
 
 - `Cmd/Ctrl+K`: open the contextual command palette.
 - `Cmd/Ctrl+,`: open workspace settings.
+- `Cmd/Ctrl+B`: show or hide the session sidebar.
+- `Cmd/Ctrl+Shift+B`: show or hide the inspector.
 - `?`: open the searchable shortcut reference when the application owns keyboard focus.
 - `Cmd/Ctrl+Shift+T`: open the new-terminal dialog.
 - `Cmd/Ctrl+1` through `Cmd/Ctrl+9`: select an open terminal tab.
@@ -52,7 +54,7 @@ Current keyboard shortcuts:
 - `Alt+[` and `Alt+]`: focus the previous or next pane when the terminal is not capturing input.
 - `Ctrl+Shift+.`: leave terminal keyboard capture without stopping the PTY.
 
-Application shortcuts pause while a terminal or text input owns the keyboard. Use `Ctrl+Shift+.` to leave terminal capture before opening the palette.
+Application shortcuts pause while a terminal or text input owns the keyboard. Use `Ctrl+Shift+.` to leave terminal capture before opening the palette. Press `Tab` from the browser chrome to reveal the skip link and move directly to the terminal workspace.
 
 ## Primary experience
 
