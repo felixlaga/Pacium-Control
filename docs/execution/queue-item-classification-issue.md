@@ -1,6 +1,6 @@
 # Classify one bounded queue item per stable source
 
-**Status:** In progress
+**Status:** Complete
 
 ## Problem
 
@@ -86,40 +86,40 @@ terminal input, provider sessions, and durable state remain unchanged.
 
 ## Acceptance criteria
 
-- [ ] Only a `stable` source with exact retained text and matching content hash
+- [x] Only a `stable` source with exact retained text and matching content hash
       can produce one candidate item; every other source state produces none.
-- [ ] An empty file and a whitespace-only document produce no item, with a
+- [x] An empty file and a whitespace-only document produce no item, with a
       bounded fixed diagnostic only for the whitespace-only case.
-- [ ] Exact supported Markdown and legacy first-line markers classify question,
+- [x] Exact supported Markdown and legacy first-line markers classify question,
       concrete approval, failure, and review with documented confidence.
-- [ ] A final question mark can produce only a medium-confidence question and
+- [x] A final question mark can produce only a medium-confidence question and
       can never produce approval.
-- [ ] Approval requires the exact supported approval marker and a nonblank
+- [x] Approval requires the exact supported approval marker and a nonblank
       action after the colon; all vague permission language remains question or
       unknown.
-- [ ] Malformed supported markers, conflicting first-line markers, and more
+- [x] Malformed supported markers, conflicting first-line markers, and more
       than one supported top-level marker classify as unknown with fixed
       diagnostics.
-- [ ] Unknown hostile text, commands, paths, HTML, terminal controls, and
+- [x] Unknown hostile text, commands, paths, HTML, terminal controls, and
       Markdown are treated only as bounded data and never executed, rendered as
       HTML, linked, or sent to a terminal/provider.
-- [ ] Candidate identity is deterministic across restart for the same source ID
+- [x] Candidate identity is deterministic across restart for the same source ID
       and content hash, changes with either input, and never relies on time,
       path, label, or process-local observation revision.
-- [ ] Protocol messages contain classification metadata but no original text,
+- [x] Protocol messages contain classification metadata but no original text,
       title, excerpt, command, path, prompt, decision, or authority field.
-- [ ] An unchanged stable observation does not reclassify, advance source
+- [x] An unchanged stable observation does not reclassify, advance source
       revision, or broadcast duplicate evidence.
-- [ ] A changed stable observation replaces the candidate; a degraded
+- [x] A changed stable observation replaces the candidate; a degraded
       observation removes it and cannot retain stale classification as current.
-- [ ] The browser accepts classification only for the exact accepted config
+- [x] The browser accepts classification only for the exact accepted config
       revision/source ID and labels disconnected evidence honestly.
-- [ ] Pacium mode pairs type/confidence with text and icon in the existing
+- [x] Pacium mode pairs type/confidence with text and icon in the existing
       source-health row; General mode shows no classification surface.
-- [ ] Classification and UI updates never change source files, `pacium.json`,
+- [x] Classification and UI updates never change source files, `pacium.json`,
       PTYs, selection, layout, inspector state, keyboard capture, or prompt
       scope.
-- [ ] Unit, property/fault, contract, integration, security, semantic, and
+- [x] Unit, property/fault, contract, integration, security, semantic, and
       browser tests pass with synchronized issue, plan, README, status, backlog,
       and changelog evidence.
 
