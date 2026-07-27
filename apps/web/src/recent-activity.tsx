@@ -13,9 +13,34 @@ export function RecentActivityPanel({
   activity,
   onRefresh,
 }: {
-  activity: RecentActivity;
+  activity: RecentActivity | null;
   onRefresh: () => void;
 }) {
+  if (activity === null) {
+    return (
+      <section
+        aria-labelledby="inspector-activity-tab"
+        className="recent-activity-panel"
+        id="inspector-activity-panel"
+        role="tabpanel"
+        tabIndex={0}
+      >
+        <header>
+          <span>
+            <strong>Recent activity</strong>
+            <small>No terminal selected</small>
+          </span>
+          <button disabled type="button">
+            Refresh
+          </button>
+        </header>
+        <p className="activity-empty" role="status">
+          Select or create a terminal to inspect its local activity evidence.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section
       aria-labelledby="inspector-activity-tab"

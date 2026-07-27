@@ -113,6 +113,16 @@ describe("recent activity presentation", () => {
     expect(markup).toContain("History inspection timed out.");
     expect(markup).toContain("selected terminal remains available");
   });
+
+  it("teaches the next action when no terminal is selected", () => {
+    const markup = renderToStaticMarkup(
+      <RecentActivityPanel activity={null} onRefresh={() => {}} />,
+    );
+
+    expect(markup).toContain("No terminal selected");
+    expect(markup).toContain("Select or create a terminal");
+    expect(markup).toContain("disabled");
+  });
 });
 
 function render(candidate: RecentActivity): string {
