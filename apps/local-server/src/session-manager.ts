@@ -179,6 +179,14 @@ export class SessionManager {
       .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   }
 
+  public hasSession(sessionId: string): boolean {
+    return this.sessions.has(sessionId);
+  }
+
+  public hasLaunchPreset(launchPreset: LaunchPresetId): boolean {
+    return this.launchPresets.some(({ id }) => id === launchPreset);
+  }
+
   public async create(input: CreateSessionInput): Promise<SessionSummary> {
     const cwd = await this.validateCwd(input.cwd);
     const preset = this.requireAvailablePreset(input.launchPreset);

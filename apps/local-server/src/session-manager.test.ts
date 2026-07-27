@@ -151,6 +151,26 @@ function emptyHistory(root: string | null, observedAt?: string) {
 }
 
 describe("SessionManager", () => {
+  it("reports exact live sessions and fixed launch presets without mutation", async () => {
+    const factory = new FakePtyFactory();
+    const manager = createManager(factory);
+
+    expect(manager.hasSession("missing")).toBe(false);
+    expect(manager.hasLaunchPreset("shell")).toBe(true);
+    expect(manager.hasLaunchPreset("claude")).toBe(true);
+
+    const session = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+    expect(manager.hasSession(session.id)).toBe(true);
+
+    manager.shutdown();
+    expect(manager.hasSession(session.id)).toBe(false);
+  });
+
   it("creates a terminal, routes input and resize, and restores output", async () => {
     const factory = new FakePtyFactory();
     const manager = createManager(factory);
