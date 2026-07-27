@@ -50,6 +50,7 @@ export const QueueSourceObservationSchema = z
       .regex(/^[0-9a-f]{64}$/)
       .nullable(),
     classification: QueueSourceClassificationSchema.nullable(),
+    candidateFirstObservedAt: z.string().datetime().nullable(),
     error: QueueObservationErrorSchema.nullable(),
   })
   .strict()
@@ -93,6 +94,16 @@ export const QueueSourceObservationSchema = z
         code: "custom",
         message:
           "Only stable nonempty queue observations contain classification evidence.",
+      });
+    }
+    const hasCandidate =
+      observation.classification?.status === "candidate" &&
+      observation.classification.candidate !== null;
+    if ((observation.candidateFirstObservedAt !== null) !== hasCandidate) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "Only a current candidate can contain process-local first-observed evidence.",
       });
     }
     const errorExpected =

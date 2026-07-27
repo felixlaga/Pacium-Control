@@ -32,6 +32,7 @@ describe("queue source observation contract", () => {
           contentHash:
             "d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d9c39fd6f9d",
           classification: questionClassification,
+          candidateFirstObservedAt: observedAt,
         }),
       ).success,
     ).toBe(true);
@@ -83,6 +84,41 @@ describe("queue source observation contract", () => {
           modifiedAt: observedAt,
           contentHash: emptyHash,
           classification: questionClassification,
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("keeps process-local first-seen evidence exclusive to candidates", () => {
+    expect(
+      QueueSourceObservationSchema.safeParse(
+        source({
+          status: "stable",
+          byteLength: 14,
+          modifiedAt: observedAt,
+          contentHash: "d".repeat(64),
+          classification: questionClassification,
+          candidateFirstObservedAt: observedAt,
+        }),
+      ).success,
+    ).toBe(true);
+    expect(
+      QueueSourceObservationSchema.safeParse(
+        source({
+          status: "stable",
+          byteLength: 14,
+          modifiedAt: observedAt,
+          contentHash: "d".repeat(64),
+          classification: questionClassification,
+          candidateFirstObservedAt: null,
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      QueueSourceObservationSchema.safeParse(
+        source({
+          status: "missing",
+          candidateFirstObservedAt: observedAt,
         }),
       ).success,
     ).toBe(false);
@@ -200,6 +236,7 @@ function source(
     modifiedAt: string | null;
     contentHash: string | null;
     classification: QueueSourceClassification | null;
+    candidateFirstObservedAt: string | null;
     error: { code: string; message: string } | null;
   }> = {},
 ) {
@@ -212,6 +249,7 @@ function source(
     modifiedAt: null,
     contentHash: null,
     classification: null,
+    candidateFirstObservedAt: null,
     error: null,
     ...overrides,
   };
