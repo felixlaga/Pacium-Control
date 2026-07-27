@@ -1279,7 +1279,7 @@ kbd {
 
 .inspector-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 2px;
   margin: 10px 14px 4px;
   padding: 2px;
@@ -2005,6 +2005,258 @@ kbd {
   border-color: color-mix(in srgb, var(--red) 38%, var(--border));
   color: var(--red);
   background: color-mix(in srgb, var(--red) 6%, transparent);
+}
+
+.repository-verification-panel {
+  min-width: 0;
+  padding: 14px;
+}
+
+.verification-panel-header,
+.verification-preset-card > header,
+.verification-run-result > header,
+.verification-output-grid section > header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.verification-panel-header {
+  margin-bottom: 12px;
+}
+
+.verification-panel-header > span,
+.verification-preset-card > header > span,
+.verification-run-result > header > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.verification-panel-header strong,
+.verification-preset-card strong,
+.verification-run-result strong {
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.verification-panel-header > span > strong {
+  font-size: 11px;
+}
+
+.verification-panel-header small,
+.verification-preset-card small,
+.verification-run-result small,
+.repository-verification-panel > time {
+  color: var(--text-faint);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.verification-panel-header button,
+.verification-preset-card button {
+  min-height: 26px;
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--panel-raised);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.verification-panel-header button:hover:not(:disabled),
+.verification-preset-card button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.verification-panel-header button:disabled,
+.verification-preset-card button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.repository-verification-message,
+.verification-privilege-note {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 7px;
+  color: var(--text-faint);
+  font-size: 9px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.repository-verification-message code {
+  color: var(--accent-strong);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+}
+
+.repository-verification-message.is-error,
+.verification-run-error {
+  border-color: color-mix(in srgb, var(--red) 38%, var(--border));
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 6%, transparent);
+}
+
+.verification-privilege-note {
+  margin-bottom: 9px;
+  border-style: solid;
+  background: var(--panel-raised);
+}
+
+.verification-preset-list {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+}
+
+.verification-preset-card,
+.verification-run-result {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-raised);
+}
+
+.verification-preset-card dl,
+.verification-run-result dl {
+  display: grid;
+  min-width: 0;
+  margin: 9px 0 0;
+  gap: 7px;
+}
+
+.verification-preset-card dl > div,
+.verification-run-result dl > div {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 7px;
+}
+
+.verification-preset-card dt,
+.verification-run-result dt {
+  color: var(--text-faint);
+  font-size: 8px;
+}
+
+.verification-preset-card dd,
+.verification-run-result dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.verification-preset-card code {
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.verification-run-result {
+  margin-top: 10px;
+  box-shadow: inset 2px 0 var(--border-strong);
+}
+
+.verification-run-result.is-passed {
+  box-shadow: inset 2px 0 var(--green);
+}
+
+.verification-run-result.is-failed,
+.verification-run-result.is-error,
+.verification-run-result.is-timed_out {
+  box-shadow: inset 2px 0 var(--red);
+}
+
+.verification-run-result.is-cancelled,
+.verification-run-result.is-cancelling {
+  box-shadow: inset 2px 0 var(--amber);
+}
+
+.verification-status-label {
+  padding: 2px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-faint);
+  font-size: 7px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.verification-head-warning,
+.verification-run-error {
+  margin: 9px 0 0;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--border));
+  border-radius: 5px;
+  color: var(--amber);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.verification-run-error {
+  border-color: color-mix(in srgb, var(--red) 38%, var(--border));
+}
+
+.verification-output-grid {
+  display: grid;
+  min-width: 0;
+  margin-top: 9px;
+  gap: 7px;
+}
+
+.verification-output-grid section {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.verification-output-grid section > header {
+  padding: 5px 7px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-soft);
+}
+
+.verification-output-grid section > header strong,
+.verification-output-grid section > header span {
+  color: var(--text-faint);
+  font-size: 7px;
+}
+
+.verification-output-grid pre {
+  max-height: 190px;
+  margin: 0;
+  overflow: auto;
+  padding: 7px;
+  color: var(--text-muted);
+  background: var(--terminal);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 8px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.repository-verification-panel > time {
+  display: block;
+  margin-top: 10px;
 }
 
 .repository-card {
