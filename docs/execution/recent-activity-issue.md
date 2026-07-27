@@ -47,27 +47,27 @@ presents agent narrative as fact.
 
 ## Acceptance criteria
 
-- [ ] Activity is built only from the selected session summary, its reduced
+- [x] Activity is built only from the selected session summary, its reduced
       attention result, and visible responses from existing repository changes,
       history, and verification requests.
-- [ ] Opening Activity lazily requests missing Git and verification evidence;
+- [x] Opening Activity lazily requests missing Git and verification evidence;
       explicit Refresh requests all three again without sending terminal input
       or changing PTY selection or lifecycle.
-- [ ] Current observations and occurred events use distinct labels and
+- [x] Current observations and occurred events use distinct labels and
       timestamp language.
-- [ ] Process facts never promote process existence to confirmed work or a
+- [x] Process facts never promote process existence to confirmed work or a
       clean process exit to assigned-task completion.
-- [ ] Git working-tree activity reports only totals and observation state;
+- [x] Git working-tree activity reports only totals and observation state;
       commit items remain labelled Git history and do not infer actor or task.
-- [ ] Verification items report only the existing server-owned run state and
+- [x] Verification items report only the existing server-owned run state and
       result evidence; output is not interpreted or repeated in Activity.
-- [ ] Items have deterministic identities and ordering, strict per-category and
+- [x] Items have deterministic identities and ordering, strict per-category and
       total ceilings, bounded copy, and no durable browser or server storage.
-- [ ] Partial failures remain visible beside available facts and state that the
+- [x] Partial failures remain visible beside available facts and state that the
       terminal survives.
-- [ ] Activity is a fifth semantic tab with complete keyboard navigation,
+- [x] Activity is a fifth semantic tab with complete keyboard navigation,
       focus, loading, empty, partial, refresh, reconnect, and 320 CSS px states.
-- [ ] Unit, semantic UI, browser, security-boundary, production build, and full
+- [x] Unit, semantic UI, browser, security-boundary, production build, and full
       repository verification gates pass.
 
 ## User experience
@@ -167,3 +167,27 @@ untrusted text. There is no expandable agent narrative in this slice.
 - Durable “since last checked” cursors and optional separately labelled agent
   narrative require an accepted local event-retention design. They remain
   deferred rather than being approximated with browser state.
+
+## Completion evidence
+
+Completed on 2026-07-27.
+
+- `pnpm verify` passed formatting, lint, strict typing, 60 test files and 292
+  tests, and both production builds.
+- `pnpm test:e2e` passed all seven Chromium workflows. Activity evidence proved
+  lazy process, attention, changed-file, commit, and latest-verification
+  projection, explicit Refresh, five-tab keyboard order, unchanged terminal
+  selection, browser reconnect behavior, and the 320 CSS px inspector.
+- Pure-model coverage passed for live/exit/signal honesty, observed versus
+  occurred timestamps, deterministic ordering, a three-commit and seven-fact
+  ceiling, clean/changed/unavailable/error Git evidence, verification
+  lifecycle, output exclusion, retained evidence during refresh, and hostile
+  text.
+- Semantic presentation coverage passed for current evidence, facts, source
+  availability, loading, partial, empty/no-selection, text escaping, and the
+  terminal-narrative boundary.
+- Protocol remains version 9; no event store, durable activity state, polling,
+  process endpoint, terminal input, command execution, or provider narrative
+  was added.
+- The connected in-app browser backend remained unavailable, so independent
+  manual visual and screen-reader review remains a release-level evidence gap.
