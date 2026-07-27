@@ -47,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for Pacium workspace config", () => {
-    expect(PROTOCOL_VERSION).toBe(10);
+  it("advances the wire contract for queue observation", () => {
+    expect(PROTOCOL_VERSION).toBe(11);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -168,6 +168,68 @@ describe("client protocol", () => {
           revision: 0,
           workspace: null,
           error: null,
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts only a content-free queue observation request", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.queue.observe",
+        requestId,
+      }).success,
+    ).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        type: "pacium.queue.observe",
+        requestId,
+        path: "/tmp/queue",
+        content: "approve",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts correlated and pushed queue source metadata without text", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    const observation = {
+      status: "ready",
+      workspaceRevision: 4,
+      observedAt: "2026-07-27T12:00:00.000Z",
+      sources: [
+        {
+          sourceId: "needs-felix",
+          observationRevision: 1,
+          status: "missing",
+          observedAt: "2026-07-27T12:00:00.000Z",
+          byteLength: null,
+          modifiedAt: null,
+          contentHash: null,
+          error: null,
+        },
+      ],
+      error: null,
+    };
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.queue.sources",
+        requestId,
+        observation,
+      }).success,
+    ).toBe(true);
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.queue.sources.updated",
+        observation,
+      }).success,
+    ).toBe(true);
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.queue.sources.updated",
+        observation: {
+          ...observation,
+          sources: [{ ...observation.sources[0], originalText: "approve" }],
         },
       }).success,
     ).toBe(false);

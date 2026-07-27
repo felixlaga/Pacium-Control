@@ -4,8 +4,9 @@ import {
   PaciumConfigObservationSchema,
   PaciumWorkspaceSchema,
 } from "./pacium-config.js";
+import { QueueSourcesObservationSchema } from "./queue-observation.js";
 
-export const PROTOCOL_VERSION = 10 as const;
+export const PROTOCOL_VERSION = 11 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -1178,6 +1179,12 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
       workspace: PaciumWorkspaceSchema,
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("pacium.queue.observe"),
+      requestId: RequestIdSchema,
+    })
+    .strict(),
   z.object({
     type: z.literal("session.close"),
     requestId: RequestIdSchema,
@@ -1260,6 +1267,19 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
       type: z.literal("pacium.config"),
       requestId: RequestIdSchema,
       observation: PaciumConfigObservationSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("pacium.queue.sources"),
+      requestId: RequestIdSchema,
+      observation: QueueSourcesObservationSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("pacium.queue.sources.updated"),
+      observation: QueueSourcesObservationSchema,
     })
     .strict(),
   z.object({
