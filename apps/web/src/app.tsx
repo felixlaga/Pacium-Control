@@ -100,6 +100,16 @@ import {
   interruptRepositoryHistoryRequest,
   type RepositoryHistoryViewState,
 } from "./repository-history-model.js";
+import { RepositoryVerificationPanel } from "./repository-verification.js";
+import {
+  acceptVerificationResponse,
+  acceptVerificationUpdate,
+  beginVerificationAction,
+  beginVerificationInspect,
+  IDLE_REPOSITORY_VERIFICATION,
+  rejectVerificationRequest,
+  type RepositoryVerificationViewState,
+} from "./repository-verification-model.js";
 import { RepositoryContextCard } from "./repository-context.js";
 import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
 import {
@@ -258,6 +268,9 @@ export function App() {
     new Map<string, RepositoryHistoryViewState>(),
   );
   const repositoryHistoryRef = useRef(repositoryHistoryBySession);
+  const [repositoryVerificationBySession, setRepositoryVerificationBySession] =
+    useState(new Map<string, RepositoryVerificationViewState>());
+  const repositoryVerificationRef = useRef(repositoryVerificationBySession);
 
   panelViewRef.current = panelView;
   selectedIdRef.current = selectedId;
@@ -267,6 +280,7 @@ export function App() {
   repositoryChangesRef.current = repositoryChangesBySession;
   repositoryDiffRef.current = repositoryDiffByKey;
   repositoryHistoryRef.current = repositoryHistoryBySession;
+  repositoryVerificationRef.current = repositoryVerificationBySession;
 
   const effectiveTheme = resolveEffectiveTheme(
     preferences.theme,
@@ -325,6 +339,11 @@ export function App() {
         if (historyChanged) {
           repositoryHistoryRef.current = nextHistory;
           setRepositoryHistoryBySession(nextHistory);
+        }
+        if (repositoryVerificationRef.current.size > 0) {
+          const reset = new Map<string, RepositoryVerificationViewState>();
+          repositoryVerificationRef.current = reset;
+          setRepositoryVerificationBySession(reset);
         }
       }
       return;
@@ -392,6 +411,62 @@ export function App() {
         setRepositoryHistoryBySession(next);
       }
       return;
+    }
+    if (event.message.type === "repository.verification") {
+      const current =
+        repositoryVerificationRef.current.get(event.message.sessionId) ??
+        IDLE_REPOSITORY_VERIFICATION;
+      const accepted = acceptVerificationResponse(
+        current,
+        event.message.requestId,
+        event.message.sessionId,
+        event.message.observation,
+      );
+      if (accepted !== current) {
+        const next = new Map(repositoryVerificationRef.current);
+        next.set(event.message.sessionId, accepted);
+        repositoryVerificationRef.current = next;
+        setRepositoryVerificationBySession(next);
+      }
+      return;
+    }
+    if (event.message.type === "repository.verification.updated") {
+      const current =
+        repositoryVerificationRef.current.get(event.message.sessionId) ??
+        IDLE_REPOSITORY_VERIFICATION;
+      const accepted = acceptVerificationUpdate(
+        current,
+        event.message.sessionId,
+        event.message.observation,
+      );
+      if (accepted !== current) {
+        const next = new Map(repositoryVerificationRef.current);
+        next.set(event.message.sessionId, accepted);
+        repositoryVerificationRef.current = next;
+        setRepositoryVerificationBySession(next);
+      }
+      return;
+    }
+    if (
+      event.message.type === "error" &&
+      event.message.requestId !== undefined
+    ) {
+      let changed = false;
+      const next = new Map(repositoryVerificationRef.current);
+      for (const [sessionId, state] of next) {
+        const rejected = rejectVerificationRequest(
+          state,
+          event.message.requestId,
+        );
+        if (rejected !== state) {
+          next.set(sessionId, rejected);
+          changed = true;
+        }
+      }
+      if (changed) {
+        repositoryVerificationRef.current = next;
+        setRepositoryVerificationBySession(next);
+      }
     }
     applyServerMessage(
       event.message,
@@ -479,6 +554,100 @@ export function App() {
       next.set(sessionId, nextState);
       repositoryHistoryRef.current = next;
       setRepositoryHistoryBySession(next);
+    },
+    [connection],
+  );
+
+  const requestRepositoryVerification = useCallback(
+    (sessionId: string) => {
+      const transport = transportRef.current;
+      if (connection !== "connected" || transport === null) {
+        setNotice(
+          "Verification checks need a live Pacium connection. Running terminals and checks are unaffected.",
+        );
+        return;
+      }
+      const requestId = transport.requestRepositoryVerification(sessionId);
+      const current =
+        repositoryVerificationRef.current.get(sessionId) ??
+        IDLE_REPOSITORY_VERIFICATION;
+      const nextState = beginVerificationInspect(current, sessionId, requestId);
+      const next = new Map(repositoryVerificationRef.current);
+      next.set(sessionId, nextState);
+      repositoryVerificationRef.current = next;
+      setRepositoryVerificationBySession(next);
+    },
+    [connection],
+  );
+
+  const runRepositoryVerification = useCallback(
+    (sessionId: string, presetId: string) => {
+      const transport = transportRef.current;
+      if (connection !== "connected" || transport === null) {
+        setNotice(
+          "Pacium is disconnected, so no verification process was started.",
+        );
+        return;
+      }
+      const current =
+        repositoryVerificationRef.current.get(sessionId) ??
+        IDLE_REPOSITORY_VERIFICATION;
+      if (current.status !== "loaded") {
+        setNotice(
+          "Refresh configured checks before starting verification. No process was started.",
+        );
+        return;
+      }
+      const requestId = transport.runRepositoryVerification(
+        sessionId,
+        presetId,
+      );
+      const nextState = beginVerificationAction(
+        current,
+        sessionId,
+        requestId,
+        "run",
+      );
+      const next = new Map(repositoryVerificationRef.current);
+      next.set(sessionId, nextState);
+      repositoryVerificationRef.current = next;
+      setRepositoryVerificationBySession(next);
+    },
+    [connection],
+  );
+
+  const cancelRepositoryVerification = useCallback(
+    (sessionId: string, runId: string) => {
+      const transport = transportRef.current;
+      if (connection !== "connected" || transport === null) {
+        setNotice(
+          "Pacium is disconnected, so cancellation was not requested. The process outcome is unknown.",
+        );
+        return;
+      }
+      const current =
+        repositoryVerificationRef.current.get(sessionId) ??
+        IDLE_REPOSITORY_VERIFICATION;
+      if (current.status !== "loaded") {
+        setNotice(
+          "Refresh the active verification state before cancelling. No signal was sent.",
+        );
+        return;
+      }
+      const requestId = transport.cancelRepositoryVerification(
+        sessionId,
+        runId,
+      );
+      const nextState = beginVerificationAction(
+        current,
+        sessionId,
+        requestId,
+        "cancel",
+      );
+      const next = new Map(repositoryVerificationRef.current);
+      next.set(sessionId, nextState);
+      repositoryVerificationRef.current = next;
+      setRepositoryVerificationBySession(next);
     },
     [connection],
   );
@@ -609,6 +778,11 @@ export function App() {
     selectedId === null
       ? IDLE_REPOSITORY_HISTORY
       : (repositoryHistoryBySession.get(selectedId) ?? IDLE_REPOSITORY_HISTORY);
+  const selectedRepositoryVerification =
+    selectedId === null
+      ? IDLE_REPOSITORY_VERIFICATION
+      : (repositoryVerificationBySession.get(selectedId) ??
+        IDLE_REPOSITORY_VERIFICATION);
 
   useEffect(() => {
     if (
@@ -664,6 +838,24 @@ export function App() {
     requestRepositoryHistory,
     selectedId,
     selectedRepositoryHistory.status,
+  ]);
+
+  useEffect(() => {
+    if (
+      inspectorTab !== "checks" ||
+      selectedId === null ||
+      connection !== "connected" ||
+      selectedRepositoryVerification.status !== "idle"
+    ) {
+      return;
+    }
+    requestRepositoryVerification(selectedId);
+  }, [
+    connection,
+    inspectorTab,
+    requestRepositoryVerification,
+    selectedId,
+    selectedRepositoryVerification.status,
   ]);
 
   const openSelectedRepositoryDiff = useCallback(
@@ -2016,7 +2208,7 @@ export function App() {
               state={selectedRepositoryDiff}
             />
           )
-        ) : (
+        ) : inspectorTab === "history" ? (
           <RepositoryHistoryPanel
             onRefresh={() => {
               if (selectedId !== null) {
@@ -2025,6 +2217,26 @@ export function App() {
             }}
             repository={selectedSession?.repository ?? null}
             state={selectedRepositoryHistory}
+          />
+        ) : (
+          <RepositoryVerificationPanel
+            onCancel={(runId) => {
+              if (selectedId !== null) {
+                cancelRepositoryVerification(selectedId, runId);
+              }
+            }}
+            onRefresh={() => {
+              if (selectedId !== null) {
+                requestRepositoryVerification(selectedId);
+              }
+            }}
+            onRun={(presetId) => {
+              if (selectedId !== null) {
+                runRepositoryVerification(selectedId, presetId);
+              }
+            }}
+            repository={selectedSession?.repository ?? null}
+            state={selectedRepositoryVerification}
           />
         )}
       </aside>
