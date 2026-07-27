@@ -11,12 +11,14 @@ import type {
 } from "@xterm/headless";
 import {
   MAX_TERMINAL_SNAPSHOT_CHARS,
+  type GitChangesObservation,
   type LaunchPresetId,
   type RepositoryObservation,
   type SessionSummary,
 } from "@pacium/contracts";
 
 import type { LaunchPresetDefinition } from "./launch-presets.js";
+import { inspectGitChanges, type GitChangesInspector } from "./git-changes.js";
 import { HostActionError, type HostActions } from "./host-actions.js";
 import type { PtyFactory, PtyProcess } from "./pty-adapter.js";
 import {
@@ -106,6 +108,13 @@ export class SessionManager {
       observedAt === undefined
         ? inspectRepositoryContext(cwd)
         : inspectRepositoryContext(cwd, { observedAt }),
+    private readonly gitChangesInspector: GitChangesInspector = (
+      repository,
+      observedAt,
+    ) =>
+      observedAt === undefined
+        ? inspectGitChanges(repository)
+        : inspectGitChanges(repository, { observedAt }),
   ) {}
 
   public list(): SessionSummary[] {
@@ -303,6 +312,14 @@ export class SessionManager {
     session.summary = { ...session.summary, repository };
     this.emitSession({ type: "updated", session: { ...session.summary } });
     return repository;
+  }
+
+  public repositoryChanges(sessionId: string): Promise<GitChangesObservation> {
+    const session = this.requireSession(sessionId);
+    return this.gitChangesInspector(
+      session.summary.repository,
+      new Date().toISOString(),
+    );
   }
 
   public close(sessionId: string, force: boolean, requestId: string): void {

@@ -304,6 +304,44 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await once(client.socket, "close");
   });
 
+  it("returns changed files from the session-owned repository without touching the PTY", async () => {
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(factory);
+    application = setup.application;
+    manager = setup.manager;
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    const session = await createTestSession(client);
+    const requestId = "dc19c583-bbc9-4374-bd97-32b62ad5349e";
+
+    client.socket.send(
+      JSON.stringify({
+        type: "repository.changes",
+        requestId,
+        sessionId: session.id,
+      }),
+    );
+    await expect(
+      nextMessage(
+        client,
+        (message) =>
+          message.type === "repository.changes" &&
+          message.requestId === requestId,
+      ),
+    ).resolves.toMatchObject({
+      type: "repository.changes",
+      sessionId: session.id,
+      observation: {
+        status: "ready",
+        files: [{ path: "README.md", unstaged: true }],
+        totals: { fileCount: 1, additions: 2, deletions: 1 },
+      },
+    });
+    expect(factory.processes[0]?.signals).toEqual([]);
+    client.socket.close();
+    await once(client.socket, "close");
+  });
+
   it("rejects an invalid local access token", async () => {
     const setup = await startTestServer(new FakePtyFactory());
     application = setup.application;
@@ -447,6 +485,38 @@ async function startTestServer(
         headState: "branch",
         worktreeKind: "main",
         observedAt: observedAt ?? "2026-07-27T10:00:00.000Z",
+        error: null,
+      }),
+    (repository, observedAt) =>
+      Promise.resolve({
+        status: "ready",
+        root: repository.root,
+        headCommit: repository.headCommit,
+        observedAt: observedAt ?? "2026-07-27T10:00:00.000Z",
+        files: [
+          {
+            path: "README.md",
+            previousPath: null,
+            kind: "modified",
+            staged: false,
+            unstaged: true,
+            untracked: false,
+            conflicted: false,
+            additions: 2,
+            deletions: 1,
+            binary: false,
+            large: false,
+            sizeBytes: 2_000,
+          },
+        ],
+        totals: {
+          fileCount: 1,
+          additions: 2,
+          deletions: 1,
+          unavailableLineCount: 0,
+          conflictCount: 0,
+        },
+        truncated: false,
         error: null,
       }),
   );

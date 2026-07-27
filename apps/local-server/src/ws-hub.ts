@@ -267,6 +267,18 @@ export class WebSocketHub {
         await this.sessions.refreshRepository(message.sessionId);
         this.sendResult(client.socket, message.requestId);
         return;
+      case "repository.changes": {
+        const observation = await this.sessions.repositoryChanges(
+          message.sessionId,
+        );
+        this.send(client.socket, {
+          type: "repository.changes",
+          requestId: message.requestId,
+          sessionId: message.sessionId,
+          observation,
+        });
+        return;
+      }
       case "session.close":
         this.sessions.close(
           message.sessionId,

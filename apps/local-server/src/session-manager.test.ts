@@ -3,6 +3,7 @@ import { FakePtyFactory } from "@pacium/test-utils";
 
 import type { HostActions } from "./host-actions.js";
 import type { LaunchPresetDefinition } from "./launch-presets.js";
+import type { GitChangesInspector } from "./git-changes.js";
 import type { RepositoryInspector } from "./repository-context.js";
 import { SessionError, SessionManager } from "./session-manager.js";
 
@@ -56,12 +57,15 @@ function createManager(
   hostActions?: HostActions,
   inspectRepository: RepositoryInspector = (cwd, observedAt) =>
     Promise.resolve(repositoryObservation(cwd, "dev", observedAt)),
+  gitChangesInspector: GitChangesInspector = (repository, observedAt) =>
+    Promise.resolve(emptyChanges(repository.root, observedAt)),
 ): SessionManager {
   return new SessionManager(
     factory,
     testPresets,
     hostActions,
     inspectRepository,
+    gitChangesInspector,
   );
 }
 
@@ -79,6 +83,25 @@ function repositoryObservation(
     headState: "branch" as const,
     worktreeKind: "main" as const,
     observedAt: observedAt ?? "2026-07-27T10:00:00.000Z",
+    error: null,
+  };
+}
+
+function emptyChanges(root: string | null, observedAt?: string) {
+  return {
+    status: root === null ? ("not_repository" as const) : ("ready" as const),
+    root,
+    headCommit: root === null ? null : "a".repeat(40),
+    observedAt: observedAt ?? "2026-07-27T10:00:00.000Z",
+    files: [],
+    totals: {
+      fileCount: 0,
+      additions: 0,
+      deletions: 0,
+      unavailableLineCount: 0,
+      conflictCount: 0,
+    },
+    truncated: false,
     error: null,
   };
 }
@@ -238,6 +261,63 @@ describe("SessionManager", () => {
     expect(manager.list()[0]?.id).toBe(session.id);
     expect(factory.processes[0]?.signals).toEqual([]);
     expect(updates).toEqual(["feature"]);
+    manager.shutdown();
+  });
+
+  it("reads changed files from server-owned repository evidence without signalling the PTY", async () => {
+    const factory = new FakePtyFactory();
+    const inspectChanges = vi
+      .fn<GitChangesInspector>()
+      .mockImplementation((repository, observedAt) =>
+        Promise.resolve({
+          ...emptyChanges(repository.root, observedAt),
+          files: [
+            {
+              path: "src/app.ts",
+              previousPath: null,
+              kind: "modified",
+              staged: false,
+              unstaged: true,
+              untracked: false,
+              conflicted: false,
+              additions: 4,
+              deletions: 1,
+              binary: false,
+              large: false,
+              sizeBytes: 100,
+            },
+          ],
+          totals: {
+            fileCount: 1,
+            additions: 4,
+            deletions: 1,
+            unavailableLineCount: 0,
+            conflictCount: 0,
+          },
+        }),
+      );
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      inspectChanges,
+    );
+    const session = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+
+    await expect(manager.repositoryChanges(session.id)).resolves.toMatchObject({
+      status: "ready",
+      files: [{ path: "src/app.ts" }],
+    });
+    expect(inspectChanges).toHaveBeenCalledWith(
+      session.repository,
+      expect.any(String),
+    );
+    expect(factory.processes[0]?.signals).toEqual([]);
     manager.shutdown();
   });
 
