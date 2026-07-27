@@ -12,6 +12,7 @@ import {
 } from "@pacium/terminal-ui";
 import type {
   DirectoryListing,
+  GitChangedFile,
   LaunchPresetCapability,
   LaunchPresetId,
   ServerMessage,
@@ -82,6 +83,15 @@ import {
   interruptRepositoryChangesRequest,
   type RepositoryChangesViewState,
 } from "./repository-changes-model.js";
+import { RepositoryDiffPanel } from "./repository-diff.js";
+import {
+  IDLE_REPOSITORY_DIFF,
+  acceptRepositoryDiffResponse,
+  beginRepositoryDiffRequest,
+  interruptRepositoryDiffRequest,
+  repositoryDiffKey,
+  type RepositoryDiffViewState,
+} from "./repository-diff-model.js";
 import { RepositoryContextCard } from "./repository-context.js";
 import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
 import {
@@ -229,6 +239,13 @@ export function App() {
     new Map<string, RepositoryChangesViewState>(),
   );
   const repositoryChangesRef = useRef(repositoryChangesBySession);
+  const [repositoryDiffByKey, setRepositoryDiffByKey] = useState(
+    new Map<string, RepositoryDiffViewState>(),
+  );
+  const repositoryDiffRef = useRef(repositoryDiffByKey);
+  const [selectedDiffPathBySession, setSelectedDiffPathBySession] = useState(
+    new Map<string, string>(),
+  );
 
   panelViewRef.current = panelView;
   selectedIdRef.current = selectedId;
@@ -236,6 +253,7 @@ export function App() {
   layoutRef.current = layout;
   attentionInboxRef.current = attentionInbox;
   repositoryChangesRef.current = repositoryChangesBySession;
+  repositoryDiffRef.current = repositoryDiffByKey;
 
   const effectiveTheme = resolveEffectiveTheme(
     preferences.theme,
@@ -269,6 +287,19 @@ export function App() {
           repositoryChangesRef.current = next;
           setRepositoryChangesBySession(next);
         }
+        let diffChanged = false;
+        const nextDiffs = new Map(repositoryDiffRef.current);
+        for (const [key, state] of nextDiffs) {
+          const interrupted = interruptRepositoryDiffRequest(state);
+          if (interrupted !== state) {
+            nextDiffs.set(key, interrupted);
+            diffChanged = true;
+          }
+        }
+        if (diffChanged) {
+          repositoryDiffRef.current = nextDiffs;
+          setRepositoryDiffByKey(nextDiffs);
+        }
       }
       return;
     }
@@ -294,6 +325,27 @@ export function App() {
         next.set(event.message.sessionId, accepted);
         repositoryChangesRef.current = next;
         setRepositoryChangesBySession(next);
+      }
+      return;
+    }
+    if (event.message.type === "repository.diff") {
+      const key = repositoryDiffKey(
+        event.message.sessionId,
+        event.message.observation.path,
+      );
+      const current =
+        repositoryDiffRef.current.get(key) ?? IDLE_REPOSITORY_DIFF;
+      const accepted = acceptRepositoryDiffResponse(
+        current,
+        event.message.requestId,
+        event.message.sessionId,
+        event.message.observation,
+      );
+      if (accepted !== current) {
+        const next = new Map(repositoryDiffRef.current);
+        next.set(key, accepted);
+        repositoryDiffRef.current = next;
+        setRepositoryDiffByKey(next);
       }
       return;
     }
@@ -331,6 +383,33 @@ export function App() {
       next.set(sessionId, nextState);
       repositoryChangesRef.current = next;
       setRepositoryChangesBySession(next);
+    },
+    [connection],
+  );
+
+  const requestRepositoryDiff = useCallback(
+    (sessionId: string, path: string) => {
+      const transport = transportRef.current;
+      if (connection !== "connected" || transport === null) {
+        setNotice(
+          "File diff evidence needs a live Pacium connection. The terminal process is unaffected.",
+        );
+        return;
+      }
+      const requestId = transport.requestRepositoryDiff(sessionId, path);
+      const key = repositoryDiffKey(sessionId, path);
+      const current =
+        repositoryDiffRef.current.get(key) ?? IDLE_REPOSITORY_DIFF;
+      const nextState = beginRepositoryDiffRequest(
+        current,
+        sessionId,
+        path,
+        requestId,
+      );
+      const next = new Map(repositoryDiffRef.current);
+      next.set(key, nextState);
+      repositoryDiffRef.current = next;
+      setRepositoryDiffByKey(next);
     },
     [connection],
   );
@@ -447,6 +526,16 @@ export function App() {
     selectedId === null
       ? IDLE_REPOSITORY_CHANGES
       : (repositoryChangesBySession.get(selectedId) ?? IDLE_REPOSITORY_CHANGES);
+  const selectedDiffPath =
+    selectedId === null
+      ? null
+      : (selectedDiffPathBySession.get(selectedId) ?? null);
+  const selectedRepositoryDiff =
+    selectedId === null || selectedDiffPath === null
+      ? IDLE_REPOSITORY_DIFF
+      : (repositoryDiffByKey.get(
+          repositoryDiffKey(selectedId, selectedDiffPath),
+        ) ?? IDLE_REPOSITORY_DIFF);
 
   useEffect(() => {
     if (
@@ -465,6 +554,75 @@ export function App() {
     selectedId,
     selectedRepositoryChanges.status,
   ]);
+
+  useEffect(() => {
+    if (
+      inspectorTab !== "changes" ||
+      selectedId === null ||
+      selectedDiffPath === null ||
+      connection !== "connected" ||
+      selectedRepositoryDiff.status !== "idle"
+    ) {
+      return;
+    }
+    requestRepositoryDiff(selectedId, selectedDiffPath);
+  }, [
+    connection,
+    inspectorTab,
+    requestRepositoryDiff,
+    selectedDiffPath,
+    selectedId,
+    selectedRepositoryDiff.status,
+  ]);
+
+  const openSelectedRepositoryDiff = useCallback(
+    (file: GitChangedFile) => {
+      if (selectedId === null) {
+        return;
+      }
+      const previousPath = selectedDiffPathBySession.get(selectedId);
+      if (previousPath !== undefined && previousPath !== file.path) {
+        const nextDiffs = new Map(repositoryDiffRef.current);
+        nextDiffs.delete(repositoryDiffKey(selectedId, previousPath));
+        repositoryDiffRef.current = nextDiffs;
+        setRepositoryDiffByKey(nextDiffs);
+      }
+      setSelectedDiffPathBySession((current) => {
+        const next = new Map(current);
+        next.set(selectedId, file.path);
+        return next;
+      });
+    },
+    [selectedDiffPathBySession, selectedId],
+  );
+
+  const closeSelectedRepositoryDiff = useCallback(() => {
+    if (selectedId === null || selectedDiffPath === null) {
+      return;
+    }
+    const closedSessionId = selectedId;
+    const closedPath = selectedDiffPath;
+    setSelectedDiffPathBySession((current) => {
+      const next = new Map(current);
+      next.delete(closedSessionId);
+      return next;
+    });
+    const nextDiffs = new Map(repositoryDiffRef.current);
+    nextDiffs.delete(repositoryDiffKey(closedSessionId, closedPath));
+    repositoryDiffRef.current = nextDiffs;
+    setRepositoryDiffByKey(nextDiffs);
+    window.requestAnimationFrame(() => {
+      const rows = document.querySelectorAll<HTMLButtonElement>(
+        ".changed-file-button",
+      );
+      for (const row of rows) {
+        if (row.dataset.diffPath === closedPath) {
+          row.focus();
+          break;
+        }
+      }
+    });
+  }, [selectedDiffPath, selectedId]);
 
   const actionSession =
     sessions.find(({ id }) => id === actionSessionId) ?? null;
@@ -1743,8 +1901,9 @@ export function App() {
                 )}
             </section>
           </div>
-        ) : (
+        ) : selectedDiffPath === null ? (
           <RepositoryChangesPanel
+            onOpenDiff={openSelectedRepositoryDiff}
             onRefresh={() => {
               if (selectedId !== null) {
                 requestRepositoryChanges(selectedId);
@@ -1752,6 +1911,17 @@ export function App() {
             }}
             repository={selectedSession?.repository ?? null}
             state={selectedRepositoryChanges}
+          />
+        ) : (
+          <RepositoryDiffPanel
+            key={repositoryDiffKey(selectedId!, selectedDiffPath)}
+            onBack={closeSelectedRepositoryDiff}
+            onRefresh={() => {
+              if (selectedId !== null) {
+                requestRepositoryDiff(selectedId, selectedDiffPath);
+              }
+            }}
+            state={selectedRepositoryDiff}
           />
         )}
       </aside>

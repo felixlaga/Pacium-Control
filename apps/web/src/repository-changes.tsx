@@ -227,6 +227,7 @@ function ChangedFileRow({
         <button
           aria-label={`Open diff for ${file.path}`}
           className="changed-file-button"
+          data-diff-path={file.path}
           onClick={() => onOpenDiff(file)}
           type="button"
         >
