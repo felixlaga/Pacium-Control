@@ -3,9 +3,12 @@ import { basename, dirname } from "node:path";
 
 import type {
   PaciumConfigObservation,
+  QueueItemInspection,
+  QueueItemInspectionIdentity,
   QueueSourceClassification,
   QueueSourcesObservation,
 } from "@pacium/contracts";
+import { queueItemInspectionError } from "@pacium/contracts";
 
 import {
   applyQueueFileRead,
@@ -120,6 +123,78 @@ export class QueueObserver {
       return null;
     }
     return this.states.get(sourceId)?.classification ?? null;
+  }
+
+  public inspectItem(
+    identity: QueueItemInspectionIdentity,
+  ): QueueItemInspection {
+    const sourceState = this.states.get(identity.sourceId);
+    const sourceObservedAt =
+      sourceState?.observation.observedAt ?? this.aggregate.observedAt;
+    const common = {
+      ...identity,
+      sourceObservedAt,
+    };
+    if (this.aggregate.status !== "ready" || this.disposed) {
+      return {
+        status: "unavailable",
+        ...common,
+        firstObservedAt: null,
+        byteLength: null,
+        encoding: null,
+        originalTextBase64: null,
+        error: queueItemInspectionError("QUEUE_UNAVAILABLE"),
+      };
+    }
+
+    const observation = sourceState?.observation;
+    const candidate = sourceState?.classification?.candidate ?? null;
+    const current =
+      identity.workspaceRevision === this.workspaceRevision &&
+      observation?.status === "stable" &&
+      observation.observationRevision === identity.observationRevision &&
+      observation.contentHash === identity.contentHash &&
+      candidate?.itemId === identity.itemId;
+    if (!current) {
+      return {
+        status: "stale",
+        ...common,
+        firstObservedAt: null,
+        byteLength: null,
+        encoding: null,
+        originalTextBase64: null,
+        error: queueItemInspectionError("ITEM_STALE"),
+      };
+    }
+
+    if (
+      sourceState?.text === null ||
+      sourceState?.text === undefined ||
+      observation.byteLength === null ||
+      observation.candidateFirstObservedAt === null
+    ) {
+      return {
+        status: "unavailable",
+        ...common,
+        firstObservedAt: null,
+        byteLength: null,
+        encoding: null,
+        originalTextBase64: null,
+        error: queueItemInspectionError("QUEUE_UNAVAILABLE"),
+      };
+    }
+
+    return {
+      status: "ready",
+      ...common,
+      firstObservedAt: observation.candidateFirstObservedAt,
+      byteLength: observation.byteLength,
+      encoding: "utf8_base64",
+      originalTextBase64: Buffer.from(sourceState.text, "utf8").toString(
+        "base64",
+      ),
+      error: null,
+    };
   }
 
   public async syncConfig(

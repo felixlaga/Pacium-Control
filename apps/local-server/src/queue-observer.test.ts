@@ -79,6 +79,80 @@ describe("queue observer", () => {
     observer.dispose();
   });
 
+  it("inspects only an exact current item identity", async () => {
+    let content = "Question: Private decision λ";
+    const observer = new QueueObserver({
+      now: () => now,
+      readFile: () => Promise.resolve(stable(content)),
+      watchDirectory: inertWatcher,
+    });
+    const snapshot = await observer.syncConfig(config());
+    const source = snapshot.sources[0]!;
+    const candidate = source.classification?.candidate;
+    if (source.contentHash === null || candidate == null) {
+      throw new Error("Expected current queue candidate");
+    }
+    const identity = {
+      workspaceRevision: snapshot.workspaceRevision!,
+      sourceId: source.sourceId,
+      observationRevision: source.observationRevision,
+      contentHash: source.contentHash,
+      itemId: candidate.itemId,
+    };
+
+    const ready = observer.inspectItem(identity);
+    expect(ready).toMatchObject({
+      status: "ready",
+      ...identity,
+      firstObservedAt: now,
+      byteLength: new TextEncoder().encode(content).byteLength,
+      encoding: "utf8_base64",
+      error: null,
+    });
+    if (ready.status !== "ready") {
+      throw new Error("Expected ready queue inspection");
+    }
+    expect(Buffer.from(ready.originalTextBase64, "base64").toString("utf8")).toBe(
+      content,
+    );
+
+    content = "Review: Replacement";
+    await observer.refresh();
+    expect(observer.inspectItem(identity)).toMatchObject({
+      status: "stale",
+      originalTextBase64: null,
+      error: { code: "ITEM_STALE" },
+    });
+    expect(
+      observer.inspectItem({ ...identity, sourceId: "arbitrary-path" }),
+    ).toMatchObject({
+      status: "stale",
+      originalTextBase64: null,
+    });
+    observer.dispose();
+  });
+
+  it("withholds item text while queue evidence is unavailable", async () => {
+    const observer = new QueueObserver({
+      now: () => now,
+      watchDirectory: inertWatcher,
+    });
+    expect(
+      observer.inspectItem({
+        workspaceRevision: 4,
+        sourceId: "needs-felix",
+        observationRevision: 2,
+        contentHash: "a".repeat(64),
+        itemId: "b".repeat(64),
+      }),
+    ).toMatchObject({
+      status: "unavailable",
+      originalTextBase64: null,
+      error: { code: "QUEUE_UNAVAILABLE" },
+    });
+    observer.dispose();
+  });
+
   it("debounces matching events and publishes changed evidence once", async () => {
     const hooks: { onEvent?: (filename: string | null) => void } = {};
     let content = "One";
