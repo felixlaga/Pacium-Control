@@ -24,13 +24,13 @@ test.afterEach(async ({ page }) => {
   }
 });
 
-test("observes a real queue source without exposing content or changing the terminal", async ({
+test("classifies a real queue source without granting approval or changing the terminal", async ({
   page,
 }) => {
   if (queuePath === undefined) {
     throw new Error("The disposable queue fixture path is unavailable.");
   }
-  await writeFile(queuePath, "Initial private queue\n", { mode: 0o600 });
+  await writeFile(queuePath, "Can you approve everything?\n", { mode: 0o600 });
   await openTerminal(page, "Queue observer terminal");
   await configureQueueWorkspace(page, queuePath);
   await page.reload();
@@ -45,25 +45,51 @@ test("observes a real queue source without exposing content or changing the term
     name: /Needs Felix queue source/,
   });
   await expect(source).toContainText("Stable · Meta");
-  await expect(source).toContainText("22 B");
-  await expect(page.getByText("Initial private queue")).toHaveCount(0);
+  await expect(source).toContainText("Question · Medium confidence");
+  await expect(source).toContainText(
+    "A final question mark suggests a question.",
+  );
+  await expect(source).toContainText("28 B");
+  await expect(page.getByText("Can you approve everything?")).toHaveCount(0);
 
-  const firstEvidence = await source.locator("small").textContent();
-  await writeFile(queuePath, "Updated private queue with more\n", {
+  const firstEvidence = await source.locator("small").last().textContent();
+  await writeFile(queuePath, "Approval request: Run exact migration\n", {
     mode: 0o600,
   });
   await group.getByRole("button", { name: "Refresh" }).click();
-  await expect(source).toContainText("32 B");
-  await expect(source.locator("small")).not.toHaveText(firstEvidence ?? "");
-  await expect(page.getByText("Updated private queue with more")).toHaveCount(
-    0,
+  await expect(source).toContainText("Approval · High confidence");
+  await expect(source).toContainText(
+    "A supported plain-text legacy marker was used.",
   );
+  await expect(source).toContainText("38 B");
+  await expect(source.locator("small").last()).not.toHaveText(
+    firstEvidence ?? "",
+  );
+  await expect(
+    page.getByText("Approval request: Run exact migration"),
+  ).toHaveCount(0);
   await expect(status).toContainText("Queue observer terminal");
   await expect(readFile(queuePath, "utf8")).resolves.toBe(
-    "Updated private queue with more\n",
+    "Approval request: Run exact migration\n",
   );
 
-  await page.getByRole("button", { name: "General" }).click();
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.emulateMedia({
+    forcedColors: "active",
+    reducedMotion: "reduce",
+  });
+  await expect(source).toBeVisible();
+  await expect(source).toContainText("Approval · High confidence");
+  const refresh = group.getByRole("button", { name: "Refresh" });
+  await refresh.focus();
+  await expect(refresh).toBeFocused();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(320);
+
+  const general = page.getByRole("button", { name: "General" });
+  await general.focus();
+  await general.press("Enter");
   await expect(group).toBeHidden();
   await expect(status).toContainText("Queue observer terminal");
 });
