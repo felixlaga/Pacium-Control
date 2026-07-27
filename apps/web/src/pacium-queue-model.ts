@@ -1,5 +1,6 @@
 import type {
   PaciumQueueSource,
+  QueueSourceConflictKind,
   QueueSourceObservation,
   QueueSourcesObservation,
 } from "@pacium/contracts";
@@ -261,4 +262,17 @@ export function queueWaitingLabel(
     return `Seen ${hours}h this run`;
   }
   return `Seen ${Math.floor(hours / 24)}d this run`;
+}
+
+export function queueSourceConflictLabel(
+  kind: QueueSourceConflictKind,
+): string {
+  switch (kind) {
+    case "source_changed_after_decision":
+      return "Source changed after decision";
+    case "source_unavailable_after_decision":
+      return "Source unavailable after decision";
+    case "duplicate_current_item":
+      return "Duplicate current item";
+  }
 }

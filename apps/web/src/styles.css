@@ -629,6 +629,12 @@ kbd {
   white-space: normal;
 }
 
+.pacium-queue-source small.pacium-queue-conflict {
+  color: var(--amber);
+  font-family: inherit;
+  font-weight: 600;
+}
+
 .pacium-queue-source.status-stable .pacium-queue-source-indicator,
 .pacium-queue-source.status-empty .pacium-queue-source-indicator {
   border-color: var(--green);
