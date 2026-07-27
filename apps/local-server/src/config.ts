@@ -76,13 +76,10 @@ export function loadServerConfig(
     );
   }
 
-  const configuredOrigins = environment.PACIUM_ALLOWED_ORIGINS?.split(",")
-    .map((origin) => origin.trim())
-    .filter((origin) => origin.length > 0);
-
   const tailscaleServe = loadTailscaleServeConfig(environment);
-  const allowedOrigins = new Set(
-    configuredOrigins ?? [
+  const allowedOrigins = loadLocalAllowedOrigins(
+    environment.PACIUM_ALLOWED_ORIGINS,
+    [
       "http://127.0.0.1:4173",
       "http://localhost:4173",
       `http://127.0.0.1:${port}`,
@@ -114,6 +111,26 @@ export function loadServerConfig(
       environment.PACIUM_VERIFICATION_CONFIG,
     ),
   };
+}
+
+export function loadLocalAllowedOrigins(
+  configuredValue: string | undefined,
+  defaults: readonly string[],
+): ReadonlySet<string> {
+  const values =
+    configuredValue === undefined
+      ? [...defaults]
+      : configuredValue.split(",").map((origin) => origin.trim());
+  if (
+    values.length === 0 ||
+    new Set(values).size !== values.length ||
+    values.some((origin) => !isCanonicalLoopbackOrigin(origin))
+  ) {
+    throw new Error(
+      "PACIUM_ALLOWED_ORIGINS must contain unique canonical loopback HTTP origins.",
+    );
+  }
+  return new Set(values);
 }
 
 export function loadTailscaleServeConfig(
@@ -240,4 +257,26 @@ function isValidTailscaleLogin(value: string): boolean {
     separator === value.lastIndexOf("@") &&
     separator < value.length - 1
   );
+}
+
+function isCanonicalLoopbackOrigin(value: string): boolean {
+  if (
+    value.length === 0 ||
+    Buffer.byteLength(value) > 2_048 ||
+    hasControlCharacter(value)
+  ) {
+    return false;
+  }
+  try {
+    const parsed = new URL(value);
+    return (
+      parsed.protocol === "http:" &&
+      (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") &&
+      parsed.username === "" &&
+      parsed.password === "" &&
+      value === parsed.origin
+    );
+  } catch {
+    return false;
+  }
 }

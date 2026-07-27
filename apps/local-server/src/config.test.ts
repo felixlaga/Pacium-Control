@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildChildEnvironment,
+  loadLocalAllowedOrigins,
   loadServerConfig,
   loadTailscaleServeConfig,
   resolvePaciumDataDirectory,
@@ -32,6 +33,30 @@ describe("local server configuration", () => {
 
   it("keeps Tailscale Serve disabled when both remote values are absent", () => {
     expect(loadTailscaleServeConfig({})).toBeNull();
+  });
+
+  it("accepts only canonical loopback browser origins", () => {
+    expect(
+      loadLocalAllowedOrigins(
+        "http://127.0.0.1:4173,http://localhost:4173",
+        [],
+      ),
+    ).toEqual(new Set(["http://127.0.0.1:4173", "http://localhost:4173"]));
+
+    for (const origins of [
+      "",
+      "http://127.0.0.1:4173,http://127.0.0.1:4173",
+      "https://127.0.0.1:4173",
+      "http://192.168.1.20:4173",
+      "http://100.64.0.10:4173",
+      "https://pacium-host.example-tailnet.ts.net",
+      "http://localhost:4173/path",
+      "http://user@localhost:4173",
+    ]) {
+      expect(() => loadLocalAllowedOrigins(origins, [])).toThrow(
+        "canonical loopback HTTP origins",
+      );
+    }
   });
 
   it("accepts one canonical Serve origin and exact login allowlist", () => {
