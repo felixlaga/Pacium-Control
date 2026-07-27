@@ -162,19 +162,19 @@ queue age.
 
 ## Failure model
 
-| Failure point | Expected state | Recovery |
-| ------------- | -------------- | -------- |
-| No candidate | Health row only; no inspect action | Wait, Refresh, or correct source |
-| Source changes before request | `stale`, no text | Open current replacement item |
-| Source changes after response | Browser clears text on update | Open current replacement item |
-| Config revision changes | Selection and text cleared | Re-enter Pacium and open current item |
-| Source becomes degraded | Selection remains explanatory but text clears | Correct source and reopen |
-| Forged source/path/item/hash | Strict rejection or stale detail, no text | Use a published current row |
-| Disconnect before response | Request becomes unknown; selection/text clear | Reconnect and deliberately reopen |
-| Late/stale response | Reducer ignores it | Deliberately reopen current item |
-| Original text is hostile | Literal inert text in bounded scrolling region | Inspect or edit source outside Pacium |
-| Observer unavailable | Fixed unavailable detail; PTYs/files untouched | Refresh after source/config recovery |
-| Browser storage/reload | No item/text restoration | Deliberately reopen after reconnect |
+| Failure point                 | Expected state                                 | Recovery                              |
+| ----------------------------- | ---------------------------------------------- | ------------------------------------- |
+| No candidate                  | Health row only; no inspect action             | Wait, Refresh, or correct source      |
+| Source changes before request | `stale`, no text                               | Open current replacement item         |
+| Source changes after response | Browser clears text on update                  | Open current replacement item         |
+| Config revision changes       | Selection and text cleared                     | Re-enter Pacium and open current item |
+| Source becomes degraded       | Selection remains explanatory but text clears  | Correct source and reopen             |
+| Forged source/path/item/hash  | Strict rejection or stale detail, no text      | Use a published current row           |
+| Disconnect before response    | Request becomes unknown; selection/text clear  | Reconnect and deliberately reopen     |
+| Late/stale response           | Reducer ignores it                             | Deliberately reopen current item      |
+| Original text is hostile      | Literal inert text in bounded scrolling region | Inspect or edit source outside Pacium |
+| Observer unavailable          | Fixed unavailable detail; PTYs/files untouched | Refresh after source/config recovery  |
+| Browser storage/reload        | No item/text restoration                       | Deliberately reopen after reconnect   |
 
 ## Compatibility
 

@@ -1,9 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  type KeyboardEvent,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 import type { PaciumQueueInspectionState } from "./pacium-queue-inspection-model.js";
 import {

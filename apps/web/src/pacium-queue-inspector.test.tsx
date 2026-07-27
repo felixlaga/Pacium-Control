@@ -7,7 +7,7 @@ import type { PaciumQueueInspectionState } from "./pacium-queue-inspection-model
 describe("Pacium queue item inspector", () => {
   it("renders hostile original content as inert text with provenance", () => {
     const state = ready(
-      '<script>queue()</script>\nhttps://example.test\n\u001b]52;c;copy\u0007',
+      "<script>queue()</script>\nhttps://example.test\n\u001b]52;c;copy\u0007",
     );
     const markup = renderToStaticMarkup(
       <PaciumQueueInspector

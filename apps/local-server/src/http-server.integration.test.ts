@@ -463,10 +463,9 @@ describe("localhost HTTP and WebSocket boundary", () => {
       throw new Error("Expected a ready queue item inspection");
     }
     expect(
-      Buffer.from(
-        inspected.inspection.originalTextBase64,
-        "base64",
-      ).toString("utf8"),
+      Buffer.from(inspected.inspection.originalTextBase64, "base64").toString(
+        "utf8",
+      ),
     ).toBe("Can you approve everything?\n");
     expect(JSON.stringify(inspected)).not.toContain("approve everything");
 

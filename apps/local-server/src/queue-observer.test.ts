@@ -116,9 +116,9 @@ describe("queue observer", () => {
     if (ready.status !== "ready") {
       throw new Error("Expected ready queue inspection");
     }
-    expect(Buffer.from(ready.originalTextBase64, "base64").toString("utf8")).toBe(
-      content,
-    );
+    expect(
+      Buffer.from(ready.originalTextBase64, "base64").toString("utf8"),
+    ).toBe(content);
 
     content = "Review: Replacement";
     await observer.refresh();

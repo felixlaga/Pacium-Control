@@ -102,9 +102,7 @@ export const QueueItemInspectionSchema = z.discriminatedUnion("status", [
 ]);
 export type QueueItemInspection = z.infer<typeof QueueItemInspectionSchema>;
 
-export function queueItemInspectionError(
-  code: QueueItemInspectionErrorCode,
-): {
+export function queueItemInspectionError(code: QueueItemInspectionErrorCode): {
   code: QueueItemInspectionErrorCode;
   message: (typeof QUEUE_ITEM_INSPECTION_ERROR_MESSAGES)[QueueItemInspectionErrorCode];
 } {
