@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `ac7616047bc4e09a2fd0ff501442c368a49b8c15`
 - Target milestone: Milestone 5 — polish and remote access
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -87,9 +87,9 @@ then required to be unique, ASCII, contain one identity-provider separator
 Request authorization compares the resulting value exactly and does no case
 folding or display-name fallback.
 
-The origin is added to the browser asset CSP for HTTPS/WSS connectivity only
-when remote mode is enabled. The listener host remains the literal
-`127.0.0.1`.
+Content Security Policy adds only the exact configured `wss://<hostname>`
+source when remote mode is enabled; same-origin HTTPS assets retain `'self'`.
+The listener host remains the literal `127.0.0.1`.
 
 ### Request authority
 
@@ -142,10 +142,10 @@ Protocol 18 adds one strict `connection` field to `server.welcome`:
 { kind: "tailscale", login: "<bounded exact login>" }
 ```
 
-The HTTP upgrade classifies the request before accepting it and passes that
-disposable result to `WebSocketHub`. The hub does not infer identity from IP or
-browser messages. Every new socket receives only the evidence independently
-verified for that upgrade.
+The HTTP upgrade classifies the request before accepting it. `WebSocketHub`
+independently reclassifies that same accepted upgrade request and does not
+infer identity from IP or browser messages. Every new socket receives only the
+evidence verified for that upgrade.
 
 The browser clears prior connection evidence whenever transport leaves the
 connected state, then accepts the current welcome evidence. The existing
@@ -400,3 +400,28 @@ being inferred from local request fixtures.
 - Security: exact Serve Host/Origin, exact user-login allowlist, token,
   loopback binding, grants, Funnel prohibition, negative tests, and explicit
   manual external gates implement ADR-0016 without general proxy trust.
+
+## Implementation result
+
+- Startup configuration, canonical local-Origin isolation, request authority,
+  route/upgrade enforcement, exact remote WSS policy, protocol-18 connection
+  evidence, HTTPS read methods, stale-identity clearing, compact accessible
+  labelling, and the active operations runbook were implemented without a
+  database, daemon integration, state migration, public bind, or another
+  proxy.
+- `pnpm verify` passed 114 test files and 701 tests. Production output was
+  903.24 kB web JavaScript (238.71 kB gzip), 107.74 kB CSS (16.90 kB gzip),
+  and 335.82 kB local-server JavaScript.
+- `pnpm test:e2e` passed all 11 Chromium workflows. Focused browser evidence
+  covers Local labelling, ordinary and 320 CSS-pixel widths, 200% zoom, forced
+  colors, and reduced motion.
+- Authenticated proxy-shaped integration proves exact bootstrap, protected
+  directory reads, WebSocket authority evidence, canary PTY operation, local
+  reconnect, and PTY survival. Negative coverage includes incomplete/unsafe
+  config, hostile Host/Origin, missing/duplicate/tagged/unlisted identity,
+  Funnel, invalid token, direct non-loopback Hosts, and exact CSP.
+- Node.js 26.4.0 produced the expected warning against supported Node.js
+  24.18.x. The existing Vite chunk warning remains.
+- Real Tailscale installation, DNS/certificates, grants, Funnel/public/LAN
+  state, and revocation propagation were not changed or inferred. The
+  runbook's owner canary remains a release gate.

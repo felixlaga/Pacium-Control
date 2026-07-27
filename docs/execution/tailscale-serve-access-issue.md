@@ -23,9 +23,10 @@ Only explicitly allowlisted logins can load the app, obtain the ephemeral
 Pacium token, use protected HTTP APIs, or upgrade a WebSocket.
 
 The browser labels the active connection as Local or Tailscale and shows the
-bounded verified login for a remote connection. Removing the remote
-configuration returns Pacium to local-only behavior without changing or
-terminating PTYs.
+bounded verified login for a remote connection. Disabling Serve immediately
+removes remote reachability without changing or terminating PTYs. Removing the
+startup configuration returns the next Pacium process to local-only behavior
+without a state migration.
 
 ## Scope
 
@@ -71,38 +72,39 @@ terminating PTYs.
 
 ## Acceptance criteria
 
-- [ ] Server configuration always resolves the listening host to
+- [x] Server configuration always resolves the listening host to
       `127.0.0.1`; remote mode cannot alter the bind address.
-- [ ] Remote mode starts only with one canonical
+- [x] Remote mode starts only with one canonical
       `https://<node>.<tailnet>.ts.net` origin and a non-empty bounded list of
       exact Tailscale logins. Partial or unsafe configuration fails startup
       closed.
-- [ ] Local browser assets, bootstrap, token-protected HTTP APIs, and
+- [x] Local browser assets, bootstrap, token-protected HTTP APIs, and
       token-protected WebSockets retain their current behavior without
       Tailscale headers.
-- [ ] Remote assets and same-origin navigation require the exact configured
+- [x] Remote assets and same-origin navigation require the exact configured
       Host and an allowlisted `Tailscale-User-Login`; bootstrap additionally
       requires the exact configured Origin.
-- [ ] Protected remote HTTP and WebSocket requests require exact Host, exact
+- [x] Protected remote HTTP and WebSocket requests require exact Host, exact
       Origin, the same allowlisted verified login, and the existing ephemeral
       token.
-- [ ] Missing, empty, duplicated, comma-joined, control-bearing, non-ASCII,
+- [x] Missing, empty, duplicated, comma-joined, control-bearing, non-ASCII,
       oversized, tagged-device-only, or unlisted login evidence is denied.
-- [ ] Tailscale identity headers on local, hostile-Origin, wrong-Host, or
+- [x] Tailscale identity headers on local, hostile-Origin, wrong-Host, or
       unconfigured requests never activate remote mode or grant authority.
-- [ ] The server welcome contract reports only `local`, or `tailscale` plus
+- [x] The server welcome contract reports only `local`, or `tailscale` plus
       the bounded verified login. Display name and profile-picture headers are
       not authorization inputs or protocol data.
-- [ ] The header connection indicator communicates transport and identity in
+- [x] The header connection indicator communicates transport and identity in
       text, preserves connection-state semantics, and works with keyboard,
       narrow viewport, 200% zoom, forced colors, and reduced motion.
-- [ ] Disabling Serve or removing both remote environment values needs no state
-      migration and does not terminate running PTYs. Existing remote sockets
-      close on server restart and cannot reconnect under local-only config.
-- [ ] Documentation gives current `tailscale serve --bg <port>`, `status`, and
+- [x] Disabling Serve needs no state migration and does not terminate running
+      PTYs. Removing both remote values selects local-only mode on the next
+      planned Pacium start; existing direct PTYs retain their documented server
+      lifecycle.
+- [x] Documentation gives current `tailscale serve --bg <port>`, `status`, and
       `off` commands; a reviewed TCP-443 grants example; explicit Funnel
       prohibition; allowlist revocation; and public/LAN denial checks.
-- [ ] Focused unit, protocol, HTTP/WebSocket integration, browser, security,
+- [x] Focused unit, protocol, HTTP/WebSocket integration, browser, security,
       production-build, and full repository gates pass with exact evidence.
 
 ## User experience
@@ -222,6 +224,33 @@ name, and does not take terminal focus or add an action.
   counts and bundle sizes.
 - Small coherent commits, clean branch, fast-forward merge into `dev`, and
   pushed exact `origin/dev` head.
+
+## Completion evidence
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 114 test
+  files and 701 tests. Production output was 903.24 kB web JavaScript
+  (238.71 kB gzip), 107.74 kB CSS (16.90 kB gzip), and 335.82 kB local-server
+  JavaScript.
+- `pnpm test:e2e` passed all 11 headless Chromium workflows. The focused
+  accessibility workflow verified Local connection evidence at ordinary and
+  320 CSS-pixel widths plus 200% zoom, forced colors, and reduced motion.
+- Focused configuration, request-authority, protocol, component, HTTP,
+  WebSocket, and PTY tests passed. They cover partial/unsafe startup,
+  canonical local and Serve Origins, wrong Host/Origin, duplicate/missing/
+  tagged/unlisted login, Funnel, token denial, exact WSS policy, Local/
+  Tailscale welcome evidence, a proxy-shaped canary PTY, browser reconnect, and
+  direct LAN/tailnet/public-shaped Host denial.
+- Current official Tailscale documentation and source were inspected for Serve
+  CLI syntax, tailnet-only behavior, Host preservation, forwarding/identity
+  header replacement, tagged-device identity absence, Funnel distinction,
+  grants/tests syntax, and `off` behavior. The active runbook records the
+  reviewed procedure.
+- No real tailnet, certificate, grant, Funnel, revocation, LAN, or public
+  provider state was changed or claimed. The runbook's canary and external
+  reachability exercise remains an explicit owner/release gate.
+- Verification used Node.js 26.4.0 and emitted the expected engine warning
+  because the supported runtime is Node.js 24.18.x. Vite retained the existing
+  chunk-size warning.
 
 ## Open questions
 
