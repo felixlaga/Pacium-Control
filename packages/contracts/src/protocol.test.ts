@@ -90,4 +90,44 @@ describe("client protocol", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("accepts bounded rename metadata and rejects blank names", () => {
+    const message = {
+      type: "session.rename",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+    };
+    const renamed = ClientMessageSchema.safeParse({
+      ...message,
+      displayName: "  Meta  ",
+    });
+    expect(renamed.success).toBe(true);
+    if (renamed.success && renamed.data.type === "session.rename") {
+      expect(renamed.data.displayName).toBe("Meta");
+    }
+    expect(
+      ClientMessageSchema.safeParse({ ...message, displayName: "   " }).success,
+    ).toBe(false);
+    expect(
+      ClientMessageSchema.safeParse({
+        ...message,
+        displayName: "x".repeat(121),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("never accepts a browser-supplied reveal path", () => {
+    const message = {
+      type: "session.revealRepository",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+    };
+    expect(ClientMessageSchema.safeParse(message).success).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        ...message,
+        path: "/tmp/browser-controlled",
+      }).success,
+    ).toBe(false);
+  });
 });
