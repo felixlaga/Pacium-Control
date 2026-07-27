@@ -320,17 +320,41 @@ kbd {
   flex-direction: column;
 }
 
-.session-copy > strong,
+.session-name-row,
 .session-row-meta {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.session-copy strong {
+.session-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.session-name-row strong {
+  min-width: 0;
+  overflow: hidden;
   color: inherit;
   font-size: 12px;
   font-weight: 500;
+  text-overflow: ellipsis;
+}
+
+.attention-unread-marker {
+  display: grid;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  place-items: center;
+}
+
+.attention-unread-marker > span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--danger);
 }
 
 .session-row-meta {
@@ -1462,6 +1486,35 @@ kbd {
 
 .attention-section {
   padding-top: 0;
+}
+
+.attention-cursor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.attention-cursor-header > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attention-cursor-header h2,
+.attention-cursor-header small {
+  margin: 0;
+}
+
+.attention-cursor-header small {
+  color: var(--text-faint);
+  font-size: 9px;
+}
+
+.attention-cursor-header button {
+  min-height: 26px;
+  padding: 4px 7px;
+  font-size: 9px;
 }
 
 .dialog-backdrop {

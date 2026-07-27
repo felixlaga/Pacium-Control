@@ -35,6 +35,19 @@ import { AgentClassificationCard } from "./agent-classification.js";
 import { sessionAccessibleName } from "./agent-classification-model.js";
 import { AttentionEvidenceCard } from "./attention.js";
 import {
+  AttentionCursorHeader,
+  UnreadAttentionMarker,
+} from "./attention-inbox.js";
+import {
+  acknowledgeAttention,
+  cursorEntry,
+  isAttentionUnread,
+  loadAttentionInbox,
+  saveAttentionInbox,
+  setSessionMuted,
+  type AttentionInboxState,
+} from "./attention-inbox-model.js";
+import {
   attentionStateLabel,
   deriveProcessAttention,
 } from "./attention-model.js";
@@ -175,6 +188,10 @@ export function App() {
   const [preferences, setPreferences] = useState<WorkspacePreferences>(() =>
     loadPreferences(window.localStorage),
   );
+  const [attentionInbox, setAttentionInbox] = useState<AttentionInboxState>(
+    () => loadAttentionInbox(window.localStorage),
+  );
+  const attentionInboxRef = useRef(attentionInbox);
   const [systemPrefersDark, setSystemPrefersDark] = useState(
     () => window.matchMedia("(prefers-color-scheme: dark)").matches,
   );
@@ -186,6 +203,7 @@ export function App() {
   selectedIdRef.current = selectedId;
   tabsRef.current = tabs;
   layoutRef.current = layout;
+  attentionInboxRef.current = attentionInbox;
 
   const effectiveTheme = resolveEffectiveTheme(
     preferences.theme,
@@ -407,6 +425,45 @@ export function App() {
     selectedSession === null
       ? null
       : (attentionBySession.get(selectedSession.id) ?? null);
+  const selectedAttentionCursor =
+    selectedSession === null
+      ? null
+      : cursorEntry(attentionInbox, selectedSession.id);
+  const selectedAttentionUnread =
+    selectedSession !== null &&
+    selectedAttention !== null &&
+    isAttentionUnread(attentionInbox, selectedSession.id, selectedAttention);
+  const persistAttentionInbox = useCallback((next: AttentionInboxState) => {
+    attentionInboxRef.current = next;
+    setAttentionInbox(next);
+    if (!saveAttentionInbox(window.localStorage, next)) {
+      setNotice(
+        "Attention state is active, but this browser could not save it for refresh.",
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      selectedId === null ||
+      selectedAttention === null ||
+      !isAttentionUnread(
+        attentionInboxRef.current,
+        selectedId,
+        selectedAttention,
+      )
+    ) {
+      return;
+    }
+    persistAttentionInbox(
+      acknowledgeAttention(
+        attentionInboxRef.current,
+        selectedId,
+        selectedAttention,
+      ),
+    );
+  }, [persistAttentionInbox, selectedAttention, selectedId]);
+
   const tabSessions = useMemo(
     () =>
       tabs.flatMap((tab) => {
@@ -428,6 +485,21 @@ export function App() {
     setTabs((current) => openTerminalTab(current, sessionId));
     setLayout(showSessionInFocusedPane(layoutRef.current, sessionId));
     setSelectedId(sessionId);
+  };
+
+  const toggleSelectedSessionMuted = () => {
+    if (selectedSession === null || selectedAttentionCursor === null) {
+      return;
+    }
+    const muted = !selectedAttentionCursor.muted;
+    persistAttentionInbox(
+      setSessionMuted(attentionInboxRef.current, selectedSession.id, muted),
+    );
+    setNotice(
+      muted
+        ? `${selectedSession.displayName} browser alerts muted. Attention still appears in Pacium.`
+        : `${selectedSession.displayName} browser alerts unmuted.`,
+    );
   };
 
   const selectPane = (paneId: string) => {
@@ -934,55 +1006,66 @@ export function App() {
                     <span>{group.sessions.length}</span>
                   </div>
                   <ul className="session-list">
-                    {group.sessions.map((session) => (
-                      <li key={session.id}>
-                        <button
-                          aria-label={`${sessionAccessibleName(session)}, attention ${attentionStateLabel(
-                            attentionBySession.get(session.id)?.state ??
-                              "unknown",
-                          )}`}
-                          aria-current={
-                            session.id === selectedId ? "page" : undefined
-                          }
-                          className="session-item"
-                          onClick={() => selectSession(session.id)}
-                          onContextMenu={(event) => {
-                            event.preventDefault();
-                            openSessionActions(session.id);
-                          }}
-                          title={`${session.commandLabel} in ${session.cwd}${
-                            sessionShortcutNumbers.get(session.id) == null
-                              ? ""
-                              : ` · Cmd/Ctrl ${sessionShortcutNumbers.get(
-                                  session.id,
-                                )}`
-                          }`}
-                          type="button"
-                        >
-                          <StatusDot state={session.processState} />
-                          <span className="session-copy">
-                            <strong>{session.displayName}</strong>
-                            <span className="session-row-meta">
-                              <span className="preset-label">
-                                {session.commandLabel}
+                    {group.sessions.map((session) => {
+                      const attention =
+                        attentionBySession.get(session.id) ?? null;
+                      const unread =
+                        attention !== null &&
+                        isAttentionUnread(
+                          attentionInbox,
+                          session.id,
+                          attention,
+                        );
+                      return (
+                        <li key={session.id}>
+                          <button
+                            aria-label={`${sessionAccessibleName(session)}, attention ${attentionStateLabel(
+                              attention?.state ?? "unknown",
+                            )}${unread ? ", unread attention" : ""}`}
+                            aria-current={
+                              session.id === selectedId ? "page" : undefined
+                            }
+                            className="session-item"
+                            onClick={() => selectSession(session.id)}
+                            onContextMenu={(event) => {
+                              event.preventDefault();
+                              openSessionActions(session.id);
+                            }}
+                            title={`${session.commandLabel} in ${session.cwd}${
+                              sessionShortcutNumbers.get(session.id) == null
+                                ? ""
+                                : ` · Cmd/Ctrl ${sessionShortcutNumbers.get(
+                                    session.id,
+                                  )}`
+                            }`}
+                            type="button"
+                          >
+                            <StatusDot state={session.processState} />
+                            <span className="session-copy">
+                              <span className="session-name-row">
+                                <strong>{session.displayName}</strong>
+                                <UnreadAttentionMarker unread={unread} />
                               </span>
-                              <span
-                                className={`attention-label attention-${
-                                  attentionBySession.get(session.id)?.state ??
-                                  "unknown"
-                                }`}
-                              >
-                                {attentionStateLabel(
-                                  attentionBySession.get(session.id)?.state ??
-                                    "unknown",
-                                )}
+                              <span className="session-row-meta">
+                                <span className="preset-label">
+                                  {session.commandLabel}
+                                </span>
+                                <span
+                                  className={`attention-label attention-${
+                                    attention?.state ?? "unknown"
+                                  }`}
+                                >
+                                  {attentionStateLabel(
+                                    attention?.state ?? "unknown",
+                                  )}
+                                </span>
+                                <span>{compactPath(session.cwd)}</span>
                               </span>
-                              <span>{compactPath(session.cwd)}</span>
                             </span>
-                          </span>
-                        </button>
-                      </li>
-                    ))}
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </section>
               ))}
@@ -1414,9 +1497,15 @@ export function App() {
           )}
         </section>
         <section className="inspector-section attention-section">
-          <h2>Attention</h2>
-          {selectedAttention !== null && (
-            <AttentionEvidenceCard attention={selectedAttention} />
+          {selectedAttention !== null && selectedAttentionCursor !== null && (
+            <>
+              <AttentionCursorHeader
+                muted={selectedAttentionCursor.muted}
+                onToggleMuted={toggleSelectedSessionMuted}
+                unread={selectedAttentionUnread}
+              />
+              <AttentionEvidenceCard attention={selectedAttention} />
+            </>
           )}
         </section>
       </aside>
