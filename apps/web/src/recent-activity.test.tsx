@@ -77,9 +77,7 @@ describe("recent activity presentation", () => {
     const markup = render(activity);
 
     expect(markup).toContain("&lt;script&gt;hostile subject&lt;/script&gt;");
-    expect(markup).toContain(
-      "author recorded as &lt;operator&gt;",
-    );
+    expect(markup).toContain("author recorded as &lt;operator&gt;");
     expect(markup).not.toContain("<script>");
   });
 

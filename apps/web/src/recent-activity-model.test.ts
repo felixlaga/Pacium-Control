@@ -46,9 +46,7 @@ const session: SessionSummary = {
   exitSignal: null,
 };
 
-function input(
-  candidate: SessionSummary = session,
-): RecentActivityInput {
+function input(candidate: SessionSummary = session): RecentActivityInput {
   return {
     session: candidate,
     attention: deriveProcessAttention(candidate, now),
@@ -64,8 +62,7 @@ describe("recent activity process facts", () => {
 
     expect(activity.current).toMatchObject({
       processState: "live",
-      processDetail:
-        "Process is live; assigned-task activity is unverified.",
+      processDetail: "Process is live; assigned-task activity is unverified.",
     });
     expect(activity.current.attention).toMatchObject({
       state: "unknown",
@@ -320,9 +317,7 @@ describe("recent activity verification facts", () => {
       },
     });
 
-    const fact = activity.facts.find(
-      ({ source }) => source === "verification",
-    );
+    const fact = activity.facts.find(({ source }) => source === "verification");
     expect(fact).toMatchObject({
       title: "Verification failed",
       detail: "<Project verification> · 60.0 s · exit 2",

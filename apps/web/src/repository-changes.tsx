@@ -11,11 +11,7 @@ import {
 } from "./repository-changes-model.js";
 
 export type InspectorTab =
-  | "overview"
-  | "changes"
-  | "history"
-  | "checks"
-  | "activity";
+  "overview" | "changes" | "history" | "checks" | "activity";
 
 export function InspectorTabs({
   active,

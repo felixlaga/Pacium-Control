@@ -139,20 +139,20 @@ and repository file content never enter the projection.
 
 ## Failure model
 
-| Failure point                | Expected state                                           | Recovery                              |
-| ---------------------------- | -------------------------------------------------------- | ------------------------------------- |
-| No selected session          | Inspector keeps existing no-selection shell              | Select or create a terminal           |
-| Source still idle            | Lazy request begins; other facts remain visible          | Wait or use Refresh                   |
-| Git changes unavailable      | Git source message plus process/attention/check facts     | Restore repository and Refresh        |
-| History unavailable/unborn   | Explicit source message; no fabricated commit activity   | Create/restore HEAD and Refresh       |
-| Verification unconfigured    | “No matching presets” source state, not an error          | Configure presets or continue         |
-| Verification read fails      | Existing bounded error evidence; terminal survives       | Inspect config/server and Refresh     |
-| One source is refreshing     | Prior visible evidence remains labelled with its time     | Wait for matching response            |
-| Stale response arrives       | Existing reducer rejects it; projection stays unchanged  | Current request completes             |
-| Session changes during load  | New selected session gets its own projection              | Existing request cannot cross session |
-| Browser disconnects          | PTY and server verification run survive                  | Reconnect and re-inspect              |
-| Invalid evidence timestamp   | Invalid item is omitted; source stays degraded/available | Refresh source                        |
-| Hostile display text         | Bounded plain text only                                  | Inspect source directly if needed     |
+| Failure point               | Expected state                                           | Recovery                              |
+| --------------------------- | -------------------------------------------------------- | ------------------------------------- |
+| No selected session         | Inspector keeps existing no-selection shell              | Select or create a terminal           |
+| Source still idle           | Lazy request begins; other facts remain visible          | Wait or use Refresh                   |
+| Git changes unavailable     | Git source message plus process/attention/check facts    | Restore repository and Refresh        |
+| History unavailable/unborn  | Explicit source message; no fabricated commit activity   | Create/restore HEAD and Refresh       |
+| Verification unconfigured   | “No matching presets” source state, not an error         | Configure presets or continue         |
+| Verification read fails     | Existing bounded error evidence; terminal survives       | Inspect config/server and Refresh     |
+| One source is refreshing    | Prior visible evidence remains labelled with its time    | Wait for matching response            |
+| Stale response arrives      | Existing reducer rejects it; projection stays unchanged  | Current request completes             |
+| Session changes during load | New selected session gets its own projection             | Existing request cannot cross session |
+| Browser disconnects         | PTY and server verification run survive                  | Reconnect and re-inspect              |
+| Invalid evidence timestamp  | Invalid item is omitted; source stays degraded/available | Refresh source                        |
+| Hostile display text        | Bounded plain text only                                  | Inspect source directly if needed     |
 
 ## Compatibility
 

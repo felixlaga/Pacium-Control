@@ -21,12 +21,7 @@ export type ActivityFactSource = "process" | "git" | "verification";
 export type ActivityTimestampMeaning = "occurred" | "observed";
 export type ActivitySourceId = "changes" | "history" | "verification";
 export type ActivitySourceStatus =
-  | "idle"
-  | "loading"
-  | "ready"
-  | "empty"
-  | "unavailable"
-  | "error";
+  "idle" | "loading" | "ready" | "empty" | "unavailable" | "error";
 
 export interface ActivityCurrentEvidence {
   attention: AttentionResult;
@@ -66,7 +61,9 @@ export interface RecentActivityInput {
   verification: RepositoryVerificationViewState;
 }
 
-export function buildRecentActivity(input: RecentActivityInput): RecentActivity {
+export function buildRecentActivity(
+  input: RecentActivityInput,
+): RecentActivity {
   const facts = [
     ...processFacts(input.session),
     ...gitFacts(input),
@@ -133,10 +130,7 @@ function processExitDetail(session: SessionSummary): string {
   return "Process ended without exit evidence; task outcome is unknown.";
 }
 
-function gitFacts({
-  changes,
-  history,
-}: RecentActivityInput): ActivityFact[] {
+function gitFacts({ changes, history }: RecentActivityInput): ActivityFact[] {
   const facts: ActivityFact[] = [];
   const changeObservation = visibleRepositoryChanges(changes);
   if (
@@ -308,11 +302,7 @@ function historySummary(
 function verificationSummary(
   state: RepositoryVerificationViewState,
 ): ActivitySourceSummary {
-  const loading = loadingSummary(
-    "verification",
-    "Verification",
-    state.status,
-  );
+  const loading = loadingSummary("verification", "Verification", state.status);
   const observation = visibleVerificationObservation(state);
   if (observation === null) {
     return loading;
@@ -438,9 +428,7 @@ function verificationTitle(
 function verificationDetail(
   preset: string,
   run: NonNullable<
-    NonNullable<
-      ReturnType<typeof visibleVerificationObservation>
-    >["run"]
+    NonNullable<ReturnType<typeof visibleVerificationObservation>>["run"]
   >,
 ): string {
   if (run.status === "running" || run.status === "cancelling") {
@@ -457,6 +445,6 @@ function verificationDetail(
       ? `exit ${run.exitCode}`
       : run.signal !== null
         ? run.signal
-        : run.error?.code.replaceAll("_", " ") ?? "no exit evidence";
+        : (run.error?.code.replaceAll("_", " ") ?? "no exit evidence");
   return `${preset} · ${duration} · ${outcome}`;
 }
