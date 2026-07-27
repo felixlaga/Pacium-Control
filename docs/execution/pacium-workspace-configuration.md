@@ -144,7 +144,7 @@ The configuration contract itself:
 - does not by itself open, watch, create, append, or deliver a configured file;
 - no role prompt is sent and no terminal input is generated.
 
-Protocol 13 retains the queue observer's separate read-only authority for accepted
+Protocol 14 retains the queue observer's separate read-only authority for accepted
 queue-source paths only. It watches canonical parent directories and performs
 bounded no-follow stable reads of at most 64 KiB. Complete UTF-8 text is kept
 only in process memory. Bulk browser messages contain only status, byte length,
@@ -175,7 +175,7 @@ command, prompt, delivery, or shell authority.
 The 96 KiB file ceiling leaves deterministic room inside the 128 KiB
 application-message envelope.
 
-## Protocol 13
+## Protocol 14
 
 The authenticated WebSocket protocol retains the protocol-10 configuration
 operations:
@@ -265,6 +265,52 @@ source snapshots remain content-free. Protocol 13 still contains no semantic
 title/excerpt, parsed action, answer, decision, delivery, provider callback,
 or execution authority.
 
+Protocol 14 adds two deliberately separate mutation requests:
+
+```text
+pacium.queue.question.answer(
+  requestId,
+  workspaceRevision,
+  sourceId,
+  observationRevision,
+  contentHash,
+  itemId,
+  answer,
+  note
+)
+pacium.queue.approval.decide(
+  requestId,
+  workspaceRevision,
+  sourceId,
+  observationRevision,
+  contentHash,
+  itemId,
+  outcome,
+  note
+)
+pacium.queue.decision(requestId, result)
+```
+
+Question requests accept only a nonblank UTF-8 answer of at most 8 KiB and an
+optional 2 KiB note. Approval requests accept only `approved | denied` and the
+same optional note; they cannot carry an answer. The server revalidates all
+five current identity fields and the exact classified type before assigning
+the local actor, timestamp, UUID, and canonical SHA-256 decision hash.
+
+The correlated result is `recorded`, `existing`, `rejected`, or
+`durability_unknown`. Only recorded and existing results carry the complete
+strict immutable record. An identical replay returns `existing`; a different
+decision for an already decided item is rejected. If durability becomes
+unknown after rename, the browser does not retry automatically and requires a
+fresh exact inspection.
+
+A ready exact item carries a separate `open | decided | unavailable` decision
+state. `decided` includes the stored record; `unavailable` uses a fixed safe
+diagnostic and exposes no mutation control. Source/config drift, a type
+mismatch, unsafe state, or disconnect fails closed. Decision recording grants
+no delivery, acknowledgement, provider callback, terminal input, shell, or
+execution authority. PC-048 owns compatible delivery.
+
 ## Atomicity and recovery
 
 An accepted replacement:
@@ -294,14 +340,17 @@ repairs, renames, deletes, or overwrites invalid state.
 ## Security boundary
 
 Existing exact Origin and ephemeral-token checks protect all operations. The
-browser cannot choose the state-file location or submit commands, arguments,
-executables, environments, signals, terminal bytes, queue content,
-objective/plan content, answer content, verification definitions, or generic
-write targets.
+browser cannot choose either state-file location or submit commands,
+arguments, executables, environments, signals, terminal bytes, queue source
+content, objective/plan content, actor identity, timestamps, decision
+identifiers or hashes, verification definitions, or generic write targets.
+The only accepted decision content is a protocol-14 bounded question answer or
+approval outcome plus an optional bounded note for the exact current item.
 
 Configured paths are metadata candidates until the local server canonicalizes
 them. Queue observation can read only the accepted queue-source subset after
 canonicalization; classification derives only bounded data-only metadata and
-does not expose, render, execute, or log contents. Pacium does not persist
-provider tokens, passwords, full environments, queue text, classifications, or
-terminal transcripts.
+does not expose, render, execute, or log contents in bulk. Pacium persists only
+application-owned decision answer/outcome/note content, never the queue source
+text. It does not persist provider tokens, passwords, full environments,
+classifications, terminal transcripts, delivery attempts, or acknowledgements.
