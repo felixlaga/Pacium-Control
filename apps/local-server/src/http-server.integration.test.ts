@@ -21,7 +21,7 @@ import {
   createPaciumHttpServer,
   type PaciumHttpServer,
 } from "./http-server.js";
-import { PaciumConfigStore } from "./pacium-config-store.js";
+import { createPaciumConfigStore } from "./pacium-config-service.js";
 import { SessionManager } from "./session-manager.js";
 import type { VerificationCatalog } from "./verification-config.js";
 import { VerificationRunner } from "./verification-runner.js";
@@ -904,7 +904,7 @@ async function startTestServer(
   const application = createPaciumHttpServer(
     config,
     manager,
-    new PaciumConfigStore(config.dataDirectory),
+    createPaciumConfigStore(config, manager),
   );
   application.server.listen(0, config.host);
   await once(application.server, "listening");
