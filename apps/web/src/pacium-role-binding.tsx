@@ -44,11 +44,13 @@ export function PaciumRoleBindingDialog({
   const roleName = roleLabel(role);
 
   useEffect(() => {
-    dialogRef.current
-      ?.querySelector<HTMLElement>(
-        "input:not(:disabled), select:not(:disabled), button:not(:disabled)",
-      )
-      ?.focus();
+    const firstChoice = dialogRef.current?.querySelector<HTMLElement>(
+      "input:not(:disabled), select:not(:disabled)",
+    );
+    const fallback = dialogRef.current?.querySelector<HTMLElement>(
+      "button:not(:disabled)",
+    );
+    (firstChoice ?? fallback)?.focus();
   }, []);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
