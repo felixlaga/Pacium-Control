@@ -2,6 +2,66 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.25.0 — bounded queue-file observation — 2026-07-27
+
+### Added
+
+- Protocol-11 content-free queue observation requests, correlated snapshots,
+  and pushed complete source updates joined to exact accepted workspace
+  revisions and source IDs.
+- A local queue observer limited to accepted configured paths, with grouped
+  canonical-parent watchers, 200 ms debounce, bounded retry, configuration
+  generation guards, semantic update deduplication, and shutdown disposal.
+- No-follow stable reads with pre/open/post identity checks, a 64 KiB limit,
+  strict UTF-8 decoding, distinct empty/missing/changing/oversized/invalid/
+  unsafe/read/watch states, and SHA-256 only for complete stable bytes.
+- Bounded original queue text retained only in local-server memory behind an
+  exact config-revision/source-ID API; protocol, browser, logs, durable state,
+  terminal input, and generic errors receive no queue text.
+- A compact Pacium-only Queue sources region with accepted labels/requesting
+  roles, honest source status, bytes, hash prefix, freshness, disconnected
+  evidence, and explicit Refresh. General mode and the terminal workspace stay
+  unchanged.
+- Disposable real-file browser fixtures, source/config byte-preservation
+  integration proof, hostile-file and identity-drift tests, responsive semantic
+  coverage, and cross-workflow terminal cleanup.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, all workspace type checks, 81 test
+  files and 451 tests, plus the 801.90 kB web and 185.93 kB local-server
+  production bundles.
+- `pnpm test:e2e` passed all ten Chromium workflows in one run.
+- The queue browser workflow observed a real disposable source, withheld its
+  private text, refreshed changed byte/hash evidence, preserved the selected
+  real PTY, hid the source region in General mode, and left later terminal,
+  repository, mode, and verification workflows isolated.
+- Unit and integration coverage proves strict contracts, bounded reads, empty
+  and degraded states, no-follow identity checks, watcher debounce/failure,
+  revision deduplication, stale-generation rejection, reconnect/startup order,
+  shutdown disposal, content-free messages, and byte-for-byte source/config
+  preservation.
+- Accessibility coverage keeps the labelled region and Refresh usable at 320
+  CSS px, 200% zoom, forced colors, and reduced motion.
+
+### Known limitations
+
+- This is source-health evidence, not a queue item model. PC-045 and PC-046
+  still own item boundaries, parse diagnostics, classification, source excerpts
+  or inspector presentation, confidence, and queue navigation.
+- Observation state, original text, and process-local revisions are ephemeral.
+  No durable import provenance, queue decision state, answer, approval,
+  delivery, acknowledgement, or conflict handling exists.
+- Explicit Refresh performs a direct current read when watcher capability is
+  degraded. Pacium never claims a file is being continuously observed after a
+  watcher failure.
+- Queue text remains untrusted and is never executed, rendered, delivered, or
+  written by this slice.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  successful browser gate required an approved outside-sandbox run because
+  managed macOS Chromium could not register its Mach port.
+- The web bundle remains above Vite's 500 kB warning threshold.
+
 ## 0.24.0 — explicit Pacium prompt targeting — 2026-07-27
 
 ### Added
