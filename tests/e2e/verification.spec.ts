@@ -50,6 +50,38 @@ test("configured checks run, reconnect, cancel, and fit the narrow inspector", a
   await expect(result).toContainText("Exit code");
   await expect(result).toContainText("0");
 
+  const activityTab = page.getByRole("tab", { name: "Activity" });
+  await activityTab.click();
+  const activityPanel = page.getByRole("tabpanel", { name: "Activity" });
+  await expect(activityPanel).toContainText("Current evidence");
+  await expect(activityPanel).toContainText("Unknown");
+  await expect(activityPanel).toContainText(
+    "assigned-task activity is unverified",
+  );
+  await expect(activityPanel.locator(".activity-fact-list")).toContainText(
+    /changed files? observed|Working tree observed clean/,
+  );
+  await expect(activityPanel).toContainText("Verification passed");
+  await expect(activityPanel).toContainText("Project verify");
+  await expect(activityPanel).toContainText("Deterministic local facts only");
+  await expect(workspaceStatus).toContainText("Verification fixture");
+
+  await activityPanel.getByRole("button", { name: "Refresh" }).click();
+  await expect(
+    activityPanel.getByRole("button", { name: "Refresh" }),
+  ).toBeEnabled();
+  await expect(activityPanel).toContainText("Verification passed");
+  await page.setViewportSize({ width: 320, height: 720 });
+  await expect(activityPanel).toBeVisible();
+  await expect(
+    activityPanel.getByRole("heading", { name: "Evidence sources" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(320);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await checksTab.click();
+
   const waitCard = checksPanel
     .getByRole("listitem")
     .filter({ hasText: "Cancellation fixture" });
@@ -75,7 +107,6 @@ test("configured checks run, reconnect, cancel, and fit the narrow inspector", a
   const reconnectedChecksTab = page.getByRole("tab", { name: "Checks" });
   await reconnectedChecksTab.focus();
   await reconnectedChecksTab.press("ArrowRight");
-  const activityTab = page.getByRole("tab", { name: "Activity" });
   await expect(activityTab).toBeFocused();
   await expect(activityTab).toHaveAttribute("aria-selected", "true");
   await activityTab.press("ArrowRight");
