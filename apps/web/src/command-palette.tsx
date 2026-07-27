@@ -315,6 +315,10 @@ function commandIcon(command: PaletteCommand): string {
       return "?";
     case "open-settings":
       return "⚙";
+    case "toggle-sidebar":
+      return "▌";
+    case "toggle-inspector":
+      return "▐";
     case "select-session":
       return "›";
     case "rename-session":

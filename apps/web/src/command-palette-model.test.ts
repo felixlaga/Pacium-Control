@@ -223,7 +223,7 @@ describe("command palette catalog", () => {
       "workspace.new-terminal",
     );
     expect(movePaletteSelection(visible, "workspace.new-terminal", -1)).toBe(
-      "workspace.open-settings",
+      "workspace.toggle-inspector",
     );
     expect(movePaletteSelection(visible, "workspace.new-terminal", 1)).toBe(
       "workspace.focus-previous-pane",

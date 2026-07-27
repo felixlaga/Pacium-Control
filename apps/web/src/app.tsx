@@ -31,6 +31,13 @@ import {
 } from "./command-palette-model.js";
 import { DirectoryPicker } from "./directory-picker.js";
 import {
+  loadPanelView,
+  savePanelView,
+  toggleInspector,
+  toggleSidebar,
+  workspaceStatusText,
+} from "./panel-model.js";
+import {
   TERMINAL_FONT_STACKS,
   loadPreferences,
   resolveDefaultLaunchPreset,
@@ -158,6 +165,9 @@ export function App() {
   );
   const [systemPrefersDark, setSystemPrefersDark] = useState(
     () => window.matchMedia("(prefers-color-scheme: dark)").matches,
+  );
+  const [panelView, setPanelView] = useState(() =>
+    loadPanelView(window.localStorage, window.innerWidth),
   );
 
   selectedIdRef.current = selectedId;
@@ -332,8 +342,10 @@ export function App() {
         paneCount: listPanes(layout.root).length,
         selectedSessionId: selectedId,
         sessions,
+        sidebarOpen: panelView.sidebarOpen,
+        inspectorOpen: panelView.inspectorOpen,
       }),
-    [layout, selectedId, sessions],
+    [layout, panelView, selectedId, sessions],
   );
 
   useEffect(() => {
@@ -615,6 +627,23 @@ export function App() {
     );
   };
 
+  const setPanelVisibility = (next: typeof panelView) => {
+    setPanelView(next);
+    if (!savePanelView(window.localStorage, next)) {
+      setNotice(
+        "Panel visibility changed, but this browser could not save it for refresh.",
+      );
+    }
+  };
+
+  const toggleSidebarPanel = () => {
+    setPanelVisibility(toggleSidebar(panelView));
+  };
+
+  const toggleInspectorPanel = () => {
+    setPanelVisibility(toggleInspector(panelView));
+  };
+
   const executePaletteCommand = (command: PaletteCommand) => {
     if (!command.enabled) {
       return;
@@ -631,6 +660,12 @@ export function App() {
         return;
       case "open-settings":
         openSettings();
+        return;
+      case "toggle-sidebar":
+        toggleSidebarPanel();
+        return;
+      case "toggle-inspector":
+        toggleInspectorPanel();
         return;
       case "split-pane":
         splitPane(command.action.direction);
@@ -738,6 +773,12 @@ export function App() {
         case "open-settings":
           openSettings();
           return;
+        case "toggle-sidebar":
+          toggleSidebarPanel();
+          return;
+        case "toggle-inspector":
+          toggleInspectorPanel();
+          return;
         case "new-terminal":
           setCreateOpen(true);
           return;
@@ -782,8 +823,31 @@ export function App() {
   }, [capturedPaneId, modalOpen, tabs]);
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div
+      className={`app-shell ${
+        panelView.sidebarOpen ? "" : "is-sidebar-collapsed"
+      } ${panelView.inspectorOpen ? "" : "is-inspector-collapsed"}`}
+    >
+      <a className="skip-link" href="#primary-workspace">
+        Skip to terminal workspace
+      </a>
+      <button
+        aria-label="Close open side panel"
+        className="panel-drawer-scrim"
+        onClick={() =>
+          setPanelVisibility({
+            ...panelView,
+            sidebarOpen: false,
+            inspectorOpen: false,
+          })
+        }
+        type="button"
+      />
+      <aside
+        aria-label="Session navigation"
+        className="sidebar"
+        id="session-sidebar"
+      >
         <header className="brand-row">
           <div className="brand-mark" aria-hidden="true">
             P
@@ -792,6 +856,14 @@ export function App() {
             <strong>Pacium</strong>
             <span>Control</span>
           </div>
+          <button
+            aria-label="Close session sidebar"
+            className="sidebar-close"
+            onClick={toggleSidebarPanel}
+            type="button"
+          >
+            ×
+          </button>
         </header>
 
         <button
@@ -882,7 +954,12 @@ export function App() {
         </div>
       </aside>
 
-      <main className="workspace">
+      <main
+        aria-label="Terminal workspace"
+        className="workspace"
+        id="primary-workspace"
+        tabIndex={-1}
+      >
         <header className="workspace-header">
           <div className="workspace-title">
             <StatusDot state={selectedSession?.processState ?? "idle"} />
@@ -895,6 +972,32 @@ export function App() {
             </div>
           </div>
           <div className="header-actions">
+            <button
+              aria-controls="session-sidebar"
+              aria-expanded={panelView.sidebarOpen}
+              aria-keyshortcuts="Meta+B Control+B"
+              aria-label={`${
+                panelView.sidebarOpen ? "Hide" : "Show"
+              } session sidebar`}
+              className="panel-toggle"
+              onClick={toggleSidebarPanel}
+              title="Toggle sessions (Cmd/Ctrl B)"
+              type="button"
+            >
+              <span aria-hidden="true">▌</span>
+            </button>
+            <button
+              aria-controls="session-inspector"
+              aria-expanded={panelView.inspectorOpen}
+              aria-keyshortcuts="Meta+Shift+B Control+Shift+B"
+              aria-label={`${panelView.inspectorOpen ? "Hide" : "Show"} inspector`}
+              className="panel-toggle"
+              onClick={toggleInspectorPanel}
+              title="Toggle inspector (Cmd/Ctrl Shift B)"
+              type="button"
+            >
+              <span aria-hidden="true">▐</span>
+            </button>
             <ConnectionBadge state={connection} />
             <button
               aria-keyshortcuts="Meta+K Control+K"
@@ -1185,12 +1288,45 @@ export function App() {
             />
           )}
         </section>
+        <footer
+          aria-atomic="true"
+          aria-live="polite"
+          className="workspace-status"
+          role="status"
+        >
+          <span>
+            {workspaceStatusText({
+              connection,
+              selectedSessionName: selectedSession?.displayName ?? null,
+              terminalCaptured: capturedPaneId !== null,
+            })}
+          </span>
+          <span>
+            {capturedPaneId !== null
+              ? "Ctrl+Shift+. returns to application controls"
+              : "Click a terminal to enter capture"}
+          </span>
+        </footer>
       </main>
 
-      <aside className="inspector">
+      <aside
+        aria-label="Session inspector"
+        className="inspector"
+        id="session-inspector"
+      >
         <header>
           <span>Session</span>
-          <span className="panel-label">Details</span>
+          <span>
+            <span className="panel-label">Details</span>
+            <button
+              aria-label="Close inspector"
+              className="inspector-close"
+              onClick={toggleInspectorPanel}
+              type="button"
+            >
+              ×
+            </button>
+          </span>
         </header>
         {selectedSession === null ? (
           <p className="inspector-empty">

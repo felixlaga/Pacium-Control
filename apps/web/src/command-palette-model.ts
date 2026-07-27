@@ -13,6 +13,8 @@ export type PaletteCommandAction =
   | { type: "toggle-maximize"; paneId: string }
   | { type: "show-shortcuts" }
   | { type: "open-settings" }
+  | { type: "toggle-sidebar" }
+  | { type: "toggle-inspector" }
   | { type: "select-session"; sessionId: string }
   | { type: "rename-session"; sessionId: string }
   | { type: "duplicate-session"; sessionId: string }
@@ -44,6 +46,8 @@ export interface PaletteCatalogInput {
   paneCount: number;
   selectedSessionId: string | null;
   sessions: SessionSummary[];
+  sidebarOpen?: boolean;
+  inspectorOpen?: boolean;
 }
 
 export interface ShortcutReference {
@@ -75,6 +79,20 @@ export const SHORTCUT_REFERENCE: ShortcutReference[] = [
     detail: "Theme, density, terminal display, and launch defaults",
     shortcut: "⌘,",
     keywords: ["preferences", "appearance"],
+  },
+  {
+    id: "sidebar",
+    label: "Toggle session sidebar",
+    detail: "Show or hide terminal navigation",
+    shortcut: "⌘B",
+    keywords: ["panel", "sessions"],
+  },
+  {
+    id: "inspector",
+    label: "Toggle inspector",
+    detail: "Show or hide terminal context",
+    shortcut: "⌘⇧B",
+    keywords: ["panel", "details"],
   },
   {
     id: "new-terminal",
@@ -289,6 +307,26 @@ export function buildPaletteCatalog(
       rank: 27,
       shortcut: "⌘,",
       keywords: ["preferences", "appearance", "font", "scrollback"],
+    }),
+    command({
+      id: "workspace.toggle-sidebar",
+      action: { type: "toggle-sidebar" },
+      label: `${input.sidebarOpen === false ? "Show" : "Hide"} session sidebar`,
+      detail: "Navigation visibility only; terminals keep running",
+      group: "Workspace",
+      rank: 28,
+      shortcut: "⌘B",
+      keywords: ["sessions", "navigation", "panel"],
+    }),
+    command({
+      id: "workspace.toggle-inspector",
+      action: { type: "toggle-inspector" },
+      label: `${input.inspectorOpen === false ? "Show" : "Hide"} inspector`,
+      detail: "Context visibility only; terminal focus is unchanged",
+      group: "Workspace",
+      rank: 29,
+      shortcut: "⌘⇧B",
+      keywords: ["details", "context", "panel"],
     }),
   );
 
