@@ -2,8 +2,8 @@
 
 **Current phase:** Core terminal workspace, bounded Git oversight, server-owned
 Pacium configuration, the General/Pacium toggle, and pinned Meta/Orchestrator
-roles are complete enough for continued slicing; explicit prompt targeting is
-next.
+roles plus explicit terminal prompt targeting are complete enough for
+continued slicing; conservative queue-file observation is next.
 
 Pacium Control now has an executable React application, loopback local server, direct-PTY session manager, typed WebSocket protocol, and initial automated tests. This proves the core process-ownership and reconnect architecture; it does not prove the later agent-management or Pacium workflows.
 
@@ -100,6 +100,14 @@ The secondary product is **Pacium mode**:
 - Fixed-preset role launch through the existing direct-PTY operation, exact
   `session.created` request correlation, optimistic one-role binding, and
   explicit partial-failure behavior that preserves an unbound created terminal.
+- A Pacium-only prompt composer with stable Meta, Orchestrator, and configured
+  worker identities; exact live-session availability; explicit ephemeral target
+  selection; a 4,000-Unicode-character control-free single-line bound; and
+  deliberate pointer or `Cmd/Ctrl+Enter` send through existing terminal input.
+- Exact prompt request correlation that locks duplicate send, clears scope only
+  after transport acceptance, retains rejected drafts without retry, marks
+  disconnect outcomes unknown, and never claims provider delivery, processing,
+  approval, or completion.
 - Mode changes and reload preserve selected PTY, terminal tabs/splits,
   inspector context, panel state, terminal sync/input ownership, and existing
   Git/check evidence.
@@ -126,8 +134,8 @@ The secondary product is **Pacium mode**:
   queue sources, delivery methods, context sources, or verification references,
   and no shortcut customization.
 - No Claude or Codex observer.
-- No prompt targeting, queue observation, decisions, delivery, worker role
-  surface, or objective/plan content presentation.
+- No queue observation, decisions, delivery, worker role surface, or
+  objective/plan content presentation.
 - No queue integration.
 - No tmux adapter.
 
@@ -203,8 +211,7 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Begin PC-043 with an explicit Meta, Orchestrator, or selected-worker prompt
-target that never carries scope accidentally and sends input only through a
-deliberate, visible action.
+Begin PC-044 with bounded, provenance-preserving observation of configured
+queue files without executing their contents or changing source files.
 Complete the pinned Node.js 24 clean-install, CI, broader browser/security,
 manual accessibility, and sustained-output gates before release.

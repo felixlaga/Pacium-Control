@@ -275,6 +275,15 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-043 Implement explicit prompt targeting
 
 - Meta, Orchestrator, or selected worker with visible target and no accidental scope carryover.
+- Current status: a Pacium-only compact composer projects Meta, Orchestrator,
+  then configured workers from accepted bindings and exact current session
+  IDs. Only live connected direct-session bindings can send one trimmed,
+  control-free line of at most 4,000 Unicode characters through the existing
+  terminal-input operation. Exact request correlation locks duplicates,
+  distinguishes accepted/rejected/unknown outcomes, never retries, and clears
+  ephemeral scope on success, mode exit, refresh, disconnect, or target drift
+  as applicable. It adds no protocol, durable prompt state, provider claim,
+  queue read, delivery, or approval authority.
 
 ### PC-044 Observe queue files
 
