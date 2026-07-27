@@ -74,6 +74,23 @@ import {
 } from "./pacium-config-model.js";
 import { buildPaciumModeSummary } from "./pacium-mode-summary-model.js";
 import { PaciumModeSummaryCard } from "./pacium-mode-summary.js";
+import { PaciumPromptComposer } from "./pacium-prompt-composer.js";
+import {
+  EMPTY_PACIUM_PROMPT,
+  acceptPaciumPromptResult,
+  beginPaciumPromptSend,
+  interruptPaciumPrompt,
+  paciumPromptTerminalInput,
+  reconcilePaciumPromptTarget,
+  rejectPaciumPromptResult,
+  type PaciumPromptState,
+} from "./pacium-prompt-model.js";
+import {
+  availablePaciumPromptTarget,
+  buildPaciumPromptTargets,
+  type PaciumPromptTargetId,
+  type PaciumPromptTargetProjection,
+} from "./pacium-prompt-target-model.js";
 import { PaciumRoleBindingDialog } from "./pacium-role-binding.js";
 import {
   buildPaciumRoleBindingOptions,
@@ -315,6 +332,14 @@ export function App() {
   const [paciumConfig, setPaciumConfig] =
     useState<PaciumConfigViewState>(IDLE_PACIUM_CONFIG);
   const paciumConfigRef = useRef(paciumConfig);
+  const [paciumPrompt, setPaciumPrompt] =
+    useState<PaciumPromptState>(EMPTY_PACIUM_PROMPT);
+  const paciumPromptRef = useRef(paciumPrompt);
+  const paciumPromptTargetsRef = useRef<PaciumPromptTargetProjection>({
+    status: "loading",
+    message: "Reading configured prompt targets.",
+    targets: [],
+  });
   const [editingPaciumRole, setEditingPaciumRole] =
     useState<PaciumRoleId | null>(null);
   const roleSaveRequestRef = useRef<{
@@ -337,6 +362,7 @@ export function App() {
   repositoryHistoryRef.current = repositoryHistoryBySession;
   repositoryVerificationRef.current = repositoryVerificationBySession;
   paciumConfigRef.current = paciumConfig;
+  paciumPromptRef.current = paciumPrompt;
   pendingPaciumRoleLaunchRef.current = pendingPaciumRoleLaunch;
   workspaceModeRef.current = workspaceMode;
 
@@ -426,6 +452,19 @@ export function App() {
           repositoryVerificationRef.current = reset;
           setRepositoryVerificationBySession(reset);
         }
+        const interruptedPrompt = interruptPaciumPrompt(
+          paciumPromptRef.current,
+        );
+        if (interruptedPrompt !== paciumPromptRef.current) {
+          const outcomeUnknown = paciumPromptRef.current.pending !== null;
+          paciumPromptRef.current = interruptedPrompt;
+          setPaciumPrompt(interruptedPrompt);
+          if (outcomeUnknown) {
+            setNotice(
+              "Prompt delivery outcome is unknown after disconnect. The draft remains, but inspect the target terminal before choosing it again.",
+            );
+          }
+        }
       }
       return;
     }
@@ -445,6 +484,25 @@ export function App() {
       );
       paciumConfigRef.current = next;
       setPaciumConfig(next);
+      return;
+    }
+    if (event.message.type === "command.result") {
+      const currentPrompt = paciumPromptRef.current;
+      const acceptedPrompt = acceptPaciumPromptResult(
+        currentPrompt,
+        event.message.requestId,
+      );
+      if (acceptedPrompt !== currentPrompt) {
+        const targetLabel =
+          paciumPromptTargetsRef.current.targets.find(
+            (target) => target.id === currentPrompt.pending?.targetId,
+          )?.label ?? "the selected target";
+        paciumPromptRef.current = acceptedPrompt;
+        setPaciumPrompt(acceptedPrompt);
+        setNotice(
+          `Terminal input accepted for ${targetLabel}. Agent handling is not confirmed.`,
+        );
+      }
       return;
     }
     if (event.message.type === "pacium.config") {
@@ -637,6 +695,18 @@ export function App() {
       event.message.type === "error" &&
       event.message.requestId !== undefined
     ) {
+      const rejectedPrompt = rejectPaciumPromptResult(
+        paciumPromptRef.current,
+        event.message.requestId,
+      );
+      if (rejectedPrompt !== paciumPromptRef.current) {
+        paciumPromptRef.current = rejectedPrompt;
+        setPaciumPrompt(rejectedPrompt);
+        setNotice(
+          `Prompt was not delivered. ${event.message.message} Pacium did not retry it.`,
+        );
+        return;
+      }
       const interruptedPaciumConfig = interruptPaciumConfigRequest(
         paciumConfigRef.current,
         event.message.requestId,
@@ -1238,6 +1308,29 @@ export function App() {
       sessions,
     ],
   );
+  const paciumPromptTargets = useMemo(
+    () =>
+      buildPaciumPromptTargets({
+        config: paciumConfig,
+        connection,
+        sessions,
+      }),
+    [connection, paciumConfig, sessions],
+  );
+  paciumPromptTargetsRef.current = paciumPromptTargets;
+  useEffect(() => {
+    const reconciled = reconcilePaciumPromptTarget(
+      paciumPromptRef.current,
+      paciumPromptTargets,
+    );
+    if (reconciled !== paciumPromptRef.current) {
+      paciumPromptRef.current = reconciled;
+      setPaciumPrompt(reconciled);
+      setNotice(
+        "The selected prompt target is no longer live. The draft remains; choose an available target.",
+      );
+    }
+  }, [paciumPromptTargets]);
   const visiblePaciumObservation = visiblePaciumConfig(paciumConfig);
   const readyPaciumWorkspace =
     visiblePaciumObservation?.status === "ready"
@@ -1608,6 +1701,56 @@ export function App() {
     setNotice(`Starting ${roleLabel(role)} from its fixed preset…`);
   };
 
+  const updatePaciumPromptDraft = (draft: string) => {
+    if (paciumPromptRef.current.pending !== null) {
+      return;
+    }
+    const next = { ...paciumPromptRef.current, draft };
+    paciumPromptRef.current = next;
+    setPaciumPrompt(next);
+  };
+
+  const updatePaciumPromptTarget = (targetId: PaciumPromptTargetId | null) => {
+    if (paciumPromptRef.current.pending !== null) {
+      return;
+    }
+    const next = { ...paciumPromptRef.current, targetId };
+    paciumPromptRef.current = next;
+    setPaciumPrompt(next);
+  };
+
+  const sendPaciumPrompt = () => {
+    const current = paciumPromptRef.current;
+    const target = availablePaciumPromptTarget(
+      paciumPromptTargetsRef.current,
+      current.targetId,
+    );
+    const terminalInput = paciumPromptTerminalInput(current.draft);
+    const transport = transportRef.current;
+    if (
+      current.pending !== null ||
+      target?.sessionId === null ||
+      target === null ||
+      terminalInput === null ||
+      connection !== "connected" ||
+      transport === null
+    ) {
+      setNotice(
+        "Choose one live explicit target and enter a valid prompt before sending.",
+      );
+      return;
+    }
+    const requestId = transport.input(target.sessionId, terminalInput);
+    const next = beginPaciumPromptSend(current, {
+      requestId,
+      targetId: target.id,
+      sessionId: target.sessionId,
+    });
+    paciumPromptRef.current = next;
+    setPaciumPrompt(next);
+    setNotice(`Sending terminal input to ${target.label}…`);
+  };
+
   const openCreateDialog = () => {
     createInvokerRef.current = activeControl("new-terminal-trigger");
     setCapturedPaneId(null);
@@ -1815,6 +1958,10 @@ export function App() {
     }
     workspaceModeRef.current = next;
     setWorkspaceMode(next);
+    if (next === "general") {
+      paciumPromptRef.current = EMPTY_PACIUM_PROMPT;
+      setPaciumPrompt(EMPTY_PACIUM_PROMPT);
+    }
     const saved = saveWorkspaceMode(window.localStorage, next);
     setNotice(
       saved
@@ -2559,6 +2706,15 @@ export function App() {
             />
           )}
         </section>
+        {workspaceMode === "pacium" && (
+          <PaciumPromptComposer
+            onDraftChange={updatePaciumPromptDraft}
+            onSend={sendPaciumPrompt}
+            onTargetChange={updatePaciumPromptTarget}
+            projection={paciumPromptTargets}
+            state={paciumPrompt}
+          />
+        )}
         <WorkspaceStatus
           connection={connection}
           selectedSessionName={selectedSession?.displayName ?? null}
