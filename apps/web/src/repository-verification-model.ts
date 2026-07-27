@@ -108,6 +108,19 @@ export function interruptVerificationRequest(
   return loadedState(current.sessionId, current.observation);
 }
 
+export function rejectVerificationRequest(
+  current: RepositoryVerificationViewState,
+  requestId: string,
+): RepositoryVerificationViewState {
+  if (
+    (current.status === "loading" && current.requestId === requestId) ||
+    (current.status === "loaded" && current.pendingRequestId === requestId)
+  ) {
+    return interruptVerificationRequest(current);
+  }
+  return current;
+}
+
 export function visibleVerificationObservation(
   state: RepositoryVerificationViewState,
 ): VerificationObservation | null {

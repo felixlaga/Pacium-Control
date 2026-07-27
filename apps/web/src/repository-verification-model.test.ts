@@ -8,6 +8,7 @@ import {
   beginVerificationInspect,
   IDLE_REPOSITORY_VERIFICATION,
   interruptVerificationRequest,
+  rejectVerificationRequest,
   visibleVerificationObservation,
 } from "./repository-verification-model.js";
 
@@ -161,5 +162,32 @@ describe("repository verification view state", () => {
         observation,
       ),
     ).toBe(updated);
+  });
+
+  it("clears only the matching failed action request", () => {
+    const loaded = acceptVerificationResponse(
+      beginVerificationInspect(
+        IDLE_REPOSITORY_VERIFICATION,
+        sessionId,
+        "inspect",
+      ),
+      "inspect",
+      sessionId,
+      observation,
+    );
+    const pending = beginVerificationAction(
+      loaded,
+      sessionId,
+      "run-request",
+      "run",
+    );
+
+    expect(rejectVerificationRequest(pending, "stale")).toBe(pending);
+    expect(rejectVerificationRequest(pending, "run-request")).toMatchObject({
+      status: "loaded",
+      pendingRequestId: null,
+      pendingAction: null,
+      observation,
+    });
   });
 });
