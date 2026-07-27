@@ -152,8 +152,23 @@ Prefer bounded in-memory scrollback. If diagnostic export is added, it must be e
 - Transport maximum-size queue text with bounded encoding, render it only as
   inert text, and clear browser copies when current identity is lost.
 - Never overwrite ambiguous human edits silently.
-- Distinguish questions from approvals.
-- Record answer provenance and delivery result.
+- Keep question-answer and approval-decision requests distinct in the protocol
+  and interface. Approval requires an explicit second confirmation.
+- Revalidate exact workspace/source/observation/hash/item identity and
+  classification type immediately before every decision append.
+- Assign the actor label, timestamp, UUID, and canonical SHA-256 decision hash
+  on the server. The browser cannot claim those fields.
+- Store only bounded application-owned answer/outcome/note content and exact
+  source provenance in private, versioned, hash-verified `queue-state.json`;
+  never copy queue source text into it.
+- Treat an identical retry as a replay and reject a different second decision,
+  preserving the first immutable record.
+- If state is corrupt, unsafe, unsupported, oversized, full, or has unknown
+  post-rename durability, fail mutation closed while preserving terminal and
+  read-only queue operation.
+- Record decision provenance separately from delivery. A local decision is not
+  delivered, acknowledged, applied, authorized provider action, or terminal
+  input.
 - Surface conflicts instead of choosing one answer automatically.
 
 ## Required security tests
@@ -166,6 +181,8 @@ Prefer bounded in-memory scrollback. If diagnostic export is added, it must be e
 - process-group interrupt and termination;
 - duplicate terminal input after reconnect;
 - queue content interpreted as data, never executable code;
+- forged queue-decision identity/actor/hash fields, cross-type requests,
+  duplicate replays, competing decisions, and restart recovery;
 - secret scanning of logs and persisted state.
 
 ## Future expansion
