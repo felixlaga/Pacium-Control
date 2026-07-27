@@ -71,6 +71,14 @@ test("assigns, opens, launches, and durably binds the two primary roles", async 
     page.locator(".session-item", { hasText: "Meta existing" }),
   ).toHaveCount(1);
 
+  await composer.getByLabel("Target").selectOption("role:meta");
+  await prompt.fill("first line\nsecond line");
+  await expect(composer).toContainText(
+    "Line breaks and terminal control characters are not allowed.",
+  );
+  await expect(composer.getByRole("button", { name: "Send" })).toBeDisabled();
+  await prompt.fill("unsent mode-scoped draft");
+
   const general = page.getByRole("button", { name: "General" });
   await general.click();
   await expect(page.locator(".pacium-role-group")).toBeHidden();
@@ -112,7 +120,14 @@ test("assigns, opens, launches, and durably binds the two primary roles", async 
     page.locator(".session-item", { hasText: "Orchestrator" }),
   ).toHaveCount(1);
 
+  await composer.getByLabel("Target").selectOption("role:orchestrator");
+  await prompt.fill("unsent refresh-scoped draft");
   await page.reload();
+  await expect(
+    page.getByRole("region", { name: "Send to one exact terminal" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Target")).toHaveValue("");
+  await expect(page.getByLabel("Prompt")).toHaveValue("");
   await expect(roleCard(page, "meta")).toHaveAttribute(
     "aria-label",
     /Meta role, Connected/,
