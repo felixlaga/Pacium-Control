@@ -16,6 +16,11 @@ test("keyboard navigation controls the desktop shell without affecting sessions"
   await expect(workspace).toBeVisible();
   await expect(sidebar).toBeVisible();
   await expect(inspector).toBeVisible();
+  const connectionBadge = page.getByLabel(
+    "Pacium local connection: connected.",
+  );
+  await expect(connectionBadge).toBeVisible();
+  await expect(connectionBadge).toContainText(/Local.*connected/);
   await expect(page.getByRole("status")).toContainText(
     /Connected · No terminal selected · Application controls/,
   );
@@ -88,6 +93,9 @@ test("narrow shell exposes panels as dismissible drawers at 320 CSS pixels", asy
 
   await expect(sidebar).toBeHidden();
   await expect(inspector).toBeHidden();
+  await expect(
+    page.getByLabel("Pacium local connection: connected."),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Show session sidebar" }).click();
   await expect(sidebar).toBeVisible();
@@ -143,6 +151,9 @@ test("two-times zoom and system accessibility preferences keep controls usable",
   });
 
   const workspace = page.getByRole("main", { name: "Terminal workspace" });
+  await expect(
+    page.getByLabel("Pacium local connection: connected."),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Show session sidebar" }).click();
   const newTerminal = page.getByRole("button", { name: "New terminal" });
   const modeGroup = page.getByRole("group", { name: "Workspace mode" });
