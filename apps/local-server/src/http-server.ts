@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { PROTOCOL_VERSION } from "@pacium/contracts";
 
 import type { ClaudeObserver } from "./claude-observer.js";
+import type { CodexRuntimeBridge } from "./codex-runtime-bridge.js";
 import type { ServerConfig } from "./config.js";
 import {
   browseHostDirectories,
@@ -35,6 +36,7 @@ export function createPaciumHttpServer(
   paciumConfig: PaciumConfigStore,
   queueObserver: QueueObserver = new QueueObserver(),
   claudeObserver?: ClaudeObserver,
+  codexRuntimeBridge?: CodexRuntimeBridge,
 ): PaciumHttpServer {
   const webRoot = fileURLToPath(new URL("../../web/dist/", import.meta.url));
   const hub = new WebSocketHub(config, sessions, paciumConfig, queueObserver);
@@ -43,6 +45,12 @@ export function createPaciumHttpServer(
   });
 
   server.on("upgrade", (request, socket, head) => {
+    if (
+      codexRuntimeBridge?.handleUpgrade(request, socket, head, config.port) ===
+      true
+    ) {
+      return;
+    }
     const pathname = parsePathname(request);
     const token = readWebSocketToken(request);
     const access = classifyRequestAccess(request, config, "websocket");
@@ -70,6 +78,7 @@ export function createPaciumHttpServer(
     async close() {
       hub.dispose();
       queueObserver.dispose();
+      codexRuntimeBridge?.dispose();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => {
           if (error === undefined) {

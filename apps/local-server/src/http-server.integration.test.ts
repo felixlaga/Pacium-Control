@@ -1,4 +1,4 @@
-import { once } from "node:events";
+import { EventEmitter, once } from "node:events";
 import {
   lstat,
   mkdtemp,
@@ -12,6 +12,7 @@ import type { AddressInfo } from "node:net";
 import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PassThrough } from "node:stream";
 
 import { FakePty, FakePtyFactory } from "@pacium/test-utils";
 import {
@@ -27,6 +28,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket, type RawData } from "ws";
 
 import { ClaudeObserver } from "./claude-observer.js";
+import { CodexObserver } from "./codex-observer.js";
+import { CodexRuntimeBridge } from "./codex-runtime-bridge.js";
 import type { ServerConfig, TailscaleServeConfig } from "./config.js";
 import type { HostActions } from "./host-actions.js";
 import {
@@ -59,6 +62,13 @@ interface TestClient {
 const TEST_DIFF_PATCH = "@@ -1 +1 @@\n-old\n+new\n";
 const TEST_DIFF_BYTES = Buffer.byteLength(TEST_DIFF_PATCH);
 const temporaryDirectories: string[] = [];
+
+class FakeCodexRuntimeChild extends EventEmitter {
+  public readonly stdin = new PassThrough();
+  public readonly stdout = new PassThrough();
+  public readonly stderr = new PassThrough();
+  public readonly kill = vi.fn(() => true);
+}
 
 describe("localhost HTTP and WebSocket boundary", () => {
   let application: PaciumHttpServer | undefined;
@@ -357,6 +367,121 @@ describe("localhost HTTP and WebSocket boundary", () => {
       expect(response.json).not.toHaveProperty("hookSpecificOutput");
     }
 
+    client.socket.close();
+    await once(client.socket, "close");
+  });
+
+  it("bridges only the exact authenticated Codex runtime and publishes native evidence", async () => {
+    const token = "c".repeat(43);
+    const observer = new CodexObserver({
+      baseUrl: "http://127.0.0.1:4174",
+      executable: "/opt/test/bin/codex",
+      environment: { PATH: "/opt/test/bin" },
+      capability: { available: true, version: "0.145.0" },
+      tokenFactory: () => token,
+    });
+    const child = new FakeCodexRuntimeChild();
+    const runtimeBridge = new CodexRuntimeBridge(observer, () => child);
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      null,
+      undefined,
+      observer,
+      runtimeBridge,
+    );
+    application = setup.application;
+    manager = setup.manager;
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    client.socket.send(
+      JSON.stringify({
+        type: "session.create",
+        requestId: "59c47714-3fed-4cb8-8897-4b8e3d2f9138",
+        payload: {
+          cwd: process.cwd(),
+          launchPreset: "codex",
+          cols: 90,
+          rows: 28,
+        },
+      }),
+    );
+    const created = await nextMessage(
+      client,
+      (message) => message.type === "session.created",
+    );
+    if (created.type !== "session.created") {
+      throw new Error("Expected a created Codex session.");
+    }
+    expect(factory.createCalls[0]).toMatchObject({
+      executable: "/opt/test/bin/codex",
+      environment: { PACIUM_CODEX_RUNTIME_TOKEN: token },
+    });
+    expect(JSON.stringify(factory.createCalls[0]?.args)).not.toContain(token);
+
+    const runtime = new WebSocket(
+      `${setup.url}/api/provider/codex/${created.session.id}/runtime`,
+      {
+        headers: {
+          host: "127.0.0.1:4174",
+          authorization: `Bearer ${token}`,
+        },
+      },
+    );
+    await once(runtime, "open");
+    const clientRequest = JSON.stringify({
+      method: "initialize",
+      id: 0,
+      params: {
+        clientInfo: {
+          name: "private client",
+          title: "private title",
+          version: "1",
+        },
+      },
+    });
+    const childInput = nextStreamChunk(child.stdin);
+    runtime.send(clientRequest);
+    expect((await childInput).toString("utf8")).toBe(`${clientRequest}\n`);
+
+    const serverMessage = JSON.stringify({
+      method: "turn/started",
+      params: {
+        threadId: "thread-1",
+        turn: {
+          id: "turn-1",
+          status: "inProgress",
+          items: [{ type: "userMessage", text: "private prompt" }],
+        },
+      },
+    });
+    const forwarded = nextRawMessage(runtime);
+    child.stdout.write(`${serverMessage}\n`);
+    expect((await forwarded).toString()).toBe(serverMessage);
+    const updated = await nextMessage(
+      client,
+      (message) =>
+        message.type === "session.updated" &&
+        message.session.id === created.session.id,
+    );
+    expect(updated).toMatchObject({
+      type: "session.updated",
+      session: {
+        providerObservation: {
+          health: { state: "ready", source: "native" },
+          attention: { state: "working", source: "native" },
+          activities: [{ kind: "turn_started" }],
+        },
+      },
+    });
+    expect(JSON.stringify(updated)).not.toContain("private prompt");
+    expect(JSON.stringify(updated)).not.toContain("private client");
+
+    runtime.close(1000);
+    await once(runtime, "close");
     client.socket.close();
     await once(client.socket, "close");
   });
@@ -2830,6 +2955,8 @@ async function startTestServer(
   dataDirectory?: string,
   tailscaleServe: TailscaleServeConfig | null = null,
   claudeObserver?: ClaudeObserver,
+  codexObserver?: CodexObserver,
+  codexRuntimeBridge?: CodexRuntimeBridge,
 ): Promise<{
   application: PaciumHttpServer;
   manager: SessionManager;
@@ -2872,9 +2999,12 @@ async function startTestServer(
       {
         id: "codex",
         label: "Codex",
-        available: false,
-        unavailableReason: "Codex is not installed or not on PATH.",
-        executable: null,
+        available: codexObserver !== undefined,
+        unavailableReason:
+          codexObserver === undefined
+            ? "Codex is not installed or not on PATH."
+            : null,
+        executable: codexObserver === undefined ? null : "/opt/test/bin/codex",
         args: [],
         classification: {
           type: "codex",
@@ -2992,6 +3122,7 @@ async function startTestServer(
     config.verificationCatalog,
     verification?.runner,
     claudeObserver,
+    codexObserver,
   );
   const application = createPaciumHttpServer(
     config,
@@ -2999,6 +3130,7 @@ async function startTestServer(
     createPaciumConfigStore(config, manager),
     undefined,
     claudeObserver,
+    codexRuntimeBridge,
   );
   application.server.listen(0, config.host);
   await once(application.server, "listening");
@@ -3215,6 +3347,30 @@ async function nextMessage(
   }
   return new Promise<ServerMessage>((resolve) => {
     client.pending.push({ predicate, resolve });
+  });
+}
+
+function nextStreamChunk(stream: PassThrough): Promise<Buffer> {
+  return new Promise<Buffer>((resolve, reject) => {
+    stream.once("data", (chunk: unknown) => {
+      if (Buffer.isBuffer(chunk)) {
+        resolve(chunk);
+        return;
+      }
+      reject(new Error("Expected the stream to emit a Buffer."));
+    });
+  });
+}
+
+function nextRawMessage(socket: WebSocket): Promise<Buffer> {
+  return new Promise<Buffer>((resolve, reject) => {
+    socket.once("message", (data, isBinary) => {
+      if (isBinary) {
+        reject(new Error("Expected a Codex runtime text frame."));
+        return;
+      }
+      resolve(Buffer.from(toArrayBuffer(data)));
+    });
   });
 }
 
