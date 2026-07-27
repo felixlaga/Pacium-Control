@@ -1,5 +1,6 @@
 import {
   TerminalSurface,
+  type TerminalDisplayPreferences,
   type TerminalSurfaceHandle,
 } from "@pacium/terminal-ui";
 import type { SessionSummary } from "@pacium/contracts";
@@ -33,6 +34,7 @@ interface SplitWorkspaceProps {
   onSplit: (paneId: string, direction: SplitDirection) => void;
   onToggleMaximize: (paneId: string) => void;
   sessions: SessionSummary[];
+  terminalPreferences: TerminalDisplayPreferences;
   terminalRefs: MutableRefObject<Map<string, TerminalSurfaceHandle>>;
 }
 
@@ -323,6 +325,7 @@ function TerminalPane(
                 props.onResize(session.id, cols, rows);
               }
             }}
+            preferences={props.terminalPreferences}
           />
         </>
       )}

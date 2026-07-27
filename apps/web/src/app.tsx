@@ -6,7 +6,10 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import type { TerminalSurfaceHandle } from "@pacium/terminal-ui";
+import {
+  DEFAULT_TERMINAL_DISPLAY_PREFERENCES,
+  type TerminalSurfaceHandle,
+} from "@pacium/terminal-ui";
 import type {
   DirectoryListing,
   LaunchPresetCapability,
@@ -1081,6 +1084,7 @@ export function App() {
                 setSelectedId(getFocusedPane(next)?.sessionId ?? null);
               }}
               sessions={sessions}
+              terminalPreferences={DEFAULT_TERMINAL_DISPLAY_PREFERENCES}
               terminalRefs={terminalRefs}
             />
           )}
