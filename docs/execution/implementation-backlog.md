@@ -296,12 +296,23 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
   observations, rejects stale config generations, and presents compact
   content-free source health only in Pacium mode. Explicit Refresh, reconnect,
   watcher disposal, hostile files, and byte-for-byte source/config preservation
-  are covered. Item boundaries, parse diagnostics, durable provenance,
-  decisions, delivery, and queue text in the browser remain PC-045 onward.
+  are covered. PC-045 now adds one whole-source candidate boundary; multi-item
+  parsing, durable provenance, decisions, delivery, and queue text in the
+  browser remain later work.
 
 ### PC-045 Classify queue items
 
 - Question, approval, failure, review, and unknown with confidence; never infer permission from an ordinary question.
+- Current status: protocol 12 classifies at most one candidate from each
+  nonblank stable source under deterministic boundary `whole_source_v1`.
+  Exact Markdown/plain-text markers identify questions, concrete approval
+  requests, failures, and reviews with documented confidence; a final question
+  mark can infer only a medium-confidence question, and every other or ambiguous
+  document remains unknown. Item identity binds boundary/source ID/content
+  hash, unchanged hashes reuse classification, degraded evidence clears it, and
+  Pacium shows only type/confidence/fixed diagnostics beside source health.
+  Original text, multi-item boundaries, titles/excerpts, queue list/inspector,
+  durable provenance, and every decision/delivery action remain PC-046 onward.
 
 ### PC-046 Implement queue list and inspector
 
