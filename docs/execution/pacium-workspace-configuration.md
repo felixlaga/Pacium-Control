@@ -399,6 +399,34 @@ or another inspector route clears decoded content. Context observations and
 worker rows are disposable projections; protocol 17 changes neither
 `pacium.json` schema 1 nor `queue-state.json` schema 3.
 
+## Protocol 18 connection authority
+
+Protocol 18 retains every protocol-17 configuration, queue, decision,
+reconciliation, and Control-context message. It adds one strict disposable
+field to `server.welcome`:
+
+```text
+connection = { kind: "local" }
+           | { kind: "tailscale", login: "<exact verified login>" }
+```
+
+The browser cannot submit, restore, or relabel this evidence. The HTTP upgrade
+classifies the current request from the accepted startup configuration, exact
+Host/Origin, verified Serve login, fetch metadata, and token before accepting
+the socket. The hub independently projects that accepted request authority into
+the welcome message.
+
+The schema excludes display name, profile picture, source/forwarded IP, device,
+tag, grant, allowlist, Origin, Host, and token. Browser disconnect clears the
+current value. No identity enters `pacium.json`, `queue-state.json`, terminal
+metadata, or browser preference storage.
+
+Remote mode changes no workspace configuration authority. The same exact
+authenticated messages operate the same-host PTYs and files after
+connection establishment. See the
+[Serve operations runbook](../operations/tailscale-serve.md) for the startup
+environment and external network boundary.
+
 ## Atomicity and recovery
 
 An accepted replacement:
