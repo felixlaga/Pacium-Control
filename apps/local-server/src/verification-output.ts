@@ -65,10 +65,17 @@ export class VerificationOutputCapture {
 }
 
 function normalizeOutput(value: string): string {
-  return value
-    .replaceAll("\r\n", "\n")
-    .replaceAll("\r", "\n")
-    .replace(/[\u0000-\u0008\u000b-\u001f\u007f]/gu, " ");
+  return [...value.replaceAll("\r\n", "\n").replaceAll("\r", "\n")]
+    .map((character) => {
+      const codePoint = character.codePointAt(0);
+      return codePoint !== undefined &&
+        codePoint !== 0x09 &&
+        codePoint !== 0x0a &&
+        (codePoint <= 0x1f || codePoint === 0x7f)
+        ? " "
+        : character;
+    })
+    .join("");
 }
 
 function boundUtf8Text(value: string): string {

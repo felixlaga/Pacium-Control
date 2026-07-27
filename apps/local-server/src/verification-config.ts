@@ -27,21 +27,21 @@ const DisplayTextSchema = (maximum: number) =>
     .string()
     .min(1)
     .max(maximum)
-    .refine((value) => !/[\u0000-\u001f\u007f]/u.test(value));
+    .refine((value) => !hasControlCharacter(value));
 const PathSchema = z
   .string()
   .min(1)
   .max(4096)
   .refine((value) => isAbsolute(value), "Path must be absolute.")
   .refine(
-    (value) => !/[\u0000-\u001f\u007f]/u.test(value),
+    (value) => !hasControlCharacter(value),
     "Path contains control characters.",
   );
 const ArgumentSchema = z
   .string()
   .max(MAX_VERIFICATION_ARGUMENT_LENGTH)
   .refine(
-    (value) => !/[\u0000-\u001f\u007f]/u.test(value),
+    (value) => !hasControlCharacter(value),
     "Argument contains control characters.",
   );
 
@@ -206,4 +206,11 @@ function isWithin(parent: string, candidate: string): boolean {
       pathFromParent !== ".." &&
       !isAbsolute(pathFromParent))
   );
+}
+
+function hasControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint !== undefined && (codePoint <= 0x1f || codePoint === 0x7f);
+  });
 }

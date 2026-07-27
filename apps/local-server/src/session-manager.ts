@@ -38,8 +38,8 @@ import {
   type VerificationPresetDefinition,
 } from "./verification-config.js";
 import {
-  VerificationRunner,
   VerificationRunnerError,
+  type VerificationRunner,
 } from "./verification-runner.js";
 
 type SerializeAddonConstructor = new () => SerializeAddonInstance;
