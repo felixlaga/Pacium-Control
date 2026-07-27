@@ -158,6 +158,12 @@ describe("queue decision store append", () => {
       revision: 1,
       decisions: [decision],
     });
+    const restartedStore = new QueueDecisionStore(dataDirectory);
+    await expect(restartedStore.inspect()).resolves.toMatchObject({
+      status: "ready",
+      revision: 1,
+      decisions: [decision],
+    });
     expect(await readdir(dataDirectory)).toEqual(["queue-state.json"]);
   });
 
