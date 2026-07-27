@@ -1721,6 +1721,107 @@ kbd {
   min-width: 0;
 }
 
+.diff-line {
+  display: grid;
+  min-height: 20px;
+  grid-template-columns: 31px 31px minmax(180px, 1fr);
+  color: var(--text-muted);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.diff-line + .diff-line {
+  border-top: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+}
+
+.diff-old-line,
+.diff-new-line {
+  padding: 3px 4px;
+  border-right: 1px solid var(--border);
+  color: var(--text-faint);
+  background: color-mix(in srgb, var(--panel-soft) 62%, transparent);
+  text-align: right;
+  user-select: none;
+}
+
+.diff-line > code {
+  min-width: 0;
+  padding: 3px 7px;
+  color: inherit;
+  font: inherit;
+  white-space: pre;
+}
+
+.diff-document.is-wrapped .diff-line {
+  grid-template-columns: 31px 31px minmax(0, 1fr);
+}
+
+.diff-document.is-wrapped .diff-line > code {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.diff-line.is-diff_header {
+  color: var(--text);
+  background: var(--panel-soft);
+  font-weight: 600;
+}
+
+.diff-line.is-file_header,
+.diff-line.is-metadata {
+  color: var(--text-faint);
+}
+
+.diff-line.is-addition {
+  color: color-mix(in srgb, var(--green) 78%, var(--text));
+  background: color-mix(in srgb, var(--green) 8%, transparent);
+}
+
+.diff-line.is-deletion {
+  color: color-mix(in srgb, var(--red) 78%, var(--text));
+  background: color-mix(in srgb, var(--red) 8%, transparent);
+}
+
+.diff-line.is-hunk_header {
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+.diff-line.is-hunk_header > button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 7px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  white-space: pre;
+}
+
+.diff-line.is-hunk_header > button:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.diff-line.is-hunk_header > button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.diff-line.is-hunk_header > button small {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  font: inherit;
+}
+
+.diff-line.is-search-match {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber) 62%, transparent);
+}
+
 .repository-diff-panel > footer {
   display: flex;
   justify-content: space-between;
