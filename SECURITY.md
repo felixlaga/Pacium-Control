@@ -79,6 +79,28 @@ Coding agents process untrusted repository instructions. The interface must:
 - avoid executing commands parsed from queue or repository text;
 - show Git and verification evidence independently of agent narration.
 
+## Verification command boundary
+
+- Verification is disabled unless the operator supplies an absolute external
+  versioned configuration file at startup.
+- Reject configuration files inside configured repositories so repository
+  content cannot silently redefine an allowed check.
+- Canonicalize repository roots and executable files before accepting the
+  catalog.
+- Browser requests select only a live session, configured preset ID, or active
+  run ID. They never supply an executable, argument, cwd, environment, timeout,
+  or signal.
+- Spawn the exact configured executable and argument vector with no implicit
+  shell and only the bounded child-environment allowlist.
+- Limit active processes, runtime, cancellation grace, output bytes, retained
+  results, and serialized messages.
+- Treat verification output as untrusted text; normalize terminal controls and
+  never send it to a PTY or interpret it as HTML.
+- Associate results with fresh start/end HEAD observations without claiming the
+  live working tree was frozen.
+- Terminate tracked verification groups on graceful shutdown. A hard crash has
+  unknown process outcome and requires OS-level inspection before retry.
+
 ## Secrets and retention
 
 Never persist:
