@@ -1,6 +1,7 @@
 import type { SessionSummary } from "@pacium/contracts";
 
 import { sessionActionAvailability } from "./session-actions-model.js";
+import type { WorkspaceMode } from "./workspace-mode.js";
 
 export const MAX_PALETTE_SESSION_ENTRIES = 100;
 export const MAX_PALETTE_RESULTS = 40;
@@ -15,6 +16,7 @@ export type PaletteCommandAction =
   | { type: "open-settings" }
   | { type: "toggle-sidebar" }
   | { type: "toggle-inspector" }
+  | { type: "toggle-workspace-mode" }
   | { type: "select-session"; sessionId: string }
   | { type: "rename-session"; sessionId: string }
   | { type: "duplicate-session"; sessionId: string }
@@ -48,6 +50,7 @@ export interface PaletteCatalogInput {
   sessions: SessionSummary[];
   sidebarOpen?: boolean;
   inspectorOpen?: boolean;
+  workspaceMode?: WorkspaceMode;
 }
 
 export interface ShortcutReference {
@@ -100,6 +103,13 @@ export const SHORTCUT_REFERENCE: ShortcutReference[] = [
     detail: "Open the launch preset and host-folder flow",
     shortcut: "⌘⇧T",
     keywords: ["create", "launch"],
+  },
+  {
+    id: "workspace-mode",
+    label: "Toggle General or Pacium mode",
+    detail: "Changes presentation without changing terminals or layout",
+    shortcut: "G P",
+    keywords: ["general", "pacium", "mode", "workspace"],
   },
   {
     id: "select-tab",
@@ -289,12 +299,25 @@ export function buildPaletteCatalog(
 
   commands.push(
     command({
+      id: "workspace.toggle-mode",
+      action: { type: "toggle-workspace-mode" },
+      label:
+        input.workspaceMode === "pacium"
+          ? "Switch to General mode"
+          : "Switch to Pacium mode",
+      detail: "Change workspace emphasis; terminals and layout stay unchanged",
+      group: "Workspace",
+      rank: 26,
+      shortcut: "G P",
+      keywords: ["general", "pacium", "mode", "workspace", "toggle"],
+    }),
+    command({
       id: "workspace.show-shortcuts",
       action: { type: "show-shortcuts" },
       label: "Show keyboard shortcuts",
       detail: "Open the searchable shortcut reference",
       group: "Workspace",
-      rank: 26,
+      rank: 27,
       shortcut: "?",
       keywords: ["help", "keys", "reference"],
     }),
@@ -304,7 +327,7 @@ export function buildPaletteCatalog(
       label: "Open workspace settings",
       detail: "Theme, density, terminal display, and launch defaults",
       group: "Workspace",
-      rank: 27,
+      rank: 28,
       shortcut: "⌘,",
       keywords: ["preferences", "appearance", "font", "scrollback"],
     }),
@@ -314,7 +337,7 @@ export function buildPaletteCatalog(
       label: `${input.sidebarOpen === false ? "Show" : "Hide"} session sidebar`,
       detail: "Navigation visibility only; terminals keep running",
       group: "Workspace",
-      rank: 28,
+      rank: 29,
       shortcut: "⌘B",
       keywords: ["sessions", "navigation", "panel"],
     }),
@@ -324,7 +347,7 @@ export function buildPaletteCatalog(
       label: `${input.inspectorOpen === false ? "Show" : "Hide"} inspector`,
       detail: "Context visibility only; terminal focus is unchanged",
       group: "Workspace",
-      rank: 29,
+      rank: 30,
       shortcut: "⌘⇧B",
       keywords: ["details", "context", "panel"],
     }),

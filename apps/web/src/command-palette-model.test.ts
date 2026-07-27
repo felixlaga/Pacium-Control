@@ -135,6 +135,41 @@ describe("command palette catalog", () => {
     ).toEqual(expect.objectContaining({ label: "Restore split layout" }));
   });
 
+  it("offers one current-mode-aware presentation command", () => {
+    const general = buildPaletteCatalog({
+      focusedPaneId: "pane-1",
+      maximizedPaneId: null,
+      paneCount: 1,
+      selectedSessionId: null,
+      sessions: [],
+      workspaceMode: "general",
+    });
+    expect(
+      general.find(({ id }) => id === "workspace.toggle-mode"),
+    ).toMatchObject({
+      action: { type: "toggle-workspace-mode" },
+      label: "Switch to Pacium mode",
+      shortcut: "G P",
+    });
+
+    const pacium = buildPaletteCatalog({
+      focusedPaneId: "pane-1",
+      maximizedPaneId: null,
+      paneCount: 1,
+      selectedSessionId: null,
+      sessions: [],
+      workspaceMode: "pacium",
+    });
+    expect(
+      pacium.find(({ id }) => id === "workspace.toggle-mode"),
+    ).toMatchObject({
+      label: "Switch to General mode",
+    });
+    expect(
+      searchPaletteCommands(pacium, "general mode").map(({ id }) => id),
+    ).toContain("workspace.toggle-mode");
+  });
+
   it("bounds session-derived commands", () => {
     const sessions = Array.from(
       { length: MAX_PALETTE_SESSION_ENTRIES + 20 },
@@ -251,6 +286,7 @@ describe("command palette catalog", () => {
 
   it("provides a searchable reference only for implemented shortcuts", () => {
     expect(SHORTCUT_REFERENCE.map(({ id }) => id)).toContain("palette");
+    expect(SHORTCUT_REFERENCE.map(({ id }) => id)).toContain("workspace-mode");
     expect(
       searchShortcutReference("terminal capture").map(({ id }) => id),
     ).toEqual(["shortcut-reference", "focus-pane", "leave-terminal"]);

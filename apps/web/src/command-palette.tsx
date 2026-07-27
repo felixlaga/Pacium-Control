@@ -313,6 +313,8 @@ function commandIcon(command: PaletteCommand): string {
       return "▌";
     case "toggle-inspector":
       return "▐";
+    case "toggle-workspace-mode":
+      return "◐";
     case "select-session":
       return "›";
     case "rename-session":
