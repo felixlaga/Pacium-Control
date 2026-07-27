@@ -64,6 +64,16 @@ export class WebSocketHub {
         this.broadcast({ type: "session.exited", session: event.session });
         return;
       }
+      if (event.type === "verification") {
+        this.broadcast(
+          boundVerificationResponse({
+            type: "repository.verification.updated",
+            sessionId: event.sessionId,
+            observation: event.observation,
+          }),
+        );
+        return;
+      }
 
       for (const client of this.clients) {
         client.subscriptions.delete(event.sessionId);
@@ -310,6 +320,47 @@ export class WebSocketHub {
         );
         return;
       }
+      case "repository.verification.inspect":
+        this.send(
+          client.socket,
+          boundVerificationResponse({
+            type: "repository.verification",
+            requestId: message.requestId,
+            sessionId: message.sessionId,
+            observation: this.sessions.repositoryVerification(
+              message.sessionId,
+            ),
+          }),
+        );
+        return;
+      case "repository.verification.run":
+        this.send(
+          client.socket,
+          boundVerificationResponse({
+            type: "repository.verification",
+            requestId: message.requestId,
+            sessionId: message.sessionId,
+            observation: await this.sessions.runRepositoryVerification(
+              message.sessionId,
+              message.presetId,
+            ),
+          }),
+        );
+        return;
+      case "repository.verification.cancel":
+        this.send(
+          client.socket,
+          boundVerificationResponse({
+            type: "repository.verification",
+            requestId: message.requestId,
+            sessionId: message.sessionId,
+            observation: this.sessions.cancelRepositoryVerification(
+              message.sessionId,
+              message.runId,
+            ),
+          }),
+        );
+        return;
       case "session.close":
         this.sessions.close(
           message.sessionId,
@@ -414,6 +465,39 @@ export function boundRepositoryHistoryResponse(
       error: {
         code: "invalid_output",
         message: "Git returned invalid or excessive commit history.",
+      },
+    },
+  };
+}
+
+type VerificationResponse = Extract<
+  ServerMessage,
+  {
+    type: "repository.verification" | "repository.verification.updated";
+  }
+>;
+
+export function boundVerificationResponse<T extends VerificationResponse>(
+  message: T,
+): T {
+  if (
+    Buffer.byteLength(JSON.stringify(message)) <= MAX_APPLICATION_MESSAGE_BYTES
+  ) {
+    return message;
+  }
+  return {
+    ...message,
+    observation: {
+      status: "error",
+      configured: message.observation.configured,
+      root: message.observation.root,
+      observedAt: message.observation.observedAt,
+      presets: [],
+      run: null,
+      error: {
+        code: "invalid_state",
+        message:
+          "Verification configuration or output exceeds the application message bound.",
       },
     },
   };
