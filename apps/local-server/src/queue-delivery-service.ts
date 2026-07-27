@@ -99,6 +99,10 @@ export class QueueDeliveryService {
     return "state" in resolved ? resolved.state : readyState(resolved);
   }
 
+  public isActive(deliveryId: string): boolean {
+    return this.activeDeliveries.has(deliveryId);
+  }
+
   public async deliver(
     decisionId: string,
     decisionHash: string,

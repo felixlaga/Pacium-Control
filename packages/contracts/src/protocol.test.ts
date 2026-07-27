@@ -48,7 +48,7 @@ describe("terminal binary frames", () => {
 
 describe("client protocol", () => {
   it("advances the wire contract for explicit decision delivery", () => {
-    expect(PROTOCOL_VERSION).toBe(15);
+    expect(PROTOCOL_VERSION).toBe(16);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -307,6 +307,7 @@ describe("client protocol", () => {
           error: null,
         },
         deliveryState: null,
+        reconciliation: null,
       }).success,
     ).toBe(true);
     const decided = {
@@ -359,6 +360,21 @@ describe("client protocol", () => {
             message: "This queue source has no configured delivery method.",
           },
         },
+        reconciliation: {
+          decisionId: decided.decisionId,
+          decisionHash: decided.decisionHash,
+          conflicts: [],
+          priorDecisions: { decisions: [], truncated: false },
+          attempts: [],
+          artifact: null,
+          lifecycle: {
+            status: "awaiting_evidence",
+            current: null,
+            history: [],
+            historyTruncated: false,
+          },
+          retry: { status: "not_applicable" },
+        },
       }).success,
     ).toBe(true);
     expect(
@@ -382,6 +398,7 @@ describe("client protocol", () => {
           error: null,
         },
         deliveryState: null,
+        reconciliation: null,
       }).success,
     ).toBe(false);
     expect(
@@ -408,6 +425,7 @@ describe("client protocol", () => {
           error: null,
         },
         deliveryState: null,
+        reconciliation: null,
       }).success,
     ).toBe(false);
   });
@@ -525,6 +543,50 @@ describe("client protocol", () => {
               code: "DELIVERY_NOT_CONFIGURED",
               message: "This queue source has no configured delivery method.",
             },
+          },
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts only bounded lifecycle resolution authority", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    const request = {
+      type: "pacium.queue.decision.resolve",
+      requestId,
+      decisionId: "28c9142a-8986-43c7-9451-445fd8c13c3e",
+      decisionHash: "c".repeat(64),
+      action: "acknowledged",
+      delivery: {
+        deliveryId: "4699b11f-94d3-430a-960e-1c574a03db41",
+        deliveryHash: "d".repeat(64),
+      },
+      relatedDecision: null,
+      note: null,
+    };
+    expect(ClientMessageSchema.safeParse(request).success).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        ...request,
+        actor: "remote-user",
+        path: "/tmp/answers",
+        providerAcknowledged: true,
+        retry: true,
+      }).success,
+    ).toBe(false);
+    expect(
+      ServerMessageSchema.safeParse({
+        type: "pacium.queue.resolution",
+        requestId,
+        result: {
+          status: "rejected",
+          decisionId: request.decisionId,
+          decisionHash: request.decisionHash,
+          resolution: null,
+          error: {
+            code: "RESOLUTION_TRANSITION_INVALID",
+            message:
+              "This lifecycle change is not valid from the current immutable state.",
           },
         },
       }).success,

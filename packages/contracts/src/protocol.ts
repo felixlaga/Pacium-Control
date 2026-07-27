@@ -14,13 +14,18 @@ import {
   QueueDeliveryResultSchema,
   QueueDeliveryStateSchema,
 } from "./queue-delivery.js";
+import { QueueItemReconciliationSchema } from "./queue-item-reconciliation.js";
 import {
   QueueItemInspectionIdentitySchema,
   QueueItemInspectionSchema,
 } from "./queue-item-inspection.js";
 import { QueueSourcesObservationSchema } from "./queue-observation.js";
+import {
+  QueueResolutionRequestSchema,
+  QueueResolutionResultSchema,
+} from "./queue-reconciliation.js";
 
-export const PROTOCOL_VERSION = 15 as const;
+export const PROTOCOL_VERSION = 16 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -1230,6 +1235,13 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
       decisionHash: z.string().regex(/^[0-9a-f]{64}$/),
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("pacium.queue.decision.resolve"),
+      requestId: RequestIdSchema,
+      ...QueueResolutionRequestSchema.shape,
+    })
+    .strict(),
   z.object({
     type: z.literal("session.close"),
     requestId: RequestIdSchema,
@@ -1334,6 +1346,7 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
       inspection: QueueItemInspectionSchema,
       decisionState: QueueItemDecisionStateSchema.nullable(),
       deliveryState: QueueDeliveryStateSchema.nullable(),
+      reconciliation: QueueItemReconciliationSchema.nullable(),
     })
     .strict()
     .superRefine((message, context) => {
@@ -1357,6 +1370,13 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
             "Only a decided queue item inspection contains delivery state.",
         });
       }
+      if (decided !== (message.reconciliation !== null)) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Only a decided queue item inspection contains reconciliation state.",
+        });
+      }
       if (
         message.decisionState?.status === "decided" &&
         message.decisionState.decision !== null &&
@@ -1372,6 +1392,21 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
             "Queue item delivery state must reference its immutable decision.",
         });
       }
+      if (
+        message.decisionState?.status === "decided" &&
+        message.decisionState.decision !== null &&
+        message.reconciliation !== null &&
+        (message.reconciliation.decisionId !==
+          message.decisionState.decision.decisionId ||
+          message.reconciliation.decisionHash !==
+            message.decisionState.decision.decisionHash)
+      ) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Queue item reconciliation must reference its immutable decision.",
+        });
+      }
     }),
   z
     .object({
@@ -1385,6 +1420,13 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
       type: z.literal("pacium.queue.delivery"),
       requestId: RequestIdSchema,
       result: QueueDeliveryResultSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("pacium.queue.resolution"),
+      requestId: RequestIdSchema,
+      result: QueueResolutionResultSchema,
     })
     .strict(),
   z.object({

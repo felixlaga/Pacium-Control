@@ -15,6 +15,7 @@ import { FakePtyFactory } from "@pacium/test-utils";
 import {
   decodeTerminalDataFrame,
   DirectoryListingSchema,
+  PROTOCOL_VERSION,
   ServerMessageSchema,
   type PaciumWorkspace,
   type ServerMessage,
@@ -85,7 +86,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     );
     expect(welcome).toMatchObject({
       type: "server.welcome",
-      protocolVersion: 15,
+      protocolVersion: PROTOCOL_VERSION,
       capabilities: {
         launchPresets: [
           { id: "shell", available: true },
