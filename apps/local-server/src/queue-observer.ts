@@ -132,7 +132,11 @@ export class QueueObserver {
     const sourceObservedAt =
       sourceState?.observation.observedAt ?? this.aggregate.observedAt;
     const common = {
-      ...identity,
+      workspaceRevision: identity.workspaceRevision,
+      sourceId: identity.sourceId,
+      observationRevision: identity.observationRevision,
+      contentHash: identity.contentHash,
+      itemId: identity.itemId,
       sourceObservedAt,
     };
     if (this.aggregate.status !== "ready" || this.disposed) {

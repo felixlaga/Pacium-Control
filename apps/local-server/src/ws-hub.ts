@@ -425,6 +425,13 @@ export class WebSocketHub {
         });
         return;
       }
+      case "pacium.queue.item.inspect":
+        this.send(client.socket, {
+          type: "pacium.queue.item",
+          requestId: message.requestId,
+          inspection: this.queueObserver.inspectItem(message),
+        });
+        return;
       case "session.close":
         this.sessions.close(
           message.sessionId,

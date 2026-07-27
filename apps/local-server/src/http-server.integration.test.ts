@@ -329,7 +329,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await once(client.socket, "close");
   });
 
-  it("observes configured queue files without sending content or mutating files", async () => {
+  it("observes and inspects exact queue items without mutating files", async () => {
     const queueDirectory = await mkdtemp(join(tmpdir(), "pacium-queue-http-"));
     temporaryDirectories.push(queueDirectory);
     const queuePath = join(queueDirectory, "NEEDS-FELIX");
@@ -422,6 +422,53 @@ describe("localhost HTTP and WebSocket boundary", () => {
     expect(firstSource?.classification).not.toHaveProperty("originalText");
     const firstItemId = firstSource?.classification?.candidate?.itemId;
     const firstRevision = firstSource?.observationRevision ?? 0;
+    const firstContentHash = firstSource?.contentHash;
+    if (firstItemId === undefined || firstContentHash == null) {
+      throw new Error("Expected a complete queue item identity");
+    }
+
+    const firstIdentity = {
+      workspaceRevision: observed.observation.workspaceRevision!,
+      sourceId: "needs-felix",
+      observationRevision: firstRevision,
+      contentHash: firstContentHash,
+      itemId: firstItemId,
+    };
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.item.inspect",
+        requestId: "59ee4f55-07d8-4d11-9ba2-1fd4f87de72b",
+        ...firstIdentity,
+      }),
+    );
+    const inspected = await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.queue.item" &&
+        message.requestId === "59ee4f55-07d8-4d11-9ba2-1fd4f87de72b",
+      "queue item inspection response",
+    );
+    expect(inspected).toMatchObject({
+      inspection: {
+        status: "ready",
+        ...firstIdentity,
+        encoding: "utf8_base64",
+        error: null,
+      },
+    });
+    if (
+      inspected.type !== "pacium.queue.item" ||
+      inspected.inspection.status !== "ready"
+    ) {
+      throw new Error("Expected a ready queue item inspection");
+    }
+    expect(
+      Buffer.from(
+        inspected.inspection.originalTextBase64,
+        "base64",
+      ).toString("utf8"),
+    ).toBe("Can you approve everything?\n");
+    expect(JSON.stringify(inspected)).not.toContain("approve everything");
 
     await writeFile(queuePath, "Approval request: Run exact migration\n", {
       mode: 0o600,
@@ -467,6 +514,27 @@ describe("localhost HTTP and WebSocket boundary", () => {
     expect(
       updated.observation.sources[0]?.classification?.candidate?.itemId,
     ).not.toBe(firstItemId);
+    client.socket.send(
+      JSON.stringify({
+        type: "pacium.queue.item.inspect",
+        requestId: "977e17cf-d892-4940-b4ba-6c535242758d",
+        ...firstIdentity,
+      }),
+    );
+    const stale = await nextMessageWithin(
+      client,
+      (message) =>
+        message.type === "pacium.queue.item" &&
+        message.requestId === "977e17cf-d892-4940-b4ba-6c535242758d",
+      "stale queue item response",
+    );
+    expect(stale).toMatchObject({
+      inspection: {
+        status: "stale",
+        originalTextBase64: null,
+        error: { code: "ITEM_STALE" },
+      },
+    });
     await expect(readFile(queuePath, "utf8")).resolves.toBe(
       "Approval request: Run exact migration\n",
     );
