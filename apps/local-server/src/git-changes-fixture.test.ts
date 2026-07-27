@@ -1,5 +1,3 @@
-import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
 import {
   appendFile,
   mkdtemp,
@@ -15,14 +13,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { inspectGitChanges } from "./git-changes.js";
-import type {
-  GitCommandResult,
-  GitCommandRunner,
-} from "./repository-context.js";
+import {
+  runGitFixture,
+  runGitOk,
+  runGitProcess,
+} from "./git-fixture-test-utils.js";
 
-const xcodeGit = "/Applications/Xcode.app/Contents/Developer/usr/bin/git";
-const gitExecutable =
-  process.platform === "darwin" && existsSync(xcodeGit) ? xcodeGit : "git";
 const observedAt = "2026-07-27T10:00:00.000Z";
 
 describe("changed-file inspection against a Git fixture", () => {
@@ -163,39 +159,3 @@ describe("changed-file inspection against a Git fixture", () => {
     }
   });
 });
-
-const runGitFixture: GitCommandRunner = (cwd, args) =>
-  runGitProcess(cwd, [...args]);
-
-async function runGitOk(cwd: string, args: string[]): Promise<void> {
-  const result = await runGitProcess(cwd, args);
-  if (result.exitCode !== 0) {
-    throw new Error(`Git fixture command failed: ${result.stderr}`);
-  }
-}
-
-function runGitProcess(cwd: string, args: string[]): Promise<GitCommandResult> {
-  return new Promise((resolve) => {
-    execFile(
-      gitExecutable,
-      args,
-      {
-        cwd,
-        encoding: "utf8",
-        maxBuffer: 1024 * 1024,
-      },
-      (error, stdout, stderr) => {
-        resolve({
-          exitCode:
-            error === null
-              ? 0
-              : typeof error.code === "number"
-                ? error.code
-                : 1,
-          stdout,
-          stderr,
-        });
-      },
-    );
-  });
-}
