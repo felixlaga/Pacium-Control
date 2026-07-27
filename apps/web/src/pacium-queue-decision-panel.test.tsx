@@ -78,6 +78,7 @@ function render(state: PaciumQueueInspectionState): string {
       onDeliver={() => undefined}
       onRecordApproval={() => undefined}
       onRecordQuestion={() => undefined}
+      onResolve={() => undefined}
       state={state}
     />,
   );

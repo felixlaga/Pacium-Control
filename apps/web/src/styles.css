@@ -2300,6 +2300,118 @@ kbd {
   line-height: 1.4;
 }
 
+.queue-resolution-actions,
+.queue-resolution-confirmation {
+  display: grid;
+  gap: 7px;
+}
+
+.queue-resolution-actions h4 {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.queue-resolution-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.queue-resolution-actions button,
+.queue-resolution-confirmation button {
+  min-height: 26px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--panel-raised);
+  cursor: pointer;
+  font: inherit;
+  font-size: 8px;
+}
+
+.queue-resolution-confirmation {
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--amber) 4%, var(--panel-raised));
+}
+
+.queue-resolution-confirmation > strong {
+  color: var(--text);
+  font-size: 9px;
+}
+
+.queue-resolution-confirmation > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.queue-resolution-confirmation label {
+  display: grid;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.queue-resolution-confirmation label > span,
+.queue-resolution-confirmation > small {
+  color: var(--text-faint);
+}
+
+.queue-resolution-confirmation textarea,
+.queue-resolution-confirmation select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  background: var(--bg);
+  font: inherit;
+  font-size: 9px;
+}
+
+.queue-resolution-confirmation textarea {
+  resize: vertical;
+}
+
+.queue-resolution-confirmation > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.queue-resolution-confirmation > div button:last-child {
+  border-color: var(--accent-strong);
+  color: var(--bg);
+  background: var(--accent-strong);
+}
+
+.queue-resolution-actions button:disabled,
+.queue-resolution-confirmation button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.queue-resolution-error {
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--red) 40%, var(--border));
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--red) 4%, transparent);
+  font-size: 8px;
+}
+
+.queue-resolution-error p {
+  margin: 4px 0 0;
+  line-height: 1.45;
+}
+
 .queue-delivery-panel .inspector-section-heading {
   margin: 0;
 }

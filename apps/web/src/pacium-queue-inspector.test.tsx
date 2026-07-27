@@ -15,6 +15,7 @@ describe("Pacium queue item inspector", () => {
         onDeliver={() => undefined}
         onRecordApproval={() => undefined}
         onRecordQuestion={() => undefined}
+        onResolve={() => undefined}
         requestingSessionLabel="Meta shell"
         state={state}
       />,
@@ -44,6 +45,7 @@ describe("Pacium queue item inspector", () => {
         onDeliver={() => undefined}
         onRecordApproval={() => undefined}
         onRecordQuestion={() => undefined}
+        onResolve={() => undefined}
         requestingSessionLabel={null}
         state={{
           ...ready("Private answer"),
@@ -63,6 +65,7 @@ describe("Pacium queue item inspector", () => {
         onDeliver={() => undefined}
         onRecordApproval={() => undefined}
         onRecordQuestion={() => undefined}
+        onResolve={() => undefined}
         requestingSessionLabel={null}
         state={{
           ...ready("Private answer"),

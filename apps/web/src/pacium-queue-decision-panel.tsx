@@ -5,6 +5,7 @@ import {
   type QueueApprovalDecisionPayload,
   type QueueDecisionRecord,
   type QueueQuestionAnswerPayload,
+  type QueueResolutionRequest,
 } from "@pacium/contracts";
 
 import type { PaciumQueueInspectionState } from "./pacium-queue-inspection-model.js";
@@ -15,11 +16,13 @@ export function PaciumQueueDecisionPanel({
   onDeliver,
   onRecordApproval,
   onRecordQuestion,
+  onResolve,
   state,
 }: {
   onDeliver: () => void;
   onRecordApproval: (payload: QueueApprovalDecisionPayload) => void;
   onRecordQuestion: (payload: QueueQuestionAnswerPayload) => void;
+  onResolve: (request: QueueResolutionRequest) => void;
   state: PaciumQueueInspectionState;
 }) {
   const [answer, setAnswer] = useState("");
@@ -49,7 +52,10 @@ export function PaciumQueueDecisionPanel({
         <ImmutableDecision decision={state.decisionState.decision} />
         {state.reconciliation !== null && (
           <PaciumQueueReconciliationPanel
+            errorMessage={state.resolutionErrorMessage}
+            onResolve={onResolve}
             reconciliation={state.reconciliation}
+            status={state.resolutionStatus}
           />
         )}
         <PaciumQueueDeliveryPanel

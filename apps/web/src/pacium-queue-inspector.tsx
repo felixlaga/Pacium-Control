@@ -2,6 +2,7 @@ import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import type {
   QueueApprovalDecisionPayload,
   QueueQuestionAnswerPayload,
+  QueueResolutionRequest,
 } from "@pacium/contracts";
 
 import { PaciumQueueDecisionPanel } from "./pacium-queue-decision-panel.js";
@@ -18,6 +19,7 @@ export function PaciumQueueInspector({
   onDeliver,
   onRecordApproval,
   onRecordQuestion,
+  onResolve,
   requestingSessionLabel,
   state,
 }: {
@@ -25,6 +27,7 @@ export function PaciumQueueInspector({
   onDeliver: () => void;
   onRecordApproval: (payload: QueueApprovalDecisionPayload) => void;
   onRecordQuestion: (payload: QueueQuestionAnswerPayload) => void;
+  onResolve: (request: QueueResolutionRequest) => void;
   requestingSessionLabel: string | null;
   state: PaciumQueueInspectionState;
 }) {
@@ -106,6 +109,7 @@ export function PaciumQueueInspector({
             onDeliver={onDeliver}
             onRecordApproval={onRecordApproval}
             onRecordQuestion={onRecordQuestion}
+            onResolve={onResolve}
             state={state}
           />
         </>

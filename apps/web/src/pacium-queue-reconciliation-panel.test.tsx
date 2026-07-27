@@ -7,6 +7,8 @@ describe("Pacium queue reconciliation panel", () => {
   it("keeps transport artifacts, conflicts, and human labels distinct", () => {
     const markup = renderToStaticMarkup(
       <PaciumQueueReconciliationPanel
+        errorMessage={null}
+        onResolve={() => undefined}
         reconciliation={{
           decisionId: "28c9142a-8986-43c7-9451-445fd8c13c3e",
           decisionHash: "c".repeat(64),
@@ -48,6 +50,7 @@ describe("Pacium queue reconciliation panel", () => {
           },
           retry: { status: "not_applicable" },
         }}
+        status="idle"
       />,
     );
 
@@ -59,6 +62,10 @@ describe("Pacium queue reconciliation panel", () => {
     expect(markup).toContain("Acknowledged · human-labelled");
     expect(markup).toContain("Source changed after decision");
     expect(markup).toContain("Other decisions from this source");
+    expect(markup).toContain("Mark applied");
+    expect(markup).toContain("Mark unable to apply");
+    expect(markup).toContain("Mark superseded");
+    expect(markup).not.toContain("Confirm not delivered");
     expect(markup).not.toContain("ffffffff");
     expect(markup).not.toContain("bbbbbbbb");
   });

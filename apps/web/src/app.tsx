@@ -20,6 +20,7 @@ import type {
   QueueApprovalDecisionPayload,
   QueueDeliveryResult,
   QueueQuestionAnswerPayload,
+  QueueResolutionRequest,
   ServerMessage,
   SessionSummary,
   TerminalDataFrame,
@@ -112,6 +113,7 @@ import {
   beginQueueDecision,
   beginQueueDelivery,
   beginQueueItemInspection,
+  beginQueueResolution,
   closeQueueItemInspection,
   interruptQueueItemInspection,
   interruptQueueResolution,
@@ -2381,12 +2383,15 @@ export function App() {
   const deliverQueueDecision = () => {
     const transport = transportRef.current;
     const current = paciumQueueInspectionRef.current;
+    const deliveryState = current.deliveryState;
     if (
       connection !== "connected" ||
       transport === null ||
       current.status !== "ready" ||
       current.decisionState?.status !== "decided" ||
-      current.deliveryState?.status !== "ready"
+      deliveryState === null ||
+      (deliveryState.status !== "ready" &&
+        deliveryState.status !== "ready_retry")
     ) {
       setNotice(
         "This exact immutable decision is not ready for delivery. No target or terminal was changed.",
@@ -2402,9 +2407,43 @@ export function App() {
     paciumQueueInspectionRef.current = submitting;
     setPaciumQueueInspection(submitting);
     setNotice(
-      current.deliveryState.target.type === "answer_file"
-        ? "Publishing the immutable decision to the one accepted answer-file target. Existing files are never overwritten."
-        : `Sending one comment-prefixed decision line to the accepted ${roleLabel(current.deliveryState.target.role)} session. Terminal acceptance will not confirm agent handling.`,
+      deliveryState.status === "ready_retry"
+        ? "Sending the sole human-unlocked retry to the revalidated exact target. The first attempt remains immutable."
+        : deliveryState.target.type === "answer_file"
+          ? "Publishing the immutable decision to the one accepted answer-file target. Existing files are never overwritten."
+          : `Sending one comment-prefixed decision line to the accepted ${roleLabel(deliveryState.target.role)} session. Terminal acceptance will not confirm agent handling.`,
+    );
+  };
+
+  const resolveQueueDecision = (request: QueueResolutionRequest) => {
+    const transport = transportRef.current;
+    const current = paciumQueueInspectionRef.current;
+    const decision =
+      current.decisionState?.status === "decided"
+        ? current.decisionState.decision
+        : null;
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      current.status !== "ready" ||
+      current.reconciliation === null ||
+      decision === null ||
+      request.decisionId !== decision.decisionId ||
+      request.decisionHash !== decision.decisionHash
+    ) {
+      setNotice(
+        "This exact decision is not ready for a lifecycle label. External state was not changed.",
+      );
+      return;
+    }
+    const requestId = transport.resolveQueueDecision(request);
+    const submitting = beginQueueResolution(current, requestId, request);
+    paciumQueueInspectionRef.current = submitting;
+    setPaciumQueueInspection(submitting);
+    setNotice(
+      request.action === "confirmed_not_delivered"
+        ? "Recording human confirmation only. This does not send the retry."
+        : "Recording one human-labelled lifecycle record. No queue text or requested action is executed.",
     );
   };
 
@@ -3239,6 +3278,7 @@ export function App() {
             onDeliver={deliverQueueDecision}
             onRecordApproval={recordQueueApprovalDecision}
             onRecordQuestion={recordQueueQuestionAnswer}
+            onResolve={resolveQueueDecision}
             requestingSessionLabel={queueRequestingSessionLabel}
             state={paciumQueueInspection}
           />
