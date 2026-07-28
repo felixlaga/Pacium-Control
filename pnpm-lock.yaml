@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  node-pty@1.1.0: a57bd1ac10a271649998633c3d102aa02374458008f631d59e9d9eb30ff28f1e
+  node-pty@1.1.0: 88cc80739410e3aab3f7685b32deeeffb7ef39d89584e52c90f479b513be2c81
 
 importers:
   .:
@@ -54,7 +54,7 @@ importers:
         version: 6.0.0
       node-pty:
         specifier: 1.1.0
-        version: 1.1.0(patch_hash=a57bd1ac10a271649998633c3d102aa02374458008f631d59e9d9eb30ff28f1e)
+        version: 1.1.0(patch_hash=88cc80739410e3aab3f7685b32deeeffb7ef39d89584e52c90f479b513be2c81)
       ws:
         specifier: 8.21.1
         version: 8.21.1
@@ -3446,7 +3446,7 @@ snapshots:
 
   node-addon-api@7.1.1: {}
 
-  node-pty@1.1.0(patch_hash=a57bd1ac10a271649998633c3d102aa02374458008f631d59e9d9eb30ff28f1e):
+  node-pty@1.1.0(patch_hash=88cc80739410e3aab3f7685b32deeeffb7ef39d89584e52c90f479b513be2c81):
     dependencies:
       node-addon-api: 7.1.1
 

@@ -1,3 +1,35 @@
+diff --git a/binding.gyp b/binding.gyp
+index 5f63978b07ab50aaf7523219a2170ec737a6b5db..a21042070591e83cec2be4c37081ee1af9c5ee44 100644
+--- a/binding.gyp
++++ b/binding.gyp
+@@ -88,6 +88,14 @@
+               'libraries!': [
+                 '-lutil'
+               ]
++            }],
++            ['OS=="mac"', {
++              'xcode_settings': {
++                'OTHER_LDFLAGS': [
++                  '-Wl,-S',
++                  '-Wl,-x'
++                ]
++              }
+             }]
+           ]
+         }
+@@ -102,7 +110,11 @@
+             'src/unix/spawn-helper.cc',
+           ],
+           "xcode_settings": {
+-            "MACOSX_DEPLOYMENT_TARGET":"10.7"
++            "MACOSX_DEPLOYMENT_TARGET":"10.7",
++            "OTHER_LDFLAGS": [
++              "-Wl,-S",
++              "-Wl,-x"
++            ]
+           }
+         },
+       ]
 diff --git a/scripts/prebuild.js b/scripts/prebuild.js
 index 17f1d980e62e017d77058627a7a15c4c29f9470c..2737c251497ffe2afaeb4701d3d9614d4ec75db9 100644
 --- a/scripts/prebuild.js	
