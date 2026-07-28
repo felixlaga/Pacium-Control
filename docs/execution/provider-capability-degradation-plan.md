@@ -8,7 +8,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `82cfa7aa6bd1841af750d0599067c1acac06a334`
 - Target milestone: Epic 5 / PC-064
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -202,3 +202,25 @@ browser-local, and non-authoritative.
   primary.
 - Security: existing bounded contract only, field-value exclusion, no new
   authority, storage, or transport.
+
+## Result
+
+PC-064 is complete. Codex compatibility probes now distinguish unsupported
+runtime capabilities from unavailable version evidence; recoverable malformed
+events, fatal observer failures, and fresh recovery have separate health and
+diagnostic states. Claude version uncertainty is visible without disabling
+valid hook observation.
+
+Activity now presents health/freshness, provider and adapter versions,
+source/confidence, all bounded capabilities, safe diagnostic code/message/time,
+terminal independence, and fixed recovery guidance. Diagnostic scalar fields
+are excluded. A 30-second browser-only clock plus visibility refresh expires
+ready snapshots even without provider attention and performs no server or xterm
+poll.
+
+Focused evidence passed 81 tests. Full `pnpm verify` passed 125 test files and
+815 tests plus production builds, and all 16 Chromium workflows passed. A real
+Claude Code PTY canary sent no prompt and verified terminal focus, explicit
+fallback, reload clearing, narrow width, zoom, forced colors, and reduced
+motion. PC-065 relaunch manifests and PC-073 diagnostic export remain outside
+this completed slice.

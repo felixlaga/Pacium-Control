@@ -69,33 +69,33 @@ Codex observer-failure diagnostics.
 
 ## Acceptance criteria
 
-- [ ] A capability-probed Codex runtime missing required remote or App Server
+- [x] A capability-probed Codex runtime missing required remote or App Server
       surfaces is explicitly `unsupported`; version detection failure remains
       `unavailable`.
-- [ ] Fatal Codex observer transport failures become `failed`, recoverable
+- [x] Fatal Codex observer transport failures become `failed`, recoverable
       invalid events become `degraded`, and neither changes PTY process truth.
-- [ ] Fresh valid Codex evidence restores `ready` and clears transient
+- [x] Fresh valid Codex evidence restores `ready` and clears transient
       adapter-failure diagnostics.
-- [ ] Claude version-detection loss is a fixed bounded diagnostic while valid
+- [x] Claude version-detection loss is a fixed bounded diagnostic while valid
       hooks can still become ready.
-- [ ] Snapshot expiry becomes `stale` even without provider attention, and a
+- [x] Snapshot expiry becomes `stale` even without provider attention, and a
       bounded browser clock refreshes it without network or terminal polling.
-- [ ] Ready, unavailable, unsupported, degraded, failed, and stale fixtures
+- [x] Ready, unavailable, unsupported, degraded, failed, and stale fixtures
       produce deterministic labels, tones, summaries, and recovery copy.
-- [ ] Provider/adapter versions, source, confidence, timestamps, capability
+- [x] Provider/adapter versions, source, confidence, timestamps, capability
       availability, and safe diagnostic code/message/time are visible and
       bounded.
-- [ ] Diagnostic scalar fields and raw provider content are not projected or
+- [x] Diagnostic scalar fields and raw provider content are not projected or
       rendered.
-- [ ] The direct terminal remains available when its process is live; each
+- [x] The direct terminal remains available when its process is live; each
       degraded state offers the existing explicit terminal fallback and never
       implies task failure.
-- [ ] Shell sessions render no provider-status section and retain the existing
+- [x] Shell sessions render no provider-status section and retain the existing
       terminal fallback.
-- [ ] Session change, browser reconnect, provider recovery, 320 CSS px, 200%
+- [x] Session change, browser reconnect, provider recovery, 320 CSS px, 200%
       zoom, forced colors, reduced motion, focus, and keyboard behavior remain
       usable.
-- [ ] Full verification and browser workflows pass without changing protocol
+- [x] Full verification and browser workflows pass without changing protocol
       21, provider-control authority, queue authority, Git authority, terminal
       lifecycle, or Tailscale access.
 
@@ -195,3 +195,26 @@ state-specific explanation.
 - Stable supported provider-version ranges remain intentionally unspecified.
   Capability probing is authoritative for this slice; packaging and manual
   real-provider canaries remain later release gates.
+
+## Completion evidence
+
+- Focused Codex/Claude adapter, provider-status projection, semantic render,
+  recent-activity, and freshness-clock coverage passed 81 tests. Fixtures cover
+  unsupported versus unavailable capability evidence, degraded versus fatal
+  failure, fresh recovery, missing Claude version, every visible state,
+  snapshot expiry without attention, terminal independence, fixed recovery,
+  hostile text, and diagnostic-field exclusion.
+- `pnpm verify` passed formatting, lint, every workspace type check, 125 test
+  files and 815 tests, plus the 929.58 kB web JavaScript, 118.08 kB stylesheet,
+  and 411.54 kB local-server production bundles.
+- `pnpm test:e2e` passed all 16 Chromium workflows. The PC-064 canary launched
+  a real Claude Code PTY without sending a prompt, showed eight capability
+  rows and current provider status, focused the unchanged terminal, exercised
+  explicit fallback and reload invalidation, and remained usable at 320 CSS
+  px, 200% zoom, forced colors, and reduced motion.
+- Protocol 21, contract version 1, Tailscale authority, queue/Git/verification
+  authority, provider decision/control behavior, and durable state are
+  unchanged.
+- Verification used Node.js 26.4.0 instead of supported Node.js 24.18.x. The
+  supported-runtime clean-install and manual live-event provider canaries
+  remain release gates.
