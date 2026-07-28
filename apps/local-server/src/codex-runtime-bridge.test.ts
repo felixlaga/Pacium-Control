@@ -85,6 +85,29 @@ describe("Codex runtime bridge", () => {
     expect(child.kill).toHaveBeenCalledWith("SIGTERM");
   });
 
+  it("closes the private runtime when its PTY session is released", async () => {
+    const observer = createObserver();
+    observer.prepare(sessionId, now);
+    const child = new FakeChild();
+    bridge = new CodexRuntimeBridge(observer, () => child);
+    const setup = await startServer(bridge);
+    server = setup.server;
+    const webSocket = await connect(
+      `${setup.url}/api/provider/codex/${sessionId}/runtime`,
+      {
+        host: "127.0.0.1:4174",
+        authorization: `Bearer ${token}`,
+      },
+    );
+    const closed = once(webSocket, "close");
+
+    observer.release(sessionId);
+
+    await closed;
+    expect(child.kill).toHaveBeenCalledWith("SIGTERM");
+    expect(observer.claimBridge(sessionId, token)).toBeNull();
+  });
+
   it("rejects wrong authority, origins, tokens, paths, and a second client", async () => {
     const observer = createObserver();
     observer.prepare(sessionId, now);
