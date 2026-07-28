@@ -319,6 +319,45 @@ describe("recent provider activity", () => {
     expect(fact?.detail).not.toContain("transcript");
   });
 
+  it("shows bounded cumulative Codex usage without conversation content", () => {
+    const candidate = providerSession({
+      activities: [
+        {
+          id: "usage-1",
+          kind: "usage_updated",
+          source: "native",
+          confidence: "confirmed",
+          occurredAt: "2026-07-27T10:03:00.000Z",
+          observedAt: "2026-07-27T10:03:00.000Z",
+          summary: "Codex cumulative token usage updated.",
+          extension: {
+            provider: "codex",
+            eventType: "usage_update",
+            threadId: "thread-1",
+            turnId: null,
+            itemType: null,
+            modelContextWindow: 200_000,
+            totalInputTokens: 10_000,
+            totalCachedInputTokens: 8_000,
+            totalOutputTokens: 1_000,
+            totalReasoningOutputTokens: 400,
+            totalTokens: 11_000,
+          },
+        },
+      ],
+    });
+    const activity = buildRecentActivity(input(candidate));
+    const fact = activity.facts.find(({ source }) => source === "provider");
+
+    expect(fact).toMatchObject({
+      title: "Provider usage updated",
+      detail:
+        "Codex · Provider native · Confirmed · Codex cumulative token usage updated. · 200,000 token context window · 10,000 input tokens · 8,000 cached input tokens · 1,000 output tokens · 400 reasoning output tokens · 11,000 total tokens",
+    });
+    expect(fact?.detail).not.toContain("private prompt");
+    expect(fact?.detail).not.toContain("private response");
+  });
+
   it("labels expired provider evidence stale while retaining process truth", () => {
     const candidate = providerSession({
       attention: {

@@ -172,13 +172,37 @@ function providerActivityDetail(
     providerConfidenceLabel(activity.confidence),
     activity.summary,
   ];
-  if (
-    activity.kind !== "usage_updated" ||
-    activity.extension.provider !== "claude"
-  ) {
+  if (activity.kind !== "usage_updated") {
     return details.join(" · ");
   }
   const extension = activity.extension;
+  if (extension.provider === "codex") {
+    if (extension.modelContextWindow !== null) {
+      details.push(
+        `${formatCount(extension.modelContextWindow)} token context window`,
+      );
+    }
+    if (extension.totalInputTokens !== null) {
+      details.push(`${formatCount(extension.totalInputTokens)} input tokens`);
+    }
+    if (extension.totalCachedInputTokens !== null) {
+      details.push(
+        `${formatCount(extension.totalCachedInputTokens)} cached input tokens`,
+      );
+    }
+    if (extension.totalOutputTokens !== null) {
+      details.push(`${formatCount(extension.totalOutputTokens)} output tokens`);
+    }
+    if (extension.totalReasoningOutputTokens !== null) {
+      details.push(
+        `${formatCount(extension.totalReasoningOutputTokens)} reasoning output tokens`,
+      );
+    }
+    if (extension.totalTokens !== null) {
+      details.push(`${formatCount(extension.totalTokens)} total tokens`);
+    }
+    return details.join(" · ");
+  }
   if (extension.modelId !== null) {
     details.push(`Model ${extension.modelId}`);
   }
