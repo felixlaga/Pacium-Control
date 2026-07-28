@@ -13,10 +13,10 @@ const providerSessionId = "claude-provider-session";
 const token = "t".repeat(43);
 let now = "2026-07-28T10:00:00.000Z";
 
-function observer(): ClaudeObserver {
+function observer(providerVersion: string | null = "2.1.206"): ClaudeObserver {
   return new ClaudeObserver({
     baseUrl: "http://127.0.0.1:4174",
-    providerVersion: "2.1.206",
+    providerVersion,
     now: () => now,
     tokenFactory: () => token,
   });
@@ -131,6 +131,36 @@ describe("Claude observer launch preparation", () => {
     expect(() => invalidCharacters.prepare(sessionId, now)).toThrow(
       "unsafe token",
     );
+  });
+
+  it("reports missing version detection without disabling observation", () => {
+    const instance = observer(null);
+    const prepared = instance.prepare(sessionId, now);
+
+    expect(prepared.observation).toMatchObject({
+      health: { state: "unavailable" },
+      providerVersion: null,
+      diagnostics: [
+        {
+          code: "claude.version_unavailable",
+          severity: "warning",
+          fields: [],
+        },
+      ],
+    });
+    const accepted = instance.ingestHook(
+      sessionId,
+      token,
+      hook("SessionStart"),
+    );
+    expect(accepted).toMatchObject({
+      status: "accepted",
+      observation: {
+        health: { state: "ready" },
+        providerVersion: null,
+        diagnostics: [{ code: "claude.version_unavailable" }],
+      },
+    });
   });
 });
 
@@ -318,7 +348,7 @@ describe("Claude hook normalization", () => {
 
 describe("Claude status normalization", () => {
   it("records bounded usage and version without raw status content", () => {
-    const instance = observer();
+    const instance = observer(null);
     instance.prepare(sessionId, now);
     const result = instance.ingestStatus(sessionId, token, {
       session_id: providerSessionId,
@@ -345,6 +375,7 @@ describe("Claude status normalization", () => {
       observation: {
         providerVersion: "2.1.207",
         health: { state: "ready", source: "hook" },
+        diagnostics: [],
         activities: [
           {
             kind: "usage_updated",
