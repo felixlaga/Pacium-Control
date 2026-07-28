@@ -2,6 +2,73 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.46.0 — Release-readiness audit — 2026-07-28
+
+### Added
+
+- A bounded `release:preflight` command and unit contract that fail closed on
+  unsupported hosts/runtimes, dirty candidates, forbidden source/archive
+  paths, missing package contracts, checksum/manifest mismatch, and dishonest
+  distribution claims while returning scalar evidence.
+- A candidate-specific PC-076 matrix with exact source, runtime, package,
+  security, performance, accessibility-automation, external/manual boundary,
+  rollback, and preservation evidence.
+- The preflight is required by the pinned Ubuntu workflow after package
+  verification.
+
+### Fixed
+
+- The patched macOS `node-pty` build now strips source/debug symbols before
+  linking. Separate source roots produce byte-identical, loadable
+  `pty.node`/`spawn-helper` while retaining the Mach-O UUID and ad-hoc signature
+  required by macOS.
+- macOS package build and verification reject native source/debug metadata
+  regressions.
+- Repository-context unit fixtures and the browser verification workflow no
+  longer inherit the containing checkout’s `.git` directory; exact Git
+  archives can run the full gates.
+
+### Security
+
+- A clean frozen archive install verified all 296 lockfile policy entries.
+  Strict source/package inventories and a content-suppressing tracked scan
+  found no recognized secret signatures, non-example environment files,
+  runtime state, transcripts, queues, repositories, provider stores, host
+  identity, or `.git` content in the package boundary.
+- A current registry advisory audit was deliberately not sent because it would
+  disclose the dependency inventory without destination-specific authority.
+  No clean-advisory claim is made.
+- Zero valid Developer ID signing identities and zero configured Tailscale
+  Serve TCP/Web entries were observed. No signing, notarization, tailnet,
+  provider, or publication mutation was performed.
+
+### Verified
+
+- The exact-source macOS archive passed formatting, lint, all workspace type
+  checks, 142 test files and 930 tests, production builds, and the bounded
+  lifecycle soak.
+- All 20 Chromium workflows passed after the clean-archive fixture correction.
+- Two source roots reproduced the same 573,683-byte macOS archive, SHA-256
+  `923fe2f41533eee7c8591999002d783212e679545e959aca6ceba8d96415075c`,
+  with 28 manifested files and every installed-package canary green.
+- Cross-root native hashes are
+  `50d506c692c05c2037450b88f550ff0ba9ea1aed0b4f2e15b9b2ad529a237ea3`
+  for `pty.node` and
+  `5f581b5794183c8783108fbdff0f570de48cab0a91506ee27048f310e6a25c2d`
+  for `spawn-helper`.
+
+### Decision
+
+- PC-076 and the defined PC-063 through PC-076 implementation roadmap are
+  complete.
+- The release decision is **NO-GO** and the release class remains
+  **Development snapshot**. A current dependency advisory audit, fresh
+  supported macOS account, Developer ID signing/notarization, real Tailscale
+  and provider canaries, manual accessibility/sustained-use review, and
+  explicit owner release acceptance remain mandatory.
+- No tag, release, public artifact, signing request, notarization submission,
+  or follow-on roadmap work is implied.
+
 ## 0.45.0 — Ubuntu Linux validation — 2026-07-28
 
 ### Added
