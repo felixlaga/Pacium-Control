@@ -147,10 +147,28 @@ PC-075 completes the exact Ubuntu 24.04 x64 portion of criteria 4, 5, and 8:
   install/upgrade, exact production health/assets/reuse, active and foreign
   target refusal, idempotent removal, and external-state preservation.
 
-PC-076 still owns clean-account evidence, Developer ID signing/notarization,
-real-tailnet verification, manual accessibility and sustained-use acceptance,
-known limitations, and final release readiness.
+PC-076 completes the milestone’s release audit without claiming a release:
+
+- the bounded preflight, exact-source frozen install, full repository suite,
+  lifecycle soak, deterministic macOS package, package lifecycle, all 20
+  Chromium workflows, tracked-secret scan, package inventory, and existing
+  Ubuntu baseline are green;
+- separate source roots now produce byte-identical loadable macOS PTY binaries,
+  and the package builder rejects source/debug metadata regressions;
+- the decision is `NO-GO` and the release class remains Development snapshot;
+- the current registry advisory audit, clean macOS account, Developer ID
+  signing/notarization, real tailnet and provider canaries, manual
+  accessibility/sustained-use review, and owner release acceptance remain
+  blocked or not run.
+
+This closes the defined implementation roadmap at PC-076. It does not satisfy
+the blocked release rows, authorize publication, or create follow-on roadmap
+work. See the [candidate assessment](release-readiness-assessment.md).
 
 ## Demo
 
-Install the packaged application on a clean account, run a sustained multi-session workflow, restart the browser and local server, reconnect optional tmux-backed sessions, operate Pacium mode, and remove the application without deleting repositories or provider credentials.
+The future release demo remains: install the signed and notarized package on a
+clean account, run a sustained multi-session workflow, restart the browser and
+local server, reconnect optional tmux-backed sessions, operate Pacium mode, and
+remove the application without deleting repositories or provider credentials.
+PC-076 did not claim this manual demo.

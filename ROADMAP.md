@@ -130,7 +130,7 @@ Deliverables:
   (PC-075 complete);
 - performance budgets and soak tests (PC-072 complete);
 - accessibility and interaction polish;
-- release verification.
+- release verification (PC-076 audit complete with a NO-GO release decision).
 
 Exit criteria:
 
@@ -141,6 +141,13 @@ Exit criteria:
 - all limitations are documented.
 
 See [Milestone 5](docs/execution/milestone-5-polish.md).
+
+Implementation status: the defined PC-063 through PC-076 roadmap is complete.
+PC-076 found the development packages reproducible and the automated core
+green, while signing/notarization, a fresh macOS account, real tailnet and
+provider canaries, manual accessibility/sustained use, an authorized dependency
+advisory audit, and owner release acceptance remain mandatory blockers. Those
+blocked gates do not authorize more roadmap implementation or a release claim.
 
 ## Explicitly deferred
 

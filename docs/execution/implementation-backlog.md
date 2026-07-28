@@ -587,6 +587,15 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-076 Run release readiness
 
 - Clean install, full workflow, security checks, accessibility, performance, known limitations, and owner acceptance.
+- Current status: complete with a `NO-GO` decision. The exact-source macOS
+  frozen install, 142 files/930 tests, deterministic cross-root native build,
+  573,683-byte package, bounded soak, all 20 Chromium workflows, tracked-secret
+  scan, package inventory, and release preflight passed. The package remains a
+  Development snapshot because the current registry advisory audit,
+  fresh-account run, Developer ID signing/notarization, real Tailscale and
+  provider canaries, manual accessibility/sustained use, and owner release
+  acceptance are not evidenced. See the
+  [assessment](release-readiness-assessment.md).
 
 ### PC-077 Implement optional Tailscale Serve access
 
