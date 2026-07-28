@@ -97,6 +97,7 @@ export function createPaciumHttpServer(
             reject(error);
           }
         });
+        server.closeIdleConnections();
       });
     },
   };
