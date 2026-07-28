@@ -2,6 +2,47 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.42.0 — lifecycle and memory soak baseline — 2026-07-28
+
+### Added
+
+- One isolated `pnpm test:soak` workload for 20 idle terminals, one
+  long-running agent, 100 create/close cycles, 8 MiB output, 100 reconnect
+  snapshots, memory budgets, and five real-PTY cleanup cycles.
+- Deterministic 2,000-operation split-layout and 5,000-update attention-inbox
+  load invariants with the existing four-pane and 200-cursor ceilings.
+- Scalar-only duration, RSS, live-heap, snapshot, session, and FD evidence that
+  excludes terminal bytes, environment values, paths, and provider content.
+
+### Fixed
+
+- PTY data/exit subscriptions are now disposed when sessions close or the
+  local server shuts down.
+- The newest attention cursor is retained before deterministic sorting, so the
+  just-recorded event cannot be evicted and immediately redelivered.
+- A committed macOS `node-pty` patch closes parent-side slave PTYs,
+  process-watcher kqueues, and temporary low-number PTY descriptors. macOS
+  installs compile the patched source and accept either source-built or
+  upstream-prebuilt helper layouts.
+
+### Verified
+
+- Supported Node.js 24.18.0 soak completed in 3,908 ms with 141,787,136-byte
+  peak/retained RSS growth, 5,343,056-byte retained live heap, a
+  162,368-character snapshot, zero final sessions, and `/dev/fd` 18 -> 18.
+- `pnpm verify` passed formatting, lint, all workspace type checks, 132 test
+  files and 863 tests, plus the 949.29 kB web JavaScript, 122.44 kB stylesheet,
+  and 458.05 kB local-server production bundles.
+- `pnpm test:e2e` passed all 19 Chromium workflows.
+
+### Known limitations
+
+- This is a bounded development-machine personal-load baseline, not production
+  telemetry or a multi-day field-soak claim.
+- The patched native source build still needs a fresh-account clean-install
+  proof under PC-074. Diagnostics, packaging, Linux, and release-readiness
+  remain PC-073 through PC-076.
+
 ## 0.41.0 — tmux keep-alive — 2026-07-28
 
 ### Added

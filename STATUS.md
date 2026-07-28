@@ -20,6 +20,8 @@ slice. One explicitly configured local tmux socket can now be discovered and
 one exact published session can be attached through the existing terminal
 workspace. Explicit tmux keep-alive launches and bounded automatic restart
 reattachment are complete.
+The bounded PC-072 lifecycle, memory, browser-model, and real-PTY descriptor
+soak baseline is complete.
 
 Pacium Control now has an executable React application, loopback local server,
 direct-PTY session manager, typed WebSocket protocol, and automated terminal,
@@ -83,6 +85,11 @@ The secondary product is **Pacium mode**:
   automatic-reattach policy, exact-client detach, bounded deduplicated startup
   restoration, fresh predecessor-linked identities, and no command rerun when
   a target is missing.
+- An isolated scalar-only lifecycle soak covering 20 idle terminals, one
+  long-running agent, 100 create/close cycles, 8 MiB output, 100 snapshots,
+  explicit peak/retained RSS and live-heap budgets, and a five-real-PTY FD
+  canary. Browser models separately cover 2,000 split operations and 5,000
+  notification cursors.
 - A token-protected, read-only host directory browser with canonical paths,
   direct absolute-path navigation, repository markers, filtering,
   hidden-folder control, breadcrumbs, failure-safe browser-local recent
@@ -284,7 +291,7 @@ The secondary product is **Pacium mode**:
 ## What is not present
 
 - No packaged `pacium` launcher or release artifact.
-- No durable session restoration after local-server restart.
+- No durable direct-PTY process restoration after local-server restart.
 - No completed manual screen-reader, visual contrast, or full terminal-lifecycle browser review.
 - No general browser editor for workspace identity, repositories, workers,
   queue sources, delivery methods, context sources, or verification references,
@@ -296,10 +303,7 @@ The secondary product is **Pacium mode**:
 - No multi-item parsing, provider-native acknowledgement/activity, worker
   launching/reconfiguration, task state, or causal decision-to-Git/terminal
   correlation.
-- No launch-under-tmux keep-alive preset or automatic tmux reattachment after
-  local-server restart.
-
-Do not extrapolate from the working terminal slice to any capability in this list.
+  Do not extrapolate from the working terminal slice to any capability in this list.
 
 ## Current evidence
 
@@ -307,8 +311,8 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 131 test files and 859 tests,
-  plus the 949.29 kB web JavaScript, 122.44 kB stylesheet, and 457.78 kB
+- `pnpm verify`: formatting, lint, type checking, 132 test files and 863 tests,
+  plus the 949.29 kB web JavaScript, 122.44 kB stylesheet, and 458.05 kB
   local-server production builds passed.
 - `pnpm test:e2e`: nineteen Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
@@ -330,6 +334,14 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
   exact client, restarted the manager, restored one fresh predecessor-linked
   client, deliberately closed it, and verified the managed target remained.
   Chromium verifies the ready-only option is explicit and unchecked by default.
+- PC-072 supported Node.js 24.18.0 soak evidence covered 20 idle terminals, one
+  long-running agent, 100 create/close cycles, 8,388,608 output bytes, 100
+  snapshots, 2,000 split operations, and 5,000 notification updates. The
+  isolated runner completed in 3,908 ms with 141,787,136-byte peak and retained
+  RSS growth, 5,343,056-byte retained live heap, a 162,368-character snapshot,
+  zero final sessions, and `/dev/fd` 18 -> 18 across five real PTYs. The canary
+  found and fixed parent-side slave PTY, kqueue, and temporary low-number PTY
+  descriptor leaks in the pinned macOS `node-pty`.
 - PC-063 focused evidence passed 39 activity-model, semantic-render, and
   terminal-excerpt tests. Its Chromium workflow exercised deterministic compact
   cards, all four source destinations, explicit terminal capture/refresh/hide,
@@ -480,8 +492,8 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-PC-071 launch-under-tmux keep-alive and automatic restart reattachment is
-complete. Start PC-072 lifecycle and memory soak tests.
+PC-072 lifecycle and memory soak testing is complete. Start PC-073 bounded,
+redaction-aware diagnostics.
 Complete the real Tailscale Serve/grants/Funnel/public canary, pinned Node.js
 24 clean-install, CI, broader browser/security, manual accessibility, and
 sustained-output gates before release.
