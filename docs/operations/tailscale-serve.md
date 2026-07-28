@@ -17,7 +17,7 @@ Pacium at 127.0.0.1:4174
 Local PTYs, repositories, queue files, and optional tmux
 ```
 
-Read ADR-0016 and `SECURITY.md` before enabling this mode. Current Tailscale
+Read ADR-0016, ADR-0018, and `SECURITY.md` before enabling this mode. Current Tailscale
 commands and header behavior should be rechecked against the
 [Serve documentation](https://tailscale.com/docs/features/tailscale-serve)
 before a release.
@@ -46,6 +46,26 @@ Pacium trusts `Tailscale-User-Login` only for the exact configured Serve
 Host/Origin while remaining loopback-bound. A process already running as the
 same local OS user remains inside Pacium's accepted host-local trust boundary.
 
+## Primary setup
+
+Use the local application rather than a shell:
+
+1. Open Pacium on `127.0.0.1`.
+2. Open **Workspace settings**.
+3. Under **Host setup**, select the existing Meta tmux session.
+4. Choose **Enable remote Meta**.
+5. If offered, choose **Open Tailscale approval**, approve the private Serve
+   feature in Tailscale, return to Pacium, and retry.
+6. Choose **Open Pacium** when the tailnet URL appears.
+
+Pacium derives the default same-user tmux socket, target name, node DNS name,
+and owner login. It accepts no typed configuration fields. Host setup is
+unavailable from an existing Tailscale connection.
+
+The flow refuses a non-empty Serve configuration rather than overwriting it.
+The command-oriented sections below are retained for review and recovery, not
+as the primary product path.
+
 ## 1. Confirm prerequisites
 
 On the Pacium host:
@@ -61,7 +81,7 @@ On the Pacium host:
 Do not configure Funnel, a public DNS record, a router port-forward, a LAN
 listener, or a direct Tailscale listener.
 
-## 2. Configure Pacium
+## 2. Manual environment override
 
 Remote mode is all-or-nothing:
 
@@ -77,6 +97,30 @@ remains a single-operator product and does not add shared input ownership.
 Both variables absent means local-only. If only one exists, either value is
 empty, the Origin is not canonical HTTPS under `ts.net`, or a login is unsafe,
 Pacium rejects startup before listening.
+
+For the Meta-first workspace, expose the exact existing tmux server and target
+through startup configuration too:
+
+```sh
+export PACIUM_TMUX_SOCKET="/tmp/tmux-0/default"
+export PACIUM_META_TMUX_SESSION="meta"
+pnpm start
+tailscale serve --bg 4174
+```
+
+Replace the socket example with the real absolute socket path reported on the
+Pacium host. The configured exact `meta` target must already exist. Pacium
+discovers and attaches it through fixed tmux arguments, then a fresh browser
+opens that immutable Pacium session in the terminal-first view. A missing
+target produces bounded unavailable evidence; Pacium does not create or
+restart it.
+
+This is not an SSH relay. Tailscale SSH check mode can send an SSH client to a
+browser reauthentication URL, but Serve browser access is a different path.
+The browser device must already be connected and authorized to the tailnet.
+After that, opening the canonical Serve URL is the routine connection action;
+Pacium performs no SSH command, Tailscale login, device enrollment, or grant
+change.
 
 Start Pacium normally. Its output must still report:
 

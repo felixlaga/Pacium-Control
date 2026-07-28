@@ -66,6 +66,23 @@ export const TmuxCapabilitySchema = z
   });
 export type TmuxCapability = z.infer<typeof TmuxCapabilitySchema>;
 
+export const MetaSessionCapabilitySchema = z
+  .object({
+    state: z.enum(["unconfigured", "ready", "unavailable"]),
+    sessionId: z.string().uuid().nullable(),
+    detail: z.string().min(1).max(300),
+  })
+  .strict()
+  .superRefine((capability, context) => {
+    if ((capability.state === "ready") !== (capability.sessionId !== null)) {
+      context.addIssue({
+        code: "custom",
+        message: "Meta session capability fields must match its state.",
+      });
+    }
+  });
+export type MetaSessionCapability = z.infer<typeof MetaSessionCapabilitySchema>;
+
 export const TmuxSessionsObservationSchema = z
   .object({
     status: z.enum(["ready", "empty", "unconfigured", "unavailable", "error"]),

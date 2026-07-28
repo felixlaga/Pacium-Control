@@ -47,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for tmux keep-alive", () => {
-    expect(PROTOCOL_VERSION).toBe(24);
+  it("advances the wire contract for Meta-first startup", () => {
+    expect(PROTOCOL_VERSION).toBe(25);
   });
 
   it("accepts only a manifest identity and dimensions for relaunch", () => {
@@ -912,6 +912,11 @@ describe("server connection authority evidence", () => {
     capabilities: {
       directPty: true,
       reconnectSnapshot: true,
+      metaSession: {
+        state: "unconfigured",
+        sessionId: null,
+        detail: "No automatic Meta tmux session is configured.",
+      },
       tmux: {
         state: "unconfigured",
         serverId: null,

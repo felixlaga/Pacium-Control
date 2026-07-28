@@ -16,6 +16,7 @@ import type {
   GitChangedFile,
   LaunchPresetCapability,
   LaunchPresetId,
+  MetaSessionCapability,
   PaciumBinding,
   PaciumRoleId,
   QueueApprovalDecisionPayload,
@@ -46,6 +47,7 @@ import { DirectoryPicker } from "./directory-picker.js";
 import { DiagnosticsDialog } from "./diagnostics.js";
 import { isDiagnosticsRoute } from "./diagnostics-model.js";
 import { handleModalKeyDown } from "./modal-focus.js";
+import { initialMetaSessionId } from "./meta-session-focus-model.js";
 import { AgentClassificationCard } from "./agent-classification.js";
 import { TmuxAttachDialog } from "./tmux-attach-dialog.js";
 import { sessionAccessibleName } from "./agent-classification-model.js";
@@ -97,23 +99,6 @@ import {
 } from "./pacium-context-model.js";
 import { buildPaciumModeSummary } from "./pacium-mode-summary-model.js";
 import { PaciumModeSummaryCard } from "./pacium-mode-summary.js";
-import { PaciumPromptComposer } from "./pacium-prompt-composer.js";
-import {
-  EMPTY_PACIUM_PROMPT,
-  acceptPaciumPromptResult,
-  beginPaciumPromptSend,
-  interruptPaciumPrompt,
-  paciumPromptTerminalInput,
-  reconcilePaciumPromptTarget,
-  rejectPaciumPromptResult,
-  type PaciumPromptState,
-} from "./pacium-prompt-model.js";
-import {
-  availablePaciumPromptTarget,
-  buildPaciumPromptTargets,
-  type PaciumPromptTargetId,
-  type PaciumPromptTargetProjection,
-} from "./pacium-prompt-target-model.js";
 import {
   IDLE_PACIUM_QUEUE,
   acceptPaciumQueueResponse,
@@ -303,6 +288,12 @@ const INITIAL_TMUX_CAPABILITY: TmuxCapability = {
   detail: "Waiting for the local server.",
 };
 
+const INITIAL_META_SESSION_CAPABILITY: MetaSessionCapability = {
+  state: "unconfigured",
+  sessionId: null,
+  detail: "Waiting for the local server.",
+};
+
 const TERMINAL_TABS_STORAGE_KEY = "pacium.terminalTabs";
 const SPLIT_LAYOUT_STORAGE_KEY = "pacium.splitLayout";
 
@@ -319,6 +310,7 @@ export function App() {
   const tmuxInvokerRef = useRef<HTMLElement | null>(null);
   const tmuxListRequestRef = useRef<string | null>(null);
   const tmuxAttachRequestRef = useRef<string | null>(null);
+  const metaFocusAppliedRef = useRef(false);
   const paletteInvokerRef = useRef<HTMLElement | null>(null);
   const panelViewRef = useRef<ReturnType<typeof loadPanelView> | null>(null);
   const renameInvokerRef = useRef<HTMLElement | null>(null);
@@ -368,6 +360,8 @@ export function App() {
   const [defaultCwd, setDefaultCwd] = useState("");
   const [launchPresets, setLaunchPresets] = useState(INITIAL_LAUNCH_PRESETS);
   const [tmuxCapability, setTmuxCapability] = useState(INITIAL_TMUX_CAPABILITY);
+  const [metaSessionCapability, setMetaSessionCapability] =
+    useState<MetaSessionCapability>(INITIAL_META_SESSION_CAPABILITY);
   const [tmuxObservation, setTmuxObservation] =
     useState<TmuxSessionsObservation | null>(null);
   const [tmuxOpen, setTmuxOpen] = useState(false);
@@ -435,14 +429,6 @@ export function App() {
   const [paciumConfig, setPaciumConfig] =
     useState<PaciumConfigViewState>(IDLE_PACIUM_CONFIG);
   const paciumConfigRef = useRef(paciumConfig);
-  const [paciumPrompt, setPaciumPrompt] =
-    useState<PaciumPromptState>(EMPTY_PACIUM_PROMPT);
-  const paciumPromptRef = useRef(paciumPrompt);
-  const paciumPromptTargetsRef = useRef<PaciumPromptTargetProjection>({
-    status: "loading",
-    message: "Reading configured prompt targets.",
-    targets: [],
-  });
   const [paciumQueue, setPaciumQueue] =
     useState<PaciumQueueViewState>(IDLE_PACIUM_QUEUE);
   const paciumQueueRef = useRef(paciumQueue);
@@ -477,7 +463,6 @@ export function App() {
   repositoryHistoryRef.current = repositoryHistoryBySession;
   repositoryVerificationRef.current = repositoryVerificationBySession;
   paciumConfigRef.current = paciumConfig;
-  paciumPromptRef.current = paciumPrompt;
   paciumQueueRef.current = paciumQueue;
   paciumQueueInspectionRef.current = paciumQueueInspection;
   paciumContextRef.current = paciumContext;
@@ -584,19 +569,6 @@ export function App() {
           repositoryVerificationRef.current = reset;
           setRepositoryVerificationBySession(reset);
         }
-        const interruptedPrompt = interruptPaciumPrompt(
-          paciumPromptRef.current,
-        );
-        if (interruptedPrompt !== paciumPromptRef.current) {
-          const outcomeUnknown = paciumPromptRef.current.pending !== null;
-          paciumPromptRef.current = interruptedPrompt;
-          setPaciumPrompt(interruptedPrompt);
-          if (outcomeUnknown) {
-            setNotice(
-              "Prompt delivery outcome is unknown after disconnect. The draft remains, but inspect the target terminal before choosing it again.",
-            );
-          }
-        }
         const interruptedQueue = interruptPaciumQueueRequest(
           paciumQueueRef.current,
         );
@@ -655,7 +627,11 @@ export function App() {
     }
     if (event.message.type === "server.welcome") {
       setConnectionAccess(event.message.connection);
+      setMetaSessionCapability(event.message.capabilities.metaSession);
       setTmuxCapability(event.message.capabilities.tmux);
+    }
+    if (event.message.type === "session.list") {
+      setMetaSessionCapability(event.message.metaSession);
     }
     if (
       event.message.type === "tmux.sessions" &&
@@ -681,22 +657,6 @@ export function App() {
       restoreControlFocus(tmuxInvokerRef, "attach-tmux-trigger");
     }
     if (event.message.type === "command.result") {
-      const currentPrompt = paciumPromptRef.current;
-      const acceptedPrompt = acceptPaciumPromptResult(
-        currentPrompt,
-        event.message.requestId,
-      );
-      if (acceptedPrompt !== currentPrompt) {
-        const targetLabel =
-          paciumPromptTargetsRef.current.targets.find(
-            (target) => target.id === currentPrompt.pending?.targetId,
-          )?.label ?? "the selected target";
-        paciumPromptRef.current = acceptedPrompt;
-        setPaciumPrompt(acceptedPrompt);
-        setNotice(
-          `Terminal input accepted for ${targetLabel}. Agent handling is not confirmed.`,
-        );
-      }
       return;
     }
     if (event.message.type === "pacium.context") {
@@ -1106,18 +1066,6 @@ export function App() {
         );
         return;
       }
-      const rejectedPrompt = rejectPaciumPromptResult(
-        paciumPromptRef.current,
-        event.message.requestId,
-      );
-      if (rejectedPrompt !== paciumPromptRef.current) {
-        paciumPromptRef.current = rejectedPrompt;
-        setPaciumPrompt(rejectedPrompt);
-        setNotice(
-          `Prompt was not delivered. ${event.message.message} Pacium did not retry it.`,
-        );
-        return;
-      }
       const interruptedQueue = interruptPaciumQueueRequest(
         paciumQueueRef.current,
         event.message.requestId,
@@ -1490,6 +1438,31 @@ export function App() {
   }, [selectedId, sessionListReady, sessions, tabs]);
 
   useEffect(() => {
+    if (!sessionListReady) {
+      return;
+    }
+    const sessionId = initialMetaSessionId({
+      applied: metaFocusAppliedRef.current,
+      capability: metaSessionCapability,
+      sessions,
+    });
+    if (sessionId === null) {
+      return;
+    }
+    metaFocusAppliedRef.current = true;
+    workspaceModeRef.current = "pacium";
+    setWorkspaceMode("pacium");
+    saveWorkspaceMode(window.localStorage, "pacium");
+    setPanelView({
+      version: 1,
+      sidebarOpen: false,
+      inspectorOpen: false,
+    });
+    setTabs((current) => openTerminalTab(current, sessionId));
+    setSelectedId(sessionId);
+  }, [metaSessionCapability, sessionListReady, sessions]);
+
+  useEffect(() => {
     if (selectedId === null) {
       return;
     }
@@ -1818,15 +1791,6 @@ export function App() {
       sessions,
     ],
   );
-  const paciumPromptTargets = useMemo(
-    () =>
-      buildPaciumPromptTargets({
-        config: paciumConfig,
-        connection,
-        sessions,
-      }),
-    [connection, paciumConfig, sessions],
-  );
   const paciumQueueProjection = useMemo(
     () =>
       buildPaciumQueueProjection({
@@ -1836,20 +1800,6 @@ export function App() {
       }),
     [connection, paciumConfig, paciumQueue],
   );
-  paciumPromptTargetsRef.current = paciumPromptTargets;
-  useEffect(() => {
-    const reconciled = reconcilePaciumPromptTarget(
-      paciumPromptRef.current,
-      paciumPromptTargets,
-    );
-    if (reconciled !== paciumPromptRef.current) {
-      paciumPromptRef.current = reconciled;
-      setPaciumPrompt(reconciled);
-      setNotice(
-        "The selected prompt target is no longer live. The draft remains; choose an available target.",
-      );
-    }
-  }, [paciumPromptTargets]);
   const visiblePaciumObservation = visiblePaciumConfig(paciumConfig);
   const readyPaciumWorkspace =
     visiblePaciumObservation?.status === "ready"
@@ -2273,56 +2223,6 @@ export function App() {
     setNotice(`Starting ${roleLabel(role)} from its fixed preset…`);
   };
 
-  const updatePaciumPromptDraft = (draft: string) => {
-    if (paciumPromptRef.current.pending !== null) {
-      return;
-    }
-    const next = { ...paciumPromptRef.current, draft };
-    paciumPromptRef.current = next;
-    setPaciumPrompt(next);
-  };
-
-  const updatePaciumPromptTarget = (targetId: PaciumPromptTargetId | null) => {
-    if (paciumPromptRef.current.pending !== null) {
-      return;
-    }
-    const next = { ...paciumPromptRef.current, targetId };
-    paciumPromptRef.current = next;
-    setPaciumPrompt(next);
-  };
-
-  const sendPaciumPrompt = () => {
-    const current = paciumPromptRef.current;
-    const target = availablePaciumPromptTarget(
-      paciumPromptTargetsRef.current,
-      current.targetId,
-    );
-    const terminalInput = paciumPromptTerminalInput(current.draft);
-    const transport = transportRef.current;
-    if (
-      current.pending !== null ||
-      target?.sessionId === null ||
-      target === null ||
-      terminalInput === null ||
-      connection !== "connected" ||
-      transport === null
-    ) {
-      setNotice(
-        "Choose one live explicit target and enter a valid prompt before sending.",
-      );
-      return;
-    }
-    const requestId = transport.input(target.sessionId, terminalInput);
-    const next = beginPaciumPromptSend(current, {
-      requestId,
-      targetId: target.id,
-      sessionId: target.sessionId,
-    });
-    paciumPromptRef.current = next;
-    setPaciumPrompt(next);
-    setNotice(`Sending terminal input to ${target.label}…`);
-  };
-
   const refreshPaciumQueue = () => {
     const transport = transportRef.current;
     if (
@@ -2622,6 +2522,25 @@ export function App() {
           ),
         )
       : transport.getDiagnostics();
+  }, []);
+
+  const loadHostSetup = useCallback(() => {
+    const transport = transportRef.current;
+    return transport === null
+      ? Promise.reject(new Error("Pacium is still connecting."))
+      : transport.getHostSetup();
+  }, []);
+
+  const applyHostSetup = useCallback(async (tmuxSessionId: string) => {
+    const transport = transportRef.current;
+    if (transport === null) {
+      throw new Error("Pacium is still connecting.");
+    }
+    const result = await transport.applyHostSetup(tmuxSessionId);
+    if (result.outcome === "configured") {
+      transport.listSessions();
+    }
+    return result;
   }, []);
 
   useEffect(() => {
@@ -2978,8 +2897,6 @@ export function App() {
     workspaceModeRef.current = next;
     setWorkspaceMode(next);
     if (next === "general") {
-      paciumPromptRef.current = EMPTY_PACIUM_PROMPT;
-      setPaciumPrompt(EMPTY_PACIUM_PROMPT);
       const closed = closeQueueItemInspection();
       paciumQueueInspectionRef.current = closed;
       setPaciumQueueInspection(closed);
@@ -3221,6 +3138,9 @@ export function App() {
         panelView.sidebarOpen ? "" : "is-sidebar-collapsed"
       } ${panelView.inspectorOpen ? "" : "is-inspector-collapsed"}`}
       data-workspace-mode={workspaceMode}
+      data-meta-focus={
+        metaSessionCapability.state === "ready" ? "true" : undefined
+      }
     >
       <a className="skip-link" href="#primary-workspace">
         Skip to terminal workspace
@@ -3285,31 +3205,37 @@ export function App() {
         )}
 
         <nav aria-label="Terminal sessions" className="session-navigation">
-          {workspaceMode === "pacium" && (
-            <>
-              <PaciumModeSummaryCard
-                onOpenContext={openPaciumContextInspector}
-                onRetry={() => transportRef.current?.requestPaciumConfig()}
-                summary={paciumModeSummary}
-              />
-              <PaciumRoleGroup
-                onConfigure={openPaciumRoleEditor}
-                onLaunch={launchPaciumRole}
-                onOpen={selectSession}
-                onRetry={() => transportRef.current?.requestPaciumConfig()}
-                roles={paciumRoleModels}
-              />
-              <PaciumWorkers
-                onOpen={selectSession}
-                projection={paciumWorkers}
-              />
-              <PaciumQueueSources
-                onOpenItem={openPaciumQueueItem}
-                onRefresh={refreshPaciumQueue}
-                projection={paciumQueueProjection}
-              />
-            </>
-          )}
+          {workspaceMode === "pacium" &&
+            metaSessionCapability.state !== "ready" && (
+              <>
+                {metaSessionCapability.state === "unavailable" && (
+                  <p className="meta-session-unavailable">
+                    {metaSessionCapability.detail}
+                  </p>
+                )}
+                <PaciumModeSummaryCard
+                  onOpenContext={openPaciumContextInspector}
+                  onRetry={() => transportRef.current?.requestPaciumConfig()}
+                  summary={paciumModeSummary}
+                />
+                <PaciumRoleGroup
+                  onConfigure={openPaciumRoleEditor}
+                  onLaunch={launchPaciumRole}
+                  onOpen={selectSession}
+                  onRetry={() => transportRef.current?.requestPaciumConfig()}
+                  roles={paciumRoleModels}
+                />
+                <PaciumWorkers
+                  onOpen={selectSession}
+                  projection={paciumWorkers}
+                />
+                <PaciumQueueSources
+                  onOpenItem={openPaciumQueueItem}
+                  onRefresh={refreshPaciumQueue}
+                  projection={paciumQueueProjection}
+                />
+              </>
+            )}
           <div className="section-heading">
             <span>
               {workspaceMode === "pacium" ? "Pacium sessions" : "Terminals"}
@@ -3542,6 +3468,7 @@ export function App() {
             </button>
             <button
               disabled={selectedSession?.processState !== "live"}
+              id="interrupt-trigger"
               onClick={() => {
                 if (selectedSession !== null) {
                   transportRef.current?.interrupt(selectedSession.id);
@@ -3814,15 +3741,6 @@ export function App() {
             />
           )}
         </section>
-        {workspaceMode === "pacium" && (
-          <PaciumPromptComposer
-            onDraftChange={updatePaciumPromptDraft}
-            onSend={sendPaciumPrompt}
-            onTargetChange={updatePaciumPromptTarget}
-            projection={paciumPromptTargets}
-            state={paciumPrompt}
-          />
-        )}
         <WorkspaceStatus
           connection={connection}
           selectedSessionName={selectedSession?.displayName ?? null}
@@ -4097,7 +4015,10 @@ export function App() {
       )}
       {settingsOpen && (
         <PreferencesDialog
+          applyHostSetup={applyHostSetup}
+          hostSetupLocal={connectionAccess?.kind === "local"}
           launchPresets={launchPresets}
+          loadHostSetup={loadHostSetup}
           notificationPermission={notificationPermission}
           onApply={applyPreferences}
           onCancel={closeSettings}

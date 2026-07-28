@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { PaciumModeSummaryCard } from "./pacium-mode-summary.js";
 
 describe("Pacium mode summary semantics", () => {
-  it("renders configured counts as labelled evidence", () => {
+  it("renders one compact workspace row", () => {
     const markup = renderToStaticMarkup(
       <PaciumModeSummaryCard
         onOpenContext={() => undefined}
@@ -25,8 +25,8 @@ describe("Pacium mode summary semantics", () => {
 
     expect(markup).toContain('aria-label="Pacium workspace definition"');
     expect(markup).toContain("Agent &amp; oversight");
-    expect(markup).toContain("<dt>Roles</dt><dd>2/2</dd>");
-    expect(markup).toContain(">Open context</button>");
+    expect(markup).not.toContain("<dl>");
+    expect(markup).toContain(">Context</button>");
   });
 
   it("renders hostile error evidence as text and exposes bounded retry", () => {

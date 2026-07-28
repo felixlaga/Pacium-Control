@@ -14,7 +14,7 @@ const snapshot = {
   generatedAt: "2026-07-28T07:30:00.000Z",
   application: {
     paciumVersion: "0.0.0",
-    protocolVersion: 24,
+    protocolVersion: 25,
     nodeVersion: "24.18.0",
     platform: "darwin",
     architecture: "arm64",

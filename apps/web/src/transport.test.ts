@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  applyHostSetup,
   browserReadMethod,
   fetchDiagnostics,
   fetchDirectoryListing,
+  fetchHostSetup,
   paciumConfigGetMessage,
   paciumConfigReplaceMessage,
   paciumContextInspectMessage,
@@ -26,6 +28,72 @@ import {
   tmuxSessionAttachMessage,
   tmuxSessionsListMessage,
 } from "./transport.js";
+
+describe("host setup transport", () => {
+  const snapshot = {
+    status: "ready",
+    tmuxSessions: [{ id: "$7", name: "meta" }],
+    selectedTmuxSessionId: null,
+    tailscale: {
+      state: "ready",
+      origin: "https://host.example-tailnet.ts.net",
+      login: "owner@example.com",
+    },
+    remoteUrl: null,
+    canApply: true,
+    detail: "Choose Meta.",
+  };
+
+  it("uses protected local reads and sends only the published tmux ID", async () => {
+    const inspectFetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify(snapshot), { status: 200 }),
+      );
+    await expect(
+      fetchHostSetup({
+        accessToken: "secret",
+        fetcher: inspectFetcher,
+      }),
+    ).resolves.toEqual(snapshot);
+    expect(inspectFetcher.mock.calls[0]?.[1]).toMatchObject({
+      method: "GET",
+      headers: {
+        authorization: "Bearer secret",
+      },
+    });
+
+    const applyFetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          outcome: "configured",
+          snapshot: {
+            ...snapshot,
+            status: "configured",
+            selectedTmuxSessionId: "$7",
+            remoteUrl: "https://host.example-tailnet.ts.net",
+            canApply: false,
+          },
+          approvalUrl: null,
+        }),
+        { status: 200 },
+      ),
+    );
+    await applyHostSetup({
+      accessToken: "secret",
+      tmuxSessionId: "$7",
+      fetcher: applyFetcher,
+    });
+    expect(applyFetcher.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: '{"tmuxSessionId":"$7"}',
+      headers: {
+        authorization: "Bearer secret",
+        "content-type": "application/json",
+      },
+    });
+  });
+});
 
 describe("repository transport", () => {
   it("sends only request and session identity for refresh", () => {
@@ -501,7 +569,7 @@ describe("diagnostics transport", () => {
     generatedAt: "2026-07-28T07:30:00.000Z",
     application: {
       paciumVersion: "0.0.0",
-      protocolVersion: 24,
+      protocolVersion: 25,
       nodeVersion: "24.18.0",
       platform: "darwin",
       architecture: "arm64",

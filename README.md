@@ -48,16 +48,15 @@ pnpm test:e2e
 memory, snapshots, and descriptor cleanup. It is not production monitoring or
 a multi-day field-soak claim.
 
-The current slice can launch available Shell, Codex, and Claude Code presets; browse host directories through a compact repository-aware picker with direct absolute-path navigation, keyboard traversal, safe recent choices, and honest recovery; group sessions by repository; and arrange up to four live terminals in tabs and nested splits. A contextual command palette searches sessions, workspace commands, split controls, and session actions. Browser-local settings control system/dark/light appearance, workspace density, live terminal typography and scrollback, launch default, and quiet attention notifications. Important failure and completion evidence becomes unread until selected; explicit-permission browser alerts can notify once while Pacium is hidden, and each session can be muted without hiding its in-app state. The session sidebar and inspector can collapse into responsive drawers without changing terminal state, while the status bar always identifies connection, selection, and keyboard ownership. The inspector labels launch classification and attention evidence with source, confidence, and time, and shows refreshable Git-derived repository, branch or detached/unborn HEAD, commit, and main/linked worktree evidence. Its Changes view lazily reads bounded Git status and one freshly revalidated file patch without changing the PTY or exposing generic Git arguments. History reads the newest 50 commits reachable from local HEAD without accepting revisions or contacting a remote. Checks reads an explicit external server-owned preset catalog, displays exact argv, runs with bounded concurrency/time/output, supports cancellation, survives browser refresh, and shows pass/fail/timeout/cancel/error evidence with fresh start/end HEAD observations. Activity combines current attention, validated provider facts and observer health, direct-PTY lifecycle, changed-file totals, three recent local commits, and the latest check into a seven-fact maximum with explicit observed/occurred labels; it does not parse terminal text or add agent narration. Protocol 24 provides a strict versioned provider-observation snapshot for each Claude Code or Codex session, forbids provider state on shell sessions, retains private atomic server-owned Pacium workspace and queue decision/delivery/lifecycle state, and adds a bounded private relaunch-manifest catalog with fixed preset command metadata, canonical cwd/repository reference, environment key names only, exact lineage, and optional native resume-ID evidence. Detached manifests remain separate from live sessions; an explicit identity-only relaunch starts a fresh linked PTY and never resumes a provider automatically. Queue observation remains content-free until an exact item read, delivery/lifecycle requests remain identity-only, Control context stays identity-free and read-only, and Local/Tailscale connection evidence stays strict. A functional browser-owned General/Pacium switch changes navigation emphasis without remounting terminals and preserves selection/layout/session-inspector context. Pacium mode pins Meta and Orchestrator above ordinary sessions, resolves only exact accepted session IDs, opens the real PTY, and can assign an eligible live terminal or launch a fixed preset before binding its exact created session. Its compact composer sends one bounded control-free line only to an explicitly selected exact live role or worker PTY; transport acceptance does not claim provider delivery, processing, approval, or completion. Configured workers now appear once in accepted order with exact process, command classification, repository, attention, and already-loaded selected-session change evidence; preset-only workers remain explicitly not started and no worker is inferred or launched. `Open context` reads only the accepted objective and plan files through bounded stable no-follow regular-file reads and renders their current UTF-8 bytes as inert text. The same inspector shows at most twelve newest immutable decisions with recording, latest transport attempt, and human-labelled lifecycle evidence kept separate. It never claims that a decision caused terminal, Git, provider, or completion activity. A compact Pacium queue observes accepted files with stable bounded reads. Each nonblank stable source becomes at most one deterministic question, explicit approval, failure, review, or unknown item. The content-free list shows source, requesting role, confidence, process-local waiting evidence, and bounded rewrite/degradation/exact-hash duplicate conflicts; opening a row fetches exact current text only for the published workspace/source/revision/hash/item identity and renders it as inert text in the right inspector. Rewrite, degradation, config drift, disconnect, mode exit, and late responses clear inspected text. Conversational permission wording never becomes approval. A current question accepts a bounded answer and optional note; a current approval exposes distinct approve/deny controls with explicit confirmation. The server revalidates exact source identity and type, then stores one hash-verified immutable local decision that survives browser reload and local-server restart. Recording alone does not deliver, acknowledge, apply, execute, or send that decision. A decided item separately previews only its accepted answer-file or live role-PTY target and requires Review/Cancel/Confirm before a durable attempt. Answer files are private and never overwrite an existing target; role prompts are one JSON-escaped comment line, and PTY acceptance does not confirm agent handling. Exact answer-file bytes are reported only as transport-artifact evidence. Acknowledged, applied, unable-to-apply, confirmed-not-delivered, and superseded states require explicit human-labelled Review/Cancel/Confirm and remain separate from provider-native evidence. A failed or unknown first attempt can be retried once only after it is explicitly confirmed not delivered; no automatic or third attempt is possible. Multi-item queue boundaries and provider-native queue acknowledgement remain later slices. Pacium-launched Claude Code and supported Codex sessions now receive bounded observation-only enrichment; any live process without fresh provider evidence remains honestly Unknown. Clean and failed exits are process-derived facts, not proof of task completion. A shared session menu supports rename, duplicate, ended-session manifest relaunch, directory copy, host repository reveal, interrupt, view closure, and confirmed termination. Tabs and panes are browser-owned views: closing either does not stop the underlying PTY. Direct PTYs survive browser refresh but not local-server restart; their secret-free relaunch manifests do survive. Explicitly opted-in tmux keep-alive presets automatically restore an exact surviving target with a fresh linked Pacium client.
+The current slice can launch available Shell, Codex, and Claude Code presets; browse host directories through a compact repository-aware picker with direct absolute-path navigation, keyboard traversal, safe recent choices, and honest recovery; group sessions by repository; and arrange up to four live terminals in tabs and nested splits. A contextual command palette searches sessions, workspace commands, split controls, and session actions. Browser-local settings control system/dark/light appearance, workspace density, live terminal typography and scrollback, launch default, and quiet attention notifications. Important failure and completion evidence becomes unread until selected; explicit-permission browser alerts can notify once while Pacium is hidden, and each session can be muted without hiding its in-app state. The session sidebar and inspector can collapse into responsive drawers without changing terminal state, while the status bar always identifies connection, selection, and keyboard ownership. The inspector labels launch classification and attention evidence with source, confidence, and time, and shows refreshable Git-derived repository, branch or detached/unborn HEAD, commit, and main/linked worktree evidence. Its Changes view lazily reads bounded Git status and one freshly revalidated file patch without changing the PTY or exposing generic Git arguments. History reads the newest 50 commits reachable from local HEAD without accepting revisions or contacting a remote. Checks reads an explicit external server-owned preset catalog, displays exact argv, runs with bounded concurrency/time/output, supports cancellation, survives browser refresh, and shows pass/fail/timeout/cancel/error evidence with fresh start/end HEAD observations. Activity combines current attention, validated provider facts and observer health, direct-PTY lifecycle, changed-file totals, three recent local commits, and the latest check into a seven-fact maximum with explicit observed/occurred labels; it does not parse terminal text or add agent narration. Protocol 25 provides a strict versioned provider-observation snapshot for each Claude Code or Codex session, forbids provider state on shell sessions, retains private atomic server-owned Pacium workspace and queue decision/delivery/lifecycle state, and adds a bounded private relaunch-manifest catalog with fixed preset command metadata, canonical cwd/repository reference, environment key names only, exact lineage, and optional native resume-ID evidence. Detached manifests remain separate from live sessions; an explicit identity-only relaunch starts a fresh linked PTY and never resumes a provider automatically. Queue observation remains content-free until an exact item read, delivery/lifecycle requests remain identity-only, Control context stays identity-free and read-only, and Local/Tailscale connection evidence stays strict. A functional browser-owned General/Pacium switch changes navigation emphasis without remounting terminals and preserves selection/layout/session-inspector context. Pacium mode pins Meta and Orchestrator above ordinary sessions, resolves only exact accepted session IDs, opens the real PTY, and can assign an eligible live terminal or launch a fixed preset before binding its exact created session. When one exact Meta tmux target is configured, Pacium attaches it through the existing fixed adapter and a fresh page opens directly into that terminal with secondary panels collapsed. The terminal is the ordinary Meta input surface; the former duplicate prompt-target composer has been removed. Configured workers now appear once in accepted order with exact process, command classification, repository, attention, and already-loaded selected-session change evidence; preset-only workers remain explicitly not started and no worker is inferred or launched. `Open context` reads only the accepted objective and plan files through bounded stable no-follow regular-file reads and renders their current UTF-8 bytes as inert text. The same inspector shows at most twelve newest immutable decisions with recording, latest transport attempt, and human-labelled lifecycle evidence kept separate. It never claims that a decision caused terminal, Git, provider, or completion activity. A compact Pacium queue observes accepted files with stable bounded reads. Each nonblank stable source becomes at most one deterministic question, explicit approval, failure, review, or unknown item. The content-free list shows source, requesting role, confidence, process-local waiting evidence, and bounded rewrite/degradation/exact-hash duplicate conflicts; opening a row fetches exact current text only for the published workspace/source/revision/hash/item identity and renders it as inert text in the right inspector. Rewrite, degradation, config drift, disconnect, mode exit, and late responses clear inspected text. Conversational permission wording never becomes approval. A current question accepts a bounded answer and optional note; a current approval exposes distinct approve/deny controls with explicit confirmation. The server revalidates exact source identity and type, then stores one hash-verified immutable local decision that survives browser reload and local-server restart. Recording alone does not deliver, acknowledge, apply, execute, or send that decision. A decided item separately previews only its accepted answer-file or live role-PTY target and requires Review/Cancel/Confirm before a durable attempt. Answer files are private and never overwrite an existing target; role prompts are one JSON-escaped comment line, and PTY acceptance does not confirm agent handling. Exact answer-file bytes are reported only as transport-artifact evidence. Acknowledged, applied, unable-to-apply, confirmed-not-delivered, and superseded states require explicit human-labelled Review/Cancel/Confirm and remain separate from provider-native evidence. A failed or unknown first attempt can be retried once only after it is explicitly confirmed not delivered; no automatic or third attempt is possible. Multi-item queue boundaries and provider-native queue acknowledgement remain later slices. Pacium-launched Claude Code and supported Codex sessions now receive bounded observation-only enrichment; any live process without fresh provider evidence remains honestly Unknown. Clean and failed exits are process-derived facts, not proof of task completion. A shared session menu supports rename, duplicate, ended-session manifest relaunch, directory copy, host repository reveal, interrupt, view closure, and confirmed termination. Tabs and panes are browser-owned views: closing either does not stop the underlying PTY. Direct PTYs survive browser refresh but not local-server restart; their secret-free relaunch manifests do survive. Explicitly opted-in tmux keep-alive presets automatically restore an exact surviving target with a fresh linked Pacium client.
 
 ## Optional tmux attachment
 
-Direct PTYs remain the default. To expose one existing local tmux server, set
-one absolute Unix socket path before startup:
-
-```bash
-PACIUM_TMUX_SOCKET=/private/tmp/pacium-tmux.sock pnpm dev
-```
+Direct PTYs remain the default. For an existing same-user default tmux server,
+open local Pacium, choose **Workspace settings → Host setup**, select the
+existing Meta session, and choose **Enable remote Meta**. Pacium discovers and
+revalidates the socket and target; neither is typed into the browser. Explicit
+environment values remain an operations-only override.
 
 Pacium detects tmux but never starts a server during discovery. When the
 configured executable and socket are available, the sidebar shows `Attach
@@ -188,8 +187,7 @@ PACIUM_DATA_DIR=/Users/operator/.local/state/pacium-control pnpm dev
 ```
 
 The browser protocol can get or completely replace the versioned workspace.
-The current UI exposes a role-scoped Meta/Orchestrator binding editor and an
-ephemeral prompt target selector for exact live role or worker bindings. It
+The current UI exposes a role-scoped Meta/Orchestrator binding editor. It
 does not edit workspace identity, repositories, workers, queue sources,
 delivery methods, or context sources. Configured objective and plan paths
 remain metadata until the operator explicitly opens or refreshes Control
@@ -206,8 +204,7 @@ through its exact accepted answer-file or live role-prompt method after
 explicit confirmation. Pacium never executes queue contents, and
 classification, inspection, local recording, or compatible delivery grants no
 execution authority.
-Browser prompts do not use those paths; they send bounded input directly to one
-explicitly selected live PTY. See the
+Ordinary Meta conversation happens directly in the selected terminal. See the
 [Pacium workspace configuration contract](docs/execution/pacium-workspace-configuration.md)
 for the schema, bounds, atomic replacement, security boundary, and recovery.
 
@@ -232,9 +229,8 @@ Current keyboard shortcuts:
   application owns keyboard focus.
 - `Cmd/Ctrl+L`: edit the absolute host path while the working-directory picker
   owns focus.
-- `Cmd/Ctrl+Enter`: send a valid Pacium prompt while its prompt field owns
-  focus, or confirm the currently loaded directory while the picker owns
-  focus; plain Enter cannot add terminal input.
+- `Cmd/Ctrl+Enter`: confirm the currently loaded directory while the
+  working-directory picker owns focus.
 
 Application shortcuts pause while a terminal or text input owns the keyboard. Use `Ctrl+Shift+.` to leave terminal capture before opening the palette. Press `Tab` from the browser chrome to reveal the skip link and move directly to the terminal workspace.
 
@@ -306,7 +302,7 @@ Pacium mode is a workspace toggle, not a separate application.
 When enabled it adds:
 
 - pinned Meta and Orchestrator sessions;
-- explicit prompt targeting;
+- direct conversation in the selected Meta terminal;
 - questions, approvals, failures, and review requests from the queue;
 - answer and acknowledgement state;
 - a compact worker list;
@@ -357,13 +353,11 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) and the [accepted ADRs](docs/decisions/RE
 
 ### Optional Tailscale Serve
 
-PC-077 implements the narrow ADR-0016 ingress. Configure both startup values
-or neither:
-
-```sh
-export PACIUM_TAILSCALE_ORIGIN="https://pacium-host.example-tailnet.ts.net"
-export PACIUM_TAILSCALE_OPERATOR_LOGINS="owner@example.com"
-```
+PC-077 and ADR-0018 implement the narrow ingress and local setup flow. Open
+local Pacium, choose **Workspace settings → Host setup**, select Meta, and
+choose **Enable remote Meta**. If Tailscale needs consent, use the verified
+**Open Tailscale approval** action and retry. The completed state exposes one
+**Open Pacium** tailnet URL.
 
 Pacium still listens only on `127.0.0.1`. Tailscale grants provide the outer
 network restriction; Pacium requires the exact Serve Host/Origin, an exact
@@ -371,6 +365,11 @@ allowlisted `Tailscale-User-Login`, and its ephemeral token before protected
 HTTP or WebSocket access. Funnel, another proxy, tagged-device-only access,
 public binding, application accounts, and cross-host control remain
 unsupported.
+
+After the browser device is signed in to the tailnet, opening the configured
+Serve URL is the routine connection step. Tailscale SSH's browser
+reauthentication page is an SSH-only check-mode flow; Pacium does not automate
+or emulate it.
 
 Follow the complete [Tailscale Serve runbook](docs/operations/tailscale-serve.md)
 for current commands, grants, validation, revocation, disable, and the manual

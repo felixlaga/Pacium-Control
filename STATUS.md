@@ -2,7 +2,7 @@
 
 **Current phase:** Core terminal workspace, bounded Git oversight, server-owned
 Pacium configuration, the General/Pacium toggle, and pinned Meta/Orchestrator
-roles plus explicit terminal prompt targeting and conservative queue-file
+roles plus direct Meta-terminal input and conservative queue-file
 observation, whole-source queue classification, and a read-only queue
 list/original-text inspector plus immutable local question/approval decisions
 and explicit compatible answer-file/role-prompt delivery, reconciliation,
@@ -19,7 +19,16 @@ explicit linked-successor recovery complete the planned native-enrichment
 slice. One explicitly configured local tmux socket can now be discovered and
 one exact published session can be attached through the existing terminal
 workspace. Explicit tmux keep-alive launches and bounded automatic restart
-reattachment are complete.
+reattachment are complete. PC-079 adds an optional exact server-configured
+Meta tmux attachment, publishes its immutable Pacium identity through protocol
+25, and makes a fresh browser open directly into that terminal with secondary
+panels collapsed. It also removes the redundant prompt-target composer and
+compacts Pacium role, worker, queue, and workspace chrome.
+PC-080 replaces its command-oriented initial configuration with local-only
+Host setup in Workspace settings. Pacium discovers the same-user default tmux
+sessions and current Tailscale identity, accepts one published session ID,
+applies one fixed private Serve mapping, stores secret-free versioned state,
+and exposes the resulting URL without typed paths, logins, or commands.
 The bounded PC-072 lifecycle, memory, browser-model, and real-PTY descriptor
 soak baseline is complete. PC-073 bounded redaction-aware diagnostics,
 protected reads, exact preview, and browser-local JSON export are complete.
@@ -83,9 +92,10 @@ The secondary product is **Pacium mode**:
   canonical `*.ts.net` HTTPS Origin, bounded exact operator-login allowlist,
   canonical local-Origin isolation, exact remote Host/Origin/login checks,
   Funnel denial, and the unchanged ephemeral token for protected transport.
-- Protocol-24 per-socket Local or Tailscale/login evidence, plus one strict
-  nullable provider-observation snapshot per session, and a compact accessible
-  connection badge that clears stale identity on disconnect.
+- Protocol-25 per-socket Local or Tailscale/login evidence, one strict
+  automatic-Meta capability, one strict nullable provider-observation snapshot
+  per session, and a compact accessible connection badge that clears stale
+  identity on disconnect.
 - Bounded xterm headless snapshots that let a new browser transport attach to a still-live PTY.
 - A fixed server-owned Shell, Codex, and Claude Code launch catalog with honest executable availability.
 - A bounded private version-1 relaunch-manifest catalog that survives
@@ -104,6 +114,12 @@ The secondary product is **Pacium mode**:
   automatic-reattach policy, exact-client detach, bounded deduplicated startup
   restoration, fresh predecessor-linked identities, and no command rerun when
   a target is missing.
+- Optional exact-name Meta attachment through the configured tmux socket, with
+  bounded unavailable evidence, no target recreation, one Pacium client per
+  live target, and one-shot terminal-first browser focus.
+- Local-only Host setup with default tmux discovery, bounded Tailscale identity
+  projection, unknown-Serve refusal, verified consent links, one fixed Serve
+  mutation, private atomic state, and remote-request denial.
 - An isolated scalar-only lifecycle soak covering 20 idle terminals, one
   long-running agent, 100 create/close cycles, 8 MiB output, 100 snapshots,
   explicit peak/retained RSS and live-heap budgets, and a five-real-PTY FD
@@ -231,14 +247,8 @@ The secondary product is **Pacium mode**:
 - Fixed-preset role launch through the existing direct-PTY operation, exact
   `session.created` request correlation, optimistic one-role binding, and
   explicit partial-failure behavior that preserves an unbound created terminal.
-- A Pacium-only prompt composer with stable Meta, Orchestrator, and configured
-  worker identities; exact live-session availability; explicit ephemeral target
-  selection; a 4,000-Unicode-character control-free single-line bound; and
-  deliberate pointer or `Cmd/Ctrl+Enter` send through existing terminal input.
-- Exact prompt request correlation that locks duplicate send, clears scope only
-  after transport acceptance, retains rejected drafts without retry, marks
-  disconnect outcomes unknown, and never claims provider delivery, processing,
-  approval, or completion.
+- Direct Meta conversation through the actual selected terminal. PC-079 removed
+  the duplicate prompt-target composer and its ephemeral send state.
 - One local-server queue observer synchronized to exact accepted config
   revisions, with canonical-parent watchers, 200 ms debounce, bounded
   no-follow stable reads, strict UTF-8, a 64 KiB source ceiling, SHA-256
@@ -366,6 +376,26 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
   run/reload/cancel without terminal reselection. General/Pacium coverage
   proved pointer, chord, palette, reload persistence, unchanged selected PTY
   and inspector context, configured-state presentation, and narrow layouts.
+- PC-079 current-checkout verification passed formatting, lint, type checks,
+  140 test files and 911 tests, and production builds. All twenty ordinary
+  Chromium workflows passed. A separate isolated real-tmux Chromium workflow
+  opened the configured Meta terminal, focused input, preserved its snapshot
+  over refresh, and retained one Pacium session. This follow-on verification
+  ran on the installed Node.js 26.4.0, not the required Node.js 24.18.x; the
+  real `felix-harness` tailnet canary also remains open.
+- PC-080 current-checkout verification passed formatting, lint, type checks,
+  144 test files and 923 tests, and production builds. Its 73 focused checks
+  cover strict contracts, local-only HTTP, default tmux discovery, fixed
+  Tailscale argv, consent-link filtering, private persistence, transport, and
+  settings markup. The fake-Tailscale Chromium scenario is implemented, but
+  its final rendered rerun was blocked by browser-execution approval
+  infrastructure. No real Tailscale or `felix-harness` configuration was
+  changed.
+- PC-081 aligns release preflight with the protocol-25 manifests emitted by
+  both package builders and adds a canonical-source drift test. Current
+  formatting, lint, type checks, 144 test files and 924 tests, and production
+  builds passed on installed Node.js 26.4.0. The exact Node.js 24.18.x
+  artifact-level rerun remains the pinned hosted Ubuntu integration gate.
 - PC-070 focused contract, config, parser, real-socket, session-manager,
   authenticated WebSocket, transport, action-semantics, and dialog tests
   passed. Its isolated real-tmux Chromium workflow listed one server-owned
@@ -579,6 +609,9 @@ Evidence boundaries:
   acceptance; automated browser/accessibility and bounded soak evidence is
   already green.
 - Complete the real Tailscale Serve/grants/Funnel/public/revocation canary.
+- Confirm the exact `felix-harness` tmux socket and run the Meta-first Serve URL
+  canary against the owner's existing `meta` session through the new button
+  flow.
 - Complete real Claude Code and Codex canaries.
 - Run an explicitly authorized current dependency advisory audit.
 - Complete Developer ID signing, notarization, and explicit owner release
@@ -589,9 +622,10 @@ fixed in [the toolchain decision](docs/execution/toolchain-and-platform.md).
 
 ## Next action
 
-The defined implementation roadmap ends at PC-076 and is complete. Do not
-start follow-on implementation or publication from this status. A future
-release attempt begins only when the owner supplies the explicit authority and
+The defined release roadmap ends at PC-076 and its `NO-GO` decision remains
+unchanged. The owner explicitly authorized the bounded PC-079 usability slice;
+its remaining external step is the real `felix-harness` Serve/tmux canary.
+Publication or a new release attempt still requires the explicit authority and
 real evidence listed in the
-[PC-076 assessment](docs/execution/release-readiness-assessment.md); until then,
+[PC-076 assessment](docs/execution/release-readiness-assessment.md). Until then,
 keep using and describing Pacium as a Development snapshot.

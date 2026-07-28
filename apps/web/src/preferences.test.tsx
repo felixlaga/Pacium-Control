@@ -30,6 +30,9 @@ const launchPresets: LaunchPresetCapability[] = [
 ];
 
 const callbacks = {
+  applyHostSetup: vi.fn(),
+  hostSetupLocal: false,
+  loadHostSetup: vi.fn(),
   onApply: vi.fn(),
   onCancel: vi.fn(),
   onRequestNotificationPermission: vi.fn(),
@@ -51,7 +54,8 @@ describe("preferences dialog markup", () => {
     expect(markup).toContain('min="11"');
     expect(markup).toContain('max="18"');
     expect(markup).toContain('value="2000"');
-    expect(markup).toContain("Stored in this browser");
+    expect(markup).toContain("View preferences stay in this browser");
+    expect(markup).toContain("Open Pacium on localhost");
     expect(markup).toContain('role="dialog"');
     expect(markup).toContain('aria-modal="true"');
     expect(markup).toContain('aria-labelledby="preferences-title"');

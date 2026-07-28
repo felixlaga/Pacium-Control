@@ -13,6 +13,7 @@ import {
   loadVerificationCatalog,
   type VerificationCatalog,
 } from "./verification-config.js";
+import { loadHostSetupDocument } from "./host-setup-store.js";
 
 const LoopbackHostSchema = z.literal("127.0.0.1");
 const PortSchema = z.coerce.number().int().min(1024).max(65_535);
@@ -38,6 +39,7 @@ export interface ServerConfig {
   dataDirectory: string;
   shell: string;
   tmuxSocket: string | null;
+  metaTmuxSessionName: string | null;
   environmentKeys: readonly string[];
   launchPresets: readonly LaunchPresetDefinition[];
   verificationCatalog: VerificationCatalog;
@@ -76,8 +78,22 @@ export function loadServerConfig(
     platform,
     environment.XDG_STATE_HOME,
   );
+  const persistedHostSetup = loadHostSetupDocument(dataDirectory);
   const shell = environment.SHELL ?? defaultShellForPlatform(platform);
-  const tmuxSocket = resolveTmuxSocket(environment.PACIUM_TMUX_SOCKET);
+  const hasExplicitTmuxSetup =
+    environment.PACIUM_TMUX_SOCKET !== undefined ||
+    environment.PACIUM_META_TMUX_SESSION !== undefined;
+  const tmuxSocket = resolveTmuxSocket(
+    hasExplicitTmuxSetup
+      ? environment.PACIUM_TMUX_SOCKET
+      : persistedHostSetup?.tmuxSocket,
+  );
+  const metaTmuxSessionName = resolveMetaTmuxSessionName(
+    hasExplicitTmuxSetup
+      ? environment.PACIUM_META_TMUX_SESSION
+      : persistedHostSetup?.metaTmuxSessionName,
+    tmuxSocket,
+  );
 
   if (!shell.startsWith("/") || !existsSync(shell)) {
     throw new Error(
@@ -85,7 +101,22 @@ export function loadServerConfig(
     );
   }
 
-  const tailscaleServe = loadTailscaleServeConfig(environment);
+  const hasExplicitTailscaleSetup =
+    environment.PACIUM_TAILSCALE_ORIGIN !== undefined ||
+    environment.PACIUM_TAILSCALE_OPERATOR_LOGINS !== undefined;
+  const persistedTailscaleSetup =
+    persistedHostSetup !== null && persistedHostSetup.loopbackPort === port
+      ? persistedHostSetup
+      : null;
+  const tailscaleServe = loadTailscaleServeConfig(
+    hasExplicitTailscaleSetup || persistedTailscaleSetup === null
+      ? environment
+      : {
+          PACIUM_TAILSCALE_ORIGIN: persistedTailscaleSetup.tailscaleOrigin,
+          PACIUM_TAILSCALE_OPERATOR_LOGINS:
+            persistedTailscaleSetup.tailscaleOperatorLogin,
+        },
+  );
   const allowedOrigins = loadLocalAllowedOrigins(
     environment.PACIUM_ALLOWED_ORIGINS,
     [
@@ -113,6 +144,7 @@ export function loadServerConfig(
     dataDirectory,
     shell,
     tmuxSocket,
+    metaTmuxSessionName,
     environmentKeys: [
       ...new Set([...DEFAULT_ENVIRONMENT_KEYS, ...extraEnvironmentKeys]),
     ],
@@ -121,6 +153,29 @@ export function loadServerConfig(
       environment.PACIUM_VERIFICATION_CONFIG,
     ),
   };
+}
+
+export function resolveMetaTmuxSessionName(
+  configuredName: string | undefined,
+  tmuxSocket: string | null,
+): string | null {
+  if (configuredName === undefined) {
+    return null;
+  }
+  if (
+    configuredName.length === 0 ||
+    configuredName.length > 200 ||
+    configuredName !== configuredName.trim() ||
+    hasControlCharacter(configuredName)
+  ) {
+    throw new Error(
+      "PACIUM_META_TMUX_SESSION must be one bounded exact tmux session name without controls or surrounding whitespace.",
+    );
+  }
+  if (tmuxSocket === null) {
+    throw new Error("PACIUM_META_TMUX_SESSION requires PACIUM_TMUX_SOCKET.");
+  }
+  return configuredName;
 }
 
 export function resolveTmuxSocket(

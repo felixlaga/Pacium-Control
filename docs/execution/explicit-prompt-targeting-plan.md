@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `953997ba408bc841cf48822e508ee107d5af3ea8`
 - Target milestone: Milestone 3
-- Status: Complete
+- Status: Complete historically; UI superseded and removed by PC-079
 
 ## Objective
 

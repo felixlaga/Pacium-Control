@@ -3,7 +3,6 @@ import type { QueueSourceObservationStatus } from "@pacium/contracts";
 import {
   queueClassificationPresentation,
   queueItemTypeLabel,
-  queueSourceConflictLabel,
   queueWaitingLabel,
   requestingRoleLabel,
   type PaciumQueueProjection,
@@ -69,35 +68,13 @@ export function PaciumQueueSources({
                       ? `${label} · ${requestingRoleLabel(
                           source.requestingRole,
                         )}`
-                      : `${requestingRoleLabel(source.requestingRole)} · ${
-                          selection.confidence
-                        } confidence`}
+                      : `${requestingRoleLabel(source.requestingRole)} · ${queueWaitingLabel(
+                          selection.firstObservedAt,
+                        )}`}
                   </span>
-                  {selection === null && classification !== null ? (
-                    <span className="pacium-queue-classification">
-                      {classification.label}
-                    </span>
-                  ) : null}
-                  {selection === null &&
-                  classification?.diagnostic !== null &&
-                  classification?.diagnostic !== undefined ? (
-                    <small className="pacium-queue-diagnostic">
-                      {classification.diagnostic}
-                    </small>
-                  ) : null}
                   {conflicts.length > 0 ? (
-                    <small className="pacium-queue-conflict">
-                      Conflict · {queueSourceConflictLabel(conflicts[0]!.kind)}
-                      {conflicts.length > 1
-                        ? ` · +${conflicts.length - 1} more`
-                        : ""}
-                    </small>
+                    <small className="pacium-queue-conflict">Conflict</small>
                   ) : null}
-                  <small title={source.path}>
-                    {selection === null
-                      ? sourceEvidenceDetail(observation)
-                      : queueWaitingLabel(selection.firstObservedAt)}
-                  </small>
                 </div>
                 {selection !== null ? (
                   <span aria-hidden="true" className="queue-row-chevron">
@@ -143,7 +120,6 @@ export function PaciumQueueSources({
         )}
       </div>
       <footer>
-        <span>{projection.message}</span>
         <button
           disabled={!projection.canRefresh}
           onClick={onRefresh}
@@ -179,33 +155,4 @@ function queueStatusLabel(status: QueueSourceObservationStatus): string {
     case "watch_error":
       return "Watch error";
   }
-}
-
-function sourceEvidenceDetail(
-  observation: PaciumQueueProjection["sources"][number]["observation"],
-): string {
-  if (observation === null) {
-    return "Waiting for current source evidence";
-  }
-  if (observation.error !== null) {
-    return observation.error.message;
-  }
-  const hash =
-    observation.contentHash === null
-      ? null
-      : observation.contentHash.slice(0, 8);
-  if (observation.byteLength !== null && hash !== null) {
-    return `${formatBytes(observation.byteLength)} · ${hash} · observed`;
-  }
-  if (observation.byteLength !== null) {
-    return `${formatBytes(observation.byteLength)} · observed`;
-  }
-  return `Observed ${observation.observedAt}`;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1_024) {
-    return `${bytes} B`;
-  }
-  return `${Math.round((bytes / 1_024) * 10) / 10} KiB`;
 }

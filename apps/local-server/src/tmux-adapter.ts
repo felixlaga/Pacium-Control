@@ -429,6 +429,49 @@ export async function createTmuxAdapter(
   return new TmuxAdapter(safeSocketPath, executable, version, environment);
 }
 
+export async function discoverDefaultTmuxSocket(
+  environment: Readonly<Record<string, string>>,
+  execute: TmuxCommandExecutor = executeTmux,
+): Promise<string | null> {
+  const executable = findExecutable("tmux", environment.PATH);
+  if (executable === null) {
+    return null;
+  }
+  try {
+    const result = await execute(
+      executable,
+      ["display-message", "-p", "#{socket_path}"],
+      {
+        encoding: "utf8",
+        env: { ...environment },
+        timeout: DISCOVERY_TIMEOUT_MS,
+        maxBuffer: 4_096,
+        windowsHide: true,
+      },
+    );
+    const candidate = result.stdout.trim();
+    if (
+      candidate.length === 0 ||
+      candidate.length > 4_096 ||
+      !isAbsolute(candidate) ||
+      candidate === parse(candidate).root ||
+      hasControlCharacter(candidate)
+    ) {
+      return null;
+    }
+    return await resolveSafeTmuxSocketLocation(candidate);
+  } catch {
+    return null;
+  }
+}
+
+function hasControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return codePoint <= 0x1f || codePoint === 0x7f;
+  });
+}
+
 export async function resolveSafeTmuxSocketLocation(
   socketPath: string,
 ): Promise<string> {

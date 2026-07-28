@@ -77,6 +77,8 @@ Browser connections do not own processes. A browser may disconnect and reconnect
 The optional tmux adapter supports:
 
 - attaching to configured tmux sessions;
+- attaching one exact server-configured Meta session at startup and publishing
+  only its resulting Pacium session identity;
 - keeping selected sessions alive across local-server restart;
 - adopting sessions through explicit user action.
 
@@ -229,13 +231,20 @@ request independently:
   marker, and the existing token for protected HTTP/WebSocket transport.
 - Assets and health require valid navigation authority before revealing the
   application boundary.
-- Protocol 18 reports only `local`, or `tailscale` plus the current exact
+- Protocol 25 reports only `local`, or `tailscale` plus the current exact
   verified login in `server.welcome`.
 
 Connection authority is disposable per socket. It is never persisted, inferred
 from IP, display name, profile, device, tag, or browser messages. Grants and
-Serve remain Tailscale-owned outer controls; the local server never invokes or
-configures the daemon.
+Serve remain Tailscale-owned outer controls. ADR-0018 permits one exception:
+an authenticated local-only setup request may inspect bounded Tailscale state
+and invoke the fixed `serve --bg --yes 4174` operation. Remote connections
+cannot inspect or mutate this setup.
+
+The browser also never invokes SSH. In the Meta-first remote path, Serve
+authenticates and proxies the page to Pacium on the same host; Pacium then
+attaches the exact locally selected or startup-configured tmux target through
+its fixed no-shell adapter.
 
 Pacium remains on the same host as the PTYs and files it controls. Multi-user roles, another ingress mechanism, cross-host aggregation, or a separate privilege broker require a future ADR.
 

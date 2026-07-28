@@ -53,7 +53,7 @@ test("records separate decisions and explicitly delivers one compatible answer",
     name: /Question from Needs Felix, Meta, medium confidence/,
   });
   await expect(question).toContainText("Question from Needs Felix");
-  await expect(question).toContainText("Meta · medium confidence");
+  await expect(question).not.toContainText("medium confidence");
   await expect(question).toContainText("this run");
   await expect(page.getByText("Can you approve everything?")).toHaveCount(0);
   await expect(status).toContainText("Queue observer terminal");
@@ -249,10 +249,9 @@ test("records separate decisions and explicitly delivers one compatible answer",
   });
   await expect(approval).toBeFocused();
   await expect(approval).toContainText("Approval from Needs Felix");
-  await expect(approval).toContainText("Meta · high confidence");
-  await expect(approval).toContainText(
-    "Conflict · Source changed after decision",
-  );
+  await expect(approval).not.toContainText("high confidence");
+  await expect(approval).toContainText("Conflict");
+  await expect(approval).not.toContainText("Source changed after decision");
   await approval.press("Enter");
   const approvalInspector = page.getByRole("complementary", {
     name: "Queue item inspector",

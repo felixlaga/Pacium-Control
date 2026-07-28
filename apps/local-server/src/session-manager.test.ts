@@ -4,7 +4,10 @@ import { join } from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 import { FakePtyFactory } from "@pacium/test-utils";
-import type { SessionSummary } from "@pacium/contracts";
+import type {
+  SessionSummary,
+  TmuxSessionsObservation,
+} from "@pacium/contracts";
 
 import { ClaudeObserver } from "./claude-observer.js";
 import { CodexObserver } from "./codex-observer.js";
@@ -157,6 +160,29 @@ class FixtureTmuxAdapter extends TmuxAdapter {
     });
   }
 
+  public override discover(): Promise<TmuxSessionsObservation> {
+    return Promise.resolve({
+      status: "ready",
+      serverId: "configured",
+      observedAt: "2026-07-28T10:00:00.000Z",
+      error: null,
+      sessions: [
+        {
+          target: {
+            serverId: "configured",
+            sessionId: "$7",
+            sessionName: "Meta",
+            observedAt: "2026-07-28T10:00:00.000Z",
+          },
+          windows: 1,
+          attachedClients: 0,
+          createdAt: "2026-07-28T09:00:00.000Z",
+          currentPath: process.cwd(),
+        },
+      ],
+    });
+  }
+
   public override launchSpec(input: TmuxLaunchInput): Promise<TmuxAttachSpec> {
     this.launches.push(input);
     return Promise.resolve({
@@ -272,6 +298,87 @@ function emptyHistory(root: string | null, observedAt?: string) {
 }
 
 describe("SessionManager", () => {
+  it("attaches one configured Meta target once and publishes its exact session ID", async () => {
+    const factory = new FakePtyFactory();
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      undefined,
+      [],
+      new FixtureTmuxAdapter(),
+    );
+
+    expect(manager.metaSessionCapability()).toMatchObject({
+      state: "unconfigured",
+      sessionId: null,
+    });
+    const first = await manager.attachConfiguredMetaTmux("Meta");
+    expect(first.state).toBe("ready");
+    expect(typeof first.sessionId).toBe("string");
+    const second = await manager.attachConfiguredMetaTmux("Meta");
+    expect(second).toEqual(first);
+    expect(factory.createCalls).toHaveLength(1);
+    expect(factory.createCalls[0]?.args).toEqual([
+      "-S",
+      "/private/tmp/pacium-test.sock",
+      "attach-session",
+      "-t",
+      "$7",
+    ]);
+
+    factory.processes[0]?.emitExit(0, 0);
+    expect(manager.metaSessionCapability()).toMatchObject({
+      state: "unavailable",
+      sessionId: null,
+    });
+    await manager.shutdown();
+  });
+
+  it("keeps ordinary terminals available when configured Meta is missing", async () => {
+    const factory = new FakePtyFactory();
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      undefined,
+      [],
+      new FixtureTmuxAdapter(),
+    );
+
+    await expect(
+      manager.attachConfiguredMetaTmux("missing"),
+    ).resolves.toMatchObject({
+      state: "unavailable",
+      sessionId: null,
+    });
+    expect(factory.createCalls).toHaveLength(0);
+    const shell = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+    expect(shell.runtime).toBe("pty");
+    await manager.shutdown();
+  });
+
   it("attaches one revalidated tmux target through the existing PTY lifecycle", async () => {
     const factory = new FakePtyFactory();
     const adapter = new FixtureTmuxAdapter();

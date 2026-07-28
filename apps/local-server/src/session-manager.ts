@@ -18,6 +18,7 @@ import {
   type GitDiffObservation,
   type GitHistoryObservation,
   type LaunchPresetId,
+  type MetaSessionCapability,
   RELAUNCH_MANIFEST_SCHEMA_VERSION,
   type RepositoryObservation,
   type RelaunchManifest,
@@ -142,6 +143,12 @@ export class SessionManager {
   private readonly unsubscribeVerification: (() => void) | undefined;
   private readonly unsubscribeClaudeObserver: (() => void) | undefined;
   private readonly unsubscribeCodexObserver: (() => void) | undefined;
+  private metaAttachInFlight: Promise<MetaSessionCapability> | null = null;
+  private metaSession: MetaSessionCapability = {
+    state: "unconfigured",
+    sessionId: null,
+    detail: "No automatic Meta tmux session is configured.",
+  };
 
   public constructor(
     private readonly ptyFactory: PtyFactory,
@@ -327,6 +334,116 @@ export class SessionManager {
         detail: "No optional tmux socket is configured.",
       }
     );
+  }
+
+  public metaSessionCapability(): MetaSessionCapability {
+    if (this.metaSession.state !== "ready") {
+      return { ...this.metaSession };
+    }
+    const session =
+      this.metaSession.sessionId === null
+        ? undefined
+        : this.sessions.get(this.metaSession.sessionId);
+    if (
+      session === undefined ||
+      (session.summary.processState !== "creating" &&
+        session.summary.processState !== "live")
+    ) {
+      return {
+        state: "unavailable",
+        sessionId: null,
+        detail:
+          "The Meta client ended. The external tmux session may still be running.",
+      };
+    }
+    return { ...this.metaSession };
+  }
+
+  public attachConfiguredMetaTmux(
+    sessionName: string | null,
+    cols = 100,
+    rows = 30,
+  ): Promise<MetaSessionCapability> {
+    if (sessionName === null) {
+      this.metaSession = {
+        state: "unconfigured",
+        sessionId: null,
+        detail: "No automatic Meta tmux session is configured.",
+      };
+      return Promise.resolve(this.metaSessionCapability());
+    }
+    const current = this.metaSessionCapability();
+    if (current.state === "ready") {
+      return Promise.resolve(current);
+    }
+    if (this.metaAttachInFlight !== null) {
+      return this.metaAttachInFlight;
+    }
+    const operation = this.attachConfiguredMetaTmuxOnce(
+      sessionName,
+      cols,
+      rows,
+    );
+    this.metaAttachInFlight = operation;
+    void operation.finally(() => {
+      if (this.metaAttachInFlight === operation) {
+        this.metaAttachInFlight = null;
+      }
+    });
+    return operation;
+  }
+
+  private async attachConfiguredMetaTmuxOnce(
+    sessionName: string,
+    cols: number,
+    rows: number,
+  ): Promise<MetaSessionCapability> {
+    if (this.tmuxAdapter === undefined) {
+      this.metaSession = {
+        state: "unavailable",
+        sessionId: null,
+        detail: "The configured Meta tmux server is unavailable.",
+      };
+      return this.metaSessionCapability();
+    }
+
+    try {
+      const observation = await this.tmuxAdapter.discover();
+      if (observation.status !== "ready") {
+        throw new Error("Meta discovery is unavailable.");
+      }
+      const matches = observation.sessions.filter(
+        (session) => session.target.sessionName === sessionName,
+      );
+      if (matches.length !== 1) {
+        throw new Error("The exact Meta target is unavailable.");
+      }
+      const target = matches[0]!.target;
+      const active = [...this.sessions.values()].find(
+        ({ summary }) =>
+          summary.runtime === "tmux" &&
+          summary.tmuxTarget != null &&
+          tmuxTargetKey(summary.tmuxTarget) === tmuxTargetKey(target) &&
+          (summary.processState === "creating" ||
+            summary.processState === "live"),
+      );
+      const session =
+        active?.summary ??
+        (await this.attachTmux(target.serverId, target.sessionId, cols, rows));
+      this.metaSession = {
+        state: "ready",
+        sessionId: session.id,
+        detail: "Meta is attached through the configured local tmux session.",
+      };
+    } catch {
+      this.metaSession = {
+        state: "unavailable",
+        sessionId: null,
+        detail:
+          "The configured Meta tmux session could not be attached. Other terminals remain available.",
+      };
+    }
+    return this.metaSessionCapability();
   }
 
   public async attachTmux(

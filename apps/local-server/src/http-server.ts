@@ -9,7 +9,13 @@ import {
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { PROTOCOL_VERSION } from "@pacium/contracts";
+import {
+  HostSetupApplyRequestSchema,
+  PROTOCOL_VERSION,
+  type HostSetupApplyResult,
+  type HostSetupApplyRequest,
+  type HostSetupSnapshot,
+} from "@pacium/contracts";
 
 import type { ClaudeObserver } from "./claude-observer.js";
 import type { CodexRuntimeBridge } from "./codex-runtime-bridge.js";
@@ -25,6 +31,10 @@ import { classifyRequestAccess, type RequestAccess } from "./remote-access.js";
 import type { PaciumConfigStore } from "./pacium-config-store.js";
 import { QueueObserver } from "./queue-observer.js";
 import type { SessionManager } from "./session-manager.js";
+interface HostSetupApi {
+  inspect(): Promise<HostSetupSnapshot>;
+  apply(input: HostSetupApplyRequest): Promise<HostSetupApplyResult>;
+}
 import { WebSocketHub } from "./ws-hub.js";
 
 export interface PaciumHttpServer {
@@ -39,6 +49,7 @@ export function createPaciumHttpServer(
   queueObserver: QueueObserver = new QueueObserver(),
   claudeObserver?: ClaudeObserver,
   codexRuntimeBridge?: CodexRuntimeBridge,
+  hostSetup?: HostSetupApi,
 ): PaciumHttpServer {
   const webRoot = fileURLToPath(new URL("../../web/dist/", import.meta.url));
   const hub = new WebSocketHub(config, sessions, paciumConfig, queueObserver);
@@ -51,6 +62,7 @@ export function createPaciumHttpServer(
       sessions,
       queueObserver,
       claudeObserver,
+      hostSetup,
     );
   });
 
@@ -111,6 +123,7 @@ async function routeRequest(
   sessions: SessionManager,
   queueObserver: QueueObserver,
   claudeObserver: ClaudeObserver | undefined,
+  hostSetup: HostSetupApi | undefined,
 ): Promise<void> {
   applySecurityHeaders(response, config);
 
@@ -225,6 +238,76 @@ async function routeRequest(
     } catch {
       sendJson(response, 500, {
         error: "Pacium could not construct bounded diagnostics.",
+      });
+    }
+    return;
+  }
+
+  if (pathname === "/api/host-setup") {
+    response.setHeader("cache-control", "no-store");
+    const access = authorizeProtectedApi(request, config);
+    if (access?.kind !== "local" || hostSetup === undefined) {
+      sendJson(response, 403, { error: "Forbidden" });
+      return;
+    }
+    if (request.method !== "GET") {
+      request.resume();
+      sendJson(response, 405, { error: "Method not allowed" });
+      return;
+    }
+    if (!hasEmptyRequestBody(request)) {
+      request.resume();
+      sendJson(response, 400, { error: "Request body is not allowed" });
+      return;
+    }
+    try {
+      sendJson(response, 200, await hostSetup.inspect());
+    } catch {
+      sendJson(response, 500, {
+        error: "Host setup could not be inspected safely.",
+      });
+    }
+    return;
+  }
+
+  if (pathname === "/api/host-setup/apply") {
+    response.setHeader("cache-control", "no-store");
+    const access = authorizeProtectedApi(request, config);
+    if (access?.kind !== "local" || hostSetup === undefined) {
+      request.resume();
+      sendJson(response, 403, { error: "Forbidden" });
+      return;
+    }
+    if (request.method !== "POST") {
+      request.resume();
+      sendJson(response, 405, { error: "Method not allowed" });
+      return;
+    }
+    if (request.headers["content-type"] !== "application/json") {
+      request.resume();
+      sendJson(response, 415, { error: "JSON content type required" });
+      return;
+    }
+    const body = await readBoundedJson(request, 1_024);
+    if (body.status !== "ready") {
+      sendJson(response, body.status === "too_large" ? 413 : 400, {
+        error:
+          body.status === "too_large"
+            ? "Host setup request is too large."
+            : "Invalid host setup request.",
+      });
+      return;
+    }
+    const parsed = HostSetupApplyRequestSchema.safeParse(body.value);
+    if (!parsed.success) {
+      sendJson(response, 400, { error: "Invalid host setup request." });
+      return;
+    }
+    try {
+      sendJson(response, 200, await hostSetup.apply(parsed.data));
+    } catch {
+      sendJson(response, 500, {
+        error: "Host setup could not be applied safely.",
       });
     }
     return;

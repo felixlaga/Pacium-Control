@@ -4,13 +4,18 @@ import { ClaudeObserver, detectClaudeVersion } from "./claude-observer.js";
 import { CodexObserver, detectCodexRuntime } from "./codex-observer.js";
 import { CodexRuntimeBridge } from "./codex-runtime-bridge.js";
 import { createPaciumHttpServer } from "./http-server.js";
+import { HostSetupService } from "./host-setup-service.js";
+import { HostSetupStore } from "./host-setup-store.js";
 import { createHostActions } from "./host-actions.js";
 import { createPaciumConfigStore } from "./pacium-config-service.js";
 import { NodePtyFactory } from "./pty-adapter.js";
 import { QueueObserver } from "./queue-observer.js";
 import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
 import { SessionManager } from "./session-manager.js";
-import { createTmuxAdapter } from "./tmux-adapter.js";
+import {
+  createTmuxAdapter,
+  discoverDefaultTmuxSocket,
+} from "./tmux-adapter.js";
 import { VerificationRunner } from "./verification-runner.js";
 
 const config = loadServerConfig();
@@ -44,6 +49,9 @@ const verificationRunner = new VerificationRunner({
 });
 const relaunchManifests = new RelaunchManifestStore(config.dataDirectory);
 await relaunchManifests.initialize();
+if (config.tmuxSocket === null) {
+  config.tmuxSocket = await discoverDefaultTmuxSocket(childEnvironment);
+}
 const tmuxAdapter = await createTmuxAdapter(
   config.tmuxSocket,
   childEnvironment,
@@ -70,7 +78,19 @@ if (tmuxRestore.attempted > 0 || tmuxRestore.deferred > 0) {
     `Pacium tmux keep-alive recovery: ${tmuxRestore.restored} restored, ${tmuxRestore.unavailable} unavailable, ${tmuxRestore.deferred} deferred.`,
   );
 }
+const metaSession = await sessions.attachConfiguredMetaTmux(
+  config.metaTmuxSessionName,
+);
+if (metaSession.state !== "unconfigured") {
+  console.info(`Pacium Meta tmux startup: ${metaSession.state}.`);
+}
 const paciumConfig = createPaciumConfigStore(config, sessions);
+const hostSetup = new HostSetupService(
+  config,
+  sessions,
+  new HostSetupStore(config.dataDirectory),
+  childEnvironment,
+);
 const queueObserver = new QueueObserver();
 await queueObserver.syncConfig(await paciumConfig.inspect());
 const application = createPaciumHttpServer(
@@ -80,6 +100,7 @@ const application = createPaciumHttpServer(
   queueObserver,
   claudeObserver,
   codexRuntimeBridge,
+  hostSetup,
 );
 
 application.server.listen(config.port, config.host, () => {

@@ -219,6 +219,7 @@ async function runRealPtyCanary(cwd: string): Promise<{
     dataDirectory,
     shell: SUPPORTED_SHELL,
     tmuxSocket: null,
+    metaTmuxSessionName: null,
     environmentKeys: ["HOME", "PATH", "SHELL", "USER", "LANG", "TMPDIR"],
     launchPresets: [shellPreset],
     verificationCatalog: { configured: false, repositories: [] },

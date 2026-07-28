@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,6 +9,7 @@ import {
   inspectTrackedPaths,
   isForbiddenReleasePath,
   parseLinuxHostContract,
+  RELEASE_MANIFEST_PROTOCOL_VERSION,
   releaseArtifactDefinition,
   validateReleaseManifest,
 } from "./release-preflight-contract.mjs";
@@ -120,6 +123,19 @@ describe("release preflight contract", () => {
     );
   });
 
+  it("keeps the release manifest expectation aligned with the canonical protocol", () => {
+    const protocolSource = readFileSync(
+      new URL("../packages/contracts/src/protocol.ts", import.meta.url),
+      "utf8",
+    );
+    const match = protocolSource.match(
+      /export const PROTOCOL_VERSION = (\d+) as const;/,
+    );
+
+    expect(match).not.toBeNull();
+    expect(Number(match?.[1])).toBe(RELEASE_MANIFEST_PROTOCOL_VERSION);
+  });
+
   it("rejects tracked runtime, state, environment, and key material paths", () => {
     for (const path of [
       "node_modules/example/index.js",
@@ -229,6 +245,15 @@ describe("release preflight contract", () => {
     ).toThrow("unique");
     expect(() =>
       validateReleaseManifest(
+        {
+          ...manifest(linux),
+          protocolVersion: RELEASE_MANIFEST_PROTOCOL_VERSION - 1,
+        },
+        "ubuntu-24.04-linux-x64",
+      ),
+    ).toThrow("bounded release contract");
+    expect(() =>
+      validateReleaseManifest(
         { ...manifest(linux), files: [file("app/.env")] },
         "ubuntu-24.04-linux-x64",
       ),
@@ -240,7 +265,7 @@ function manifest({ target, distribution }) {
   return {
     schemaVersion: 1,
     packageVersion: "0.0.0",
-    protocolVersion: 24,
+    protocolVersion: RELEASE_MANIFEST_PROTOCOL_VERSION,
     target,
     runtime: { nodeRequirement: "24.18.x", nodeBundled: false },
     distribution,

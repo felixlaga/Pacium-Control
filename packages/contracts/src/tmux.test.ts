@@ -1,12 +1,44 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MetaSessionCapabilitySchema,
   TmuxCapabilitySchema,
   TmuxSessionsObservationSchema,
   TmuxTargetSchema,
 } from "./tmux.js";
 
 describe("tmux contracts", () => {
+  it("keeps Meta startup capability strict and session-ID based", () => {
+    expect(
+      MetaSessionCapabilitySchema.safeParse({
+        state: "ready",
+        sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+        detail: "Meta is attached.",
+      }).success,
+    ).toBe(true);
+    expect(
+      MetaSessionCapabilitySchema.safeParse({
+        state: "unavailable",
+        sessionId: null,
+        detail: "Meta is unavailable.",
+      }).success,
+    ).toBe(true);
+    expect(
+      MetaSessionCapabilitySchema.safeParse({
+        state: "ready",
+        sessionId: null,
+        detail: "Forged ready state.",
+      }).success,
+    ).toBe(false);
+    expect(
+      MetaSessionCapabilitySchema.safeParse({
+        state: "unavailable",
+        sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+        detail: "Forged unavailable state.",
+      }).success,
+    ).toBe(false);
+  });
+
   it("keeps unconfigured capability explicit", () => {
     expect(
       TmuxCapabilitySchema.safeParse({
