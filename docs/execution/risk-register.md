@@ -29,6 +29,7 @@ Review at every milestone.
 | R-23 | Persisted logs/state contain secrets           |     Medium |        High | bounded metadata, no raw bytes/env, secret scans                     | secret scan alert               |
 | R-24 | Optional tmux becomes hidden requirement       |     Medium |      Medium | direct PTY release gate, capability labels                           | core test depends on tmux       |
 | R-25 | Linear inspiration becomes imitation           | Low/Medium |      Medium | principles not pixels, original tokens/brand                         | copied visual identity          |
+| R-26 | Support export leaks sensitive local content   |        Low |    Critical | strict allowlist, fixed bounds, preview, hostile-field exclusion     | content canary in JSON          |
 
 ## Review questions
 

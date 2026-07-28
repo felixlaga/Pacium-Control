@@ -4,6 +4,25 @@
 
 Use this checklist for security-sensitive pull requests and milestone gates.
 
+## PC-073 diagnostics evidence
+
+- [x] The endpoint reuses exact Local/Tailscale Origin, Host, verified remote
+      identity, bearer-token, method, and empty-body enforcement.
+- [x] The response is a strict capped allowlist and is sent with `no-store`.
+- [x] Hostile terminal, provider, queue, Git, path, identity, credential,
+      command, PID, and relaunch fixtures are absent from serialized output.
+- [x] The inclusion/omission manifest is visible before an explicit
+      browser-local JSON download; no server file, upload, clipboard, or log is
+      created.
+- [x] Diagnostics cannot read terminal scrollback, send input, signal a
+      process, refresh a source, execute a command, or mutate durable state.
+- [x] Local/Tailscale negative tests, exact preview/download Chromium evidence,
+      full verification, and the complete browser suite pass.
+
+Residual release gates remain the PC-074 clean-install/package boundary,
+PC-075 Linux path, and PC-076 release review. This checklist does not claim
+those gates.
+
 ## Identity
 
 - [ ] Production identity comes only from the trusted Tailscale ingress.

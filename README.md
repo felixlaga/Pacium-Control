@@ -80,6 +80,24 @@ remain manual. If the exact target is missing, Pacium keeps Recovery evidence
 and never reruns the stored command. Deliberate close detaches the exact
 Pacium-owned client; it does not invoke `kill-session`.
 
+## Diagnostics
+
+Open `Diagnostics` from the workspace header or command palette. The
+`/diagnostics` modal performs one explicit protected read and shows bounded
+application/dependency versions, component health, export-local `Terminal N`
+session rows, aggregate queue and tmux status, provider health, and fixed
+diagnostic-code counts. It does not poll or change a terminal, queue, Git
+repository, provider, or tmux target.
+
+`Preview export` reveals the exact version-1 JSON before `Download JSON`
+becomes available. The browser creates the file locally; Pacium does not store,
+upload, email, or log the export. The structural allowlist omits terminal
+content and input, titles, session/process identities, commands and arguments,
+paths and repositories, Git content, queue text/decisions, provider
+content/fields, environments and credentials, host/operator identity, and
+relaunch metadata. A failed refresh retains the last good snapshot as stale,
+and a direct route opened before bootstrap requires an explicit Retry.
+
 ## Activity evidence
 
 The Activity inspector presents bounded provider, process, Git, and
