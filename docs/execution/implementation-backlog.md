@@ -518,6 +518,14 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-071 Implement tmux keep-alive preset
 
 - Launch configured sessions under tmux and reconnect after local-server restart.
+- Current status: complete. Protocol 24 adds one strict optional boolean while
+  the server owns the fixed preset, generated target, direct tmux argv, socket,
+  dimensions, timeout, and restoration policy. Keep-alive manifests become
+  durable before the client, startup restores only newest unique surviving
+  targets with fresh predecessor-linked IDs, exact client detach never invokes
+  `kill-session`, and missing targets never rerun commands. Focused and real
+  tmux restart/close evidence passed; full verification passed 131 test files
+  and 859 tests; all 19 Chromium workflows passed.
 
 ### PC-072 Add lifecycle and memory soak tests
 

@@ -69,8 +69,22 @@ PC-070 completes the explicit attachment half of criteria 1 and 2:
 - An isolated tmux 3.7b browser canary proves explicit attach, input, browser
   reload, view close, client disconnect, and surviving external session state.
 
-PC-071 still owns launch-under-tmux keep-alive and automatic reattachment after
-local-server restart.
+PC-071 completes the keep-alive half of criteria 1 and 2:
+
+- A ready configured socket adds one unchecked launch choice; direct PTY stays
+  the default.
+- Pacium launches only an available fixed preset under a generated target using
+  direct tmux command arguments and persists the explicit policy before the
+  client is claimed.
+- Startup deduplicates and revalidates exact retained targets, attaches one
+  fresh predecessor-linked client, and never reruns a missing command.
+- Deliberate close and shutdown detach the exact Pacium client without invoking
+  `kill-session`.
+- Real tmux/PTY evidence covers input, client detach, manager restart, fresh
+  identity, deliberate close, and target survival.
+
+PC-072 through PC-076 still own soak, diagnostics, packaging, Linux, and final
+release-readiness evidence.
 
 ## Demo
 

@@ -2,6 +2,50 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.41.0 — tmux keep-alive — 2026-07-28
+
+### Added
+
+- Protocol 24 optional `keepAlive` create intent plus explicit `attached` and
+  `keep_alive` runtime/manifest evidence. Direct PTY remains the default and
+  the browser cannot supply a command, argv, socket, target name, environment,
+  or restoration policy.
+- Generated `pacium-<uuid>` detached targets for available fixed presets using
+  direct tmux command arguments, bounded output/time, strict result parsing,
+  and exact timeout recovery without a shell or blind retry.
+- Durable-before-client keep-alive manifests and bounded startup restoration
+  that selects the newest exact unique targets, revalidates them sequentially,
+  creates fresh predecessor-linked Pacium client IDs, and never reruns a
+  missing command.
+- Exact tmux client discovery/detach for deliberate close and awaited
+  local-server shutdown, plus distinct keep-alive labels, recovery policy copy,
+  and one ready-only unchecked launch option.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 131 test
+  files and 859 tests, plus the 949.29 kB web JavaScript, 122.44 kB stylesheet,
+  and 457.78 kB local-server production bundles.
+- `pnpm test:e2e` passed all 19 Chromium workflows. The tmux UI canary verifies
+  the ready-only keep-alive option is explicit and unchecked; the existing
+  external tmux workflow still proves input, browser reload, view close,
+  exact-client disconnect, and surviving target behavior.
+- An isolated real tmux 3.7b and real-PTY integration launched a fixed shell,
+  observed terminal input, detached the client, restarted the manager,
+  restored one fresh linked client, deliberately closed it, and verified the
+  managed target survived both lifecycle boundaries.
+
+### Known limitations
+
+- Automatic restoration applies only to explicit keep-alive manifests on the
+  one configured safe socket. External attachments and direct PTYs remain
+  manual; missing targets retain Recovery evidence and are never restarted.
+- Native provider observation is unavailable inside the tmux runtime rather
+  than inferred from terminal text.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's chunk-size warning; soak, diagnostics, packaging,
+  Linux, and release-readiness gates remain PC-072 through PC-076.
+
 ## 0.40.0 — optional tmux attachment — 2026-07-28
 
 ### Added
