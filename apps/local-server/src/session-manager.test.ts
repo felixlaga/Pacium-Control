@@ -910,6 +910,11 @@ describe("SessionManager", () => {
       activities: [{ kind: "question_requested" }],
     });
     expect(JSON.stringify(updates.at(-1))).not.toContain("private question");
+    await Promise.resolve();
+    expect(manager.list()[0]?.relaunchManifest?.resumeReference).toMatchObject({
+      provider: "codex",
+      id: "thread-1",
+    });
 
     factory.processes[0]?.emitExit(0, 0);
     expect(observer.hasSession(codex.id)).toBe(false);
