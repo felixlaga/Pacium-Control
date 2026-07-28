@@ -14,6 +14,7 @@
     "package:linux:verify": "pnpm package:linux && node packaging/linux/verify.mjs",
     "package:macos": "pnpm build && node packaging/macos/build.mjs",
     "package:macos:verify": "pnpm package:macos && node packaging/macos/verify.mjs",
+    "release:preflight": "node scripts/release-preflight.mjs",
     "start": "pnpm --filter @pacium/local-server start",
     "test": "vitest run",
     "test:soak": "node --expose-gc --import tsx apps/local-server/src/lifecycle-soak-runner.ts",
