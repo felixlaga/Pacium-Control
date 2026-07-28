@@ -111,8 +111,29 @@ PC-073 completes criterion 6:
   including a parsed real download and live-PTY preservation through routing
   and browser reload.
 
-PC-074 through PC-076 still own macOS packaging, Linux validation, and final
-release-readiness evidence.
+PC-074 completes the development-package portion of criteria 4, 5, and 8:
+
+- One deterministic-content Apple-silicon archive includes the production
+  server/browser assets, minimal patched source-built arm64 `node-pty`, valid
+  app bundle, exact user-local command link, strict content manifest,
+  checksum, installer, uninstaller, and embedded operator guide.
+- Node.js 24.18.x remains an explicit external prerequisite. The package
+  launcher validates the fixed runtime/options/port, starts only the loopback
+  server, opens the fixed URL after listen, and reuses only the exact Pacium
+  health signature.
+- Install/upgrade uses recognized sibling staging and rollback; an ephemeral
+  mode-0600 process lease prevents active uninstall without broad process
+  inspection. Uninstall refuses foreign targets and preserves Pacium state,
+  repositories, provider stores, queue files, and external tmux targets.
+- The isolated package gate deterministically rebuilt the 576,781-byte archive,
+  validated 28 manifested files and its checksum, loaded and drove the
+  packaged real PTY, served the production application, exercised
+  install/upgrade/exact-instance reuse/uninstall, and confirmed explicitly
+  unsigned/unnotarized status.
+
+PC-075 and PC-076 still own Linux validation, clean-account evidence,
+Developer ID signing/notarization, manual acceptance, and final release
+readiness.
 
 ## Demo
 

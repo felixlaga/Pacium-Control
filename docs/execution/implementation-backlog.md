@@ -554,6 +554,18 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-074 Package macOS application
 
 - CLI/local-server packaging, browser launch, configuration directory, upgrade, uninstall, and signing decision.
+- Current status: complete. Supported Node.js 24.18.x now builds one
+  deterministic-content Apple-silicon archive with a valid `Pacium Control.app`,
+  exact user-local `pacium` link, production web/server bundle, minimal
+  source-built arm64 `node-pty`, strict version-1 manifest, and SHA-256
+  checksum. The launcher validates Node/port/options, opens only the fixed
+  loopback URL after listen, and reuses only the exact Pacium health signature.
+  Isolated verification covers native PTY load/Unicode/resize/exit,
+  install/upgrade, production health/assets, active-process refusal,
+  idempotent uninstall, foreign-target denial, deterministic rebuild, and
+  state preservation. The artifact is explicitly unsigned/unnotarized; Linux,
+  clean-account, signing/notarization, and release acceptance remain PC-075
+  and PC-076.
 
 ### PC-075 Validate supported Linux path
 

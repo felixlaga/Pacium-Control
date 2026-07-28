@@ -23,13 +23,18 @@ reattachment are complete.
 The bounded PC-072 lifecycle, memory, browser-model, and real-PTY descriptor
 soak baseline is complete. PC-073 bounded redaction-aware diagnostics,
 protected reads, exact preview, and browser-local JSON export are complete.
+PC-074 adds the first user-local Apple-silicon application archive, exact
+`pacium` command, deterministic manifest/checksum, safe upgrade/uninstall
+lifecycle, and installed production/native-PTY verification. The artifact is
+explicitly unsigned and unnotarized.
 
 Pacium Control now has an executable React application, loopback local server,
 direct-PTY session manager, typed WebSocket protocol, and automated terminal,
 Git, queue, and Pacium-context tests. This proves the bounded local
 compatibility workflow described below; it does not prove provider management,
 manual real-provider Claude/Codex canaries, a real deployed
-tailnet/grants/public boundary, durable PTYs, packaging, or release readiness.
+tailnet/grants/public boundary, durable direct PTYs, Linux support, signing,
+notarization, or release readiness.
 
 ## Product direction
 
@@ -99,6 +104,12 @@ The secondary product is **Pacium mode**:
   last-good recovery, exact inert JSON preview, and preview-gated browser-local
   download. It reads no terminal buffer, executes no command, performs no
   source refresh, and persists or uploads nothing.
+- An unsigned, unnotarized Apple-silicon macOS development package containing
+  one `Pacium Control.app`, exact user-local `pacium` link, production
+  browser/server assets, minimal source-built arm64 `node-pty`, strict
+  relative-path content manifest, checksum, staged upgrade/rollback, active
+  process lease, and exact owned uninstall. Node.js 24.18.x remains external;
+  package operations preserve application state and external workspaces.
 - A token-protected, read-only host directory browser with canonical paths,
   direct absolute-path navigation, repository markers, filtering,
   hidden-folder control, breadcrumbs, failure-safe browser-local recent
@@ -299,7 +310,8 @@ The secondary product is **Pacium mode**:
 
 ## What is not present
 
-- No packaged `pacium` launcher or release artifact.
+- No Developer ID-signed, notarized, or owner-accepted release artifact, and no
+  supported Linux path.
 - No durable direct-PTY process restoration after local-server restart.
 - No completed manual screen-reader, visual contrast, or full terminal-lifecycle browser review.
 - No general browser editor for workspace identity, repositories, workers,
@@ -320,9 +332,9 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 136 test files and 880 tests,
-  plus the 967.23 kB web JavaScript, 128.54 kB stylesheet, and 478.21 kB
-  local-server production builds passed.
+- Supported Node.js 24.18.0 `pnpm verify`: formatting, lint, type checking, 140
+  test files and 910 tests, plus the 967.23 kB web JavaScript, 128.54 kB
+  stylesheet, and 1,460.40 kB split local-server production build passed.
 - `pnpm test:e2e`: twenty Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
@@ -359,6 +371,14 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
   across Back, Escape, direct routing, and browser reload; kept last-good state
   after a failed refresh; and covered 200% zoom, forced colors, reduced motion,
   focus restoration, and isolated PTY cleanup.
+- PC-074 `pnpm package:macos:verify` deterministically rebuilt
+  `pacium-control-0.0.0-darwin-arm64.tar.gz` at 576,781 bytes with SHA-256
+  `c19403a7ff7dee64fbb63ce3f3566763552eb0e762b2d284a7327194843f7c92`
+  and 28 manifested files. The isolated installed package loaded arm64
+  `pty.node`/`spawn-helper`, exchanged Unicode terminal data, resized and
+  closed the PTY, installed/upgraded, served exact production health/assets,
+  reused a verified running instance, refused active uninstall, uninstalled
+  idempotently, and preserved state/repository/provider/tmux sentinels.
 - PC-063 focused evidence passed 39 activity-model, semantic-render, and
   terminal-excerpt tests. Its Chromium workflow exercised deterministic compact
   cards, all four source destinations, explicit terminal capture/refresh/hide,
@@ -467,14 +487,18 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 Evidence boundaries:
 
-- The current shell exposed Node.js `26.4.0`, not the approved Node.js `24.18.x`; the commands passed with an engine warning, so the supported runtime remains unverified.
+- The ordinary interactive shell still exposes Node.js 26.4.0, but PC-072
+  through PC-074 verification used the approved Node.js 24.18.0 runtime
+  explicitly. A fresh supported account remains unverified.
 - The repository Playwright suite ran in headless Chromium after its browser
   binary was installed and verified the PC-028, PC-034, PC-035, PC-036, PC-037,
   and PC-038 workflows. The connected in-app browser backend remained
   unavailable, so manual visual, screen-reader, and full type/refresh/close
   terminal review are still open.
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
-- `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
+- `node-pty` is compiled from the pinned patched sources on this checkout. The
+  package builder requires the resulting arm64 native module and executable
+  helper and copies only their runtime files.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
 - The current web bundle is 929.58 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
@@ -498,19 +522,22 @@ Evidence boundaries:
 11. Questions and approvals remain distinct.
 12. Tailscale Serve is the only supported remote ingress; public access, multi-user authorization, and multi-host coordination remain out of scope.
 
-## Open decisions for Milestone 0
+## Open release evidence
 
-- Confirm Node.js 24 and `node-pty` on a clean supported macOS account with the Xcode license accepted.
+- Confirm Node.js 24 and the source-built packaged `node-pty` on a clean
+  supported macOS account with the Xcode license accepted.
 - Complete browser, accessibility, terminal-escape, and sustained-output testing.
-- Decide whether the current ephemeral bootstrap token lifecycle is sufficient for the packaged launcher.
-- Packaging strategy after the development CLI works.
+- Complete the real Tailscale Serve/grants/Funnel/public/revocation canary.
+- Decide and verify the supported Linux boundary under PC-075.
+- Complete Developer ID signing, notarization, and owner acceptance under
+  PC-076.
 
 The initial runtime, package manager, application stack, and macOS-first platform are fixed in [the toolchain decision](docs/execution/toolchain-and-platform.md).
 
 ## Next action
 
-PC-073 bounded redaction-aware diagnostics is complete. Start PC-074 macOS
-application packaging without expanding into Linux validation or release
+PC-074 macOS development packaging is complete. Start PC-075 supported Linux
+validation without claiming macOS signing/notarization or final release
 readiness.
 Complete the real Tailscale Serve/grants/Funnel/public canary, pinned Node.js
 24 clean-install, CI, broader browser/security, manual accessibility, and
