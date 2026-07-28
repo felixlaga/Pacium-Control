@@ -312,22 +312,18 @@ export class WebSocketHub {
         });
         return;
       case "session.create": {
-        const session = await this.sessions.create(
-          message.payload.displayName === undefined
-            ? {
-                cwd: message.payload.cwd,
-                launchPreset: message.payload.launchPreset,
-                cols: message.payload.cols,
-                rows: message.payload.rows,
-              }
-            : {
-                cwd: message.payload.cwd,
-                launchPreset: message.payload.launchPreset,
-                cols: message.payload.cols,
-                rows: message.payload.rows,
-                displayName: message.payload.displayName,
-              },
-        );
+        const session = await this.sessions.create({
+          cwd: message.payload.cwd,
+          launchPreset: message.payload.launchPreset,
+          cols: message.payload.cols,
+          rows: message.payload.rows,
+          ...(message.payload.displayName === undefined
+            ? {}
+            : { displayName: message.payload.displayName }),
+          ...(message.payload.keepAlive === undefined
+            ? {}
+            : { keepAlive: message.payload.keepAlive }),
+        });
         client.subscriptions.add(session.id);
         this.send(client.socket, {
           type: "session.created",

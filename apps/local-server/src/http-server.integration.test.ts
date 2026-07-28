@@ -40,7 +40,11 @@ import {
 import { createPaciumConfigStore } from "./pacium-config-service.js";
 import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
 import { SessionManager } from "./session-manager.js";
-import { TmuxAdapter, type TmuxAttachSpec } from "./tmux-adapter.js";
+import {
+  TmuxAdapter,
+  type TmuxAttachSpec,
+  type TmuxLaunchInput,
+} from "./tmux-adapter.js";
 import type { VerificationCatalog } from "./verification-config.js";
 import { VerificationRunner } from "./verification-runner.js";
 
@@ -127,6 +131,31 @@ class FixtureTmuxAdapter extends TmuxAdapter {
       cwd: process.cwd(),
       target,
     };
+  }
+
+  public override launchSpec(input: TmuxLaunchInput): Promise<TmuxAttachSpec> {
+    return Promise.resolve({
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-fixture.sock",
+        "attach-session",
+        "-t",
+        "$8",
+      ],
+      cwd: input.cwd,
+      target: {
+        serverId: "configured",
+        sessionId: "$8",
+        sessionName: input.sessionName,
+        observedAt: "2026-07-28T10:00:00.000Z",
+      },
+      mode: "keep_alive",
+      launchCommand: {
+        executable: input.executable,
+        args: input.args,
+      },
+    });
   }
 }
 
@@ -238,6 +267,53 @@ describe("localhost HTTP and WebSocket boundary", () => {
         "attach-session",
         "-t",
         "$4",
+      ],
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "session.create",
+        requestId: "a0b42330-3acc-4678-b6a6-fe4c04fde638",
+        payload: {
+          displayName: "Durable shell",
+          launchPreset: "shell",
+          cwd: process.cwd(),
+          cols: 100,
+          rows: 30,
+          keepAlive: true,
+        },
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "session.created" &&
+          message.requestId === "a0b42330-3acc-4678-b6a6-fe4c04fde638",
+        "tmux keep-alive creation",
+      ),
+    ).resolves.toMatchObject({
+      type: "session.created",
+      session: {
+        displayName: "Durable shell",
+        launchPreset: "shell",
+        runtime: "tmux",
+        tmuxMode: "keep_alive",
+        commandLabel: "tmux keep-alive · Shell",
+        relaunchManifest: {
+          command: { executable: "/bin/zsh", args: ["-l"] },
+          tmuxMode: "keep_alive",
+        },
+      },
+    });
+    expect(factory.createCalls[1]).toMatchObject({
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-fixture.sock",
+        "attach-session",
+        "-t",
+        "$8",
       ],
     });
 

@@ -63,6 +63,12 @@ const sessions = new SessionManager(
   config.environmentKeys,
   tmuxAdapter,
 );
+const tmuxRestore = await sessions.restoreKeepAliveSessions();
+if (tmuxRestore.attempted > 0 || tmuxRestore.deferred > 0) {
+  console.info(
+    `Pacium tmux keep-alive recovery: ${tmuxRestore.restored} restored, ${tmuxRestore.unavailable} unavailable, ${tmuxRestore.deferred} deferred.`,
+  );
+}
 const paciumConfig = createPaciumConfigStore(config, sessions);
 const queueObserver = new QueueObserver();
 await queueObserver.syncConfig(await paciumConfig.inspect());
