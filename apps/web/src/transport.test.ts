@@ -20,6 +20,7 @@ import {
   repositoryVerificationInspectMessage,
   repositoryVerificationRunMessage,
   sessionCreateMessage,
+  relaunchSessionMessage,
   terminalInputMessage,
 } from "./transport.js";
 
@@ -322,6 +323,25 @@ describe("session create correlation", () => {
       launchPreset: "shell",
       cols: 80,
       rows: 24,
+    });
+  });
+});
+
+describe("session relaunch correlation", () => {
+  it("sends only a retained manifest identity and dimensions", () => {
+    expect(
+      relaunchSessionMessage(
+        "d1825955-65c5-4344-9830-d9f158b05c16",
+        100,
+        30,
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ),
+    ).toEqual({
+      type: "session.relaunch",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      manifestId: "d1825955-65c5-4344-9830-d9f158b05c16",
+      cols: 100,
+      rows: 30,
     });
   });
 });

@@ -66,6 +66,13 @@ export class PaciumTransport {
     this.send({ type: "session.list", requestId: crypto.randomUUID() });
   }
 
+  public listRelaunchManifests(): void {
+    this.send({
+      type: "relaunch.manifest.list",
+      requestId: crypto.randomUUID(),
+    });
+  }
+
   public createSession(input: {
     cwd: string;
     displayName?: string;
@@ -84,6 +91,12 @@ export class PaciumTransport {
       requestId: crypto.randomUUID(),
       sessionId,
     });
+  }
+
+  public relaunch(manifestId: string, cols: number, rows: number): string {
+    const requestId = crypto.randomUUID();
+    this.send(relaunchSessionMessage(manifestId, cols, rows, requestId));
+    return requestId;
   }
 
   public input(sessionId: string, data: string): string {
@@ -311,6 +324,7 @@ export class PaciumTransport {
         this.retryAttempt = 0;
         this.emit({ type: "connection", state: "connected" });
         this.listSessions();
+        this.listRelaunchManifests();
         this.requestPaciumConfig();
         this.requestQueueObservation();
       });
@@ -638,6 +652,21 @@ export function sessionCreateMessage(
     type: "session.create",
     requestId,
     payload,
+  };
+}
+
+export function relaunchSessionMessage(
+  manifestId: string,
+  cols: number,
+  rows: number,
+  requestId: string,
+): Extract<ClientMessage, { type: "session.relaunch" }> {
+  return {
+    type: "session.relaunch",
+    requestId,
+    manifestId,
+    cols,
+    rows,
   };
 }
 
