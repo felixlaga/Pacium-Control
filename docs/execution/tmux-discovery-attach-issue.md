@@ -40,25 +40,25 @@ socket, session name, or arbitrary command comes from browser authority.
 
 ## Acceptance criteria
 
-- [ ] With no configured socket, direct PTYs work unchanged and tmux is
+- [x] With no configured socket, direct PTYs work unchanged and tmux is
       explicitly unconfigured.
-- [ ] Configuration accepts only one bounded absolute canonical Unix socket
+- [x] Configuration accepts only one bounded absolute canonical Unix socket
       outside repositories and never starts a tmux server during discovery.
-- [ ] Discovery uses one detected executable and fixed `-S`, `list-sessions`,
+- [x] Discovery uses one detected executable and fixed `-S`, `list-sessions`,
       and format arguments with timeout/output bounds.
-- [ ] Malformed, duplicate, control-bearing, oversized, missing, or changing
+- [x] Malformed, duplicate, control-bearing, oversized, missing, or changing
       discovery evidence fails visibly and yields no attach target.
-- [ ] Browser attach supplies only the published server/target identity and
+- [x] Browser attach supplies only the published server/target identity and
       dimensions; the server revalidates both before spawn.
-- [ ] Attachment uses fixed `tmux -S <configured> attach-session -t <exact-id>`
+- [x] Attachment uses fixed `tmux -S <configured> attach-session -t <exact-id>`
       argv without a shell.
-- [ ] Attached sessions are labelled `tmux`, remain distinct from direct PTYs,
+- [x] Attached sessions are labelled `tmux`, remain distinct from direct PTYs,
       and use existing ordered input/resize/snapshot/focus behavior.
-- [ ] Browser close/refresh does not kill the tmux session; local-server shutdown
+- [x] Browser close/refresh does not kill the tmux session; local-server shutdown
       ends only its tmux client attachment.
-- [ ] Missing target, socket loss, tmux client exit, and reconnect uncertainty
+- [x] Missing target, socket loss, tmux client exit, and reconnect uncertainty
       explain whether the tmux server session may still survive.
-- [ ] Focused, integration, real-tmux, security, full verification, and browser
+- [x] Focused, integration, real-tmux, security, full verification, and browser
       tests pass.
 
 ## User experience
