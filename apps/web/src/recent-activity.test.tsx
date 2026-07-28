@@ -2,7 +2,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { RecentActivity } from "./recent-activity-model.js";
-import { RecentActivityPanel } from "./recent-activity.js";
+import {
+  RecentActivityPanel,
+  TerminalFallbackResult,
+} from "./recent-activity.js";
 
 const activity: RecentActivity = {
   current: {
@@ -105,6 +108,10 @@ describe("recent activity presentation", () => {
     expect(markup).toContain("Approval requested");
     expect(markup).toContain("Codex observer");
     expect(markup).toContain("Validated local evidence only");
+    expect(markup).toContain("activity-card is-attention");
+    expect(markup).toContain("Open Terminal source for Approval requested");
+    expect(markup).toContain("Open History source");
+    expect(markup).toContain("Open Changes source");
   });
 
   it("renders hostile evidence as text and never introduces narrative HTML", () => {
@@ -148,17 +155,81 @@ describe("recent activity presentation", () => {
 
   it("teaches the next action when no terminal is selected", () => {
     const markup = renderToStaticMarkup(
-      <RecentActivityPanel activity={null} onRefresh={() => {}} />,
+      <RecentActivityPanel
+        activity={null}
+        connectionBoundary="connected"
+        onOpenSource={() => {}}
+        onReadTerminalExcerpt={() => null}
+        onRefresh={() => {}}
+      />,
     );
 
     expect(markup).toContain("No terminal selected");
     expect(markup).toContain("Select or create a terminal");
     expect(markup).toContain("disabled");
   });
+
+  it("offers terminal fallback only when the activity model recommends it", () => {
+    const fallback = render({
+      ...activity,
+      terminalFallback: {
+        recommended: true,
+        reason:
+          "Provider evidence is not currently ready. A bounded terminal peek can provide low-confidence context.",
+        boundaryKey: "session:3:unavailable",
+      },
+    });
+
+    expect(fallback).toContain("Terminal fallback");
+    expect(fallback).toContain("Show recent terminal text");
+    expect(fallback).toContain("low-confidence context");
+    expect(fallback).not.toContain("Terminal-derived");
+    expect(render(activity)).not.toContain("Show recent terminal text");
+  });
+
+  it("labels ready, empty, and unavailable terminal fallback without status inference", () => {
+    const ready = renderToStaticMarkup(
+      <TerminalFallbackResult
+        result={{
+          status: "ready",
+          text: "<script>terminal text</script>",
+          lineCount: 1,
+          truncated: true,
+        }}
+      />,
+    );
+    const empty = renderToStaticMarkup(
+      <TerminalFallbackResult
+        result={{
+          status: "empty",
+          text: "",
+          lineCount: 0,
+          truncated: false,
+        }}
+      />,
+    );
+    const unavailable = renderToStaticMarkup(
+      <TerminalFallbackResult result="unavailable" />,
+    );
+
+    expect(ready).toContain("Terminal-derived");
+    expect(ready).toContain("Low confidence");
+    expect(ready).toContain("Not interpreted");
+    expect(ready).toContain("&lt;script&gt;terminal text&lt;/script&gt;");
+    expect(ready).not.toContain("<script>");
+    expect(empty).toContain("No agent state was inferred");
+    expect(unavailable).toContain("process state is unchanged");
+  });
 });
 
 function render(candidate: RecentActivity): string {
   return renderToStaticMarkup(
-    <RecentActivityPanel activity={candidate} onRefresh={() => {}} />,
+    <RecentActivityPanel
+      activity={candidate}
+      connectionBoundary="connected"
+      onOpenSource={() => {}}
+      onReadTerminalExcerpt={() => null}
+      onRefresh={() => {}}
+    />,
   );
 }

@@ -200,7 +200,10 @@ import {
   rejectVerificationRequest,
   type RepositoryVerificationViewState,
 } from "./repository-verification-model.js";
-import { buildRecentActivity } from "./recent-activity-model.js";
+import {
+  buildRecentActivity,
+  type ActivityFactTarget,
+} from "./recent-activity-model.js";
 import { RecentActivityPanel } from "./recent-activity.js";
 import { RepositoryContextCard } from "./repository-context.js";
 import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
@@ -3653,6 +3656,22 @@ export function App() {
             ) : (
               <RecentActivityPanel
                 activity={selectedRecentActivity}
+                connectionBoundary={connection}
+                onOpenSource={(target: ActivityFactTarget) => {
+                  if (target === "terminal") {
+                    if (selectedId !== null) {
+                      terminalRefs.current.get(selectedId)?.focus();
+                    }
+                    return;
+                  }
+                  setInspectorTab(target);
+                }}
+                onReadTerminalExcerpt={() =>
+                  selectedId === null
+                    ? null
+                    : (terminalRefs.current.get(selectedId)?.readRecentText() ??
+                      null)
+                }
                 onRefresh={() => {
                   if (selectedId !== null) {
                     requestRepositoryChanges(selectedId);
