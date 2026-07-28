@@ -136,7 +136,10 @@ describe("recent activity presentation", () => {
     expect(markup).toContain("Observed");
     expect(markup).toContain("Evidence sources");
     expect(markup).toContain("Approval requested");
-    expect(markup).toContain("Codex observer");
+    expect(markup).toContain("Provider status");
+    expect(markup).toContain("Native observer connected");
+    expect(markup).toContain("Capabilities");
+    expect(markup).toContain("Open terminal");
     expect(markup).toContain("Validated local evidence only");
     expect(markup).toContain("activity-card is-attention");
     expect(markup).toContain("Open Terminal source for Approval requested");

@@ -13,6 +13,7 @@ import type {
   ActivitySourceSummary,
   RecentActivity,
 } from "./recent-activity-model.js";
+import { ProviderStatusPanel } from "./provider-status.js";
 
 export function RecentActivityPanel({
   activity,
@@ -124,6 +125,13 @@ export function RecentActivityPanel({
         </div>
       </section>
 
+      {activity.providerStatus !== null && (
+        <ProviderStatusPanel
+          onOpenTerminal={() => onOpenSource("terminal")}
+          status={activity.providerStatus}
+        />
+      )}
+
       <section
         aria-labelledby="activity-facts-heading"
         className="activity-section"
@@ -196,9 +204,11 @@ export function RecentActivityPanel({
       >
         <h2 id="activity-sources-heading">Evidence sources</h2>
         <ul>
-          {activity.sources.map((source) => (
-            <ActivitySourceRow key={source.id} source={source} />
-          ))}
+          {activity.sources
+            .filter(({ id }) => id !== "provider")
+            .map((source) => (
+              <ActivitySourceRow key={source.id} source={source} />
+            ))}
         </ul>
         {activity.partial && (
           <p className="activity-partial-note" role="note">
