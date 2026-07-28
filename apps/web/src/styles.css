@@ -7624,8 +7624,8 @@ html[data-density="comfortable"] .terminal-panel {
   }
 
   .diagnostics-dialog {
-    width: 100%;
-    max-height: calc(100vh - 16px);
+    width: min(100%, 320px);
+    max-height: min(calc(100vh - 16px), 352px);
   }
 
   .diagnostics-header {
@@ -7864,6 +7864,13 @@ html[data-density="comfortable"] .terminal-panel {
   .provider-capability-list > li > span:last-child {
     align-items: flex-start;
     text-align: left;
+  }
+}
+
+@media (max-width: 400px) {
+  .diagnostics-dialog {
+    width: 100%;
+    max-height: calc(100vh - 16px);
   }
 }
 

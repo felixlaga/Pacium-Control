@@ -131,7 +131,11 @@ export function DiagnosticsDialog({
               onClick={request}
               type="button"
             >
-              {state.phase === "loading" ? "Refreshing…" : "Refresh"}
+              {state.phase === "loading"
+                ? "Refreshing…"
+                : state.phase === "error"
+                  ? "Retry"
+                  : "Refresh"}
             </button>
             <button
               aria-label="Close diagnostics"
