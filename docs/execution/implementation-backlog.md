@@ -457,6 +457,18 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-063 Build clean agent activity cards
 
 - Prompt, message, tool, plan, approval, completion, error, and fallback terminal excerpt.
+- Current status: complete. The browser projects every bounded provider,
+  process, Git, and verification fact into a deterministic compact kind, tone,
+  metadata set, timestamp meaning, and one Terminal, Changes, History, or
+  Checks source action. Question and approval cards remain distinct and add no
+  decision authority. When provider evidence is not ready, one explicit click
+  can read only the newest four non-empty lines and 800 Unicode characters
+  from the already-rendered xterm buffer. That excerpt stays browser-local,
+  inert, terminal-derived, low-confidence, not interpreted, and clears across
+  session, connection, provider-evidence, unmount, and reload boundaries.
+  Focused evidence passed 39 tests; full verification passed 122 test files and
+  786 tests; all 15 Chromium workflows passed. Protocol 21 and terminal,
+  provider, Git, queue, verification, and Tailscale authority are unchanged.
 
 ### PC-064 Implement capability degradation
 

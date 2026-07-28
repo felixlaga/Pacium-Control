@@ -12,7 +12,9 @@ complete enough for continued slicing. Optional Tailscale Serve access is
 implemented at the application boundary, and the working-directory picker
 refresh is complete. The bounded provider observation contract is complete;
 the narrow Pacium-launched Claude Code and Codex native observers are complete.
-Clean activity cards and explicit observer degradation remain later slices.
+Clean activity cards with an explicit browser-local terminal fallback are
+complete. Explicit observer degradation remains the next native-enrichment
+slice.
 
 Pacium Control now has an executable React application, loopback local server,
 direct-PTY session manager, typed WebSocket protocol, and automated terminal,
@@ -95,8 +97,14 @@ The secondary product is **Pacium mode**:
   provider facts, provider observer health/freshness, direct-PTY lifecycle,
   changed-file totals, three recent local commits, and the current/latest
   verification run into at most seven deterministic facts with explicit
-  observed/occurred timestamps, source availability, partial errors, Refresh,
-  reconnect recovery, and no terminal/provider narrative.
+  observed/occurred timestamps, compact kind/tone/source metadata, one
+  Terminal/Changes/History/Checks source action, source availability, partial
+  errors, Refresh, reconnect recovery, and no provider narrative. Without ready
+  provider evidence, one explicit operator action may reveal only four
+  non-empty lines and 800 Unicode characters from the already-rendered xterm
+  buffer as inert browser-local, terminal-derived, low-confidence,
+  not-interpreted evidence that clears at session, connection, evidence, and
+  reload boundaries.
 - A version-1 provider observation contract with fixed capability/activity/
   diagnostic bounds, typed Claude/Codex extensions, distinct questions and
   approvals, source/confidence/freshness evidence, secret-like diagnostic-key
@@ -269,16 +277,22 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 121 test files and 766 tests,
-  plus the 914.86 kB web JavaScript, 109.81 kB stylesheet, and 409.10 kB
+- `pnpm verify`: formatting, lint, type checking, 122 test files and 786 tests,
+  plus the 921.56 kB web JavaScript, 112.89 kB stylesheet, and 409.10 kB
   local-server production builds passed.
-- `pnpm test:e2e`: fourteen Chromium workflows passed for skip navigation, panel
+- `pnpm test:e2e`: fifteen Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
   changed-file/diff/history/Activity inspection, and configured verification
   run/reload/cancel without terminal reselection. General/Pacium coverage
   proved pointer, chord, palette, reload persistence, unchanged selected PTY
   and inspector context, configured-state presentation, and narrow layouts.
+- PC-063 focused evidence passed 39 activity-model, semantic-render, and
+  terminal-excerpt tests. Its Chromium workflow exercised deterministic compact
+  cards, all four source destinations, explicit terminal capture/refresh/hide,
+  session and reload invalidation, retained PTY selection, terminal focus,
+  320 CSS px, 200% zoom, forced colors, and reduced motion without adding a
+  server read, terminal input, persistence, status inference, or decision path.
 - PC-077 browser evidence kept the exact current connection authority visible
   as Local through ordinary operation, reload, narrow layout, forced colors,
   and reduced motion without promoting terminal or provider output to identity.
@@ -382,7 +396,7 @@ Evidence boundaries:
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
 - `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 913.94 kB before gzip and emits Vite's chunk-size
+- The current web bundle is 921.56 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
 - Proxy-shaped Serve application tests do not prove the owner's real Tailscale
   installation, DNS/certificate, deployed grants, Funnel/public/LAN state, or
@@ -415,9 +429,9 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-PC-062 is complete. The next planned native-enrichment slices are PC-063 clean
-activity cards, PC-064 explicit capability degradation, and PC-065 relaunch
-manifests before durability and packaging.
+PC-063 is complete. The next planned native-enrichment slices are PC-064
+explicit capability degradation and PC-065 relaunch manifests before
+durability and packaging.
 Complete the real Tailscale
 Serve/grants/Funnel/public canary, pinned Node.js 24 clean-install, CI, broader
 browser/security, manual accessibility, and sustained-output gates before
