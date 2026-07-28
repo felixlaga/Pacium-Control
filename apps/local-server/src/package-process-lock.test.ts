@@ -64,6 +64,20 @@ describe("package process lease", () => {
     release();
   });
 
+  it("accepts the fixed installed Linux package entry", () => {
+    const root = temporaryRoot();
+    const lockPath = `/tmp/com.pacium.control.${process.pid}.lock`;
+    const release = acquirePackageProcessLock({
+      lockPath,
+      packageEntry: join(
+        root,
+        "pacium-control/app/apps/local-server/dist/package-launcher.js",
+      ),
+    });
+
+    release();
+  });
+
   it.each([
     "relative.lock",
     "/private/tmp/com.pacium.control.1.lock",

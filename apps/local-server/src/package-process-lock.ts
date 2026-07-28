@@ -3,6 +3,10 @@ import { isAbsolute } from "node:path";
 
 const PACKAGE_LOCK_PATH = /^\/tmp\/com\.pacium\.control\.\d+\.lock$/;
 const MAX_PACKAGE_ENTRY_BYTES = 4_096;
+const PACKAGE_ENTRY_SUFFIXES = [
+  "/Contents/Resources/app/apps/local-server/dist/package-launcher.js",
+  "/pacium-control/app/apps/local-server/dist/package-launcher.js",
+] as const;
 
 export interface PackageProcessLockOptions {
   lockPath: string;
@@ -71,9 +75,7 @@ function validateLockIdentity(
   }
   if (
     !isAbsolute(packageEntry) ||
-    !packageEntry.endsWith(
-      "/Contents/Resources/app/apps/local-server/dist/package-launcher.js",
-    ) ||
+    !PACKAGE_ENTRY_SUFFIXES.some((suffix) => packageEntry.endsWith(suffix)) ||
     Buffer.byteLength(packageEntry) > MAX_PACKAGE_ENTRY_BYTES ||
     hasControlCharacter(packageEntry)
   ) {
