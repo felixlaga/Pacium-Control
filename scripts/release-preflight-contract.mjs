@@ -7,6 +7,8 @@ const MAX_TRACKED_FILES = 20_000;
 const MAX_ARCHIVE_ENTRIES = 2_000;
 const MAX_MANIFEST_FILES = 256;
 
+export const RELEASE_MANIFEST_PROTOCOL_VERSION = 25;
+
 const FORBIDDEN_DIRECTORY_SEGMENTS = new Set([
   "coverage",
   "dist",
@@ -175,7 +177,7 @@ export function validateReleaseManifest(manifest, expectedTarget) {
     typeof manifest !== "object" ||
     manifest.schemaVersion !== 1 ||
     manifest.packageVersion !== "0.0.0" ||
-    manifest.protocolVersion !== 24 ||
+    manifest.protocolVersion !== RELEASE_MANIFEST_PROTOCOL_VERSION ||
     manifest.runtime?.nodeRequirement !== "24.18.x" ||
     manifest.runtime?.nodeBundled !== false ||
     manifest.stateOwnership !== "external-preserved" ||

@@ -633,6 +633,17 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
   The real host canary, remote configuration, and general command authority
   remain outside the claimed evidence.
 
+### PC-081 Keep release preflight aligned with the packaged protocol
+
+- Accept the protocol-25 manifests produced by both supported-host package
+  builders and fail focused verification if preflight drifts from the
+  canonical protocol declaration again.
+- Current status: implemented and repository verified. Valid protocol-25
+  manifests pass, mismatched manifests remain fail-closed, and the focused
+  suite reads the canonical source declaration independently of its fixture.
+  The exact Node.js 24.18.x artifact rerun remains the pinned hosted Ubuntu
+  integration gate.
+
 ## Deferred backlog
 
 These items require a future strategy and ADR:

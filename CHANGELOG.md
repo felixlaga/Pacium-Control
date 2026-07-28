@@ -31,6 +31,12 @@ All notable changes to the Pacium Control blueprint are recorded here.
 - Button-driven local setup is now the primary configuration path; command
   examples remain operations-only recovery material.
 
+### Fixed
+
+- Release preflight now accepts the protocol-25 manifests produced by the
+  current macOS and Ubuntu package builders. A focused source-contract test
+  fails if the preflight expectation drifts from the canonical protocol again.
+
 ### Security
 
 - Browser messages cannot choose an SSH host, tmux socket, session name,
@@ -44,7 +50,7 @@ All notable changes to the Pacium Control blueprint are recorded here.
 
 ### Verification
 
-- Current formatting, lint, type checks, 144 test files and 923 tests, and
+- Current formatting, lint, type checks, 144 test files and 924 tests, and
   production builds passed.
 - All 20 ordinary Chromium workflows and the separate PC-079 isolated
   real-tmux workflow passed before the PC-080 setup panel was added.

@@ -391,6 +391,11 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
   its final rendered rerun was blocked by browser-execution approval
   infrastructure. No real Tailscale or `felix-harness` configuration was
   changed.
+- PC-081 aligns release preflight with the protocol-25 manifests emitted by
+  both package builders and adds a canonical-source drift test. Current
+  formatting, lint, type checks, 144 test files and 924 tests, and production
+  builds passed on installed Node.js 26.4.0. The exact Node.js 24.18.x
+  artifact-level rerun remains the pinned hosted Ubuntu integration gate.
 - PC-070 focused contract, config, parser, real-socket, session-manager,
   authenticated WebSocket, transport, action-semantics, and dialog tests
   passed. Its isolated real-tmux Chromium workflow listed one server-owned
