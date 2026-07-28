@@ -2143,6 +2143,7 @@ export function App() {
     cwd: string;
     displayName?: string;
     launchPreset: LaunchPresetId;
+    keepAlive?: boolean;
   }) => {
     transportRef.current?.createSession({
       ...input,
@@ -3971,6 +3972,7 @@ export function App() {
           loadDirectories={loadDirectories}
           onCancel={closeCreateDialog}
           onCreate={createSession}
+          tmuxCapability={tmuxCapability}
         />
       )}
       {tmuxOpen && (
@@ -4240,6 +4242,7 @@ export function CreateTerminalDialog({
   loadDirectories,
   onCancel,
   onCreate,
+  tmuxCapability,
 }: {
   defaultCwd: string;
   defaultLaunchPreset: LaunchPresetId;
@@ -4250,7 +4253,9 @@ export function CreateTerminalDialog({
     cwd: string;
     displayName?: string;
     launchPreset: LaunchPresetId;
+    keepAlive?: boolean;
   }) => void;
+  tmuxCapability: TmuxCapability;
 }) {
   const browseButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -4258,6 +4263,7 @@ export function CreateTerminalDialog({
   const [displayName, setDisplayName] = useState("");
   const [launchPreset, setLaunchPreset] =
     useState<LaunchPresetId>(defaultLaunchPreset);
+  const [keepAlive, setKeepAlive] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const selectedPreset = launchPresets.find(
     (preset) => preset.id === launchPreset,
@@ -4270,6 +4276,7 @@ export function CreateTerminalDialog({
       cwd: cwd.trim(),
       launchPreset,
       ...(name.length > 0 ? { displayName: name } : {}),
+      ...(keepAlive ? { keepAlive: true } : {}),
     });
   };
 
@@ -4392,9 +4399,25 @@ export function CreateTerminalDialog({
             value={displayName}
           />
         </label>
+        {tmuxCapability.state === "ready" && (
+          <label className="keep-alive-option">
+            <input
+              checked={keepAlive}
+              onChange={(event) => setKeepAlive(event.target.checked)}
+              type="checkbox"
+            />
+            <span>
+              <strong>Keep alive with tmux</strong>
+              <small>
+                Survives Pacium server restarts and reconnects automatically.
+              </small>
+            </span>
+          </label>
+        )}
         <p className="dialog-note">
-          {selectedPreset?.label ?? "The command"} runs as your local user and
-          remains alive while this Pacium server is running.
+          {keepAlive
+            ? `${selectedPreset?.label ?? "The command"} runs in one managed tmux session. Closing Pacium disconnects its client but does not kill the tmux target.`
+            : `${selectedPreset?.label ?? "The command"} runs as your local user and remains alive while this Pacium server is running.`}
         </p>
         <div className="dialog-actions">
           <button onClick={onCancel} type="button">

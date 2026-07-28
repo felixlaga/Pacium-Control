@@ -23,6 +23,13 @@ describe("application shell semantics", () => {
         loadDirectories={() => Promise.reject(new Error("not used"))}
         onCancel={() => {}}
         onCreate={() => {}}
+        tmuxCapability={{
+          state: "unconfigured",
+          serverId: null,
+          executable: null,
+          version: null,
+          detail: "Not configured.",
+        }}
       />,
     );
 
@@ -30,6 +37,28 @@ describe("application shell semantics", () => {
     expect(markup).toContain('aria-modal="true"');
     expect(markup).toContain('aria-labelledby="create-terminal-title"');
     expect(markup).toContain('aria-label="Cancel"');
+  });
+
+  it("offers keep-alive only when tmux capability is ready", () => {
+    const ready = renderToStaticMarkup(
+      <CreateTerminalDialog
+        defaultCwd="/work/pacium"
+        defaultLaunchPreset="shell"
+        launchPresets={launchPresets}
+        loadDirectories={() => Promise.reject(new Error("not used"))}
+        onCancel={() => {}}
+        onCreate={() => {}}
+        tmuxCapability={{
+          state: "ready",
+          serverId: "configured",
+          executable: "/opt/homebrew/bin/tmux",
+          version: "tmux 3.7b",
+          detail: "Ready.",
+        }}
+      />,
+    );
+    expect(ready).toContain("Keep alive with tmux");
+    expect(ready).toContain('<input type="checkbox"/>');
   });
 
   it("announces connection, selection, and terminal keyboard ownership", () => {
