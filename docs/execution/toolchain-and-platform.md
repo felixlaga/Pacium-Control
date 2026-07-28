@@ -41,7 +41,7 @@ TypeScript 7 is not selected because the current `typescript-eslint` release dec
 
 ### Terminal
 
-- `node-pty` `1.1.0`.
+- `node-pty` `1.1.0` with the committed Pacium macOS descriptor-cleanup patch.
 - `@xterm/xterm` `6.0.0`.
 - `@xterm/headless` `6.0.0`.
 - `@xterm/addon-serialize` `0.14.0`.
@@ -84,7 +84,12 @@ The first shell must establish:
 
 ## Native-build requirement
 
-`node-pty` may require the supported native build toolchain. The clean-install test must run on a fresh supported macOS account and document the exact prerequisite. The current development machine must accept the Xcode license before Git and native-module verification can be considered reproducible.
+Pacium compiles its patched `node-pty` sources on macOS rather than using the
+upstream prebuilt binary. Node.js `24.18.x`, Xcode command-line build tools, and
+an accepted Xcode license are therefore required. The patch closes the
+parent-side slave PTY, process-watcher kqueue, and temporary low-number PTY
+descriptors found by PC-072. PC-074 must still reproduce the source build on a
+fresh supported macOS account and document installation failure recovery.
 
 ## Upgrade policy
 
