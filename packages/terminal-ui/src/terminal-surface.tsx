@@ -14,6 +14,11 @@ import {
   terminalOptionsForPreferences,
   type TerminalDisplayPreferences,
 } from "./terminal-preferences.js";
+import {
+  buildTerminalTextExcerpt,
+  MAX_TERMINAL_EXCERPT_SCAN_LINES,
+  type TerminalTextExcerpt,
+} from "./terminal-excerpt.js";
 
 export interface TerminalSnapshot {
   data: string;
@@ -26,6 +31,7 @@ export interface TerminalSurfaceHandle {
   blur(): void;
   clear(): void;
   focus(): void;
+  readRecentText(): TerminalTextExcerpt | null;
   write(data: string): void;
 }
 
@@ -84,6 +90,22 @@ export const TerminalSurface = forwardRef<
       },
       focus() {
         terminalRef.current?.focus();
+      },
+      readRecentText() {
+        const terminal = terminalRef.current;
+        if (terminal === null) {
+          return null;
+        }
+        const buffer = terminal.buffer.active;
+        const start = Math.max(
+          0,
+          buffer.length - MAX_TERMINAL_EXCERPT_SCAN_LINES,
+        );
+        const lines: string[] = [];
+        for (let index = start; index < buffer.length; index += 1) {
+          lines.push(buffer.getLine(index)?.translateToString(true) ?? "");
+        }
+        return buildTerminalTextExcerpt(lines);
       },
       write(data) {
         terminalRef.current?.write(data);
