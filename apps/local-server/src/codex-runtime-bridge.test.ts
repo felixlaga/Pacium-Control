@@ -6,7 +6,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket } from "ws";
 
 import { CodexObserver } from "./codex-observer.js";
-import { CodexRuntimeBridge } from "./codex-runtime-bridge.js";
+import {
+  CodexRuntimeBridge,
+  MAX_CODEX_RUNTIME_MESSAGE_BYTES,
+} from "./codex-runtime-bridge.js";
 
 const sessionId = "53cfec56-181c-4e9c-b187-8f323780c175";
 const token = "t".repeat(43);
@@ -82,7 +85,9 @@ describe("Codex runtime bridge", () => {
 
     webSocket.close(1000);
     await once(webSocket, "close");
-    expect(child.kill).toHaveBeenCalledWith("SIGTERM");
+    await vi.waitFor(() => {
+      expect(child.kill).toHaveBeenCalledWith("SIGTERM");
+    });
   });
 
   it("closes the private runtime when its PTY session is released", async () => {
@@ -173,6 +178,35 @@ describe("Codex runtime bridge", () => {
         webSocket.send("{not-json");
       } else {
         child.stdout.write("{not-json\n");
+      }
+      await closed;
+      expect(child.kill).toHaveBeenCalledWith("SIGTERM");
+      localBridge.dispose();
+      await new Promise<void>((resolve) => setup.server.close(() => resolve()));
+    }
+  });
+
+  it("fails closed on an oversized child line and App Server exit", async () => {
+    for (const failure of ["oversized-line", "child-exit"] as const) {
+      const observer = createObserver();
+      observer.prepare(sessionId, now);
+      const child = new FakeChild();
+      const localBridge = new CodexRuntimeBridge(observer, () => child);
+      const setup = await startServer(localBridge);
+      const webSocket = await connect(
+        `${setup.url}/api/provider/codex/${sessionId}/runtime`,
+        {
+          host: "127.0.0.1:4174",
+          authorization: `Bearer ${token}`,
+        },
+      );
+      const closed = once(webSocket, "close");
+      if (failure === "oversized-line") {
+        child.stdout.write(
+          Buffer.alloc(MAX_CODEX_RUNTIME_MESSAGE_BYTES + 1, 120),
+        );
+      } else {
+        child.emit("exit", 1, null);
       }
       await closed;
       expect(child.kill).toHaveBeenCalledWith("SIGTERM");
