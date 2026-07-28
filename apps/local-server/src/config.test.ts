@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildChildEnvironment,
+  defaultPaciumDataDirectory,
+  defaultShellForPlatform,
   loadLocalAllowedOrigins,
   loadServerConfig,
   loadTailscaleServeConfig,
@@ -172,12 +174,79 @@ describe("local server configuration", () => {
 
   it("uses a dedicated macOS-first data directory without creating it", () => {
     const home = realpathSync(process.env.HOME!);
-    expect(resolvePaciumDataDirectory(undefined, home)).toBe(
+    expect(resolvePaciumDataDirectory(undefined, home, "darwin")).toBe(
       `${home}/Library/Application Support/Pacium Control`,
     );
     expect(
       resolvePaciumDataDirectory("/private/tmp/pacium-state/../config", home),
     ).toBe("/private/tmp/config");
+  });
+
+  it("uses the supported Linux shell and dedicated XDG state directory", () => {
+    const home = realpathSync(process.env.HOME!);
+    expect(defaultShellForPlatform("linux")).toBe("/bin/bash");
+    expect(defaultShellForPlatform("darwin")).toBe("/bin/zsh");
+    expect(defaultPaciumDataDirectory(home, "linux")).toBe(
+      `${home}/.local/state/pacium-control`,
+    );
+    expect(
+      defaultPaciumDataDirectory(
+        home,
+        "linux",
+        "/private/tmp/xdg-state/../operator-state",
+      ),
+    ).toBe("/private/tmp/operator-state/pacium-control");
+    expect(
+      loadServerConfig(
+        {
+          HOME: home,
+          PACIUM_DEFAULT_CWD: process.cwd(),
+          XDG_STATE_HOME: "/private/tmp/pacium-xdg-state",
+        },
+        "linux",
+      ),
+    ).toMatchObject({
+      shell: "/bin/bash",
+      dataDirectory: "/private/tmp/pacium-xdg-state/pacium-control",
+    });
+  });
+
+  it("rejects a relative or control-bearing Linux XDG state root", () => {
+    const home = realpathSync(process.env.HOME!);
+    for (const xdgStateHome of ["relative/state", "/tmp/state\nhidden"]) {
+      expect(() =>
+        defaultPaciumDataDirectory(home, "linux", xdgStateHome),
+      ).toThrow("XDG_STATE_HOME");
+    }
+  });
+
+  it("includes bounded XDG locations in the default terminal environment", () => {
+    const home = realpathSync(process.env.HOME!);
+    const config = loadServerConfig(
+      {
+        HOME: home,
+        PACIUM_DEFAULT_CWD: process.cwd(),
+        XDG_CONFIG_HOME: "/tmp/xdg-config",
+        XDG_DATA_HOME: "/tmp/xdg-data",
+        XDG_STATE_HOME: "/tmp/xdg-state",
+        XDG_CACHE_HOME: "/tmp/xdg-cache",
+      },
+      "linux",
+    );
+
+    expect(
+      buildChildEnvironment(config.environmentKeys, {
+        XDG_CONFIG_HOME: "/tmp/xdg-config",
+        XDG_DATA_HOME: "/tmp/xdg-data",
+        XDG_STATE_HOME: "/tmp/xdg-state",
+        XDG_CACHE_HOME: "/tmp/xdg-cache",
+      }),
+    ).toMatchObject({
+      XDG_CONFIG_HOME: "/tmp/xdg-config",
+      XDG_DATA_HOME: "/tmp/xdg-data",
+      XDG_STATE_HOME: "/tmp/xdg-state",
+      XDG_CACHE_HOME: "/tmp/xdg-cache",
+    });
   });
 
   it("rejects broad, relative, and control-bearing data directories", () => {

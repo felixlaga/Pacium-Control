@@ -54,10 +54,15 @@ const DEFAULT_ENVIRONMENT_KEYS = [
   "LC_CTYPE",
   "TMPDIR",
   "COLORTERM",
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "XDG_STATE_HOME",
 ] as const;
 
 export function loadServerConfig(
   environment: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
 ): ServerConfig {
   const host = LoopbackHostSchema.parse(environment.PACIUM_HOST ?? "127.0.0.1");
   const port = PortSchema.parse(environment.PACIUM_PORT ?? 4174);
@@ -68,8 +73,10 @@ export function loadServerConfig(
   const dataDirectory = resolvePaciumDataDirectory(
     environment.PACIUM_DATA_DIR,
     homeDirectory,
+    platform,
+    environment.XDG_STATE_HOME,
   );
-  const shell = environment.SHELL ?? "/bin/zsh";
+  const shell = environment.SHELL ?? defaultShellForPlatform(platform);
   const tmuxSocket = resolveTmuxSocket(environment.PACIUM_TMUX_SOCKET);
 
   if (!shell.startsWith("/") || !existsSync(shell)) {
@@ -226,10 +233,12 @@ export function loadTailscaleServeConfig(
 export function resolvePaciumDataDirectory(
   configuredPath: string | undefined,
   homeDirectory: string,
+  platform: NodeJS.Platform = process.platform,
+  xdgStateHome?: string,
 ): string {
   const candidate =
     configuredPath ??
-    join(homeDirectory, "Library", "Application Support", "Pacium Control");
+    defaultPaciumDataDirectory(homeDirectory, platform, xdgStateHome);
   if (
     !isAbsolute(candidate) ||
     candidate.length > 4096 ||
@@ -244,6 +253,42 @@ export function resolvePaciumDataDirectory(
     throw new Error("PACIUM_DATA_DIR must name a dedicated child directory.");
   }
   return resolved;
+}
+
+export function defaultPaciumDataDirectory(
+  homeDirectory: string,
+  platform: NodeJS.Platform,
+  xdgStateHome?: string,
+): string {
+  if (platform === "linux") {
+    const stateRoot = xdgStateHome ?? join(homeDirectory, ".local", "state");
+    if (
+      !isAbsolute(stateRoot) ||
+      stateRoot.length > 4_096 ||
+      hasControlCharacter(stateRoot)
+    ) {
+      throw new Error(
+        "XDG_STATE_HOME must be a bounded absolute path without controls.",
+      );
+    }
+    return join(normalize(stateRoot), "pacium-control");
+  }
+  return join(
+    homeDirectory,
+    "Library",
+    "Application Support",
+    "Pacium Control",
+  );
+}
+
+export function defaultShellForPlatform(platform: NodeJS.Platform): string {
+  if (platform === "linux") {
+    return "/bin/bash";
+  }
+  if (platform === "darwin") {
+    return "/bin/zsh";
+  }
+  return "/bin/sh";
 }
 
 export function buildChildEnvironment(
