@@ -13,14 +13,23 @@ Developer machine
 └── Optional local tmux
 ```
 
-## Initial release
+## macOS development package
 
-The packaged form may be:
+PC-074 implements one Apple-silicon archive containing `Pacium Control.app`,
+an exact `pacium` command link, installer, uninstaller, manifest, and checksum.
+It packages the production server/browser assets and minimal arm64 patched
+`node-pty` runtime. Node.js 24.18.x remains an explicit external prerequisite.
 
-- a CLI that starts the server and opens the browser; or
-- a lightweight desktop wrapper around the same local web application.
+The launcher validates the runtime and fixed loopback URL, reuses only an exact
+Pacium health signature, and opens the browser only after a new server listens.
+The app is still the same foreground single process: closing the browser does
+not end PTYs, while stopping the local server ends direct PTYs and detaches
+Pacium-owned tmux clients according to their existing policy.
 
-The packaging decision does not change the localhost server or PTY architecture.
+Installation is user-local and unprivileged. Application code is replaceable;
+application metadata, repositories, provider stores, queue files, and external
+tmux targets remain outside package ownership. The artifact is intentionally
+unsigned and unnotarized until PC-076.
 
 ## Optional remote operation
 
@@ -49,7 +58,7 @@ denied or unsupported. See the
 
 ## Startup requirements
 
-- supported runtime or bundled runtime;
+- external supported Node.js 24.18.x runtime;
 - writable local configuration directory;
 - supported shell and PTY facilities;
 - browser;

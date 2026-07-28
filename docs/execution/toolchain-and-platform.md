@@ -46,7 +46,10 @@ TypeScript 7 is not selected because the current `typescript-eslint` release dec
 - `@xterm/headless` `6.0.0`.
 - `@xterm/addon-serialize` `0.14.0`.
 
-The first implementation spike must confirm that xterm headless plus serialization is sufficient for bounded browser reconnection. If it is not, change only the restoration implementation, not the PTY/session contract.
+The implemented headless terminal plus serialization boundary provides bounded
+browser reconnection. The production macOS bundle statically includes its
+xterm, WebSocket, validation, and shared-contract JavaScript; only patched
+`node-pty` remains a packaged native runtime dependency.
 
 ### Testing and quality
 
@@ -88,8 +91,24 @@ Pacium compiles its patched `node-pty` sources on macOS rather than using the
 upstream prebuilt binary. Node.js `24.18.x`, Xcode command-line build tools, and
 an accepted Xcode license are therefore required. The patch closes the
 parent-side slave PTY, process-watcher kqueue, and temporary low-number PTY
-descriptors found by PC-072. PC-074 must still reproduce the source build on a
-fresh supported macOS account and document installation failure recovery.
+descriptors found by PC-072. PC-074 packages and executes that arm64 native
+module from an isolated install. A fresh supported macOS account with accepted
+Xcode license remains a PC-076 release-evidence gate rather than a claim from
+the current development machine.
+
+## macOS package boundary
+
+- `pnpm package:macos` emits one deterministic-content unsigned/unnotarized
+  `darwin-arm64` archive plus SHA-256 checksum.
+- Node.js is not redistributed. The fixed launcher accepts one absolute
+  `PACIUM_NODE_BINARY` or a common fixed installation path and enforces
+  24.18.x.
+- `pnpm package:macos:verify` rebuilds deterministically, validates its strict
+  manifest, installs/upgrades in a generated temporary destination, loads and
+  drives the packaged native PTY, starts the production server, and proves
+  state-preserving uninstall.
+- Developer ID signing and notarization are mandatory before a release can be
+  declared.
 
 ## Upgrade policy
 

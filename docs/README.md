@@ -58,6 +58,7 @@ This directory specifies the local-first Pacium Control product.
 
 ## Operations
 
+- [macOS development package](operations/macos-package.md)
 - [Optional Tailscale Serve access](operations/tailscale-serve.md)
 
 ## Decisions

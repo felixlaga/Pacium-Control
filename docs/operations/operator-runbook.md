@@ -1,8 +1,13 @@
 # Operator runbook
 
-> Historical blueprint: use the active local architecture and first-build plan until a local operator runbook is written.
+For the implemented user-local application lifecycle, use the
+[macOS package runbook](macos-package.md). For optional remote ingress, use the
+[Tailscale Serve runbook](tailscale-serve.md).
 
-This runbook defines routine operational actions once the product exists.
+The remaining sections contain retained operational guidance. References to a
+broker, multi-user control, central coordinator, backup service, or production
+deployment describe the superseded architecture and are not current Pacium
+components.
 
 ## Check system health
 

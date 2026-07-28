@@ -240,13 +240,25 @@ Application shortcuts pause while a terminal or text input owns the keyboard. Us
 
 ## Primary experience
 
-The planned packaged command:
+The implemented macOS development-package command:
 
 ```bash
 pacium
 ```
 
-will start a local server bound to `127.0.0.1` and open the application. That packaging command is not implemented yet.
+starts or reuses the local server on `127.0.0.1` and opens its fixed loopback
+URL. Build and exercise the unsigned Apple-silicon package with supported
+Node.js 24.18.x:
+
+```bash
+pnpm package:macos:verify
+```
+
+The archive installs without `sudo` into `~/Applications` and `~/.local/bin`
+by default. Node is an explicit external prerequisite; provider CLIs, Git,
+tmux, repositories, credentials, queue files, and Pacium state are not bundled
+or removed. The artifact is unsigned and unnotarized, so it is not yet a
+release. See the [macOS package runbook](docs/operations/macos-package.md).
 
 The application should let the operator:
 
