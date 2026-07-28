@@ -90,6 +90,9 @@ describe("diagnostics dialog markup", () => {
     expect(markup).toContain('aria-modal="true"');
     expect(markup).toContain("Bounded application health");
     expect(markup).toContain("No terminal sessions are currently reported");
+    expect(markup).toContain("Runtime versions");
+    expect(markup).toContain("1.1.0-pacium.1");
+    expect(markup).toContain("No fixed diagnostic codes");
     expect(markup).toContain("Always omitted");
     expect(markup).toContain("Terminal content");
     expect(markup).toContain('<button disabled="" type="button">Download JSON');

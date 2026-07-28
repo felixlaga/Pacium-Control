@@ -262,8 +262,19 @@ export function DiagnosticsSnapshotView({
           />
           <Fact label="Sessions" value={String(sessions.total)} />
           <Fact
+            label="Session runtimes"
+            value={`${sessions.directPty} PTY · ${sessions.tmux} tmux`}
+          />
+          <Fact
             label="Queue"
             value={`${snapshot.overview.queueStatus} · ${snapshot.overview.queueSources} sources`}
+          />
+          <Fact
+            label="Queue items"
+            value={`${Object.values(snapshot.overview.queueItems).reduce(
+              (total, count) => total + count,
+              0,
+            )} · ${snapshot.overview.queueConflicts} conflicts`}
           />
           <Fact
             label="tmux"
@@ -285,6 +296,38 @@ export function DiagnosticsSnapshotView({
       </section>
 
       <section
+        aria-labelledby="diagnostics-versions-title"
+        className="diagnostics-section"
+      >
+        <div className="diagnostics-section-heading">
+          <h3 id="diagnostics-versions-title">Runtime versions</h3>
+        </div>
+        <dl className="diagnostics-facts">
+          <Fact
+            label="node-pty"
+            value={snapshot.application.dependencyVersions.nodePty}
+          />
+          <Fact
+            label="xterm headless"
+            value={snapshot.application.dependencyVersions.xtermHeadless}
+          />
+          <Fact
+            label="xterm browser"
+            value={snapshot.application.dependencyVersions.xtermBrowser}
+          />
+          <Fact
+            label="React"
+            value={snapshot.application.dependencyVersions.react}
+          />
+          <Fact label="ws" value={snapshot.application.dependencyVersions.ws} />
+          <Fact
+            label="Zod"
+            value={snapshot.application.dependencyVersions.zod}
+          />
+        </dl>
+      </section>
+
+      <section
         aria-labelledby="diagnostics-components-title"
         className="diagnostics-section"
       >
@@ -296,6 +339,47 @@ export function DiagnosticsSnapshotView({
             <ComponentCard component={component} key={component.id} />
           ))}
         </div>
+      </section>
+
+      <section
+        aria-labelledby="diagnostics-codes-title"
+        className="diagnostics-section"
+      >
+        <div className="diagnostics-section-heading">
+          <h3 id="diagnostics-codes-title">Fixed diagnostic codes</h3>
+          <span>
+            {snapshot.diagnostics.length}
+            {snapshot.diagnosticsTruncated ? "+" : ""}
+          </span>
+        </div>
+        {snapshot.diagnostics.length === 0 ? (
+          <p className="diagnostics-empty">
+            No fixed diagnostic codes are present in this snapshot.
+          </p>
+        ) : (
+          <div className="diagnostics-table-wrap">
+            <table className="diagnostics-table">
+              <thead>
+                <tr>
+                  <th>Component</th>
+                  <th>Code</th>
+                  <th>Severity</th>
+                  <th>Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                {snapshot.diagnostics.map((diagnostic) => (
+                  <tr key={`${diagnostic.component}:${diagnostic.code}`}>
+                    <td>{humanize(diagnostic.component)}</td>
+                    <th>{diagnostic.code}</th>
+                    <td>{diagnostic.severity}</td>
+                    <td>{diagnostic.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section
