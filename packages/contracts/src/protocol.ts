@@ -1088,7 +1088,7 @@ export const SessionSummarySchema = z
     commandLabel: z.string().min(1).max(40),
     agentClassification: AgentClassificationSchema,
     providerObservation: ProviderObservationSnapshotSchema.nullable(),
-    relaunchManifest: RelaunchManifestSchema,
+    relaunchManifest: RelaunchManifestSchema.optional(),
     repository: RepositoryObservationSchema,
     runtime: z.literal("pty"),
     processState: ProcessStateSchema,
@@ -1101,6 +1101,14 @@ export const SessionSummarySchema = z
     exitSignal: z.number().int().nullable(),
   })
   .superRefine((session, context) => {
+    if (session.relaunchManifest === undefined) {
+      context.addIssue({
+        code: "custom",
+        message: "Every session requires a server-owned relaunch manifest.",
+        path: ["relaunchManifest"],
+      });
+      return;
+    }
     if (
       (session.launchPreset === "shell" &&
         session.providerObservation !== null) ||

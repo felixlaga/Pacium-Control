@@ -109,10 +109,12 @@ export class WebSocketHub {
     this.unsubscribeSessions = sessions.onSessionEvent((event) => {
       if (event.type === "updated") {
         this.broadcast({ type: "session.updated", session: event.session });
-        this.broadcast({
-          type: "relaunch.manifest.updated",
-          manifest: event.session.relaunchManifest,
-        });
+        if (event.session.relaunchManifest !== undefined) {
+          this.broadcast({
+            type: "relaunch.manifest.updated",
+            manifest: event.session.relaunchManifest,
+          });
+        }
         return;
       }
       if (event.type === "exited") {

@@ -210,7 +210,10 @@ describe("localhost HTTP and WebSocket boundary", () => {
     if (original.type !== "session.created") {
       throw new Error("Expected an original session");
     }
-    const manifestId = original.session.relaunchManifest.id;
+    const manifestId = original.session.relaunchManifest?.id;
+    if (manifestId === undefined) {
+      throw new Error("Expected a retained relaunch manifest");
+    }
     firstClient.socket.close();
     await once(firstClient.socket, "close");
     firstSetup.manager.shutdown();

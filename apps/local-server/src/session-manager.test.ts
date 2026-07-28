@@ -292,7 +292,7 @@ describe("SessionManager", () => {
 
     const successor = await manager.relaunch(retained!.id, 100, 30);
     expect(successor.id).not.toBe(source.id);
-    expect(successor.relaunchManifest.predecessorSessionId).toBe(source.id);
+    expect(successor.relaunchManifest?.predecessorSessionId).toBe(source.id);
     expect(factory.createCalls).toHaveLength(2);
     expect(factory.createCalls[1]).toMatchObject({
       executable: "/opt/test/bin/codex",

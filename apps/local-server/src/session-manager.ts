@@ -240,7 +240,11 @@ export class SessionManager {
       return this.relaunchManifests.list();
     }
     return [...this.sessions.values()]
-      .map(({ summary }) => structuredClone(summary.relaunchManifest))
+      .flatMap(({ summary }) =>
+        summary.relaunchManifest === undefined
+          ? []
+          : [structuredClone(summary.relaunchManifest)],
+      )
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
@@ -252,7 +256,11 @@ export class SessionManager {
     const manifest =
       this.relaunchManifests?.get(manifestId) ??
       [...this.sessions.values()]
-        .map(({ summary }) => summary.relaunchManifest)
+        .flatMap(({ summary }) =>
+          summary.relaunchManifest === undefined
+            ? []
+            : [summary.relaunchManifest],
+        )
         .find(({ id }) => id === manifestId) ??
       null;
     if (manifest === null) {
@@ -743,16 +751,17 @@ export class SessionManager {
             };
       })
       .find((candidate) => candidate !== null);
+    const currentManifest = session.summary.relaunchManifest;
     if (
+      currentManifest === undefined ||
       reference === undefined ||
-      (session.summary.relaunchManifest.resumeReference?.provider ===
-        reference.provider &&
-        session.summary.relaunchManifest.resumeReference.id === reference.id)
+      (currentManifest.resumeReference?.provider === reference.provider &&
+        currentManifest.resumeReference.id === reference.id)
     ) {
       return;
     }
     const manifest: RelaunchManifest = {
-      ...session.summary.relaunchManifest,
+      ...currentManifest,
       resumeReference: reference,
       updatedAt: reference.observedAt,
     };
