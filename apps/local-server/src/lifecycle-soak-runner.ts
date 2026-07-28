@@ -24,13 +24,14 @@ const RETAINED_RSS_BUDGET_BYTES = 192 * 1024 * 1024;
 const RETAINED_HEAP_BUDGET_BYTES = 32 * 1024 * 1024;
 const FD_DELTA_BUDGET = 4;
 const EVENT_TIMEOUT_MS = 5_000;
+const SUPPORTED_SHELL = process.platform === "linux" ? "/bin/bash" : "/bin/zsh";
 
 const shellPreset: LaunchPresetDefinition = {
   id: "shell",
   label: "Shell",
   available: true,
   unavailableReason: null,
-  executable: "/bin/zsh",
+  executable: SUPPORTED_SHELL,
   args: ["-l"],
   classification: {
     type: "shell",
@@ -45,7 +46,7 @@ const agentPreset: LaunchPresetDefinition = {
   label: "Codex",
   available: true,
   unavailableReason: null,
-  executable: "/bin/zsh",
+  executable: SUPPORTED_SHELL,
   args: ["-l"],
   classification: {
     type: "codex",
@@ -216,7 +217,7 @@ async function runRealPtyCanary(cwd: string): Promise<{
     defaultCwd: cwd,
     homeDirectory: cwd,
     dataDirectory,
-    shell: "/bin/zsh",
+    shell: SUPPORTED_SHELL,
     tmuxSocket: null,
     environmentKeys: ["HOME", "PATH", "SHELL", "USER", "LANG", "TMPDIR"],
     launchPresets: [shellPreset],

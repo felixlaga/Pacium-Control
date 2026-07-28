@@ -6,9 +6,10 @@ import { SessionManager } from "./session-manager.js";
 
 describe("real PTY integration", () => {
   it("runs a command through the invoking user's shell", async () => {
+    const shell = process.platform === "linux" ? "/bin/bash" : "/bin/zsh";
     const config = loadServerConfig({
       ...process.env,
-      SHELL: "/bin/zsh",
+      SHELL: shell,
       PACIUM_DEFAULT_CWD: process.cwd(),
     });
     const manager = new SessionManager(

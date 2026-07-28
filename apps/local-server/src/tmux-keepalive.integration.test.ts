@@ -14,9 +14,12 @@ import { SessionManager } from "./session-manager.js";
 import { createTmuxAdapter } from "./tmux-adapter.js";
 
 const execFileAsync = promisify(execFile);
-const tmuxExecutable = ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux"].find(
-  existsSync,
-);
+const supportedShell = process.platform === "linux" ? "/bin/bash" : "/bin/zsh";
+const tmuxExecutable = [
+  "/opt/homebrew/bin/tmux",
+  "/usr/local/bin/tmux",
+  "/usr/bin/tmux",
+].find(existsSync);
 const fixtures: Array<{ root: string; socket: string }> = [];
 
 afterEach(async () => {
@@ -54,7 +57,7 @@ describe("real tmux keep-alive lifecycle", () => {
         PACIUM_DATA_DIR: join(root, "state"),
         PACIUM_DEFAULT_CWD: process.cwd(),
         PACIUM_TMUX_SOCKET: socket,
-        SHELL: "/bin/zsh",
+        SHELL: supportedShell,
       });
       const store = new RelaunchManifestStore(config.dataDirectory);
       await store.initialize();
