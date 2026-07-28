@@ -541,6 +541,15 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-073 Add diagnostics
 
 - Health, versions, PTY/session state, provider status, queue status, and redaction-aware export.
+- Current status: complete. One strict 256 KiB response-only schema projects
+  already loaded bounded state through the existing protected Local/Tailscale
+  read boundary. Export-local session labels, aggregate queue metadata,
+  provider/tmux health, fixed codes, and the complete redaction manifest appear
+  in a routed modal. Exact inert preview gates browser-local JSON download;
+  no terminal content, source content, path, identity, command, credential,
+  persistent file, upload, poll, or mutation enters the feature. Supported
+  Node 24 full verification passed 136 test files and 880 tests, and all 20
+  Chromium workflows passed.
 
 ### PC-074 Package macOS application
 

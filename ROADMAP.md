@@ -125,7 +125,7 @@ Deliverables:
 - optional tmux attachment (PC-070 complete) and keep-alive mode (PC-071 complete);
 - optional Tailscale Serve access with verified operator identity;
 - startup recovery and honest ended-session handling;
-- bounded diagnostic export;
+- bounded diagnostic export (PC-073 complete);
 - macOS packaging first, with Linux according to the supported-platform decision;
 - performance budgets and soak tests (PC-072 complete);
 - accessibility and interaction polish;

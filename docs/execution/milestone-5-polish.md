@@ -95,7 +95,23 @@ PC-072 establishes the bounded personal-load evidence for criterion 3:
 - This is a bounded development-machine baseline, not a multi-day field-soak or
   production-monitoring claim.
 
-PC-073 through PC-076 still own diagnostics, packaging, Linux, and final
+PC-073 completes criterion 6:
+
+- A strict response-only version-1 snapshot caps the full JSON at 256 KiB and
+  projects only already loaded bounded health, version, process, provider,
+  queue, tmux, and fixed-code metadata.
+- Export-local `Terminal N` labels and structural allowlisting exclude terminal
+  content, paths, commands, source identities, Git/queue/provider content,
+  credentials, host/operator identity, and relaunch metadata.
+- The existing protected Local/Tailscale boundary serves the no-store read.
+  Exact inert preview gates a browser-local JSON download; there is no server
+  file, telemetry, upload, background polling, or new shell/filesystem
+  authority.
+- Full supported-runtime verification and all 20 Chromium workflows passed,
+  including a parsed real download and live-PTY preservation through routing
+  and browser reload.
+
+PC-074 through PC-076 still own macOS packaging, Linux validation, and final
 release-readiness evidence.
 
 ## Demo

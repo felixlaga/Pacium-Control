@@ -2,6 +2,58 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.43.0 — bounded redaction-aware diagnostics — 2026-07-28
+
+### Added
+
+- One strict response-only version-1 diagnostics schema capped at 256 KiB,
+  100 export-local session rows, 12 components, 24 fixed diagnostic-code rows,
+  and short bounded manifest/version/status fields.
+- A pure server projection of application/dependency versions, component
+  health, complete PTY lifecycle counts, sanitized session state, provider
+  health, aggregate queue types/conflicts, optional tmux status/version, and
+  fixed diagnostic-code counts.
+- A token-protected no-store `/api/diagnostics` read using the existing exact
+  Local/Tailscale Host, Origin, verified identity, method, and body boundary.
+- A clean routed `/diagnostics` modal opened from the header or command palette
+  with explicit refresh, last-good stale recovery, exact inert JSON preview,
+  and preview-gated browser-local download.
+
+### Fixed
+
+- Diagnostics history focus restoration now runs only when the Diagnostics
+  route owned focus, so ordinary hash/skip-link navigation remains intact.
+- The modal remains operable at 320 CSS pixels and simulated 200% zoom, and the
+  browser test removes only its own terminal fixture after proving survival.
+
+### Security
+
+- Structural allowlisting excludes terminal content/input/titles,
+  session/process identity, commands/argv, paths/repositories, Git content,
+  queue text/decisions, provider content/fields, environments/credentials,
+  host/operator identity, and relaunch metadata.
+- The export is never persisted, uploaded, emailed, copied, or logged by
+  Pacium. Diagnostics performs no PTY, queue, Git, provider, tmux, filesystem,
+  command, or durable-state action.
+
+### Verified
+
+- Focused contract/projection, protected HTTP, transport, state, semantic,
+  palette, redaction, and download checks passed.
+- Supported Node.js 24.18.0 `pnpm verify` passed formatting, lint, every
+  workspace type check, 136 test files and 880 tests, plus 967.16 kB web
+  JavaScript, 128.54 kB CSS, and 478.21 kB local-server production bundles.
+- All 20 Chromium workflows passed. The diagnostics workflow parsed the actual
+  download and preserved a live PTY through Back, Escape, direct routing,
+  browser reload, failed refresh, accessibility modes, and explicit cleanup.
+
+### Known limitations
+
+- This is local support metadata, not telemetry, log capture, crash reporting,
+  an archive, or a production monitoring claim.
+- PC-074 macOS packaging, PC-075 Linux validation, and PC-076 release
+  readiness remain open.
+
 ## 0.42.0 — lifecycle and memory soak baseline — 2026-07-28
 
 ### Added

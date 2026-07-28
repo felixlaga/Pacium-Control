@@ -21,7 +21,8 @@ one exact published session can be attached through the existing terminal
 workspace. Explicit tmux keep-alive launches and bounded automatic restart
 reattachment are complete.
 The bounded PC-072 lifecycle, memory, browser-model, and real-PTY descriptor
-soak baseline is complete.
+soak baseline is complete. PC-073 bounded redaction-aware diagnostics,
+protected reads, exact preview, and browser-local JSON export are complete.
 
 Pacium Control now has an executable React application, loopback local server,
 direct-PTY session manager, typed WebSocket protocol, and automated terminal,
@@ -90,6 +91,14 @@ The secondary product is **Pacium mode**:
   explicit peak/retained RSS and live-heap budgets, and a five-real-PTY FD
   canary. Browser models separately cover 2,000 split operations and 5,000
   notification cursors.
+- A response-only strict version-1 diagnostics projection with fixed collection,
+  string, and 256 KiB response bounds; export-local session labels; component,
+  version, process, provider, aggregate queue, tmux, and fixed-code evidence;
+  and a complete inclusion/omission manifest. One protected no-store
+  Local/Tailscale read feeds a routed modal with explicit refresh, stale
+  last-good recovery, exact inert JSON preview, and preview-gated browser-local
+  download. It reads no terminal buffer, executes no command, performs no
+  source refresh, and persists or uploads nothing.
 - A token-protected, read-only host directory browser with canonical paths,
   direct absolute-path navigation, repository markers, filtering,
   hidden-folder control, breadcrumbs, failure-safe browser-local recent
@@ -311,10 +320,10 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 132 test files and 863 tests,
-  plus the 949.29 kB web JavaScript, 122.44 kB stylesheet, and 458.05 kB
+- `pnpm verify`: formatting, lint, type checking, 136 test files and 880 tests,
+  plus the 967.16 kB web JavaScript, 128.54 kB stylesheet, and 478.21 kB
   local-server production builds passed.
-- `pnpm test:e2e`: nineteen Chromium workflows passed for skip navigation, panel
+- `pnpm test:e2e`: twenty Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
   changed-file/diff/history/Activity inspection, and configured verification
@@ -342,6 +351,14 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
   zero final sessions, and `/dev/fd` 18 -> 18 across five real PTYs. The canary
   found and fixed parent-side slave PTY, kqueue, and temporary low-number PTY
   descriptor leaks in the pinned macOS `node-pty`.
+- PC-073 focused evidence passed 8 contract/projection tests, both targeted
+  protected HTTP workflows, and 43 browser transport/model/render/palette
+  checks. Hostile fixtures exclude terminal/provider/queue/Git content,
+  credentials, paths, IDs, PIDs, commands, host details, and relaunch metadata.
+  Its Chromium workflow parsed the actual downloaded JSON; retained a live PTY
+  across Back, Escape, direct routing, and browser reload; kept last-good state
+  after a failed refresh; and covered 200% zoom, forced colors, reduced motion,
+  focus restoration, and isolated PTY cleanup.
 - PC-063 focused evidence passed 39 activity-model, semantic-render, and
   terminal-excerpt tests. Its Chromium workflow exercised deterministic compact
   cards, all four source destinations, explicit terminal capture/refresh/hide,
@@ -492,8 +509,9 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-PC-072 lifecycle and memory soak testing is complete. Start PC-073 bounded,
-redaction-aware diagnostics.
+PC-073 bounded redaction-aware diagnostics is complete. Start PC-074 macOS
+application packaging without expanding into Linux validation or release
+readiness.
 Complete the real Tailscale Serve/grants/Funnel/public canary, pinned Node.js
 24 clean-install, CI, broader browser/security, manual accessibility, and
 sustained-output gates before release.
