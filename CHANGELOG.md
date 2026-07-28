@@ -2,6 +2,72 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.45.0 — Ubuntu Linux validation — 2026-07-28
+
+### Added
+
+- ADR-0017’s exact second supported host: Ubuntu 24.04 LTS on x86-64, with
+  `/bin/bash`, XDG application-state defaults, bounded XDG child-environment
+  inheritance, and explicit denial of broader Linux compatibility.
+- One deterministic-content unsigned, non-distro-native Linux archive with
+  production browser/server assets, minimal source-built x64 ELF `node-pty`,
+  strict version-1 manifest, checksum, exact user-local `pacium` command,
+  no-sudo installer/uninstaller, and embedded guide.
+- A Linux package verifier covering deterministic rebuild, manifest/hash/mode
+  integrity, native PTY load/Unicode/resize/exit, install/upgrade, production
+  health/assets, exact-instance reuse, active-uninstall refusal,
+  foreign-target denial, idempotent removal, and external-state preservation.
+- A bounded Ubuntu 24.04 workflow with read-only repository permission,
+  immutable Node 24 action revisions, frozen source-native dependencies, full
+  verification, lifecycle soak, package verification, all applicable Chromium
+  workflows, and short-retention archive/checksum upload.
+
+### Fixed
+
+- Platform defaults, real-PTY/soak fixtures, package-runtime selection, process
+  lease recognition, and fixed browser opening now distinguish exact macOS
+  arm64 and Linux x64 behavior without weakening loopback or package checks.
+- Tests no longer depend on `/bin/zsh`, a globally configured Git committer
+  identity, the local checkout directory spelling, or an installed Claude CLI.
+  The provider-degradation browser workflow uses a disposable explicit CLI
+  fixture.
+
+### Security
+
+- Linux install and uninstall accept only exact absolute user-owned
+  destinations, recognized application/link ownership, sibling
+  staging/rollback, and the private active-process lease; they never use
+  `sudo`, install a service, inspect broad processes, or own application state.
+- Package and CI outputs contain fixed code/file/scalar metadata only. Node,
+  browsers, shells, provider CLIs, Git, tmux, Tailscale, credentials,
+  environments, terminal bytes, repositories, queue content, and Pacium state
+  remain external.
+
+### Verified
+
+- The pinned Ubuntu 24.04.4 x64 runner used Node.js 24.18.0 and pnpm 11.17.0,
+  passed 141 test files and 922 tests, the production build, the bounded
+  lifecycle soak, Linux package verification, and all applicable Chromium
+  workflows.
+- The Linux soak completed in 2,034 ms with 135,872,512-byte peak/retained RSS
+  growth, 5,230,168-byte retained live heap, a 162,368-character snapshot, zero
+  final sessions, and `/dev/fd` 32 -> 32.
+- `pnpm package:linux:verify` reproduced the 584,044-byte
+  `pacium-control-0.0.0-linux-x64.tar.gz` with SHA-256
+  `b5da9fadf2db663123be8bc2a3d888d8a7d18520bb00bfbeb83b067e8fb5f7ca`
+  and 27 manifested files, then passed every installed-package canary.
+- Supported Apple-silicon macOS full verification, package verification, and
+  all 20 Chromium workflows remained green.
+
+### Known limitations
+
+- This evidence supports only Ubuntu 24.04 x64 and Apple-silicon macOS with
+  external Node.js 24.18.x. The Linux artifact is not `.deb`, RPM, AppImage,
+  Flatpak, Snap, a service, or a root/global installation.
+- Both artifacts remain development evidence. PC-076 clean-account,
+  real-tailnet, signing/notarization, manual accessibility/sustained-use, exact
+  limitations, delivery posture, and owner-acceptance gates remain open.
+
 ## 0.44.0 — macOS development package — 2026-07-28
 
 ### Added
