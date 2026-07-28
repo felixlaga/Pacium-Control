@@ -11,16 +11,15 @@ worker summaries, and read-only objective/plan plus recent-decision context are
 complete enough for continued slicing. Optional Tailscale Serve access is
 implemented at the application boundary, and the working-directory picker
 refresh is complete. The bounded provider observation contract is complete;
-the narrow Pacium-launched Claude Code observer is complete, and Codex native
-observation is next.
+the narrow Pacium-launched Claude Code and Codex native observers are complete.
+Clean activity cards and explicit observer degradation remain later slices.
 
 Pacium Control now has an executable React application, loopback local server,
 direct-PTY session manager, typed WebSocket protocol, and automated terminal,
 Git, queue, and Pacium-context tests. This proves the bounded local
-compatibility workflow described below; it does not prove live provider-native
-Codex observation or management, a manual real-provider Claude canary, a real
-deployed tailnet/grants/public boundary, durable PTYs, packaging, or release
-readiness.
+compatibility workflow described below; it does not prove provider management,
+manual real-provider Claude/Codex canaries, a real deployed
+tailnet/grants/public boundary, durable PTYs, packaging, or release readiness.
 
 ## Product direction
 
@@ -56,7 +55,7 @@ The secondary product is **Pacium mode**:
   canonical `*.ts.net` HTTPS Origin, bounded exact operator-login allowlist,
   canonical local-Origin isolation, exact remote Host/Origin/login checks,
   Funnel denial, and the unchanged ephemeral token for protected transport.
-- Protocol-20 per-socket Local or Tailscale/login evidence, plus one strict
+- Protocol-21 per-socket Local or Tailscale/login evidence, plus one strict
   nullable provider-observation snapshot per session, and a compact accessible
   connection badge that clears stale identity on disconnect.
 - Bounded xterm headless snapshots that let a new browser transport attach to a still-live PTY.
@@ -108,6 +107,13 @@ The secondary product is **Pacium mode**:
   bounded deduplication, typed lifecycle/tool/question/approval/completion/
   failure evidence, optional strict status usage scalars, and no provider
   decisions, settings-file edits, raw payload retention, or terminal coupling.
+- A process-local Codex observer for supported Pacium-launched Codex PTYs with
+  capability-probed remote/App Server surfaces, one random environment-only
+  token and exact loopback route per session, one authenticated transparent
+  WebSocket-to-JSONL bridge, strict bounded native lifecycle/tool/plan/usage/
+  question/approval/failure metadata, browser-reconnect preservation, and no
+  prompt/message/command/output/diff/path/request-content retention or
+  generated provider decisions.
 - Protocol-17 strict Pacium workspace configuration for explicit Meta,
   Orchestrator, and worker session/preset bindings; canonical repositories;
   verification references; and queue, future-delivery, objective, and plan path
@@ -246,10 +252,10 @@ The secondary product is **Pacium mode**:
 - No general browser editor for workspace identity, repositories, workers,
   queue sources, delivery methods, context sources, or verification references,
   and no shortcut customization.
-- No live Codex observer, externally launched Claude attachment, packaged
-  Claude status-line companion, or provider decision/control actions. The
-  Claude hook transport is fixture/integration verified but has not completed a
-  manual real-provider canary on this machine.
+- No externally launched Claude/Codex attachment, packaged Claude status-line
+  companion, or provider decision/control actions. Both provider transports
+  are fixture/integration verified but have not completed manual real-provider
+  canaries on this machine.
 - No multi-item parsing, provider-native acknowledgement/activity, worker
   launching/reconfiguration, task state, or causal decision-to-Git/terminal
   correlation.
@@ -263,8 +269,8 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 118 test files and 743 tests,
-  plus the 913.94 kB web JavaScript, 109.81 kB stylesheet, and 368.49 kB
+- `pnpm verify`: formatting, lint, type checking, 121 test files and 766 tests,
+  plus the 914.86 kB web JavaScript, 109.81 kB stylesheet, and 409.10 kB
   local-server production builds passed.
 - `pnpm test:e2e`: fourteen Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
@@ -288,6 +294,14 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
   enforcement, empty no-decision responses, duplicate and provider-session
   rejection, release-token invalidation, browser reconnect state, bounded
   usage presentation, and exclusion of prompt/transcript/tool/status secrets.
+- PC-062 focused contract, Codex normalizer, observer, PTY lifecycle, private
+  App Server bridge, HTTP upgrade, reconnect, attention, and Activity evidence
+  passed. It covers capability fallback, environment-only token authority,
+  exact Host/Origin/path/bearer enforcement, single-client ownership,
+  unchanged bidirectional protocol forwarding, malformed/oversized input,
+  child exit, PTY release, browser reconnect preservation, cumulative usage,
+  deduplication, distinct questions/approvals, and exclusion of prompt/message/
+  plan/command/output/diff/path/request/auth content.
 - PC-050 browser evidence projected one exact live worker and one preset-only
   worker without launching or inferring either, selected only the existing
   worker PTY, opened/refreshed/closed Control context with focus return,
@@ -344,7 +358,7 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
   keyboard-accessible at 200% zoom.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
-- The protocol-version-20 boundary passed strict contract, atomic-store,
+- The protocol-version-21 boundary passed strict contract, atomic-store,
   canonical path/reference, authenticated WebSocket revision/conflict, PTY
   survival, bounded queue reader/observer/classifier, content-free bulk item
   evidence, exact-current base64 text inspection, stale/config/disconnect
@@ -401,8 +415,9 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-Implement the Codex observer in PC-062, then explicit capability degradation
-in PC-064 before durability and packaging.
+PC-062 is complete. The next planned native-enrichment slices are PC-063 clean
+activity cards, PC-064 explicit capability degradation, and PC-065 relaunch
+manifests before durability and packaging.
 Complete the real Tailscale
 Serve/grants/Funnel/public canary, pinned Node.js 24 clean-install, CI, broader
 browser/security, manual accessibility, and sustained-output gates before

@@ -438,6 +438,21 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-062 Implement Codex observer
 
 - Supported native runtime events, turns, plan, tool, approval, completion, usage, and failure fixtures.
+- Current status: complete. Protocol 21 adds bounded cumulative Codex context
+  and token fields. Capability probes require the installed CLI's exact
+  `--remote`, remote-token, and App Server listener surfaces before changing a
+  direct Codex launch. Each supported Pacium-launched Codex PTY receives one
+  private loopback URL and random environment-only token; one authenticated TUI
+  connection is transparently bridged to one fixed App Server child over
+  bounded JSONL stdio. Strict normalization projects deduplicated thread, turn,
+  item, plan, usage, failure, approval, and question metadata while discarding
+  prompts, messages, plans, commands, output, diffs, paths, request content,
+  credentials, and raw frames. The observer sends no JSON-RPC request,
+  response, approval, or answer. Browser refresh preserves process-local
+  evidence; PTY exit, removal, shutdown, transport failure, child exit, and
+  invalid or oversized data release or degrade the bridge honestly. External
+  sessions, stable-version guarantees, live-provider canary evidence, control
+  actions, and durable observations remain outside this slice.
 
 ### PC-063 Build clean agent activity cards
 
