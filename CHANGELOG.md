@@ -2,6 +2,66 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.44.0 — macOS development package — 2026-07-28
+
+### Added
+
+- One deterministic-content Apple-silicon archive containing a valid
+  `Pacium Control.app`, exact user-local `pacium` link, production browser and
+  local-server bundles, minimal patched source-built arm64 `node-pty`, strict
+  version-1 content manifest, SHA-256 checksum, installer, uninstaller, and
+  embedded install guide.
+- A bounded package launcher with fixed help/version/no-open behavior,
+  Node.js 24.18.x and port validation, exact Pacium health-signature reuse, and
+  fixed `/usr/bin/open` invocation only after a new loopback server listens.
+- User-local no-sudo install/upgrade with recognized sibling staging, prior-app
+  rollback, exact link ownership, and an ephemeral mode-0600 process lease for
+  active-uninstall refusal without broad process-list access.
+- A package verifier covering deterministic rebuild, manifest/hash/mode
+  integrity, unsigned status, arm64 native files, real PTY
+  load/Unicode/resize/exit, isolated install/upgrade, production health/assets,
+  exact-instance reuse, active-uninstall refusal, idempotent uninstall, foreign
+  target denial, and external-state preservation.
+
+### Fixed
+
+- The production local-server build now bundles xterm headless/serialization,
+  WebSocket, validation, and shared-contract JavaScript while leaving only
+  `node-pty` external for the packaged native runtime.
+- Local-server shutdown closes idle HTTP keep-alive connections, allowing the
+  foreground package process and its lease to end promptly.
+- The app launcher resolves its exact absolute installed command symlink before
+  locating resources and rejects relative command links.
+
+### Security
+
+- Installer and uninstaller validate absolute non-root destinations, bundle
+  identity, symlink state, exact command ownership, and active process identity
+  before replacement or removal.
+- Manifest and checksum generation copy fixed production/runtime inputs only
+  and expose no checkout, home, temp, credential, environment, terminal,
+  repository, queue, provider, or host identity.
+- Node, provider CLIs, Git, tmux, Tailscale, repositories, credentials, queue
+  files, and application state are not bundled or removed.
+
+### Verified
+
+- Supported Node.js 24.18.0 `pnpm verify` passed formatting, lint, all workspace
+  type checks, 140 test files and 910 tests, plus the 967.23 kB web JavaScript,
+  128.54 kB CSS, and 1,460.40 kB split local-server production build.
+- `pnpm package:macos:verify` reproduced the 576,781-byte
+  `pacium-control-0.0.0-darwin-arm64.tar.gz` with SHA-256
+  `c19403a7ff7dee64fbb63ce3f3566763552eb0e762b2d284a7327194843f7c92`
+  and 28 manifested files, then passed every installed-package canary.
+- All 20 Chromium workflows passed.
+
+### Known limitations
+
+- This artifact is unsigned, unnotarized, external-Node, Apple-silicon
+  development evidence. It is not a public or owner-accepted release.
+- PC-075 Linux validation and PC-076 clean-account, real-tailnet,
+  accessibility, signing/notarization, and owner-acceptance gates remain open.
+
 ## 0.43.0 — bounded redaction-aware diagnostics — 2026-07-28
 
 ### Added
