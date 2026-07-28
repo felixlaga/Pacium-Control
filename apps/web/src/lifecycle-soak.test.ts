@@ -57,6 +57,9 @@ describe("browser-owned lifecycle soak invariants", () => {
 
   it("bounds five thousand notification cursors and never redelivers an event", () => {
     let inbox = EMPTY_ATTENTION_INBOX;
+    let rejectedInitialDelivery = false;
+    let redeliveredEvent = false;
+    let maximumEntries = 0;
 
     for (let index = 0; index < 5_000; index += 1) {
       const sessionId = `session-${index}`;
@@ -79,17 +82,18 @@ describe("browser-owned lifecycle soak invariants", () => {
         preference: "attention" as const,
         visibility: "hidden" as const,
       };
-      expect(shouldDeliverAttentionNotification(delivery)).toBe(true);
+      rejectedInitialDelivery ||= !shouldDeliverAttentionNotification(delivery);
       inbox = markAttentionNotified(inbox, sessionId, attention);
-      expect(
-        shouldDeliverAttentionNotification({
-          ...delivery,
-          entry: cursorEntry(inbox, sessionId),
-        }),
-      ).toBe(false);
-      expect(inbox.entries.length).toBeLessThanOrEqual(200);
+      redeliveredEvent ||= shouldDeliverAttentionNotification({
+        ...delivery,
+        entry: cursorEntry(inbox, sessionId),
+      });
+      maximumEntries = Math.max(maximumEntries, inbox.entries.length);
     }
 
+    expect(rejectedInitialDelivery).toBe(false);
+    expect(redeliveredEvent).toBe(false);
+    expect(maximumEntries).toBeLessThanOrEqual(200);
     expect(inbox.entries).toHaveLength(200);
     expect(JSON.stringify(inbox).length).toBeLessThan(64 * 1024);
   });
