@@ -20,6 +20,7 @@ export default async function globalTeardown(): Promise<void> {
     process.env.PACIUM_E2E_PROVIDER_DIRECTORY,
     process.env.PACIUM_E2E_STATE_DIRECTORY,
     process.env.PACIUM_E2E_TMUX_DIRECTORY,
+    process.env.PACIUM_E2E_VERIFICATION_REPOSITORY,
   ]) {
     if (directory !== undefined) {
       await rm(directory, { force: true, recursive: true });

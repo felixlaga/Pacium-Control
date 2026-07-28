@@ -15,19 +15,41 @@ const paciumStateDirectory =
 const providerFixtureDirectory = mkdtempSync(
   join(tmpdir(), "pacium-playwright-provider-"),
 );
+const configuredVerificationRepository =
+  process.env.PACIUM_E2E_VERIFICATION_REPOSITORY;
+const verificationRepositoryDirectory =
+  configuredVerificationRepository ??
+  mkdtempSync(join(tmpdir(), "pacium-playwright-verification-repository-"));
 const queueFixturePath = join(paciumStateDirectory, "NEEDS-FELIX");
 const objectiveFixturePath = join(paciumStateDirectory, "OBJECTIVE");
 const planFixturePath = join(paciumStateDirectory, "PLAN");
 const tmuxExecutable = ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux"].find(
   existsSync,
 );
+if (configuredVerificationRepository === undefined) {
+  writeFileSync(
+    join(verificationRepositoryDirectory, "README.md"),
+    "Pacium verification fixture.\n",
+  );
+  for (const args of [
+    ["init", "--quiet"],
+    ["config", "user.email", "pacium@example.test"],
+    ["config", "user.name", "Pacium E2E"],
+    ["add", "README.md"],
+    ["commit", "--quiet", "-m", "verification fixture"],
+  ]) {
+    execFileSync("/usr/bin/git", args, {
+      cwd: verificationRepositoryDirectory,
+    });
+  }
+}
 writeFileSync(
   verificationConfigPath,
   JSON.stringify({
     version: 1,
     repositories: [
       {
-        root: realpathSync(process.cwd()),
+        root: realpathSync(verificationRepositoryDirectory),
         presets: [
           {
             id: "verify",
@@ -56,6 +78,8 @@ process.env.PACIUM_E2E_QUEUE_PATH = queueFixturePath;
 process.env.PACIUM_E2E_OBJECTIVE_PATH = objectiveFixturePath;
 process.env.PACIUM_E2E_PLAN_PATH = planFixturePath;
 process.env.PACIUM_E2E_PROVIDER_DIRECTORY = providerFixtureDirectory;
+process.env.PACIUM_E2E_VERIFICATION_REPOSITORY =
+  verificationRepositoryDirectory;
 process.env.PACIUM_VERIFICATION_CONFIG = verificationConfigPath;
 process.env.PACIUM_DATA_DIR = paciumStateDirectory;
 writeFileSync(

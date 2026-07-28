@@ -1,6 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const repositoryRoot = process.cwd();
+const repositoryRoot = process.env.PACIUM_E2E_VERIFICATION_REPOSITORY;
+if (repositoryRoot === undefined) {
+  throw new Error("The verification repository fixture is unavailable.");
+}
 
 test.afterEach(async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
