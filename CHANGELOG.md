@@ -2,6 +2,52 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.39.0 — durable relaunch manifests — 2026-07-28
+
+### Added
+
+- Protocol 22 strict version-1 relaunch manifests on accepted session
+  summaries, a bounded list response, and a relaunch request containing only
+  manifest identity plus terminal dimensions.
+- A private `relaunch-manifests.json` catalog capped at 100 newest records with
+  ownership, permission, symlink, UTF-8, schema, uniqueness, order, and byte
+  validation plus atomic private replacement and directory durability sync.
+- Server-authored fixed preset command metadata, canonical cwd and
+  repository-at-launch reference, environment key names only,
+  provider/runtime classification, exact predecessor lineage, and optional
+  matching native resume-ID evidence.
+- A compact Recovery group separate from live sessions and one accessible
+  manifest preview covering provider, command, cwd, repository, key names,
+  resume-reference availability, fresh-process consequences, disconnected
+  behavior, Escape, focus restoration, and explicit confirmation.
+- Server-owned relaunch that revalidates the stored cwd and current preset,
+  creates a new immutable session/manifest pair, selects the successor, and
+  never automatically resumes provider state.
+
+### Verified
+
+- Contract, state-store, session-manager, provider-resume, restart/reload,
+  WebSocket, transport, semantic-render, security, and failure-focused tests
+  pass. A restart fixture proves the retained manifest remains available while
+  no direct PTY is claimed live.
+- `pnpm verify` passed formatting, lint, every workspace type check, 127 test
+  files and 831 tests, plus the 937.54 kB web JavaScript, 118.95 kB stylesheet,
+  and 428.72 kB local-server production bundles.
+- `pnpm test:e2e` passed all 17 Chromium workflows. PC-065 exits and removes a
+  shell, opens the detached manifest, verifies retained facts and no-auto-resume
+  copy, cancels with focus restoration, relaunches a fresh successor, and
+  preserves suite isolation.
+
+### Known limitations
+
+- Direct PTYs still end with the local server. PC-070 and PC-071 own optional
+  tmux attachment and keep-alive.
+- Resume identifiers are retained evidence only; provider resume commands need
+  separate supported-provider validation and are not automatic.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The web
+  build retains Vite's chunk-size warning; packaging and release gates remain
+  PC-072 through PC-076.
+
 ## 0.38.0 — explicit provider degradation — 2026-07-28
 
 ### Added
