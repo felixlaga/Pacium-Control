@@ -12,6 +12,7 @@
     "build": "pnpm -r --if-present build",
     "start": "pnpm --filter @pacium/local-server start",
     "test": "vitest run",
+    "test:soak": "node --expose-gc --import tsx apps/local-server/src/lifecycle-soak-runner.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "typecheck": "pnpm -r --if-present typecheck",
