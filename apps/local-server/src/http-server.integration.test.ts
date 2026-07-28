@@ -11,7 +11,7 @@ import {
 import type { AddressInfo } from "node:net";
 import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { PassThrough } from "node:stream";
 
 import { FakePty, FakePtyFactory } from "@pacium/test-utils";
@@ -399,7 +399,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
       },
       repository: {
         status: "ready",
-        name: "Pacium Control",
+        name: basename(process.cwd()),
         branch: "dev",
       },
     });
