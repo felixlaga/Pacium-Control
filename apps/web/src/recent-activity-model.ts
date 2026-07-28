@@ -19,6 +19,10 @@ import {
   visibleVerificationObservation,
   type RepositoryVerificationViewState,
 } from "./repository-verification-model.js";
+import {
+  buildProviderStatus,
+  type ProviderStatusPresentation,
+} from "./provider-status-model.js";
 
 export const MAX_RECENT_ACTIVITY_COMMITS = 3;
 export const MAX_RECENT_ACTIVITY_FACTS = 7;
@@ -87,6 +91,7 @@ export interface ActivitySourceSummary {
 
 export interface RecentActivity {
   current: ActivityCurrentEvidence;
+  providerStatus: ProviderStatusPresentation | null;
   facts: ActivityFact[];
   sources: ActivitySourceSummary[];
   terminalFallback: {
@@ -101,6 +106,7 @@ export interface RecentActivity {
 export interface RecentActivityInput {
   session: SessionSummary;
   attention: AttentionResult;
+  now: string;
   changes: RepositoryChangesViewState;
   history: RepositoryHistoryViewState;
   verification: RepositoryVerificationViewState;
@@ -115,16 +121,18 @@ export function buildRecentActivity(
     ...gitFacts(input),
     ...verificationFacts(input.verification),
   ].toSorted(compareActivityFacts);
-  const sources = sourceSummaries(input);
+  const providerStatus = buildProviderStatus(input.session, input.now);
+  const sources = sourceSummaries(input, providerStatus);
   return {
     current: {
       attention: input.attention,
       processState: input.session.processState,
       processDetail: processDetail(input.session),
     },
+    providerStatus,
     facts: facts.slice(0, MAX_RECENT_ACTIVITY_FACTS),
     sources,
-    terminalFallback: terminalFallback(input.session, sources),
+    terminalFallback: terminalFallback(input.session, providerStatus),
     loading: sources.some(({ status }) => status === "loading"),
     partial: sources.some(({ status }) =>
       ["idle", "unavailable", "degraded", "stale", "error"].includes(status),
@@ -408,9 +416,8 @@ function verificationStatusLabel(status: VerificationRun["status"]): string {
 
 function terminalFallback(
   session: SessionSummary,
-  sources: ActivitySourceSummary[],
+  providerStatus: ProviderStatusPresentation | null,
 ): RecentActivity["terminalFallback"] {
-  const provider = sources.find(({ id }) => id === "provider");
   const providerBoundary =
     session.providerObservation === null
       ? "none"
@@ -420,7 +427,7 @@ function terminalFallback(
           session.providerObservation.observedAt,
           session.providerObservation.staleAfter,
         ].join(":");
-  if (provider?.status === "ready") {
+  if (providerStatus?.state === "ready") {
     return {
       recommended: false,
       reason:
@@ -430,23 +437,17 @@ function terminalFallback(
   }
   return {
     recommended: true,
-    reason:
-      provider === undefined
-        ? "No provider observer applies to this terminal. A bounded terminal peek can provide raw context."
-        : "Provider evidence is not currently ready. A bounded terminal peek can provide low-confidence context.",
-    boundaryKey: `${session.id}:${session.epoch}:${providerBoundary}:${provider?.status ?? "not_applicable"}`,
+    reason: terminalFallbackReason(providerStatus),
+    boundaryKey: `${session.id}:${session.epoch}:${providerBoundary}:${providerStatus?.state ?? "not_applicable"}`,
   };
 }
 
-function sourceSummaries({
-  session,
-  attention,
-  changes,
-  history,
-  verification,
-}: RecentActivityInput): ActivitySourceSummary[] {
+function sourceSummaries(
+  { changes, history, verification }: RecentActivityInput,
+  providerStatus: ProviderStatusPresentation | null,
+): ActivitySourceSummary[] {
   return [
-    ...providerSourceSummary(session, attention),
+    ...providerSourceSummary(providerStatus),
     changesSummary(changes),
     historySummary(history),
     verificationSummary(verification),
@@ -454,28 +455,20 @@ function sourceSummaries({
 }
 
 function providerSourceSummary(
-  session: SessionSummary,
-  attention: AttentionResult,
+  status: ProviderStatusPresentation | null,
 ): ActivitySourceSummary[] {
-  const observation = session.providerObservation;
-  if (observation === null) {
+  if (status === null) {
     return [];
   }
-  const supported = observation.capabilities.filter(
+  const supported = status.capabilities.filter(
     ({ availability }) => availability === "supported",
   ).length;
-  const detail = `${observation.health.detail} ${supported}/${observation.capabilities.length} capabilities confirmed; provider version ${
-    observation.providerVersion ?? "unavailable"
-  }; fresh until ${observation.staleAfter}.`;
-  const stale =
-    attention.state === "stale" &&
-    (attention.source === "native" || attention.source === "hook");
   return [
     {
       id: "provider",
-      label: `${providerLabel(observation.provider)} observer`,
-      status: stale ? "stale" : providerHealthStatus(observation.health.state),
-      detail,
+      label: `${status.providerLabel} observer`,
+      status: providerHealthStatus(status.state),
+      detail: `${status.detail} ${supported}/${status.capabilities.length} capabilities supported; provider version ${status.providerVersion}.`,
     },
   ];
 }
@@ -676,7 +669,7 @@ function formatCount(count: number): string {
 }
 
 function providerHealthStatus(
-  state: NonNullable<SessionSummary["providerObservation"]>["health"]["state"],
+  state: ProviderStatusPresentation["state"],
 ): ActivitySourceStatus {
   switch (state) {
     case "ready":
@@ -685,9 +678,33 @@ function providerHealthStatus(
       return "degraded";
     case "failed":
       return "error";
+    case "stale":
+      return "stale";
     case "unavailable":
     case "unsupported":
       return "unavailable";
+  }
+}
+
+function terminalFallbackReason(
+  status: ProviderStatusPresentation | null,
+): string {
+  if (status === null) {
+    return "No provider observer applies to this terminal. A bounded terminal peek can provide raw context.";
+  }
+  switch (status.state) {
+    case "ready":
+      return "Fresh provider evidence is available. Open Terminal from a card for raw context.";
+    case "unavailable":
+      return "Provider evidence is unavailable. A bounded terminal peek can provide low-confidence context while the PTY remains independent.";
+    case "unsupported":
+      return "This provider runtime is unsupported. A bounded terminal peek can provide low-confidence context from the unchanged direct PTY.";
+    case "degraded":
+      return "Provider observation is degraded. A bounded terminal peek can provide low-confidence context while recovery remains separate.";
+    case "failed":
+      return "The provider observer failed. A bounded terminal peek can provide low-confidence context without changing the PTY.";
+    case "stale":
+      return "Provider evidence is stale. A bounded terminal peek can provide current raw context without inferring agent state.";
   }
 }
 

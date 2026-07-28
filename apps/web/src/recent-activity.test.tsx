@@ -20,6 +20,36 @@ const activity: RecentActivity = {
     processState: "live",
     processDetail: "Process is live; assigned-task activity is unverified.",
   },
+  providerStatus: {
+    provider: "codex",
+    providerLabel: "Codex",
+    state: "ready",
+    stateLabel: "Ready",
+    detail: "Native observer connected.",
+    recovery:
+      "Use provider cards for structured evidence. Terminal remains the raw process surface.",
+    providerVersion: "1.0.0",
+    adapterVersion: "1",
+    sourceLabel: "Provider native",
+    confidenceLabel: "Confirmed",
+    observedAt: "2026-07-27T10:06:00.000Z",
+    staleAfter: "2026-07-27T10:11:00.000Z",
+    terminalDetail:
+      "Direct terminal process is live; observer health does not control it.",
+    terminalAvailable: true,
+    capabilities: [
+      {
+        id: "activity",
+        label: "Activity",
+        availability: "supported",
+        availabilityLabel: "Supported",
+        sourceLabel: "Provider native",
+        confidenceLabel: "Confirmed",
+        detail: "Native activity is available.",
+      },
+    ],
+    diagnostics: [],
+  },
   facts: [
     {
       id: "provider:codex:approval-1",

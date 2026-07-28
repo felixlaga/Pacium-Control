@@ -205,6 +205,7 @@ import {
   type ActivityFactTarget,
 } from "./recent-activity-model.js";
 import { RecentActivityPanel } from "./recent-activity.js";
+import { startProviderFreshnessClock } from "./provider-freshness-clock.js";
 import { RepositoryContextCard } from "./repository-context.js";
 import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
 import {
@@ -317,6 +318,9 @@ export function App() {
     useState<ConnectionAccess | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionListReady, setSessionListReady] = useState(false);
+  const [providerFreshnessNow, setProviderFreshnessNow] = useState(() =>
+    new Date().toISOString(),
+  );
   const [selectedId, setSelectedId] = useState<string | null>(() =>
     window.localStorage.getItem("pacium.selectedSession"),
   );
@@ -1317,6 +1321,28 @@ export function App() {
     };
   }, [onTransportEvent]);
 
+  useEffect(
+    () =>
+      startProviderFreshnessClock(
+        {
+          get visibilityState() {
+            return document.visibilityState === "visible"
+              ? "visible"
+              : "hidden";
+          },
+          setInterval: (handler, timeout) =>
+            window.setInterval(handler, timeout),
+          clearInterval: (handle) => window.clearInterval(handle),
+          addEventListener: (_type, listener) =>
+            document.addEventListener("visibilitychange", listener),
+          removeEventListener: (_type, listener) =>
+            document.removeEventListener("visibilitychange", listener),
+        },
+        setProviderFreshnessNow,
+      ),
+    [],
+  );
+
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const update = () => setSystemPrefersDark(media.matches);
@@ -1756,14 +1782,13 @@ export function App() {
     [editingPaciumRole, launchPresets, readyPaciumWorkspace, sessions],
   );
   const attentionBySession = useMemo(() => {
-    const observedAt = new Date().toISOString();
     return new Map(
       sessions.map((session) => [
         session.id,
-        deriveSessionAttention(session, observedAt),
+        deriveSessionAttention(session, providerFreshnessNow),
       ]),
     );
-  }, [sessions]);
+  }, [providerFreshnessNow, sessions]);
   const paciumWorkers = useMemo(
     () =>
       buildPaciumWorkersProjection({
@@ -1800,6 +1825,7 @@ export function App() {
       : buildRecentActivity({
           session: selectedSession,
           attention: selectedAttention,
+          now: providerFreshnessNow,
           changes: selectedRepositoryChanges,
           history: selectedRepositoryHistory,
           verification: selectedRepositoryVerification,

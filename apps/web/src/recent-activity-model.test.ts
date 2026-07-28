@@ -55,6 +55,7 @@ function input(candidate: SessionSummary = session): RecentActivityInput {
   return {
     session: candidate,
     attention: deriveSessionAttention(candidate, now),
+    now,
     changes: { status: "idle" },
     history: { status: "idle" },
     verification: { status: "idle" },
@@ -233,8 +234,12 @@ describe("recent provider activity", () => {
       status: "unavailable",
     });
     expect(activity.sources[0]?.detail).toContain(
-      "provider version unavailable",
+      "provider version Unavailable",
     );
+    expect(activity.providerStatus).toMatchObject({
+      state: "unavailable",
+      terminalAvailable: true,
+    });
     expect(activity.partial).toBe(true);
   });
 
@@ -397,7 +402,11 @@ describe("recent provider activity", () => {
       source: "native",
     });
     expect(activity.sources[0]?.status).toBe("stale");
+    expect(activity.providerStatus?.state).toBe("stale");
     expect(activity.terminalFallback.recommended).toBe(true);
+    expect(activity.terminalFallback.reason).toContain(
+      "Provider evidence is stale",
+    );
   });
 
   it.each([
@@ -445,6 +454,39 @@ describe("recent provider activity", () => {
     });
     expect(nativeActivity.terminalFallback.boundaryKey).toContain(session.id);
   });
+
+  it.each([
+    ["unavailable", "Provider evidence is unavailable"],
+    ["unsupported", "provider runtime is unsupported"],
+    ["degraded", "observation is degraded"],
+    ["failed", "provider observer failed"],
+  ] as const)(
+    "explains %s terminal fallback without changing process truth",
+    (state, reason) => {
+      const candidate = providerSession({
+        health: {
+          state,
+          source:
+            state === "unavailable" || state === "unsupported"
+              ? "none"
+              : "native",
+          confidence: state === "unavailable" ? "low" : "confirmed",
+          detail: `${state} provider observer.`,
+        },
+      });
+      const activity = buildRecentActivity(input(candidate));
+
+      expect(activity.providerStatus).toMatchObject({
+        state,
+        terminalAvailable: true,
+      });
+      expect(activity.terminalFallback).toMatchObject({
+        recommended: true,
+      });
+      expect(activity.terminalFallback.reason).toContain(reason);
+      expect(activity.current.processState).toBe("live");
+    },
+  );
 });
 
 function genericProviderActivity(
