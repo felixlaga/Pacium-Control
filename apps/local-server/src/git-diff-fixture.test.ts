@@ -54,7 +54,14 @@ describe("diff inspection against real Git fixtures", () => {
       await writeFile(join(root, "conflict.txt"), "ours\n");
       await runGitOk(root, ["add", "conflict.txt"]);
       await commit(root, "main conflict");
-      const merge = await runGitProcess(root, ["merge", "fixture-conflict"]);
+      const merge = await runGitProcess(root, [
+        "-c",
+        "user.name=Pacium Test",
+        "-c",
+        "user.email=pacium@example.invalid",
+        "merge",
+        "fixture-conflict",
+      ]);
       expect(merge.exitCode).toBe(1);
 
       await writeFile(join(root, "tracked.txt"), "changed\n");

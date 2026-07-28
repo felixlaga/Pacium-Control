@@ -1,0 +1,75 @@
+name: Linux validation
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ubuntu-24-x64:
+    name: Ubuntu 24.04 x64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      npm_config_build_from_source: "true"
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install supported Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.18.0
+          check-latest: false
+
+      - name: Activate pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.17.0 --activate
+
+      - name: Record platform versions
+        run: |
+          node --version
+          pnpm --version
+          uname -m
+          . /etc/os-release
+          printf '%s\n' "$PRETTY_NAME"
+
+      - name: Install frozen source-native dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify repository
+        run: pnpm verify
+
+      - name: Run bounded lifecycle soak
+        run: pnpm test:soak
+
+      - name: Build and verify Linux package
+        run: pnpm package:linux:verify
+
+      - name: Verify release source and package inventory
+        run: pnpm release:preflight --artifacts
+
+      - name: Install Chromium runtime
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Chromium workflows
+        run: pnpm test:e2e
+
+      - name: Upload verified development package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pacium-control-linux-x64-${{ github.run_id }}
+          path: |
+            dist/linux/*.tar.gz
+            dist/linux/*.sha256
+          if-no-files-found: error
+          retention-days: 7

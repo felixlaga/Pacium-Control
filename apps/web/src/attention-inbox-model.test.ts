@@ -80,6 +80,26 @@ describe("attention inbox state", () => {
     ).toBe(false);
   });
 
+  it("retains the latest updated cursor when the inbox is full", () => {
+    let state = EMPTY_ATTENTION_INBOX;
+    for (let index = 0; index <= 200; index += 1) {
+      state = markAttentionNotified(
+        state,
+        `session-${String(index).padStart(3, "0")}`,
+        {
+          ...failed,
+          observedAt: new Date(
+            Date.UTC(2026, 6, 27, 10, 0, 0, index),
+          ).toISOString(),
+        },
+      );
+    }
+    expect(state.entries).toHaveLength(200);
+    expect(cursorEntry(state, "session-200").notifiedKey).toContain(
+      "failed:process:high",
+    );
+  });
+
   it("builds minimal notification copy without terminal details", () => {
     const content = buildAttentionNotificationContent("session-1", failed);
     expect(content).toMatchObject({

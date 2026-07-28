@@ -79,6 +79,14 @@ describe("command palette catalog", () => {
       }),
     );
     expect(
+      commands.find(({ id }) => id === "workspace.open-diagnostics"),
+    ).toEqual(
+      expect.objectContaining({
+        action: { type: "open-diagnostics" },
+        enabled: true,
+      }),
+    );
+    expect(
       commands.find(({ id }) => id === `session.select.${session.id}`),
     ).toEqual(
       expect.objectContaining({

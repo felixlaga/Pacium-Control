@@ -1,127 +1,109 @@
 # Release readiness
 
-> Historical blueprint: this checklist targets the superseded remote deployment. The local packaged release checklist will be completed under Milestone 5.
+## Current decision
 
-## Release classes
+PC-076 completed the release audit with a **NO-GO** decision. Pacium remains a
+working **Development snapshot** and must not be described as a signed,
+notarized, owner-accepted, or published release.
 
-### Development snapshot
+The candidate-specific source of truth is the
+[PC-076 release-readiness assessment](release-readiness-assessment.md).
 
-Internal branch build. No compatibility or deployment promise.
+## Verified development-package paths
 
-### Alpha
+- Apple-silicon macOS 14 or newer, with an unsigned and unnotarized app bundle.
+- Ubuntu 24.04 x64, with an unsigned and non-distro-native user-local archive.
+- Node.js 24.18.x and pnpm 11.17.0.
+- Deterministic archives, strict manifests, checksums, native PTY canaries, and
+  user-local install/upgrade/uninstall behavior.
+- Full repository, lifecycle-soak, package, and Chromium automation on the
+  supported targets.
+- Package removal preserves Pacium metadata, repositories, queue files,
+  provider stores, and external tmux targets.
 
-Usable by the core team in a controlled environment. Known rough edges; state migration and rollback still required.
+These claims do not imply another host, architecture, ingress mode, provider
+account, or publication channel.
 
-### Beta
+## Mandatory gates for a future release
 
-Daily internal use with documented operating procedures, recovery evidence, and security review. Limited compatibility promise.
+Every row must have reproducible evidence against one immutable candidate:
 
-### Stable
+### Source and supply chain
 
-Supported deployment, state compatibility policy, tested upgrades/rollback, and sustained production evidence.
+- clean exact source and pinned toolchain;
+- frozen install and complete verification;
+- tracked-secret and package-inventory scans;
+- current authorized dependency advisory audit;
+- final supported-target CI on the candidate.
 
-## Required release evidence
+### Distribution
 
-### Source
+- Developer ID signing and notarization for the macOS artifact;
+- quarantine/Gatekeeper exercise through the intended delivery channel;
+- clean supported macOS account install and core workflow;
+- exact artifact hashes and owner-approved delivery posture.
 
-- clean working tree;
-- tagged commit;
-- dependency lock;
-- generated software bill of materials where applicable;
-- no secrets or environment traces;
-- documentation status accurate.
+### Product and access
 
-### Build and tests
+- real Claude Code and Codex canaries;
+- real Tailscale Serve, grants, allowlist, Funnel/public/LAN denial, and
+  revocation exercise when remote mode is included;
+- manual screen-reader, visual, terminal-lifecycle, and sustained-use
+  acceptance;
+- explicit owner release acceptance.
 
-- clean clone install;
-- lint/type/test/build;
-- integration and browser tests;
-- state migration/recovery tests;
-- security tests;
-- provider/tmux compatibility report;
-- performance results for target load.
+Fixtures and automated approximations may support a row, but cannot replace
+the real identity, account, device, or human evidence named by that row.
 
-### Product
+## Decision vocabulary
 
-- release demo script;
-- screenshots/recording for key flows;
-- acceptance criteria matrix;
-- known limitations;
-- metrics baseline or pilot results.
+- `pass`: reproduced evidence satisfies the bounded gate.
+- `fail`: reproduced evidence contradicts the gate.
+- `blocked`: required authority or environment is unavailable.
+- `not_applicable`: the gate does not apply to the candidate.
+- `not_run`: the gate was deliberately not executed.
 
-### Operations
-
-- deployment plan;
-- rollback plan;
-- backup completed;
-- restore evidence current;
-- service/version matrix;
-- monitoring and diagnostic checks;
-- owner/on-call contact;
-- incident severity definitions.
-
-### Security
-
-- threat model reviewed;
-- network exposure verified;
-- roles and test identities reviewed;
-- terminal route reviewed;
-- broker privilege reviewed;
-- secrets and dependency scan;
-- high-risk changes approved.
+Any mandatory row that is `fail`, `blocked`, or `not_run` makes the decision
+`NO-GO`. Completing an honest `NO-GO` audit is different from completing a
+release.
 
 ## State compatibility
 
-Every release that changes state schemas must define:
+Pacium persists only application-owned versioned JSON/JSONL metadata. A future
+release that changes a state schema must define source versions, atomic
+migration, validation, unknown/newer-version behavior, backup where needed,
+and rollback feasibility. Never overwrite the only copy of state to perform an
+upgrade.
 
-- source versions supported;
-- migration command/process;
-- pre-migration backup;
-- migration idempotency;
-- validation;
-- rollback feasibility;
-- treatment of unknown/newer versions;
-- event compatibility.
+Current development-package uninstallers do not own or remove application
+state.
 
-Never upgrade authoritative state in place without a tested backup and validation path.
+## Rollback and pause triggers
 
-## Production smoke test
+Pause a release attempt when:
 
-Suggested minimum:
+- candidate identity moves or an artifact hash/inventory changes unexpectedly;
+- a security boundary, native PTY, package lifecycle, or state-preservation
+  canary fails;
+- duplicate terminal input, queue delivery, or decisions occur;
+- direct PTY or external tmux ownership is represented dishonestly;
+- remote reachability exceeds the exact operator allowlist;
+- signing, notarization, recovery, manual review, or owner evidence is absent.
 
-1. authenticate through Tailscale;
-2. load workspace and health;
-3. discover a known tmux session;
-4. open read-only terminal;
-5. acquire/release control on a canary session;
-6. create and answer a canary question;
-7. verify acknowledgement;
-8. inspect Git evidence from a canary repository;
-9. verify provider adapter health;
-10. verify backup age and state integrity.
-
-## Rollback trigger
-
-Rollback or pause when:
-
-- state integrity fails;
-- duplicate prompts/decisions occur;
-- authorization boundary is violated;
-- terminal control cannot be revoked;
-- provider approvals are mishandled;
-- existing tmux sessions are disrupted unexpectedly;
-- critical workflow error rate exceeds agreed threshold;
-- recovery evidence is unavailable.
+For current development packages, stop the exact running instance and use the
+matching package uninstaller. Reinstall a previously verified matching archive
+if needed; there is no automatic migration or update channel.
 
 ## Release declaration
 
-A release note should distinguish:
+A future release note must distinguish:
 
 - implemented;
-- tested in CI;
-- tested in integration environment;
-- piloted internally;
-- production-proven;
+- tested locally;
+- tested on hosted supported-target CI;
+- tested on real provider/tailnet/account infrastructure;
+- manually reviewed;
+- owner accepted;
 - known limitations.
 
-Avoid a single “production-ready” label without this detail.
+Do not collapse these states into a single “production-ready” label.

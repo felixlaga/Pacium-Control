@@ -52,12 +52,16 @@ This directory specifies the local-first Pacium Control product.
 - [Milestone 3 — Pacium mode](execution/milestone-3-pacium-mode.md)
 - [Milestone 4 — Agent integrations](execution/milestone-4-agent-integrations.md)
 - [Milestone 5 — Polish](execution/milestone-5-polish.md)
+- [Release-readiness decision](execution/release-readiness-assessment.md)
+- [Release gate](execution/release-readiness.md)
 - [Testing strategy](execution/testing-strategy.md)
 - [Definition of done](execution/definition-of-done.md)
 - [Risk register](execution/risk-register.md)
 
 ## Operations
 
+- [macOS development package](operations/macos-package.md)
+- [Ubuntu Linux development package](operations/linux-package.md)
 - [Optional Tailscale Serve access](operations/tailscale-serve.md)
 
 ## Decisions

@@ -7,6 +7,15 @@ import {
 import { PaciumContextObservationSchema } from "./pacium-context.js";
 import { ProviderObservationSnapshotSchema } from "./provider-observation.js";
 import {
+  MAX_RELAUNCH_MANIFESTS,
+  RelaunchManifestSchema,
+} from "./relaunch-manifest.js";
+import {
+  TmuxCapabilitySchema,
+  TmuxSessionsObservationSchema,
+  TmuxTargetSchema,
+} from "./tmux.js";
+import {
   QueueApprovalDecisionPayloadSchema,
   QueueDecisionResultSchema,
   QueueItemDecisionStateSchema,
@@ -27,7 +36,7 @@ import {
   QueueResolutionResultSchema,
 } from "./queue-reconciliation.js";
 
-export const PROTOCOL_VERSION = 20 as const;
+export const PROTOCOL_VERSION = 24 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -1087,8 +1096,11 @@ export const SessionSummarySchema = z
     commandLabel: z.string().min(1).max(40),
     agentClassification: AgentClassificationSchema,
     providerObservation: ProviderObservationSnapshotSchema.nullable(),
+    relaunchManifest: RelaunchManifestSchema.optional(),
     repository: RepositoryObservationSchema,
-    runtime: z.literal("pty"),
+    runtime: z.enum(["pty", "tmux"]),
+    tmuxTarget: TmuxTargetSchema.nullable().optional(),
+    tmuxMode: z.enum(["attached", "keep_alive"]).nullable().optional(),
     processState: ProcessStateSchema,
     pid: z.number().int().positive().nullable(),
     cols: z.number().int().min(2).max(500),
@@ -1099,6 +1111,14 @@ export const SessionSummarySchema = z
     exitSignal: z.number().int().nullable(),
   })
   .superRefine((session, context) => {
+    if (session.relaunchManifest === undefined) {
+      context.addIssue({
+        code: "custom",
+        message: "Every session requires a server-owned relaunch manifest.",
+        path: ["relaunchManifest"],
+      });
+      return;
+    }
     if (
       (session.launchPreset === "shell" &&
         session.providerObservation !== null) ||
@@ -1110,6 +1130,34 @@ export const SessionSummarySchema = z
         message:
           "Provider observation must match the server-owned launch preset.",
         path: ["providerObservation"],
+      });
+    }
+    if (
+      (session.runtime === "tmux") !==
+        ((session.tmuxTarget ?? null) !== null) ||
+      session.runtime !== session.relaunchManifest.runtime ||
+      JSON.stringify(session.tmuxTarget ?? null) !==
+        JSON.stringify(session.relaunchManifest.tmuxTarget ?? null) ||
+      (session.tmuxMode ?? (session.runtime === "tmux" ? "attached" : null)) !==
+        (session.relaunchManifest.tmuxMode ??
+          (session.runtime === "tmux" ? "attached" : null))
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Session runtime and tmux target evidence must agree.",
+        path: ["tmuxTarget"],
+      });
+    }
+    if (
+      session.relaunchManifest.sessionId !== session.id ||
+      session.relaunchManifest.launchPreset !== session.launchPreset ||
+      session.relaunchManifest.cwd !== session.cwd
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "Relaunch manifest identity and launch context must match the session.",
+        path: ["relaunchManifest"],
       });
     }
   });
@@ -1132,9 +1180,41 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
         cwd: z.string().trim().min(1).max(4096),
         cols: z.number().int().min(2).max(500),
         rows: z.number().int().min(1).max(300),
+        keepAlive: z.boolean().optional(),
       })
       .strict(),
   }),
+  z
+    .object({
+      type: z.literal("relaunch.manifest.list"),
+      requestId: RequestIdSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("session.relaunch"),
+      requestId: RequestIdSchema,
+      manifestId: z.string().uuid(),
+      cols: z.number().int().min(2).max(500),
+      rows: z.number().int().min(1).max(300),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("tmux.sessions.list"),
+      requestId: RequestIdSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("tmux.session.attach"),
+      requestId: RequestIdSchema,
+      serverId: z.string().min(1).max(64),
+      sessionId: z.string().min(1).max(64),
+      cols: z.number().int().min(2).max(500),
+      rows: z.number().int().min(1).max(300),
+    })
+    .strict(),
   z.object({
     type: z.literal("terminal.attach"),
     requestId: RequestIdSchema,
@@ -1311,7 +1391,7 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
       capabilities: z.object({
         directPty: z.literal(true),
         reconnectSnapshot: z.literal(true),
-        tmux: z.literal(false),
+        tmux: TmuxCapabilitySchema,
         launchPresets: z.array(LaunchPresetCapabilitySchema).length(3),
       }),
     })
@@ -1326,6 +1406,26 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
     requestId: RequestIdSchema,
     session: SessionSummarySchema,
   }),
+  z
+    .object({
+      type: z.literal("relaunch.manifest.list"),
+      requestId: RequestIdSchema,
+      manifests: z.array(RelaunchManifestSchema).max(MAX_RELAUNCH_MANIFESTS),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("relaunch.manifest.updated"),
+      manifest: RelaunchManifestSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("tmux.sessions"),
+      requestId: RequestIdSchema,
+      observation: TmuxSessionsObservationSchema,
+    })
+    .strict(),
   z.object({
     type: z.literal("session.updated"),
     session: SessionSummarySchema,

@@ -22,9 +22,13 @@ import type {
   QueueDeliveryResult,
   QueueQuestionAnswerPayload,
   QueueResolutionRequest,
+  RelaunchManifest,
   ServerMessage,
   SessionSummary,
   TerminalDataFrame,
+  TmuxCapability,
+  TmuxSessionsObservation,
+  TmuxTarget,
 } from "@pacium/contracts";
 
 import { ConnectionBadge } from "./connection-badge.js";
@@ -39,8 +43,11 @@ import {
   type PaletteCommand,
 } from "./command-palette-model.js";
 import { DirectoryPicker } from "./directory-picker.js";
+import { DiagnosticsDialog } from "./diagnostics.js";
+import { isDiagnosticsRoute } from "./diagnostics-model.js";
 import { handleModalKeyDown } from "./modal-focus.js";
 import { AgentClassificationCard } from "./agent-classification.js";
+import { TmuxAttachDialog } from "./tmux-attach-dialog.js";
 import { sessionAccessibleName } from "./agent-classification-model.js";
 import { AttentionEvidenceCard } from "./attention.js";
 import {
@@ -200,14 +207,19 @@ import {
   rejectVerificationRequest,
   type RepositoryVerificationViewState,
 } from "./repository-verification-model.js";
-import { buildRecentActivity } from "./recent-activity-model.js";
-import { RecentActivityPanel } from "./recent-activity.js";
-import { RepositoryContextCard } from "./repository-context.js";
-import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
 import {
-  duplicateSessionInput,
-  relaunchSessionInput,
-} from "./session-actions-model.js";
+  buildRecentActivity,
+  type ActivityFactTarget,
+} from "./recent-activity-model.js";
+import { RecentActivityPanel } from "./recent-activity.js";
+import { startProviderFreshnessClock } from "./provider-freshness-clock.js";
+import { RepositoryContextCard } from "./repository-context.js";
+import {
+  RelaunchSessionDialog,
+  RenameSessionDialog,
+  SessionActionsMenu,
+} from "./session-actions.js";
+import { duplicateSessionInput } from "./session-actions-model.js";
 import { SplitWorkspace } from "./split-workspace.js";
 import {
   adjacentTerminalTabId,
@@ -283,6 +295,14 @@ const INITIAL_LAUNCH_PRESETS: LaunchPresetCapability[] = [
   },
 ];
 
+const INITIAL_TMUX_CAPABILITY: TmuxCapability = {
+  state: "unconfigured",
+  serverId: null,
+  executable: null,
+  version: null,
+  detail: "Waiting for the local server.",
+};
+
 const TERMINAL_TABS_STORAGE_KEY = "pacium.terminalTabs";
 const SPLIT_LAYOUT_STORAGE_KEY = "pacium.splitLayout";
 
@@ -296,13 +316,22 @@ export function App() {
   );
   const actionInvokerRef = useRef<HTMLElement | null>(null);
   const createInvokerRef = useRef<HTMLElement | null>(null);
+  const tmuxInvokerRef = useRef<HTMLElement | null>(null);
+  const tmuxListRequestRef = useRef<string | null>(null);
+  const tmuxAttachRequestRef = useRef<string | null>(null);
   const paletteInvokerRef = useRef<HTMLElement | null>(null);
   const panelViewRef = useRef<ReturnType<typeof loadPanelView> | null>(null);
   const renameInvokerRef = useRef<HTMLElement | null>(null);
+  const relaunchInvokerRef = useRef<HTMLElement | null>(null);
   const roleEditorInvokerRef = useRef<HTMLElement | null>(null);
   const queueInspectorInvokerRef = useRef<HTMLElement | null>(null);
   const contextInspectorInvokerRef = useRef<HTMLElement | null>(null);
   const settingsInvokerRef = useRef<HTMLElement | null>(null);
+  const diagnosticsInvokerRef = useRef<HTMLElement | null>(null);
+  const diagnosticsHistoryEntryRef = useRef(false);
+  const diagnosticsOpenRef = useRef(
+    isDiagnosticsRoute(window.location.pathname),
+  );
   const transportRef = useRef<PaciumTransport | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() =>
     loadWorkspaceMode(window.localStorage),
@@ -314,6 +343,14 @@ export function App() {
     useState<ConnectionAccess | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionListReady, setSessionListReady] = useState(false);
+  const [relaunchManifests, setRelaunchManifests] = useState<
+    RelaunchManifest[]
+  >([]);
+  const [relaunchManifestListReady, setRelaunchManifestListReady] =
+    useState(false);
+  const [providerFreshnessNow, setProviderFreshnessNow] = useState(() =>
+    new Date().toISOString(),
+  );
   const [selectedId, setSelectedId] = useState<string | null>(() =>
     window.localStorage.getItem("pacium.selectedSession"),
   );
@@ -330,16 +367,29 @@ export function App() {
   });
   const [defaultCwd, setDefaultCwd] = useState("");
   const [launchPresets, setLaunchPresets] = useState(INITIAL_LAUNCH_PRESETS);
+  const [tmuxCapability, setTmuxCapability] = useState(INITIAL_TMUX_CAPABILITY);
+  const [tmuxObservation, setTmuxObservation] =
+    useState<TmuxSessionsObservation | null>(null);
+  const [tmuxOpen, setTmuxOpen] = useState(false);
+  const [tmuxLoading, setTmuxLoading] = useState(false);
+  const [tmuxAttaching, setTmuxAttaching] = useState(false);
+  const [tmuxError, setTmuxError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [capturedPaneId, setCapturedPaneId] = useState<string | null>(null);
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
   const [actionSessionId, setActionSessionId] = useState<string | null>(null);
   const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
+  const [relaunchManifestId, setRelaunchManifestId] = useState<string | null>(
+    null,
+  );
   const [paletteView, setPaletteView] = useState<CommandPaletteView | null>(
     null,
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(
+    diagnosticsOpenRef.current,
+  );
   const [preferences, setPreferences] = useState<WorkspacePreferences>(() =>
     loadPreferences(window.localStorage),
   );
@@ -455,6 +505,18 @@ export function App() {
       setConnection(event.state);
       if (event.state !== "connected") {
         setConnectionAccess(null);
+        if (
+          tmuxListRequestRef.current !== null ||
+          tmuxAttachRequestRef.current !== null
+        ) {
+          tmuxListRequestRef.current = null;
+          tmuxAttachRequestRef.current = null;
+          setTmuxLoading(false);
+          setTmuxAttaching(false);
+          setTmuxError(
+            "The tmux request outcome is unknown after disconnect. Refresh the list before another attachment.",
+          );
+        }
         const pendingRoleLaunch = pendingPaciumRoleLaunchRef.current;
         if (pendingRoleLaunch !== null) {
           pendingPaciumRoleLaunchRef.current = null;
@@ -593,6 +655,30 @@ export function App() {
     }
     if (event.message.type === "server.welcome") {
       setConnectionAccess(event.message.connection);
+      setTmuxCapability(event.message.capabilities.tmux);
+    }
+    if (
+      event.message.type === "tmux.sessions" &&
+      event.message.requestId === tmuxListRequestRef.current
+    ) {
+      tmuxListRequestRef.current = null;
+      setTmuxLoading(false);
+      setTmuxError(null);
+      setTmuxObservation(event.message.observation);
+      return;
+    }
+    if (
+      event.message.type === "session.created" &&
+      event.message.requestId === tmuxAttachRequestRef.current
+    ) {
+      tmuxAttachRequestRef.current = null;
+      setTmuxAttaching(false);
+      setTmuxOpen(false);
+      setTmuxError(null);
+      setNotice(
+        `${event.message.session.displayName} attached through tmux. Closing this client will not kill the tmux server session.`,
+      );
+      restoreControlFocus(tmuxInvokerRef, "attach-tmux-trigger");
     }
     if (event.message.type === "command.result") {
       const currentPrompt = paciumPromptRef.current;
@@ -993,6 +1079,20 @@ export function App() {
       event.message.type === "error" &&
       event.message.requestId !== undefined
     ) {
+      if (event.message.requestId === tmuxListRequestRef.current) {
+        tmuxListRequestRef.current = null;
+        setTmuxLoading(false);
+        setTmuxError(event.message.message);
+        return;
+      }
+      if (event.message.requestId === tmuxAttachRequestRef.current) {
+        tmuxAttachRequestRef.current = null;
+        setTmuxAttaching(false);
+        setTmuxError(
+          `${event.message.message} No attachment was retried automatically.`,
+        );
+        return;
+      }
       const rejectedContext = rejectPaciumContextResponse(
         paciumContextRef.current,
         event.message.requestId,
@@ -1127,6 +1227,8 @@ export function App() {
       terminalRefs,
       setSessions,
       setSessionListReady,
+      setRelaunchManifests,
+      setRelaunchManifestListReady,
       setSelectedId,
       tabsRef,
       setTabs,
@@ -1313,6 +1415,28 @@ export function App() {
       transportRef.current = null;
     };
   }, [onTransportEvent]);
+
+  useEffect(
+    () =>
+      startProviderFreshnessClock(
+        {
+          get visibilityState() {
+            return document.visibilityState === "visible"
+              ? "visible"
+              : "hidden";
+          },
+          setInterval: (handler, timeout) =>
+            window.setInterval(handler, timeout),
+          clearInterval: (handle) => window.clearInterval(handle),
+          addEventListener: (_type, listener) =>
+            document.addEventListener("visibilitychange", listener),
+          removeEventListener: (_type, listener) =>
+            document.removeEventListener("visibilitychange", listener),
+        },
+        setProviderFreshnessNow,
+      ),
+    [],
+  );
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -1592,6 +1716,23 @@ export function App() {
     sessions.find(({ id }) => id === actionSessionId) ?? null;
   const renameSession =
     sessions.find(({ id }) => id === renameSessionId) ?? null;
+  const relaunchManifest =
+    relaunchManifests.find(({ id }) => id === relaunchManifestId) ?? null;
+  const recoveryManifests = useMemo(() => {
+    const currentSessionIds = new Set(sessions.map(({ id }) => id));
+    const succeededSessionIds = new Set(
+      relaunchManifests.flatMap(({ predecessorSessionId }) =>
+        predecessorSessionId === null ? [] : [predecessorSessionId],
+      ),
+    );
+    return relaunchManifests
+      .filter(
+        ({ sessionId }) =>
+          !currentSessionIds.has(sessionId) &&
+          !succeededSessionIds.has(sessionId),
+      )
+      .slice(0, 8);
+  }, [relaunchManifests, sessions]);
   const renderedSessionIds = useMemo(() => {
     const panes = listPanes(layout.root);
     if (layout.maximizedPaneId !== null) {
@@ -1753,14 +1894,13 @@ export function App() {
     [editingPaciumRole, launchPresets, readyPaciumWorkspace, sessions],
   );
   const attentionBySession = useMemo(() => {
-    const observedAt = new Date().toISOString();
     return new Map(
       sessions.map((session) => [
         session.id,
-        deriveSessionAttention(session, observedAt),
+        deriveSessionAttention(session, providerFreshnessNow),
       ]),
     );
-  }, [sessions]);
+  }, [providerFreshnessNow, sessions]);
   const paciumWorkers = useMemo(
     () =>
       buildPaciumWorkersProjection({
@@ -1797,6 +1937,7 @@ export function App() {
       : buildRecentActivity({
           session: selectedSession,
           attention: selectedAttention,
+          now: providerFreshnessNow,
           changes: selectedRepositoryChanges,
           history: selectedRepositoryHistory,
           verification: selectedRepositoryVerification,
@@ -1975,7 +2116,9 @@ export function App() {
     setCapturedPaneId(null);
     if (session !== undefined) {
       setNotice(
-        `${session.displayName} pane closed. Its process and tab are still available.`,
+        session.runtime === "tmux"
+          ? `${session.displayName} pane closed. Its tmux client, server session, and tab are still available.`
+          : `${session.displayName} pane closed. Its process and tab are still available.`,
       );
     }
   };
@@ -1998,9 +2141,11 @@ export function App() {
     setLayout(clearSessionFromLayout(layoutRef.current, sessionId));
     setSelectedId(next.selectedId);
     setNotice(
-      `${
-        session?.displayName ?? "Terminal"
-      } tab closed. Its process is still running in the sidebar.`,
+      session?.runtime === "tmux"
+        ? `${session.displayName} tab closed. Its tmux client and server session are still running.`
+        : `${
+            session?.displayName ?? "Terminal"
+          } tab closed. Its process is still running in the sidebar.`,
     );
   };
 
@@ -2008,6 +2153,7 @@ export function App() {
     cwd: string;
     displayName?: string;
     launchPreset: LaunchPresetId;
+    keepAlive?: boolean;
   }) => {
     transportRef.current?.createSession({
       ...input,
@@ -2203,6 +2349,63 @@ export function App() {
     restoreControlFocus(createInvokerRef, "new-terminal-trigger");
   };
 
+  const refreshTmuxSessions = () => {
+    const transport = transportRef.current;
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      tmuxListRequestRef.current !== null ||
+      tmuxAttachRequestRef.current !== null
+    ) {
+      setTmuxError(
+        "A live Pacium connection is required to inspect tmux sessions.",
+      );
+      return;
+    }
+    setTmuxError(null);
+    setTmuxLoading(true);
+    tmuxListRequestRef.current = transport.listTmuxSessions();
+  };
+
+  const openTmuxDialog = () => {
+    tmuxInvokerRef.current = activeControl("attach-tmux-trigger");
+    setCapturedPaneId(null);
+    setTmuxOpen(true);
+    setTmuxObservation(null);
+    refreshTmuxSessions();
+  };
+
+  const closeTmuxDialog = () => {
+    if (tmuxAttaching) {
+      return;
+    }
+    setTmuxOpen(false);
+    setTmuxError(null);
+    restoreControlFocus(tmuxInvokerRef, "attach-tmux-trigger");
+  };
+
+  const attachTmuxSession = (target: TmuxTarget) => {
+    const transport = transportRef.current;
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      tmuxAttachRequestRef.current !== null
+    ) {
+      setTmuxError(
+        "A live Pacium connection is required to attach this tmux target.",
+      );
+      return;
+    }
+    setTmuxError(null);
+    setTmuxAttaching(true);
+    tmuxAttachRequestRef.current = transport.attachTmux(
+      target.serverId,
+      target.sessionId,
+      100,
+      30,
+    );
+  };
+
   const openSessionActions = (sessionId: string) => {
     actionInvokerRef.current = activeControl("session-actions-trigger");
     setCapturedPaneId(null);
@@ -2231,7 +2434,11 @@ export function App() {
     const isLive =
       session.processState === "live" || session.processState === "closing";
     const consequence = isLive
-      ? `Terminate “${session.displayName}”? Pacium will send SIGTERM and force termination if it does not exit.`
+      ? session.runtime === "tmux"
+        ? session.tmuxMode === "keep_alive"
+          ? `Disconnect the keep-alive client for “${session.displayName}”? The managed tmux target will continue and remains eligible for automatic reattachment on the next Pacium server start.`
+          : `Disconnect the tmux client for “${session.displayName}”? Pacium will close only its attachment; the tmux server session may continue.`
+        : `Terminate “${session.displayName}”? Pacium will send SIGTERM and force termination if it does not exit.`
       : `Remove the ended session “${session.displayName}” from Pacium?`;
     if (!window.confirm(consequence)) {
       return;
@@ -2263,15 +2470,45 @@ export function App() {
     closeSessionActions();
   };
 
+  const openRelaunchManifest = (
+    manifest: RelaunchManifest,
+    invoker?: HTMLElement | null,
+  ) => {
+    relaunchInvokerRef.current =
+      invoker ??
+      actionInvokerRef.current ??
+      (document.activeElement as HTMLElement);
+    setRelaunchManifestId(manifest.id);
+    setActionSessionId(null);
+  };
+
   const relaunchSession = (session: SessionSummary) => {
-    const input = relaunchSessionInput(session);
-    if (input !== null) {
-      transportRef.current?.createSession(input);
+    if (session.relaunchManifest === undefined) {
       setNotice(
-        `Starting a new ${session.displayName} process from its retained preset and directory.`,
+        "This ended session has no valid retained launch manifest. Existing processes are unchanged.",
       );
+      closeSessionActions();
+      return;
     }
-    closeSessionActions();
+    openRelaunchManifest(session.relaunchManifest, actionInvokerRef.current);
+  };
+
+  const closeRelaunchDialog = () => {
+    setRelaunchManifestId(null);
+    restoreControlFocus(relaunchInvokerRef, "session-actions-trigger");
+  };
+
+  const confirmRelaunch = (manifest: RelaunchManifest) => {
+    const source = sessions.find(({ id }) => id === manifest.sessionId);
+    transportRef.current?.relaunch(
+      manifest.id,
+      source?.cols ?? 100,
+      source?.rows ?? 30,
+    );
+    setNotice(
+      `Starting a fresh ${manifest.displayName} process from its retained server manifest. Provider resume evidence is not applied automatically.`,
+    );
+    closeRelaunchDialog();
   };
 
   const interruptSession = (session: SessionSummary) => {
@@ -2340,6 +2577,69 @@ export function App() {
     setSettingsOpen(false);
     restoreControlFocus(settingsInvokerRef, "settings-trigger");
   };
+
+  const openDiagnostics = () => {
+    diagnosticsInvokerRef.current =
+      paletteView !== null
+        ? paletteInvokerRef.current
+        : activeControl("diagnostics-trigger");
+    setCapturedPaneId(null);
+    if (!isDiagnosticsRoute(window.location.pathname)) {
+      diagnosticsHistoryEntryRef.current = true;
+      window.history.pushState(
+        { paciumRoute: "diagnostics" },
+        "",
+        "/diagnostics",
+      );
+    }
+    diagnosticsOpenRef.current = true;
+    setDiagnosticsOpen(true);
+  };
+
+  const closeDiagnostics = () => {
+    if (
+      isDiagnosticsRoute(window.location.pathname) &&
+      diagnosticsHistoryEntryRef.current
+    ) {
+      window.history.back();
+      return;
+    }
+    if (isDiagnosticsRoute(window.location.pathname)) {
+      window.history.replaceState({ paciumRoute: "workspace" }, "", "/");
+    }
+    diagnosticsHistoryEntryRef.current = false;
+    diagnosticsOpenRef.current = false;
+    setDiagnosticsOpen(false);
+    restoreControlFocus(diagnosticsInvokerRef, "diagnostics-trigger");
+  };
+
+  const loadDiagnostics = useCallback(() => {
+    const transport = transportRef.current;
+    return transport === null
+      ? Promise.reject(
+          new Error(
+            "Pacium is still connecting. Running terminals are unchanged.",
+          ),
+        )
+      : transport.getDiagnostics();
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const open = isDiagnosticsRoute(window.location.pathname);
+      const wasOpen = diagnosticsOpenRef.current;
+      diagnosticsOpenRef.current = open;
+      setDiagnosticsOpen(open);
+      if (!open && wasOpen) {
+        diagnosticsHistoryEntryRef.current = false;
+        restoreControlFocus(diagnosticsInvokerRef, "diagnostics-trigger");
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   const applyPreferences = (next: WorkspacePreferences) => {
     setPreferences(next);
@@ -2722,6 +3022,9 @@ export function App() {
       case "open-settings":
         openSettings();
         return;
+      case "open-diagnostics":
+        openDiagnostics();
+        return;
       case "toggle-sidebar":
         toggleSidebarPanel();
         return;
@@ -2797,9 +3100,11 @@ export function App() {
     createOpen ||
     actionSession !== null ||
     renameSession !== null ||
+    relaunchManifest !== null ||
     editingPaciumRole !== null ||
     paletteView !== null ||
-    settingsOpen;
+    settingsOpen ||
+    diagnosticsOpen;
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -2965,6 +3270,19 @@ export function App() {
           <span aria-hidden="true">＋</span>
           New terminal
         </button>
+        {tmuxCapability.state !== "unconfigured" && (
+          <button
+            className="attach-tmux-button"
+            disabled={tmuxOpen}
+            id="attach-tmux-trigger"
+            onClick={openTmuxDialog}
+            type="button"
+          >
+            <span aria-hidden="true">⌁</span>
+            Attach tmux
+            <small>{tmuxCapability.state}</small>
+          </button>
+        )}
 
         <nav aria-label="Terminal sessions" className="session-navigation">
           {workspaceMode === "pacium" && (
@@ -3076,6 +3394,48 @@ export function App() {
               ))}
             </div>
           )}
+          <div className="section-heading recovery-heading">
+            <span>Recovery</span>
+            <span>{recoveryManifests.length}</span>
+          </div>
+          {!relaunchManifestListReady ? (
+            <p className="sidebar-empty">Reading retained launch manifests…</p>
+          ) : recoveryManifests.length === 0 ? (
+            <p className="sidebar-empty">
+              No detached process manifests need recovery.
+            </p>
+          ) : (
+            <ul className="session-list recovery-list">
+              {recoveryManifests.map((manifest) => (
+                <li key={manifest.id}>
+                  <button
+                    aria-label={`Preview recovery for ${manifest.displayName}`}
+                    className="recovery-item"
+                    onClick={(event) =>
+                      openRelaunchManifest(manifest, event.currentTarget)
+                    }
+                    title={`Preview retained ${manifest.launchPreset} manifest in ${manifest.cwd}`}
+                    type="button"
+                  >
+                    <span aria-hidden="true" className="recovery-icon">
+                      ↻
+                    </span>
+                    <span className="session-copy">
+                      <strong>{manifest.displayName}</strong>
+                      <span className="session-row-meta">
+                        <span className="preset-label">
+                          {manifest.tmuxMode === "keep_alive"
+                            ? "tmux keep-alive · command not rerun"
+                            : manifest.launchPreset}
+                        </span>
+                        <span>{compactPath(manifest.cwd)}</span>
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </nav>
 
         <div className="sidebar-footer">
@@ -3151,6 +3511,15 @@ export function App() {
               <span aria-hidden="true">▐</span>
             </button>
             <ConnectionBadge access={connectionAccess} state={connection} />
+            <button
+              aria-label="Open diagnostics"
+              id="diagnostics-trigger"
+              onClick={openDiagnostics}
+              title="Diagnostics and redacted support export"
+              type="button"
+            >
+              Diagnostics
+            </button>
             <button
               aria-keyshortcuts="Meta+K Control+K"
               id="command-palette-trigger"
@@ -3653,6 +4022,22 @@ export function App() {
             ) : (
               <RecentActivityPanel
                 activity={selectedRecentActivity}
+                connectionBoundary={connection}
+                onOpenSource={(target: ActivityFactTarget) => {
+                  if (target === "terminal") {
+                    if (selectedId !== null) {
+                      terminalRefs.current.get(selectedId)?.focus();
+                    }
+                    return;
+                  }
+                  setInspectorTab(target);
+                }}
+                onReadTerminalExcerpt={() =>
+                  selectedId === null
+                    ? null
+                    : (terminalRefs.current.get(selectedId)?.readRecentText() ??
+                      null)
+                }
                 onRefresh={() => {
                   if (selectedId !== null) {
                     requestRepositoryChanges(selectedId);
@@ -3677,6 +4062,20 @@ export function App() {
           loadDirectories={loadDirectories}
           onCancel={closeCreateDialog}
           onCreate={createSession}
+          tmuxCapability={tmuxCapability}
+        />
+      )}
+      {tmuxOpen && (
+        <TmuxAttachDialog
+          attaching={tmuxAttaching}
+          capability={tmuxCapability}
+          connected={connection === "connected"}
+          error={tmuxError}
+          loading={tmuxLoading}
+          observation={tmuxObservation}
+          onAttach={attachTmuxSession}
+          onCancel={closeTmuxDialog}
+          onRefresh={refreshTmuxSessions}
         />
       )}
       {editingPaciumRole !== null && paciumRoleBindingOptions !== null && (
@@ -3708,6 +4107,13 @@ export function App() {
           preferences={preferences}
         />
       )}
+      {diagnosticsOpen && (
+        <DiagnosticsDialog
+          connection={connection}
+          load={loadDiagnostics}
+          onClose={closeDiagnostics}
+        />
+      )}
       {paletteView !== null && (
         <CommandPalette
           commands={paletteCommands}
@@ -3736,6 +4142,14 @@ export function App() {
           session={actionSession}
         />
       )}
+      {relaunchManifest !== null && (
+        <RelaunchSessionDialog
+          connected={connection === "connected"}
+          manifest={relaunchManifest}
+          onCancel={closeRelaunchDialog}
+          onConfirm={() => confirmRelaunch(relaunchManifest)}
+        />
+      )}
       {renameSession !== null && (
         <RenameSessionDialog
           onCancel={closeRenameDialog}
@@ -3758,6 +4172,10 @@ function applyServerMessage(
   terminalRefs: React.MutableRefObject<Map<string, TerminalSurfaceHandle>>,
   setSessions: React.Dispatch<React.SetStateAction<SessionSummary[]>>,
   setSessionListReady: React.Dispatch<React.SetStateAction<boolean>>,
+  setRelaunchManifests: React.Dispatch<
+    React.SetStateAction<RelaunchManifest[]>
+  >,
+  setRelaunchManifestListReady: React.Dispatch<React.SetStateAction<boolean>>,
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>,
   tabsRef: React.MutableRefObject<TerminalTab[]>,
   setTabs: React.Dispatch<React.SetStateAction<TerminalTab[]>>,
@@ -3789,14 +4207,33 @@ function applyServerMessage(
         return restoredTab?.sessionId ?? message.sessions[0]?.id ?? null;
       });
       return;
+    case "relaunch.manifest.list":
+      setRelaunchManifests(message.manifests);
+      setRelaunchManifestListReady(true);
+      return;
+    case "relaunch.manifest.updated":
+      setRelaunchManifests((current) =>
+        upsertRelaunchManifest(current, message.manifest),
+      );
+      return;
     case "session.created":
       setSessions((current) => upsertSession(current, message.session));
+      if (message.session.relaunchManifest !== undefined) {
+        setRelaunchManifests((current) =>
+          upsertRelaunchManifest(current, message.session.relaunchManifest!),
+        );
+      }
       setTabs((current) => openTerminalTab(current, message.session.id));
       setSelectedId(message.session.id);
       return;
     case "session.updated":
     case "session.exited":
       setSessions((current) => upsertSession(current, message.session));
+      if (message.session.relaunchManifest !== undefined) {
+        setRelaunchManifests((current) =>
+          upsertRelaunchManifest(current, message.session.relaunchManifest!),
+        );
+      }
       return;
     case "session.closed":
       syncRefs.current.delete(message.sessionId);
@@ -3884,6 +4321,17 @@ function upsertSession(
   );
 }
 
+function upsertRelaunchManifest(
+  manifests: RelaunchManifest[],
+  incoming: RelaunchManifest,
+): RelaunchManifest[] {
+  return [incoming, ...manifests.filter(({ id }) => id !== incoming.id)].sort(
+    (left, right) =>
+      right.createdAt.localeCompare(left.createdAt) ||
+      right.id.localeCompare(left.id),
+  );
+}
+
 export function CreateTerminalDialog({
   defaultCwd,
   defaultLaunchPreset,
@@ -3891,6 +4339,7 @@ export function CreateTerminalDialog({
   loadDirectories,
   onCancel,
   onCreate,
+  tmuxCapability,
 }: {
   defaultCwd: string;
   defaultLaunchPreset: LaunchPresetId;
@@ -3901,7 +4350,9 @@ export function CreateTerminalDialog({
     cwd: string;
     displayName?: string;
     launchPreset: LaunchPresetId;
+    keepAlive?: boolean;
   }) => void;
+  tmuxCapability: TmuxCapability;
 }) {
   const browseButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -3909,6 +4360,7 @@ export function CreateTerminalDialog({
   const [displayName, setDisplayName] = useState("");
   const [launchPreset, setLaunchPreset] =
     useState<LaunchPresetId>(defaultLaunchPreset);
+  const [keepAlive, setKeepAlive] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const selectedPreset = launchPresets.find(
     (preset) => preset.id === launchPreset,
@@ -3921,6 +4373,7 @@ export function CreateTerminalDialog({
       cwd: cwd.trim(),
       launchPreset,
       ...(name.length > 0 ? { displayName: name } : {}),
+      ...(keepAlive ? { keepAlive: true } : {}),
     });
   };
 
@@ -4043,9 +4496,25 @@ export function CreateTerminalDialog({
             value={displayName}
           />
         </label>
+        {tmuxCapability.state === "ready" && (
+          <label className="keep-alive-option">
+            <input
+              checked={keepAlive}
+              onChange={(event) => setKeepAlive(event.target.checked)}
+              type="checkbox"
+            />
+            <span>
+              <strong>Keep alive with tmux</strong>
+              <small>
+                Survives Pacium server restarts and reconnects automatically.
+              </small>
+            </span>
+          </label>
+        )}
         <p className="dialog-note">
-          {selectedPreset?.label ?? "The command"} runs as your local user and
-          remains alive while this Pacium server is running.
+          {keepAlive
+            ? `${selectedPreset?.label ?? "The command"} runs in one managed tmux session. Closing Pacium disconnects its client but does not kill the tmux target.`
+            : `${selectedPreset?.label ?? "The command"} runs as your local user and remains alive while this Pacium server is running.`}
         </p>
         <div className="dialog-actions">
           <button onClick={onCancel} type="button">

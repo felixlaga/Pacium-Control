@@ -1,0 +1,89 @@
+diff --git a/binding.gyp b/binding.gyp
+index 5f63978b07ab50aaf7523219a2170ec737a6b5db..a21042070591e83cec2be4c37081ee1af9c5ee44 100644
+--- a/binding.gyp
++++ b/binding.gyp
+@@ -88,6 +88,14 @@
+               'libraries!': [
+                 '-lutil'
+               ]
++            }],
++            ['OS=="mac"', {
++              'xcode_settings': {
++                'OTHER_LDFLAGS': [
++                  '-Wl,-S',
++                  '-Wl,-x'
++                ]
++              }
+             }]
+           ]
+         }
+@@ -102,7 +110,11 @@
+             'src/unix/spawn-helper.cc',
+           ],
+           "xcode_settings": {
+-            "MACOSX_DEPLOYMENT_TARGET":"10.7"
++            "MACOSX_DEPLOYMENT_TARGET":"10.7",
++            "OTHER_LDFLAGS": [
++              "-Wl,-S",
++              "-Wl,-x"
++            ]
+           }
+         },
+       ]
+diff --git a/scripts/prebuild.js b/scripts/prebuild.js
+index 17f1d980e62e017d77058627a7a15c4c29f9470c..2737c251497ffe2afaeb4701d3d9614d4ec75db9 100644
+--- a/scripts/prebuild.js	
++++ b/scripts/prebuild.js
+@@ -17,9 +17,10 @@ const path = require('path');
+ const PREBUILDS_ROOT = path.join(__dirname, '..', 'prebuilds');
+ const PREBUILD_DIR = path.join(__dirname, '..', 'prebuilds', `${process.platform}-${process.arch}`);
+ 
+-// Do not use prebuilds when npm_config_build_from_source is set
+-if (process.env.npm_config_build_from_source === 'true') {
+-  console.log('\x1b[33m> Removing prebuilds and rebuilding because npm_config_build_from_source is set\x1b[0m');
++// Pacium patches the macOS native source to close descriptor leaks, so the
++// bundled upstream binary must not bypass those fixes.
++if (process.env.npm_config_build_from_source === 'true' || process.platform === 'darwin') {
++  console.log('\x1b[33m> Removing prebuilds and rebuilding patched native sources\x1b[0m');
+   fs.rmSync(PREBUILDS_ROOT, { recursive: true, force: true });
+   process.exit(1);
+ }
+diff --git a/src/unix/pty.cc b/src/unix/pty.cc
+index 7b4b9e1f990fbf95b51528bb56dc9717f5b87532..77ca504e5a071912c5bb074eb0beb45d2c3b0d95 100644
+--- a/src/unix/pty.cc	
++++ b/src/unix/pty.cc
+@@ -167,6 +167,9 @@ void SetupExitCallback(Napi::Env env, Napi::Function cb, pid_t pid) {
+         }
+       }
+     }
++    if (kq != -1) {
++      close(kq);
++    }
+ #else
+     while (true) {
+       errno = 0;
+@@ -696,8 +699,10 @@ pty_posix_spawn(char** argv, char** env,
+ 
+   for (; count < 3; count++) {
+     low_fds[count] = posix_openpt(O_RDWR);
+-    if (low_fds[count] >= STDERR_FILENO)
++    if (low_fds[count] > STDERR_FILENO) {
++      count++;
+       break;
++    }
+   }
+ 
+   int flags = POSIX_SPAWN_CLOEXEC_DEFAULT |
+@@ -777,9 +782,10 @@ pty_posix_spawn(char** argv, char** env,
+ done:
+   posix_spawn_file_actions_destroy(&acts);
+   posix_spawnattr_destroy(&attrs);
++  close(slave);
+ 
+-  for (; count > 0; count--) {
+-    close(low_fds[count]);
++  while (count > 0) {
++    close(low_fds[--count]);
+   }
+ }
+ #endif

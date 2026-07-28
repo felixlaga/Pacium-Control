@@ -12,11 +12,14 @@ import { fileURLToPath } from "node:url";
 import { PROTOCOL_VERSION } from "@pacium/contracts";
 
 import type { ClaudeObserver } from "./claude-observer.js";
+import type { CodexRuntimeBridge } from "./codex-runtime-bridge.js";
 import type { ServerConfig } from "./config.js";
 import {
   browseHostDirectories,
   DirectoryBrowserError,
 } from "./directory-browser.js";
+import { buildDiagnosticsSnapshot } from "./diagnostics.js";
+import { presetCapabilities } from "./launch-presets.js";
 import { buildSecurityHeaders, isValidAccessToken } from "./security.js";
 import { classifyRequestAccess, type RequestAccess } from "./remote-access.js";
 import type { PaciumConfigStore } from "./pacium-config-store.js";
@@ -35,14 +38,29 @@ export function createPaciumHttpServer(
   paciumConfig: PaciumConfigStore,
   queueObserver: QueueObserver = new QueueObserver(),
   claudeObserver?: ClaudeObserver,
+  codexRuntimeBridge?: CodexRuntimeBridge,
 ): PaciumHttpServer {
   const webRoot = fileURLToPath(new URL("../../web/dist/", import.meta.url));
   const hub = new WebSocketHub(config, sessions, paciumConfig, queueObserver);
   const server = createServer((request, response) => {
-    void routeRequest(request, response, config, webRoot, claudeObserver);
+    void routeRequest(
+      request,
+      response,
+      config,
+      webRoot,
+      sessions,
+      queueObserver,
+      claudeObserver,
+    );
   });
 
   server.on("upgrade", (request, socket, head) => {
+    if (
+      codexRuntimeBridge?.handleUpgrade(request, socket, head, config.port) ===
+      true
+    ) {
+      return;
+    }
     const pathname = parsePathname(request);
     const token = readWebSocketToken(request);
     const access = classifyRequestAccess(request, config, "websocket");
@@ -70,6 +88,7 @@ export function createPaciumHttpServer(
     async close() {
       hub.dispose();
       queueObserver.dispose();
+      codexRuntimeBridge?.dispose();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => {
           if (error === undefined) {
@@ -78,6 +97,7 @@ export function createPaciumHttpServer(
             reject(error);
           }
         });
+        server.closeIdleConnections();
       });
     },
   };
@@ -88,6 +108,8 @@ async function routeRequest(
   response: ServerResponse,
   config: ServerConfig,
   webRoot: string,
+  sessions: SessionManager,
+  queueObserver: QueueObserver,
   claudeObserver: ClaudeObserver | undefined,
 ): Promise<void> {
   applySecurityHeaders(response, config);
@@ -108,6 +130,7 @@ async function routeRequest(
       sendJson(response, 403, { error: "Forbidden" });
       return;
     }
+    response.setHeader("x-pacium-protocol", String(PROTOCOL_VERSION));
     sendJson(response, 200, { status: "ok" }, request.method === "HEAD");
     return;
   }
@@ -172,6 +195,37 @@ async function routeRequest(
           error: "Pacium could not inspect that host directory.",
         });
       }
+    }
+    return;
+  }
+
+  if (pathname === "/api/diagnostics") {
+    response.setHeader("cache-control", "no-store");
+    const access = authorizeProtectedApi(request, config);
+    if (access === null) {
+      sendJson(response, 403, { error: "Forbidden" });
+      return;
+    }
+    if (!isAllowedProtectedReadMethod(request.method, access)) {
+      sendJson(response, 405, { error: "Method not allowed" });
+      return;
+    }
+    if (request.method === "POST" && !hasEmptyRequestBody(request)) {
+      sendJson(response, 400, { error: "Request body is not allowed" });
+      return;
+    }
+    try {
+      const snapshot = buildDiagnosticsSnapshot({
+        sessions: sessions.list(),
+        queue: queueObserver.snapshot(),
+        tmux: sessions.tmuxCapability(),
+        launchPresets: presetCapabilities(config.launchPresets),
+      });
+      sendJson(response, 200, snapshot, request.method === "HEAD");
+    } catch {
+      sendJson(response, 500, {
+        error: "Pacium could not construct bounded diagnostics.",
+      });
     }
     return;
   }

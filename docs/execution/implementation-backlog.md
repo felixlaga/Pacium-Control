@@ -438,18 +438,76 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-062 Implement Codex observer
 
 - Supported native runtime events, turns, plan, tool, approval, completion, usage, and failure fixtures.
+- Current status: complete. Protocol 21 adds bounded cumulative Codex context
+  and token fields. Capability probes require the installed CLI's exact
+  `--remote`, remote-token, and App Server listener surfaces before changing a
+  direct Codex launch. Each supported Pacium-launched Codex PTY receives one
+  private loopback URL and random environment-only token; one authenticated TUI
+  connection is transparently bridged to one fixed App Server child over
+  bounded JSONL stdio. Strict normalization projects deduplicated thread, turn,
+  item, plan, usage, failure, approval, and question metadata while discarding
+  prompts, messages, plans, commands, output, diffs, paths, request content,
+  credentials, and raw frames. The observer sends no JSON-RPC request,
+  response, approval, or answer. Browser refresh preserves process-local
+  evidence; PTY exit, removal, shutdown, transport failure, child exit, and
+  invalid or oversized data release or degrade the bridge honestly. External
+  sessions, stable-version guarantees, live-provider canary evidence, control
+  actions, and durable observations remain outside this slice.
 
 ### PC-063 Build clean agent activity cards
 
 - Prompt, message, tool, plan, approval, completion, error, and fallback terminal excerpt.
+- Current status: complete. The browser projects every bounded provider,
+  process, Git, and verification fact into a deterministic compact kind, tone,
+  metadata set, timestamp meaning, and one Terminal, Changes, History, or
+  Checks source action. Question and approval cards remain distinct and add no
+  decision authority. When provider evidence is not ready, one explicit click
+  can read only the newest four non-empty lines and 800 Unicode characters
+  from the already-rendered xterm buffer. That excerpt stays browser-local,
+  inert, terminal-derived, low-confidence, not interpreted, and clears across
+  session, connection, provider-evidence, unmount, and reload boundaries.
+  Focused evidence passed 39 tests; full verification passed 122 test files and
+  786 tests; all 15 Chromium workflows passed. Protocol 21 and terminal,
+  provider, Git, queue, verification, and Tailscale authority are unchanged.
 
 ### PC-064 Implement capability degradation
 
 - Unsupported version, observer failure, stale native events, terminal fallback, and user-visible diagnostics.
+- Current status: complete. Codex local capability probes now distinguish
+  missing version evidence from confirmed unsupported remote/App Server
+  surfaces. Invalid native events degrade, fatal observer transport failures
+  fail, and later fresh authenticated events restore ready state and clear
+  transient diagnostics without changing PTY truth. Missing Claude version
+  evidence stays visible while valid hooks can still become ready. Activity
+  presents provider/adapter versions, source/confidence/freshness, every bounded
+  capability, safe diagnostic code/message/time, terminal independence, and
+  fixed recovery guidance; scalar diagnostic fields are excluded. A
+  browser-only 30-second/visibility clock expires ready snapshots without
+  network or terminal polling, and PC-063 fallback explains each non-ready
+  state. Focused evidence passed 81 tests; full verification passed 125 test
+  files and 815 tests; all 16 Chromium workflows passed, including a no-prompt
+  real Claude Code PTY canary. Protocol 21 and provider, terminal, queue, Git,
+  verification, and Tailscale authority remain unchanged.
 
 ### PC-065 Implement relaunch manifests
 
 - Provider, command, cwd, repository, environment allowlist, and optional resume identifier without secrets.
+- Current status: complete. Protocol 22 adds strict version-1 server-authored
+  relaunch manifests plus bounded list and identity-only relaunch messages.
+  Pacium stores at most 100 newest manifests in one private, validated,
+  atomic-replacement JSON document. Each record contains only fixed preset
+  command metadata, canonical cwd and repository-at-launch reference,
+  environment key names, provider/runtime classification, exact predecessor,
+  and an optional matching native resume identifier. It excludes environment
+  values, tokens, observer arguments, prompts, terminal bytes, and transcripts.
+  Direct PTYs still end with the local server; detached current manifests appear
+  separately from live sessions and open one explicit fresh-process preview.
+  Relaunch revalidates the stored cwd/current preset and creates a new immutable
+  session and linked successor without automatic provider resume. Focused
+  contract/store/manager/restart/transport/component evidence passed; full
+  verification passed 127 test files and 831 tests; all 17 Chromium workflows
+  passed. Protocol 22 changes no terminal, Git, queue, verification, provider,
+  or Tailscale authority.
 
 ## Epic 6 — Durability and release
 
@@ -460,26 +518,84 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-071 Implement tmux keep-alive preset
 
 - Launch configured sessions under tmux and reconnect after local-server restart.
+- Current status: complete. Protocol 24 adds one strict optional boolean while
+  the server owns the fixed preset, generated target, direct tmux argv, socket,
+  dimensions, timeout, and restoration policy. Keep-alive manifests become
+  durable before the client, startup restores only newest unique surviving
+  targets with fresh predecessor-linked IDs, exact client detach never invokes
+  `kill-session`, and missing targets never rerun commands. Focused and real
+  tmux restart/close evidence passed; full verification passed 131 test files
+  and 859 tests; all 19 Chromium workflows passed.
 
 ### PC-072 Add lifecycle and memory soak tests
 
 - Repeated create/close, reconnect, large output, long-running agent, split churn, and notification load.
+- Current status: complete. One scalar-only isolated command covers 20 idle
+  terminals, one long-running agent, 100 create/close cycles, 8 MiB output,
+  100 snapshots, memory budgets, and a five-real-PTY FD canary. Browser-model
+  tests cover 2,000 split operations and 5,000 notification cursors. The
+  canary also found and fixed macOS native descriptor leaks in the pinned
+  `node-pty`; supported Node 24, full verification, and all 19 Chromium
+  workflows passed.
 
 ### PC-073 Add diagnostics
 
 - Health, versions, PTY/session state, provider status, queue status, and redaction-aware export.
+- Current status: complete. One strict 256 KiB response-only schema projects
+  already loaded bounded state through the existing protected Local/Tailscale
+  read boundary. Export-local session labels, aggregate queue metadata,
+  provider/tmux health, fixed codes, and the complete redaction manifest appear
+  in a routed modal. Exact inert preview gates browser-local JSON download;
+  no terminal content, source content, path, identity, command, credential,
+  persistent file, upload, poll, or mutation enters the feature. Supported
+  Node 24 full verification passed 136 test files and 880 tests, and all 20
+  Chromium workflows passed.
 
 ### PC-074 Package macOS application
 
 - CLI/local-server packaging, browser launch, configuration directory, upgrade, uninstall, and signing decision.
+- Current status: complete. Supported Node.js 24.18.x now builds one
+  deterministic-content Apple-silicon archive with a valid `Pacium Control.app`,
+  exact user-local `pacium` link, production web/server bundle, minimal
+  source-built arm64 `node-pty`, strict version-1 manifest, and SHA-256
+  checksum. The launcher validates Node/port/options, opens only the fixed
+  loopback URL after listen, and reuses only the exact Pacium health signature.
+  Isolated verification covers native PTY load/Unicode/resize/exit,
+  install/upgrade, production health/assets, active-process refusal,
+  idempotent uninstall, foreign-target denial, deterministic rebuild, and
+  state preservation. The artifact is explicitly unsigned/unnotarized; Linux,
+  clean-account, signing/notarization, and release acceptance remain PC-075
+  and PC-076.
 
 ### PC-075 Validate supported Linux path
 
 - Build, PTY, browser, packaging, and documented limitations according to the platform decision.
+- Current status: complete. ADR-0017 supports exactly Ubuntu 24.04 x64 as the
+  Linux target. Platform defaults use `/bin/bash` and the XDG state convention;
+  browser opening and package runtime stay fixed and fail closed. One
+  deterministic-content unsigned, non-distro-native archive contains the
+  production app, minimal source-built x64 ELF PTY runtime, strict manifest,
+  checksum, exact command, no-sudo installer/uninstaller, and embedded guide.
+  Its isolated verifier covers native PTY operation, install/upgrade,
+  production health/assets, exact-instance reuse, active/foreign-target
+  refusal, idempotent removal, and state preservation. A read-only,
+  immutable-action, bounded Ubuntu workflow proves frozen source-native
+  install, full verification, soak, package lifecycle, applicable Chromium
+  workflows, and short-retention artifact upload. Other Linux targets and
+  release acceptance remain unsupported/PC-076.
 
 ### PC-076 Run release readiness
 
 - Clean install, full workflow, security checks, accessibility, performance, known limitations, and owner acceptance.
+- Current status: complete with a `NO-GO` decision. The exact-source macOS
+  frozen install, 142 files/930 tests, deterministic cross-root native build,
+  573,683-byte package, bounded soak, all 20 Chromium workflows, tracked-secret
+  scan, package inventory, and release preflight passed. The package remains a
+  Development snapshot because the current registry advisory audit,
+  fresh-account run, Developer ID signing/notarization, real Tailscale and
+  provider canaries, manual accessibility/sustained use, and owner release
+  acceptance are not evidenced. See the
+  [assessment](release-readiness-assessment.md).
 
 ### PC-077 Implement optional Tailscale Serve access
 

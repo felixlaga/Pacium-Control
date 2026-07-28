@@ -1,6 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const repositoryRoot = process.cwd();
+const repositoryRoot = process.env.PACIUM_E2E_VERIFICATION_REPOSITORY;
+if (repositoryRoot === undefined) {
+  throw new Error("The verification repository fixture is unavailable.");
+}
 
 test.afterEach(async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -65,6 +68,16 @@ test("configured checks run, reconnect, cancel, and fit the narrow inspector", a
   await expect(activityPanel).toContainText("Project verify");
   await expect(activityPanel).toContainText("Validated local evidence only");
   await expect(workspaceStatus).toContainText("Verification fixture");
+  await activityPanel
+    .getByRole("button", {
+      name: /Open Checks source for Verification passed/,
+    })
+    .click();
+  await expect(checksTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel", { name: "Checks" })).toContainText(
+    "Verification passed",
+  );
+  await activityTab.click();
 
   await activityPanel.getByRole("button", { name: "Refresh" }).click();
   await expect(

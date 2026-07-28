@@ -4,6 +4,93 @@
 
 Use this checklist for security-sensitive pull requests and milestone gates.
 
+## PC-073 diagnostics evidence
+
+- [x] The endpoint reuses exact Local/Tailscale Origin, Host, verified remote
+      identity, bearer-token, method, and empty-body enforcement.
+- [x] The response is a strict capped allowlist and is sent with `no-store`.
+- [x] Hostile terminal, provider, queue, Git, path, identity, credential,
+      command, PID, and relaunch fixtures are absent from serialized output.
+- [x] The inclusion/omission manifest is visible before an explicit
+      browser-local JSON download; no server file, upload, clipboard, or log is
+      created.
+- [x] Diagnostics cannot read terminal scrollback, send input, signal a
+      process, refresh a source, execute a command, or mutate durable state.
+- [x] Local/Tailscale negative tests, exact preview/download Chromium evidence,
+      full verification, and the complete browser suite pass.
+
+## PC-074 macOS package evidence
+
+- [x] The builder fails closed outside darwin-arm64/Node 24.18.x and without
+      production assets or the source-built arm64 PTY module/helper.
+- [x] The strict manifest/checksum contain only relative file metadata and no
+      machine, credential, terminal, repository, queue, provider, or identity
+      content.
+- [x] The launcher accepts only fixed options/runtime paths, validates the
+      bounded loopback port, identifies an existing Pacium instance exactly,
+      and opens only its fixed loopback URL after listen.
+- [x] Install/upgrade/uninstall use absolute non-root destinations, exact bundle
+      and command-link ownership, sibling staging/rollback, and a private
+      ephemeral active-process lease without `sudo` or broad process access.
+- [x] Foreign targets are refused; package verification proves installed native
+      PTY operation, production assets, active-uninstall denial, exact-instance
+      reuse, idempotent removal, and external-state preservation.
+- [x] The development manifest and `codesign` evidence both report unsigned,
+      unnotarized, and not release-eligible.
+
+## PC-075 Ubuntu Linux package evidence
+
+- [x] The supported claim is exactly Ubuntu 24.04 x64 with external Node.js
+      24.18.x; other distributions, versions, architectures, services, and
+      root/global installation are explicitly unsupported.
+- [x] The builder fails closed outside linux-x64/Node 24.18.x and without
+      production assets or source-built x64 ELF `pty.node`.
+- [x] The manifest, checksum, CI logs, and short-retention artifact expose only
+      fixed code/file/scalar metadata and no environment, credential, terminal,
+      repository, queue, provider, state, operator, or host content.
+- [x] User-local install/upgrade/uninstall validate exact absolute destinations,
+      recognized tree/link ownership, sibling staging/rollback, and the private
+      active-process lease without `sudo`, service installation, or broad
+      process access.
+- [x] The hosted Ubuntu gate uses read-only repository permission, immutable
+      action revisions, a frozen source-native install, and a bounded job.
+- [x] Exact-head verification proves native PTY operation, production
+      health/assets, exact-instance reuse, active-uninstall refusal,
+      foreign-target denial, idempotent removal, external-state preservation,
+      lifecycle soak bounds, and the applicable Chromium workflows.
+
+## PC-076 release-audit evidence
+
+- [x] The bounded preflight fails closed on unsupported host/runtime, dirty
+      source, forbidden tracked/archive paths, missing source contracts,
+      checksum/manifest mismatch, and unsupported distribution claims while
+      emitting only scalar status.
+- [x] A frozen exact-source macOS install passed all 296 lockfile policy
+      entries, 142 files/930 tests, production builds, lifecycle soak, package
+      lifecycle, and all 20 Chromium workflows.
+- [x] Separate source roots produced byte-identical loadable macOS
+      `pty.node`/`spawn-helper`; the package gate rejects source/debug metadata
+      while retaining the required UUID and ad-hoc signature.
+- [x] A content-suppressing tracked scan found zero recognized secret
+      signatures and zero tracked non-example environment files.
+- [x] Strict source and package inventories exclude environments,
+      credentials, transcripts, queues, provider stores, repositories, Pacium
+      state, host identity, and `.git`.
+- [x] Loopback, Host, Origin, token, paths/symlinks, terminal content,
+      queue-as-data, diagnostics redaction, process groups, reconnect ordering,
+      package ownership, and state boundaries pass in the clean suite.
+- [ ] A current registry advisory audit was not sent because that would
+      disclose the dependency inventory without destination-specific
+      authorization.
+- [ ] Developer ID signing, notarization, fresh-account Gatekeeper, real
+      Tailscale, real provider, manual accessibility/sustained-use, and owner
+      release acceptance are not evidenced.
+
+The resulting decision is `NO-GO`; the artifacts remain Development snapshots.
+See the [candidate assessment](../execution/release-readiness-assessment.md).
+The unchecked historical blueprint rows below are not implied by the active
+localhost product.
+
 ## Identity
 
 - [ ] Production identity comes only from the trusted Tailscale ingress.

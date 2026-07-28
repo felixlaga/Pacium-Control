@@ -1,15 +1,26 @@
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it, vi } from "vitest";
 import { FakePtyFactory } from "@pacium/test-utils";
 import type { SessionSummary } from "@pacium/contracts";
 
 import { ClaudeObserver } from "./claude-observer.js";
+import { CodexObserver } from "./codex-observer.js";
 import type { HostActions } from "./host-actions.js";
 import type { LaunchPresetDefinition } from "./launch-presets.js";
 import type { GitChangesInspector } from "./git-changes.js";
 import type { GitDiffInspector } from "./git-diff.js";
 import type { GitHistoryInspector } from "./git-history.js";
 import type { RepositoryInspector } from "./repository-context.js";
+import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
 import { SessionError, SessionManager } from "./session-manager.js";
+import {
+  TmuxAdapter,
+  type TmuxAttachSpec,
+  type TmuxLaunchInput,
+} from "./tmux-adapter.js";
 import type { VerificationCatalog } from "./verification-config.js";
 import { VerificationRunner } from "./verification-runner.js";
 
@@ -76,6 +87,10 @@ function createManager(
   verificationRunner?: VerificationRunner,
   claudeObserver?: ClaudeObserver,
   launchPresets: readonly LaunchPresetDefinition[] = testPresets,
+  codexObserver?: CodexObserver,
+  relaunchManifests?: RelaunchManifestStore,
+  environmentKeys: readonly string[] = [],
+  tmuxAdapter?: TmuxAdapter,
 ): SessionManager {
   return new SessionManager(
     factory,
@@ -88,7 +103,108 @@ function createManager(
     verificationCatalog,
     verificationRunner,
     claudeObserver,
+    codexObserver,
+    relaunchManifests,
+    environmentKeys,
+    tmuxAdapter,
   );
+}
+
+class FixtureTmuxAdapter extends TmuxAdapter {
+  public readonly launches: TmuxLaunchInput[] = [];
+  public readonly detachedClients: Array<{
+    sessionId: string;
+    clientPid: number;
+  }> = [];
+
+  public constructor() {
+    super(
+      "/private/tmp/pacium-test.sock",
+      "/opt/test/bin/tmux",
+      "tmux 3.7b",
+      {},
+    );
+  }
+
+  public override attachSpec(
+    serverId: string,
+    sessionId: string,
+  ): Promise<TmuxAttachSpec> {
+    if (
+      serverId !== "configured" ||
+      (sessionId !== "$7" && sessionId !== "$8")
+    ) {
+      return Promise.reject(
+        new Error("The selected tmux session is no longer available."),
+      );
+    }
+    return Promise.resolve({
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-test.sock",
+        "attach-session",
+        "-t",
+        sessionId,
+      ],
+      cwd: process.cwd(),
+      target: {
+        serverId: "configured",
+        sessionId,
+        sessionName: sessionId === "$8" ? "pacium-managed" : "Meta",
+        observedAt: "2026-07-28T10:00:00.000Z",
+      },
+    });
+  }
+
+  public override launchSpec(input: TmuxLaunchInput): Promise<TmuxAttachSpec> {
+    this.launches.push(input);
+    return Promise.resolve({
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-test.sock",
+        "attach-session",
+        "-t",
+        "$8",
+      ],
+      cwd: input.cwd,
+      target: {
+        serverId: "configured",
+        sessionId: "$8",
+        sessionName: input.sessionName,
+        observedAt: "2026-07-28T10:00:00.000Z",
+      },
+      mode: "keep_alive",
+      launchCommand: {
+        executable: input.executable,
+        args: input.args,
+      },
+    });
+  }
+
+  public override detachClient(
+    target: { sessionId: string },
+    clientPid: number,
+  ): Promise<void> {
+    this.detachedClients.push({ sessionId: target.sessionId, clientPid });
+    return Promise.resolve();
+  }
+}
+
+class FailingPtyFactory extends FakePtyFactory {
+  public override create(
+    options: Parameters<FakePtyFactory["create"]>[0],
+  ): ReturnType<FakePtyFactory["create"]> {
+    this.createCalls.push(options);
+    throw new Error("Synthetic tmux client spawn failure.");
+  }
+}
+
+class UnavailableTmuxAdapter extends FixtureTmuxAdapter {
+  public override attachSpec(): Promise<TmuxAttachSpec> {
+    return Promise.reject(new Error("Synthetic missing tmux target."));
+  }
 }
 
 function repositoryObservation(
@@ -156,6 +272,330 @@ function emptyHistory(root: string | null, observedAt?: string) {
 }
 
 describe("SessionManager", () => {
+  it("attaches one revalidated tmux target through the existing PTY lifecycle", async () => {
+    const factory = new FakePtyFactory();
+    const adapter = new FixtureTmuxAdapter();
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      undefined,
+      [],
+      adapter,
+    );
+
+    await expect(
+      manager.attachTmux("configured", "$9", 100, 30),
+    ).rejects.toMatchObject({
+      code: "TMUX_TARGET_UNAVAILABLE",
+      retryable: true,
+    });
+    expect(factory.createCalls).toHaveLength(0);
+
+    const session = await manager.attachTmux("configured", "$7", 100, 30);
+    expect(session).toMatchObject({
+      displayName: "Meta",
+      runtime: "tmux",
+      commandLabel: "tmux · Meta",
+      providerObservation: null,
+      tmuxTarget: {
+        serverId: "configured",
+        sessionId: "$7",
+        sessionName: "Meta",
+      },
+      relaunchManifest: {
+        runtime: "tmux",
+        tmuxTarget: {
+          serverId: "configured",
+          sessionId: "$7",
+        },
+      },
+    });
+    expect(factory.createCalls).toEqual([
+      {
+        executable: "/opt/test/bin/tmux",
+        args: [
+          "-S",
+          "/private/tmp/pacium-test.sock",
+          "attach-session",
+          "-t",
+          "$7",
+        ],
+        cwd: process.cwd(),
+        cols: 100,
+        rows: 30,
+      },
+    ]);
+
+    manager.input(session.id, "pwd\r");
+    manager.resize(session.id, 110, 34);
+    expect(factory.processes[0]?.writes).toEqual(["pwd\r"]);
+    expect(factory.processes[0]?.resizes).toEqual([{ cols: 110, rows: 34 }]);
+    manager.close(session.id, true, crypto.randomUUID());
+    await vi.waitFor(() =>
+      expect(adapter.detachedClients).toEqual([
+        { sessionId: "$7", clientPid: factory.processes[0]?.pid },
+      ]),
+    );
+    expect(factory.processes[0]?.signals).toEqual([]);
+    factory.processes[0]?.emitExit(0, 0);
+    expect(manager.list()).toEqual([]);
+    await manager.shutdown();
+    expect(factory.processes[0]?.signals).toEqual([]);
+  });
+
+  it("launches a fixed preset as durable tmux evidence before its client", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pacium-keep-alive-"));
+    const store = new RelaunchManifestStore(join(root, "data"));
+    await store.initialize();
+    const factory = new FakePtyFactory();
+    const adapter = new FixtureTmuxAdapter();
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      store,
+      ["HOME", "PATH"],
+      adapter,
+    );
+
+    const session = await manager.create({
+      cwd: process.cwd(),
+      displayName: "Durable Codex",
+      launchPreset: "codex",
+      cols: 100,
+      rows: 30,
+      keepAlive: true,
+    });
+    expect(adapter.launches).toHaveLength(1);
+    expect(adapter.launches[0]).toMatchObject({
+      cwd: process.cwd(),
+      cols: 100,
+      rows: 30,
+      executable: "/opt/test/bin/codex",
+      args: [],
+    });
+    expect(adapter.launches[0]?.sessionName).toMatch(/^pacium-/);
+    expect(session).toMatchObject({
+      displayName: "Durable Codex",
+      launchPreset: "codex",
+      commandLabel: "tmux keep-alive · Codex",
+      runtime: "tmux",
+      tmuxMode: "keep_alive",
+      tmuxTarget: {
+        serverId: "configured",
+        sessionId: "$8",
+      },
+      agentClassification: {
+        type: "codex",
+        source: "launch_preset",
+      },
+      providerObservation: {
+        provider: "codex",
+        health: {
+          state: "unavailable",
+          source: "none",
+        },
+      },
+      relaunchManifest: {
+        provider: "codex",
+        command: {
+          executable: "/opt/test/bin/codex",
+          args: [],
+        },
+        runtime: "tmux",
+        tmuxMode: "keep_alive",
+      },
+    });
+    expect(store.list()).toHaveLength(1);
+    expect(factory.createCalls[0]).toMatchObject({
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-test.sock",
+        "attach-session",
+        "-t",
+        "$8",
+      ],
+    });
+    await manager.shutdown();
+  });
+
+  it("retains recovery evidence when the keep-alive client cannot spawn", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pacium-keep-alive-failure-"));
+    const store = new RelaunchManifestStore(join(root, "data"));
+    await store.initialize();
+    const manager = createManager(
+      new FailingPtyFactory(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      store,
+      [],
+      new FixtureTmuxAdapter(),
+    );
+
+    await expect(
+      manager.create({
+        cwd: process.cwd(),
+        displayName: "Durable failure",
+        launchPreset: "codex",
+        cols: 100,
+        rows: 30,
+        keepAlive: true,
+      }),
+    ).rejects.toMatchObject({
+      code: "TMUX_CLIENT_SPAWN_FAILED",
+      retryable: true,
+    });
+    expect(manager.list()).toHaveLength(0);
+    expect(store.list()).toMatchObject([
+      {
+        displayName: "Durable failure",
+        tmuxMode: "keep_alive",
+        tmuxTarget: { sessionId: "$8" },
+      },
+    ]);
+  });
+
+  it("restores only the newest unique keep-alive target after restart", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pacium-keep-alive-restore-"));
+    const store = new RelaunchManifestStore(join(root, "data"));
+    await store.initialize();
+    const firstFactory = new FakePtyFactory();
+    const first = createManager(
+      firstFactory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      store,
+      [],
+      new FixtureTmuxAdapter(),
+    );
+    await first.create({
+      cwd: process.cwd(),
+      displayName: "Direct",
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+    await first.attachTmux("configured", "$7", 80, 24);
+    const durable = await first.create({
+      cwd: process.cwd(),
+      displayName: "Durable",
+      launchPreset: "codex",
+      cols: 100,
+      rows: 30,
+      keepAlive: true,
+    });
+    await first.shutdown();
+    await first.flushRelaunchManifests();
+
+    const secondFactory = new FakePtyFactory();
+    const second = createManager(
+      secondFactory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      store,
+      [],
+      new FixtureTmuxAdapter(),
+    );
+    await expect(second.restoreKeepAliveSessions()).resolves.toEqual({
+      attempted: 1,
+      restored: 1,
+      unavailable: 0,
+      deferred: 0,
+    });
+    expect(second.list()).toHaveLength(1);
+    expect(second.list()[0]).toMatchObject({
+      displayName: "Durable",
+      launchPreset: "codex",
+      tmuxMode: "keep_alive",
+      relaunchManifest: {
+        predecessorSessionId: durable.id,
+      },
+    });
+    await expect(second.restoreKeepAliveSessions()).resolves.toEqual({
+      attempted: 0,
+      restored: 0,
+      unavailable: 0,
+      deferred: 0,
+    });
+    await second.shutdown();
+    await second.flushRelaunchManifests();
+
+    const unavailable = createManager(
+      new FakePtyFactory(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      store,
+      [],
+      new UnavailableTmuxAdapter(),
+    );
+    await expect(unavailable.restoreKeepAliveSessions()).resolves.toEqual({
+      attempted: 1,
+      restored: 0,
+      unavailable: 1,
+      deferred: 0,
+    });
+    expect(unavailable.list()).toHaveLength(0);
+    expect(
+      store
+        .list()
+        .some(
+          (manifest) =>
+            manifest.tmuxMode === "keep_alive" &&
+            manifest.tmuxTarget?.sessionId === "$8",
+        ),
+    ).toBe(true);
+  });
+
   it("reports exact live sessions and fixed launch presets without mutation", async () => {
     const factory = new FakePtyFactory();
     const manager = createManager(factory);
@@ -172,7 +612,7 @@ describe("SessionManager", () => {
     });
     expect(manager.hasSession(session.id)).toBe(true);
 
-    manager.shutdown();
+    await manager.shutdown();
     expect(manager.hasSession(session.id)).toBe(false);
   });
 
@@ -216,9 +656,82 @@ describe("SessionManager", () => {
         observedAt: session.createdAt,
       },
       providerObservation: null,
+      relaunchManifest: {
+        schemaVersion: 1,
+        sessionId: session.id,
+        predecessorSessionId: null,
+        launchPreset: "shell",
+        provider: null,
+        command: {
+          executable: "/bin/zsh",
+          args: ["-l"],
+        },
+        cwd: process.cwd(),
+        environmentKeys: [],
+        runtime: "pty",
+        resumeReference: null,
+        createdAt: session.createdAt,
+        updatedAt: session.createdAt,
+      },
     });
 
-    manager.shutdown();
+    await manager.shutdown();
+  });
+
+  it("persists a secret-free manifest and relaunches an exact successor", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pacium-session-manifest-"));
+    const store = new RelaunchManifestStore(join(root, "data"));
+    await store.initialize();
+    const factory = new FakePtyFactory();
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      store,
+      ["HOME", "PATH", "PACIUM_TEST_SECRET"],
+    );
+    const source = await manager.create({
+      cwd: process.cwd(),
+      displayName: "Meta",
+      launchPreset: "codex",
+      cols: 90,
+      rows: 28,
+    });
+    const retained = manager.listRelaunchManifests()[0];
+    expect(retained).toMatchObject({
+      sessionId: source.id,
+      predecessorSessionId: null,
+      displayName: "Meta",
+      launchPreset: "codex",
+      provider: "codex",
+      command: { executable: "/opt/test/bin/codex", args: [] },
+      cwd: process.cwd(),
+      environmentKeys: ["HOME", "PATH", "PACIUM_TEST_SECRET"],
+      resumeReference: null,
+    });
+
+    const successor = await manager.relaunch(retained!.id, 100, 30);
+    expect(successor.id).not.toBe(source.id);
+    expect(successor.relaunchManifest?.predecessorSessionId).toBe(source.id);
+    expect(factory.createCalls).toHaveLength(2);
+    expect(factory.createCalls[1]).toMatchObject({
+      executable: "/opt/test/bin/codex",
+      cwd: process.cwd(),
+      cols: 100,
+      rows: 30,
+    });
+    expect(JSON.stringify(manager.listRelaunchManifests())).not.toContain(
+      "secret-value",
+    );
+    await manager.shutdown();
   });
 
   it("does not destroy a PTY when no browser listener is attached", async () => {
@@ -237,7 +750,7 @@ describe("SessionManager", () => {
       "before refresh",
     );
 
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("requires explicit force to close a live shell", async () => {
@@ -257,6 +770,25 @@ describe("SessionManager", () => {
     expect(factory.processes[0]?.signals).toEqual(["SIGTERM"]);
     factory.processes[0]?.emitExit(143, 15);
     expect(manager.list()).toHaveLength(0);
+    expect(factory.processes[0]?.dataListenerCount).toBe(0);
+    expect(factory.processes[0]?.exitListenerCount).toBe(0);
+  });
+
+  it("releases PTY listeners during server shutdown", async () => {
+    const factory = new FakePtyFactory();
+    const manager = createManager(factory);
+    await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+
+    expect(factory.processes[0]?.dataListenerCount).toBe(1);
+    expect(factory.processes[0]?.exitListenerCount).toBe(1);
+    await manager.shutdown();
+    expect(factory.processes[0]?.dataListenerCount).toBe(0);
+    expect(factory.processes[0]?.exitListenerCount).toBe(0);
   });
 
   it("renames session metadata and emits an updated summary", async () => {
@@ -281,7 +813,7 @@ describe("SessionManager", () => {
     expect(() => manager.rename(session.id, "   ")).toThrow(
       "between 1 and 120",
     );
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("reveals only the session's canonical repository root", async () => {
@@ -297,7 +829,7 @@ describe("SessionManager", () => {
 
     await manager.revealRepository(session.id);
     expect(revealPath).toHaveBeenCalledWith(session.repository.root);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("refreshes repository evidence without replacing or signalling the PTY", async () => {
@@ -331,7 +863,7 @@ describe("SessionManager", () => {
     expect(manager.list()[0]?.id).toBe(session.id);
     expect(factory.processes[0]?.signals).toEqual([]);
     expect(updates).toEqual(["feature"]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("reads changed files from server-owned repository evidence without signalling the PTY", async () => {
@@ -388,7 +920,7 @@ describe("SessionManager", () => {
       expect.any(String),
     );
     expect(factory.processes[0]?.signals).toEqual([]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("reads one diff from server-owned session evidence without changing the PTY", async () => {
@@ -441,7 +973,7 @@ describe("SessionManager", () => {
     );
     expect(factory.processes[0]).toBe(ptyProcess);
     expect(ptyProcess?.signals).toEqual([]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("reads history from server-owned session evidence without changing the PTY", async () => {
@@ -493,7 +1025,7 @@ describe("SessionManager", () => {
     );
     expect(factory.processes[0]).toBe(ptyProcess);
     expect(ptyProcess?.signals).toEqual([]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("reports verification as unavailable without explicit configuration", async () => {
@@ -516,7 +1048,7 @@ describe("SessionManager", () => {
       manager.runRepositoryVerification(session.id, "verify"),
     ).rejects.toMatchObject({ code: "VERIFICATION_UNCONFIGURED" });
     expect(factory.processes[0]?.signals).toEqual([]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("runs only the configured preset for the session repository", async () => {
@@ -566,7 +1098,7 @@ describe("SessionManager", () => {
       code: "VERIFICATION_PRESET_UNAVAILABLE",
     });
     expect(factory.processes[0]?.signals).toEqual([]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("cancels an exact verification run without signalling the PTY", async () => {
@@ -607,7 +1139,7 @@ describe("SessionManager", () => {
       run: { status: "cancelled" },
     });
     expect(factory.processes[0]?.signals).toEqual([]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("rejects a missing working directory without creating a PTY", async () => {
@@ -671,7 +1203,7 @@ describe("SessionManager", () => {
       }),
     ).rejects.toMatchObject({ code: "PRESET_UNAVAILABLE" });
     expect(factory.processes).toHaveLength(1);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("prepares only Claude launches and applies authenticated observer updates", async () => {
@@ -750,7 +1282,90 @@ describe("SessionManager", () => {
 
     factory.processes[0]?.emitExit(0, 0);
     expect(observer.hasSession(claude.id)).toBe(false);
-    manager.shutdown();
+    await manager.shutdown();
+  });
+
+  it("prepares only Codex launches and applies native observer updates", async () => {
+    const factory = new FakePtyFactory();
+    const token = "c".repeat(43);
+    const observer = new CodexObserver({
+      baseUrl: "http://127.0.0.1:4174",
+      executable: "/opt/test/bin/codex",
+      environment: { PATH: "/opt/test/bin" },
+      capability: { available: true, version: "0.145.0" },
+      tokenFactory: () => token,
+    });
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      observer,
+    );
+    const updates: SessionSummary[] = [];
+    manager.onSessionEvent((event) => {
+      if (event.type === "updated") {
+        updates.push(event.session);
+      }
+    });
+
+    const codex = await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "codex",
+      cols: 80,
+      rows: 24,
+    });
+    expect(factory.createCalls[0]).toMatchObject({
+      executable: "/opt/test/bin/codex",
+      args: [
+        "--remote",
+        `ws://127.0.0.1:4174/api/provider/codex/${codex.id}/runtime`,
+        "--remote-auth-token-env",
+        "PACIUM_CODEX_RUNTIME_TOKEN",
+      ],
+      environment: { PACIUM_CODEX_RUNTIME_TOKEN: token },
+    });
+    expect(JSON.stringify(factory.createCalls[0]?.args)).not.toContain(token);
+    expect(codex.providerObservation).toMatchObject({
+      provider: "codex",
+      providerVersion: "0.145.0",
+      health: { state: "unavailable" },
+    });
+    expect(observer.hasSession(codex.id)).toBe(true);
+
+    expect(
+      observer.ingestServerMessage(codex.id, {
+        id: 9,
+        method: "item/tool/requestUserInput",
+        params: {
+          threadId: "thread-1",
+          turnId: "turn-1",
+          itemId: "item-1",
+          questions: [{ question: "private question" }],
+        },
+      }).status,
+    ).toBe("accepted");
+    expect(updates.at(-1)?.providerObservation).toMatchObject({
+      health: { state: "ready", source: "native" },
+      attention: { state: "needs_input", source: "native" },
+      activities: [{ kind: "question_requested" }],
+    });
+    expect(JSON.stringify(updates.at(-1))).not.toContain("private question");
+    await Promise.resolve();
+    expect(manager.list()[0]?.relaunchManifest?.resumeReference).toMatchObject({
+      provider: "codex",
+      id: "thread-1",
+    });
+
+    factory.processes[0]?.emitExit(0, 0);
+    expect(observer.hasSession(codex.id)).toBe(false);
+    await manager.shutdown();
   });
 });
 

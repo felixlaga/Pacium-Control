@@ -309,6 +309,8 @@ function commandIcon(command: PaletteCommand): string {
       return "?";
     case "open-settings":
       return "⚙";
+    case "open-diagnostics":
+      return "◇";
     case "toggle-sidebar":
       return "▌";
     case "toggle-inspector":

@@ -1,4 +1,8 @@
-import type { GitChangesObservation, SessionSummary } from "@pacium/contracts";
+import type {
+  GitChangesObservation,
+  ProviderActivity,
+  SessionSummary,
+} from "@pacium/contracts";
 import { describe, expect, it } from "vitest";
 
 import { deriveSessionAttention } from "./attention-model.js";
@@ -51,6 +55,7 @@ function input(candidate: SessionSummary = session): RecentActivityInput {
   return {
     session: candidate,
     attention: deriveSessionAttention(candidate, now),
+    now,
     changes: { status: "idle" },
     history: { status: "idle" },
     verification: { status: "idle" },
@@ -123,6 +128,12 @@ function providerActivity(input: {
       threadId: "thread-1",
       turnId: "turn-1",
       itemType: null,
+      modelContextWindow: null,
+      totalInputTokens: null,
+      totalCachedInputTokens: null,
+      totalOutputTokens: null,
+      totalReasoningOutputTokens: null,
+      totalTokens: null,
     },
   };
 }
@@ -223,8 +234,12 @@ describe("recent provider activity", () => {
       status: "unavailable",
     });
     expect(activity.sources[0]?.detail).toContain(
-      "provider version unavailable",
+      "provider version Unavailable",
     );
+    expect(activity.providerStatus).toMatchObject({
+      state: "unavailable",
+      terminalAvailable: true,
+    });
     expect(activity.partial).toBe(true);
   });
 
@@ -258,9 +273,17 @@ describe("recent provider activity", () => {
       "Approval requested",
       "Question asked",
     ]);
-    expect(providerFacts[0]?.detail).toBe(
-      "Codex · Provider native · Confirmed · Command approval requested.",
-    );
+    expect(providerFacts[0]).toMatchObject({
+      kind: "provider_approval",
+      tone: "attention",
+      detail: "Command approval requested.",
+      metadata: ["Codex", "Provider native", "Confirmed"],
+      target: "terminal",
+    });
+    expect(providerFacts[1]).toMatchObject({
+      kind: "provider_question",
+      tone: "attention",
+    });
     expect(activity.sources[0]).toMatchObject({
       id: "provider",
       status: "ready",
@@ -305,12 +328,57 @@ describe("recent provider activity", () => {
     const fact = activity.facts.find(({ source }) => source === "provider");
 
     expect(fact).toMatchObject({
+      kind: "provider_usage",
+      tone: "neutral",
       title: "Provider usage updated",
       detail:
-        "Claude Code · Provider hook · High confidence · Claude status and usage snapshot updated. · Model claude-opus-5 · Context 12.5% · 1,000 input tokens · 100 output tokens · Cost $0.50",
+        "Claude status and usage snapshot updated. · Model claude-opus-5 · Context 12.5% · 1,000 input tokens · 100 output tokens · Cost $0.50",
+      metadata: ["Claude Code", "Provider hook", "High confidence"],
     });
     expect(fact?.detail).not.toContain("session_name");
     expect(fact?.detail).not.toContain("transcript");
+  });
+
+  it("shows bounded cumulative Codex usage without conversation content", () => {
+    const candidate = providerSession({
+      activities: [
+        {
+          id: "usage-1",
+          kind: "usage_updated",
+          source: "native",
+          confidence: "confirmed",
+          occurredAt: "2026-07-27T10:03:00.000Z",
+          observedAt: "2026-07-27T10:03:00.000Z",
+          summary: "Codex cumulative token usage updated.",
+          extension: {
+            provider: "codex",
+            eventType: "usage_update",
+            threadId: "thread-1",
+            turnId: null,
+            itemType: null,
+            modelContextWindow: 200_000,
+            totalInputTokens: 10_000,
+            totalCachedInputTokens: 8_000,
+            totalOutputTokens: 1_000,
+            totalReasoningOutputTokens: 400,
+            totalTokens: 11_000,
+          },
+        },
+      ],
+    });
+    const activity = buildRecentActivity(input(candidate));
+    const fact = activity.facts.find(({ source }) => source === "provider");
+
+    expect(fact).toMatchObject({
+      kind: "provider_usage",
+      tone: "neutral",
+      title: "Provider usage updated",
+      detail:
+        "Codex cumulative token usage updated. · 200,000 token context window · 10,000 input tokens · 8,000 cached input tokens · 1,000 output tokens · 400 reasoning output tokens · 11,000 total tokens",
+      metadata: ["Codex", "Provider native", "Confirmed"],
+    });
+    expect(fact?.detail).not.toContain("private prompt");
+    expect(fact?.detail).not.toContain("private response");
   });
 
   it("labels expired provider evidence stale while retaining process truth", () => {
@@ -334,8 +402,119 @@ describe("recent provider activity", () => {
       source: "native",
     });
     expect(activity.sources[0]?.status).toBe("stale");
+    expect(activity.providerStatus?.state).toBe("stale");
+    expect(activity.terminalFallback.recommended).toBe(true);
+    expect(activity.terminalFallback.reason).toContain(
+      "Provider evidence is stale",
+    );
   });
+
+  it.each([
+    ["session_started", "provider_session", "neutral"],
+    ["prompt_submitted", "provider_prompt", "active"],
+    ["turn_started", "provider_turn", "active"],
+    ["message", "provider_message", "neutral"],
+    ["tool_started", "provider_tool", "active"],
+    ["tool_completed", "provider_tool", "neutral"],
+    ["plan_updated", "provider_plan", "active"],
+    ["approval_requested", "provider_approval", "attention"],
+    ["question_requested", "provider_question", "attention"],
+    ["usage_updated", "provider_usage", "neutral"],
+    ["turn_completed", "provider_completion", "success"],
+    ["session_completed", "provider_completion", "success"],
+    ["failed", "provider_failure", "danger"],
+  ] as const)("maps %s to a %s %s card", (kind, cardKind, tone) => {
+    const candidate = providerSession({
+      activities: [genericProviderActivity(kind)],
+    });
+    const activity = buildRecentActivity(input(candidate));
+    const fact = activity.facts.find(({ source }) => source === "provider");
+
+    expect(fact).toMatchObject({
+      kind: cardKind,
+      tone,
+      target: "terminal",
+      metadata: ["Codex", "Provider native", "Confirmed"],
+    });
+    expect(fact?.metadata).toHaveLength(3);
+  });
+
+  it("recommends fallback without provider evidence but not for ready native evidence", () => {
+    const shellActivity = buildRecentActivity(input());
+    const nativeActivity = buildRecentActivity(input(providerSession({})));
+
+    expect(shellActivity.terminalFallback).toMatchObject({
+      recommended: true,
+    });
+    expect(shellActivity.terminalFallback.reason).toContain(
+      "No provider observer applies",
+    );
+    expect(nativeActivity.terminalFallback).toMatchObject({
+      recommended: false,
+    });
+    expect(nativeActivity.terminalFallback.boundaryKey).toContain(session.id);
+  });
+
+  it.each([
+    ["unavailable", "Provider evidence is unavailable"],
+    ["unsupported", "provider runtime is unsupported"],
+    ["degraded", "observation is degraded"],
+    ["failed", "provider observer failed"],
+  ] as const)(
+    "explains %s terminal fallback without changing process truth",
+    (state, reason) => {
+      const candidate = providerSession({
+        health: {
+          state,
+          source:
+            state === "unavailable" || state === "unsupported"
+              ? "none"
+              : "native",
+          confidence: state === "unavailable" ? "low" : "confirmed",
+          detail: `${state} provider observer.`,
+        },
+      });
+      const activity = buildRecentActivity(input(candidate));
+
+      expect(activity.providerStatus).toMatchObject({
+        state,
+        terminalAvailable: true,
+      });
+      expect(activity.terminalFallback).toMatchObject({
+        recommended: true,
+      });
+      expect(activity.terminalFallback.reason).toContain(reason);
+      expect(activity.current.processState).toBe("live");
+    },
+  );
 });
+
+function genericProviderActivity(
+  kind: ProviderActivity["kind"],
+): ProviderActivity {
+  return {
+    id: `activity-${kind}`,
+    kind,
+    source: "native",
+    confidence: "confirmed",
+    occurredAt: "2026-07-27T10:03:00.000Z",
+    observedAt: "2026-07-27T10:03:00.000Z",
+    summary: "Bounded provider activity observed.",
+    extension: {
+      provider: "codex",
+      eventType: "item_complete",
+      threadId: "thread-1",
+      turnId: "turn-1",
+      itemType: null,
+      modelContextWindow: null,
+      totalInputTokens: null,
+      totalCachedInputTokens: null,
+      totalOutputTokens: null,
+      totalReasoningOutputTokens: null,
+      totalTokens: null,
+    },
+  };
+}
 
 describe("recent activity Git facts", () => {
   it("projects one observed working-tree summary with exact totals", () => {

@@ -1,4 +1,4 @@
-import type { SessionSummary } from "@pacium/contracts";
+import type { RelaunchManifest, SessionSummary } from "@pacium/contracts";
 import {
   forwardRef,
   useEffect,
@@ -40,6 +40,7 @@ export function SessionActionsMenu({
   const firstActionRef = useRef<HTMLButtonElement>(null);
   const availability = sessionActionAvailability(session);
   const live = session.processState === "live";
+  const keepAlive = session.tmuxMode === "keep_alive";
 
   useEffect(() => {
     firstActionRef.current?.focus();
@@ -89,7 +90,13 @@ export function SessionActionsMenu({
             onClick={onRename}
           />
           <ActionButton
-            detail="New PTY · same preset and folder"
+            detail={
+              session.runtime === "tmux"
+                ? keepAlive
+                  ? "Start another preset; this managed target is not cloned"
+                  : "Use explicit reattach for this external target"
+                : "New PTY · same preset and folder"
+            }
             disabled={!availability.canDuplicate}
             icon="⧉"
             label="Duplicate session"
@@ -98,12 +105,18 @@ export function SessionActionsMenu({
           <ActionButton
             detail={
               availability.canRelaunch
-                ? "New PTY from retained launch context"
+                ? session.runtime === "tmux"
+                  ? "New client for the retained tmux target"
+                  : "New PTY from retained launch context"
                 : "Available after this process ends"
             }
             disabled={!availability.canRelaunch}
             icon="↻"
-            label="Relaunch ended session"
+            label={
+              session.runtime === "tmux"
+                ? "Reattach ended tmux client"
+                : "Relaunch ended session"
+            }
             onClick={onRelaunch}
           />
         </div>
@@ -128,7 +141,13 @@ export function SessionActionsMenu({
             onClick={onRevealRepository}
           />
           <ActionButton
-            detail="PTY keeps running"
+            detail={
+              session.runtime === "tmux"
+                ? keepAlive
+                  ? "Client and managed tmux target keep running"
+                  : "Client and tmux server session keep running"
+                : "PTY keeps running"
+            }
             icon="—"
             label="Close browser view"
             onClick={onCloseView}
@@ -137,7 +156,13 @@ export function SessionActionsMenu({
 
         <div className="session-action-group process-actions">
           <ActionButton
-            detail="Send SIGINT · process may continue"
+            detail={
+              session.runtime === "tmux"
+                ? keepAlive
+                  ? "Send SIGINT · managed tmux target may continue"
+                  : "Send SIGINT · tmux server session may continue"
+                : "Send SIGINT · process may continue"
+            }
             disabled={!availability.canInterrupt}
             icon="^C"
             label="Interrupt process"
@@ -147,12 +172,24 @@ export function SessionActionsMenu({
             danger
             detail={
               live
-                ? "Confirm, send SIGTERM, then force if needed"
+                ? session.runtime === "tmux"
+                  ? keepAlive
+                    ? "Disconnect client only · target remains auto-restorable"
+                    : "Disconnect this client only · tmux session may continue"
+                  : "Confirm, send SIGTERM, then force if needed"
                 : "Remove this ended session record"
             }
             disabled={!availability.canTerminate}
             icon="×"
-            label={live ? "Terminate process and close" : "Remove session"}
+            label={
+              live
+                ? session.runtime === "tmux"
+                  ? keepAlive
+                    ? "Disconnect keep-alive client"
+                    : "Disconnect tmux client and close"
+                  : "Terminate process and close"
+                : "Remove session"
+            }
             onClick={onTerminate}
           />
         </div>
@@ -265,6 +302,126 @@ export function RenameSessionDialog({
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+interface RelaunchSessionDialogProps {
+  connected: boolean;
+  manifest: RelaunchManifest;
+  onCancel: () => void;
+  onConfirm: () => void;
+}
+
+export function RelaunchSessionDialog({
+  connected,
+  manifest,
+  onCancel,
+  onConfirm,
+}: RelaunchSessionDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const provider =
+    manifest.runtime === "tmux" ? "tmux" : (manifest.provider ?? "Shell");
+  const keepAlive = manifest.tmuxMode === "keep_alive";
+  const command = [manifest.command.executable, ...manifest.command.args].join(
+    " ",
+  );
+  return (
+    <div
+      aria-labelledby="relaunch-session-title"
+      aria-modal="true"
+      className="dialog-backdrop"
+      onKeyDown={(event) =>
+        handleModalKeyDown(event, dialogRef.current, onCancel)
+      }
+      ref={dialogRef}
+      role="dialog"
+    >
+      <div className="dialog-card relaunch-session-card">
+        <div className="dialog-heading">
+          <div>
+            <span className="eyebrow">Retained launch manifest</span>
+            <h2 id="relaunch-session-title">Relaunch {manifest.displayName}</h2>
+          </div>
+          <button aria-label="Cancel relaunch" onClick={onCancel} type="button">
+            ×
+          </button>
+        </div>
+        <p className="dialog-note">
+          {manifest.runtime === "tmux"
+            ? keepAlive
+              ? "Pacium will revalidate the retained managed target and start a fresh tmux client with a new immutable Pacium session ID. If that exact target is missing, Pacium does not rerun its command."
+              : "Pacium will revalidate the retained target and start a fresh tmux client with a new immutable Pacium session ID. The external tmux server session is not restarted or killed."
+            : "Pacium will start a fresh PTY with a new immutable session ID. The previous process is not adopted or changed."}
+        </p>
+        <dl className="relaunch-manifest-facts">
+          <div>
+            <dt>Provider</dt>
+            <dd>{provider}</dd>
+          </div>
+          <div>
+            <dt>Command</dt>
+            <dd>{command}</dd>
+          </div>
+          <div>
+            <dt>Working directory</dt>
+            <dd>{manifest.cwd}</dd>
+          </div>
+          <div>
+            <dt>Repository at launch</dt>
+            <dd>{manifest.repository?.root ?? "No repository recorded"}</dd>
+          </div>
+          <div>
+            <dt>Environment</dt>
+            <dd>
+              {manifest.environmentKeys.length === 0
+                ? "No inherited keys recorded"
+                : `${manifest.environmentKeys.join(", ")} · key names only`}
+            </dd>
+          </div>
+          <div>
+            <dt>Provider resume</dt>
+            <dd>
+              {manifest.runtime === "tmux"
+                ? "Not applicable · the exact tmux target is revalidated"
+                : manifest.resumeReference === null
+                  ? "No native resume identifier observed · provider state is not resumed automatically"
+                  : `${manifest.resumeReference.provider} identifier retained · not resumed automatically`}
+            </dd>
+          </div>
+          {keepAlive && (
+            <div>
+              <dt>Restart policy</dt>
+              <dd>
+                Reattach this exact target automatically · never rerun a missing
+                command
+              </dd>
+            </div>
+          )}
+        </dl>
+        <div className="dialog-actions">
+          <button onClick={onCancel} type="button">
+            Cancel
+          </button>
+          <button
+            autoFocus
+            className="primary-button"
+            disabled={!connected}
+            onClick={onConfirm}
+            type="button"
+          >
+            {manifest.runtime === "tmux"
+              ? "Reattach tmux client"
+              : "Start fresh process"}
+          </button>
+        </div>
+        {!connected && (
+          <p className="dialog-note" role="status">
+            Reconnect to the local Pacium server before relaunching. Existing
+            terminals are unchanged.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

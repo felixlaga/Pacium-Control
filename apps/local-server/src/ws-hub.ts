@@ -109,6 +109,12 @@ export class WebSocketHub {
     this.unsubscribeSessions = sessions.onSessionEvent((event) => {
       if (event.type === "updated") {
         this.broadcast({ type: "session.updated", session: event.session });
+        if (event.session.relaunchManifest !== undefined) {
+          this.broadcast({
+            type: "relaunch.manifest.updated",
+            manifest: event.session.relaunchManifest,
+          });
+        }
         return;
       }
       if (event.type === "exited") {
@@ -181,7 +187,7 @@ export class WebSocketHub {
       capabilities: {
         directPty: true,
         reconnectSnapshot: true,
-        tmux: false,
+        tmux: this.sessions.tmuxCapability(),
         launchPresets: presetCapabilities(this.config.launchPresets),
       },
     });
@@ -291,22 +297,61 @@ export class WebSocketHub {
           sessions: this.sessions.list(),
         });
         return;
+      case "relaunch.manifest.list":
+        this.send(client.socket, {
+          type: "relaunch.manifest.list",
+          requestId: message.requestId,
+          manifests: this.sessions.listRelaunchManifests(),
+        });
+        return;
+      case "tmux.sessions.list":
+        this.send(client.socket, {
+          type: "tmux.sessions",
+          requestId: message.requestId,
+          observation: await this.sessions.discoverTmux(),
+        });
+        return;
       case "session.create": {
-        const session = await this.sessions.create(
-          message.payload.displayName === undefined
-            ? {
-                cwd: message.payload.cwd,
-                launchPreset: message.payload.launchPreset,
-                cols: message.payload.cols,
-                rows: message.payload.rows,
-              }
-            : {
-                cwd: message.payload.cwd,
-                launchPreset: message.payload.launchPreset,
-                cols: message.payload.cols,
-                rows: message.payload.rows,
-                displayName: message.payload.displayName,
-              },
+        const session = await this.sessions.create({
+          cwd: message.payload.cwd,
+          launchPreset: message.payload.launchPreset,
+          cols: message.payload.cols,
+          rows: message.payload.rows,
+          ...(message.payload.displayName === undefined
+            ? {}
+            : { displayName: message.payload.displayName }),
+          ...(message.payload.keepAlive === undefined
+            ? {}
+            : { keepAlive: message.payload.keepAlive }),
+        });
+        client.subscriptions.add(session.id);
+        this.send(client.socket, {
+          type: "session.created",
+          requestId: message.requestId,
+          session,
+        });
+        return;
+      }
+      case "session.relaunch": {
+        const session = await this.sessions.relaunch(
+          message.manifestId,
+          message.cols,
+          message.rows,
+        );
+        client.subscriptions.add(session.id);
+        this.send(client.socket, {
+          type: "session.created",
+          requestId: message.requestId,
+          session,
+        });
+        return;
+      }
+      case "tmux.session.attach": {
+        const session = await this.sessions.attachTmux(
+          message.serverId,
+          message.sessionId,
+          message.cols,
+          message.rows,
         );
         client.subscriptions.add(session.id);
         this.send(client.socket, {

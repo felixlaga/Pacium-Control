@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   browserReadMethod,
+  fetchDiagnostics,
   fetchDirectoryListing,
   paciumConfigGetMessage,
   paciumConfigReplaceMessage,
@@ -20,7 +21,10 @@ import {
   repositoryVerificationInspectMessage,
   repositoryVerificationRunMessage,
   sessionCreateMessage,
+  relaunchSessionMessage,
   terminalInputMessage,
+  tmuxSessionAttachMessage,
+  tmuxSessionsListMessage,
 } from "./transport.js";
 
 describe("repository transport", () => {
@@ -105,6 +109,26 @@ describe("repository transport", () => {
       requestId,
       sessionId,
       runId: "03c2723f-e87a-4707-86af-d6fdb1e60f47",
+    });
+  });
+});
+
+describe("tmux transport", () => {
+  it("sends only the published target identity and terminal dimensions", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    expect(tmuxSessionsListMessage(requestId)).toEqual({
+      type: "tmux.sessions.list",
+      requestId,
+    });
+    expect(
+      tmuxSessionAttachMessage("configured", "$4", 100, 30, requestId),
+    ).toEqual({
+      type: "tmux.session.attach",
+      requestId,
+      serverId: "configured",
+      sessionId: "$4",
+      cols: 100,
+      rows: 30,
     });
   });
 });
@@ -306,6 +330,33 @@ describe("session create correlation", () => {
     });
   });
 
+  it("adds only an explicit keep-alive boolean to fixed session creation", () => {
+    expect(
+      sessionCreateMessage(
+        {
+          cwd: "/work/pacium",
+          displayName: "Durable Codex",
+          launchPreset: "codex",
+          cols: 100,
+          rows: 30,
+          keepAlive: true,
+        },
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ),
+    ).toEqual({
+      type: "session.create",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      payload: {
+        cwd: "/work/pacium",
+        displayName: "Durable Codex",
+        launchPreset: "codex",
+        cols: 100,
+        rows: 30,
+        keepAlive: true,
+      },
+    });
+  });
+
   it("does not manufacture an optional display name", () => {
     expect(
       sessionCreateMessage(
@@ -322,6 +373,25 @@ describe("session create correlation", () => {
       launchPreset: "shell",
       cols: 80,
       rows: 24,
+    });
+  });
+});
+
+describe("session relaunch correlation", () => {
+  it("sends only a retained manifest identity and dimensions", () => {
+    expect(
+      relaunchSessionMessage(
+        "d1825955-65c5-4344-9830-d9f158b05c16",
+        100,
+        30,
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ),
+    ).toEqual({
+      type: "session.relaunch",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      manifestId: "d1825955-65c5-4344-9830-d9f158b05c16",
+      cols: 100,
+      rows: 30,
     });
   });
 });
@@ -422,5 +492,119 @@ describe("directory transport", () => {
         fetcher,
       }),
     ).rejects.toThrow("Directory unavailable");
+  });
+});
+
+describe("diagnostics transport", () => {
+  const snapshot = {
+    schemaVersion: 1,
+    generatedAt: "2026-07-28T07:30:00.000Z",
+    application: {
+      paciumVersion: "0.0.0",
+      protocolVersion: 24,
+      nodeVersion: "24.18.0",
+      platform: "darwin",
+      architecture: "arm64",
+      dependencyVersions: {
+        nodePty: "1.1.0-pacium.1",
+        xtermHeadless: "6.0.0",
+        xtermBrowser: "6.0.0",
+        react: "19.2.8",
+        ws: "8.21.1",
+        zod: "4.4.3",
+      },
+    },
+    overview: {
+      state: "healthy",
+      sessions: {
+        total: 0,
+        creating: 0,
+        live: 0,
+        closing: 0,
+        exited: 0,
+        failed: 0,
+        directPty: 0,
+        tmux: 0,
+      },
+      queueStatus: "unconfigured",
+      queueSources: 0,
+      queueItems: {
+        question: 0,
+        approval: 0,
+        failure: 0,
+        review: 0,
+        unknown: 0,
+      },
+      queueConflicts: 0,
+      tmuxStatus: "unconfigured",
+      tmuxVersion: null,
+    },
+    components: [],
+    sessions: [],
+    sessionsTruncated: false,
+    diagnostics: [],
+    diagnosticsTruncated: false,
+    redactionManifest: { included: [], omitted: [] },
+  };
+
+  it("sends the ephemeral token and validates the bounded snapshot", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify(snapshot), { status: 200 }),
+      );
+
+    await expect(
+      fetchDiagnostics({ accessToken: "secret", fetcher }),
+    ).resolves.toMatchObject({ schemaVersion: 1 });
+    const call = fetcher.mock.calls[0];
+    expect(call?.[0]).toBe("/api/diagnostics");
+    expect(call?.[1]?.credentials).toBe("same-origin");
+    expect(call?.[1]?.method).toBe("GET");
+    expect(new Headers(call?.[1]?.headers).get("authorization")).toBe(
+      "Bearer secret",
+    );
+  });
+
+  it("uses a bodyless POST for HTTPS protected reads", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify(snapshot), { status: 200 }),
+      );
+
+    await fetchDiagnostics({
+      accessToken: "secret",
+      secure: true,
+      fetcher,
+    });
+
+    expect(fetcher.mock.calls[0]?.[1]?.method).toBe("POST");
+    expect(fetcher.mock.calls[0]?.[1]?.body).toBeUndefined();
+  });
+
+  it("rejects malformed success responses and surfaces bounded errors", async () => {
+    await expect(
+      fetchDiagnostics({
+        accessToken: "secret",
+        fetcher: vi
+          .fn<typeof fetch>()
+          .mockResolvedValue(new Response("{}", { status: 200 })),
+      }),
+    ).rejects.toThrow("invalid diagnostics");
+
+    await expect(
+      fetchDiagnostics({
+        accessToken: "secret",
+        fetcher: vi.fn<typeof fetch>().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              error: "Pacium could not construct bounded diagnostics.",
+            }),
+            { status: 500 },
+          ),
+        ),
+      }),
+    ).rejects.toThrow("could not construct bounded diagnostics");
   });
 });

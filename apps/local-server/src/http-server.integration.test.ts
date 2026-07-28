@@ -1,4 +1,4 @@
-import { once } from "node:events";
+import { EventEmitter, once } from "node:events";
 import {
   lstat,
   mkdtemp,
@@ -11,22 +11,27 @@ import {
 import type { AddressInfo } from "node:net";
 import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
+import { PassThrough } from "node:stream";
 
 import { FakePty, FakePtyFactory } from "@pacium/test-utils";
 import {
   decodeTerminalDataFrame,
+  DiagnosticsSnapshotSchema,
   DirectoryListingSchema,
   PROTOCOL_VERSION,
   ServerMessageSchema,
   type PaciumWorkspace,
   type ServerMessage,
   type TerminalDataFrame,
+  type TmuxSessionsObservation,
 } from "@pacium/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket, type RawData } from "ws";
 
 import { ClaudeObserver } from "./claude-observer.js";
+import { CodexObserver } from "./codex-observer.js";
+import { CodexRuntimeBridge } from "./codex-runtime-bridge.js";
 import type { ServerConfig, TailscaleServeConfig } from "./config.js";
 import type { HostActions } from "./host-actions.js";
 import {
@@ -34,7 +39,13 @@ import {
   type PaciumHttpServer,
 } from "./http-server.js";
 import { createPaciumConfigStore } from "./pacium-config-service.js";
+import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
 import { SessionManager } from "./session-manager.js";
+import {
+  TmuxAdapter,
+  type TmuxAttachSpec,
+  type TmuxLaunchInput,
+} from "./tmux-adapter.js";
 import type { VerificationCatalog } from "./verification-config.js";
 import { VerificationRunner } from "./verification-runner.js";
 
@@ -60,12 +71,102 @@ const TEST_DIFF_PATCH = "@@ -1 +1 @@\n-old\n+new\n";
 const TEST_DIFF_BYTES = Buffer.byteLength(TEST_DIFF_PATCH);
 const temporaryDirectories: string[] = [];
 
+class FakeCodexRuntimeChild extends EventEmitter {
+  public readonly stdin = new PassThrough();
+  public readonly stdout = new PassThrough();
+  public readonly stderr = new PassThrough();
+  public readonly kill = vi.fn(() => true);
+}
+
+class FixtureTmuxAdapter extends TmuxAdapter {
+  public constructor() {
+    super(
+      "/private/tmp/pacium-fixture.sock",
+      "/opt/test/bin/tmux",
+      "tmux 3.7b",
+      {},
+    );
+  }
+
+  public override discover(): Promise<TmuxSessionsObservation> {
+    return Promise.resolve({
+      status: "ready",
+      serverId: "configured",
+      observedAt: "2026-07-28T10:00:00.000Z",
+      sessions: [
+        {
+          target: {
+            serverId: "configured",
+            sessionId: "$4",
+            sessionName: "Orchestrator",
+            observedAt: "2026-07-28T10:00:00.000Z",
+          },
+          windows: 2,
+          attachedClients: 1,
+          createdAt: "2026-07-28T09:00:00.000Z",
+          currentPath: process.cwd(),
+        },
+      ],
+      error: null,
+    });
+  }
+
+  public override async attachSpec(
+    serverId: string,
+    sessionId: string,
+  ): Promise<TmuxAttachSpec> {
+    const observation = await this.discover();
+    const target = observation.sessions[0]!.target;
+    if (serverId !== target.serverId || sessionId !== target.sessionId) {
+      throw new Error("The selected tmux session is no longer available.");
+    }
+    return {
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-fixture.sock",
+        "attach-session",
+        "-t",
+        target.sessionId,
+      ],
+      cwd: process.cwd(),
+      target,
+    };
+  }
+
+  public override launchSpec(input: TmuxLaunchInput): Promise<TmuxAttachSpec> {
+    return Promise.resolve({
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-fixture.sock",
+        "attach-session",
+        "-t",
+        "$8",
+      ],
+      cwd: input.cwd,
+      target: {
+        serverId: "configured",
+        sessionId: "$8",
+        sessionName: input.sessionName,
+        observedAt: "2026-07-28T10:00:00.000Z",
+      },
+      mode: "keep_alive",
+      launchCommand: {
+        executable: input.executable,
+        args: input.args,
+      },
+    });
+  }
+}
+
 describe("localhost HTTP and WebSocket boundary", () => {
   let application: PaciumHttpServer | undefined;
   let manager: SessionManager | undefined;
 
   afterEach(async () => {
-    manager?.shutdown();
+    await manager?.shutdown();
+    await manager?.flushRelaunchManifests();
     if (application !== undefined) {
       await application.close();
     }
@@ -74,6 +175,175 @@ describe("localhost HTTP and WebSocket boundary", () => {
         .splice(0)
         .map((path) => rm(path, { force: true, recursive: true })),
     );
+  });
+
+  it("lists and attaches only one server-published tmux identity", async () => {
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      new FixtureTmuxAdapter(),
+    );
+    application = setup.application;
+    manager = setup.manager;
+
+    const client = await connect(setup.url, setup.config);
+    const welcome = await nextMessageWithin(
+      client,
+      (message) => message.type === "server.welcome",
+      "tmux welcome",
+    );
+    expect(welcome).toMatchObject({
+      type: "server.welcome",
+      capabilities: {
+        tmux: {
+          state: "ready",
+          serverId: "configured",
+          version: "tmux 3.7b",
+        },
+      },
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "tmux.sessions.list",
+        requestId: "4baea524-29e6-4606-997e-4c23f003d380",
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) => message.type === "tmux.sessions",
+        "tmux session list",
+      ),
+    ).resolves.toMatchObject({
+      type: "tmux.sessions",
+      observation: {
+        status: "ready",
+        sessions: [
+          {
+            target: {
+              serverId: "configured",
+              sessionId: "$4",
+              sessionName: "Orchestrator",
+            },
+          },
+        ],
+      },
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "tmux.session.attach",
+        requestId: "e0600d64-cf85-4883-aa03-3fffb5d12dc8",
+        serverId: "configured",
+        sessionId: "$4",
+        cols: 100,
+        rows: 30,
+      }),
+    );
+    const created = await nextMessageWithin(
+      client,
+      (message) => message.type === "session.created",
+      "tmux session creation",
+    );
+    expect(created).toMatchObject({
+      type: "session.created",
+      session: {
+        runtime: "tmux",
+        commandLabel: "tmux · Orchestrator",
+      },
+    });
+    expect(factory.createCalls[0]).toMatchObject({
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-fixture.sock",
+        "attach-session",
+        "-t",
+        "$4",
+      ],
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "session.create",
+        requestId: "a0b42330-3acc-4678-b6a6-fe4c04fde638",
+        payload: {
+          displayName: "Durable shell",
+          launchPreset: "shell",
+          cwd: process.cwd(),
+          cols: 100,
+          rows: 30,
+          keepAlive: true,
+        },
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "session.created" &&
+          message.requestId === "a0b42330-3acc-4678-b6a6-fe4c04fde638",
+        "tmux keep-alive creation",
+      ),
+    ).resolves.toMatchObject({
+      type: "session.created",
+      session: {
+        displayName: "Durable shell",
+        launchPreset: "shell",
+        runtime: "tmux",
+        tmuxMode: "keep_alive",
+        commandLabel: "tmux keep-alive · Shell",
+        relaunchManifest: {
+          command: { executable: "/bin/zsh", args: ["-l"] },
+          tmuxMode: "keep_alive",
+        },
+      },
+    });
+    expect(factory.createCalls[1]).toMatchObject({
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-fixture.sock",
+        "attach-session",
+        "-t",
+        "$8",
+      ],
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "tmux.session.attach",
+        requestId: "5ff76c03-b4b5-49a4-ad1d-059857243481",
+        serverId: "configured",
+        sessionId: "$4",
+        socket: "/tmp/forged.sock",
+        cols: 100,
+        rows: 30,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "error" &&
+          message.requestId === "5ff76c03-b4b5-49a4-ad1d-059857243481",
+        "forged tmux request rejection",
+      ),
+    ).resolves.toMatchObject({
+      type: "error",
+      code: "INVALID_MESSAGE",
+    });
+
+    client.socket.close();
+    await once(client.socket, "close");
   });
 
   it("keeps a PTY alive across browser transport reconnection", async () => {
@@ -129,7 +399,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
       },
       repository: {
         status: "ready",
-        name: "Pacium Control",
+        name: basename(process.cwd()),
         branch: "dev",
       },
     });
@@ -168,6 +438,108 @@ describe("localhost HTTP and WebSocket boundary", () => {
 
     second.socket.close();
     await once(second.socket, "close");
+  });
+
+  it("lists a retained manifest after restart and relaunches one exact successor", async () => {
+    const firstFactory = new FakePtyFactory();
+    const firstSetup = await startTestServer(firstFactory);
+    const firstClient = await connect(firstSetup.url, firstSetup.config);
+    await nextMessage(
+      firstClient,
+      (message) => message.type === "server.welcome",
+    );
+    firstClient.socket.send(
+      JSON.stringify({
+        type: "session.create",
+        requestId: "bd889331-1af5-4128-87ef-973a19651e1f",
+        payload: {
+          cwd: process.cwd(),
+          displayName: "Recovery shell",
+          launchPreset: "shell",
+          cols: 90,
+          rows: 28,
+        },
+      }),
+    );
+    const original = await nextMessage(
+      firstClient,
+      (message) => message.type === "session.created",
+    );
+    if (original.type !== "session.created") {
+      throw new Error("Expected an original session");
+    }
+    const manifestId = original.session.relaunchManifest?.id;
+    if (manifestId === undefined) {
+      throw new Error("Expected a retained relaunch manifest");
+    }
+    firstClient.socket.close();
+    await once(firstClient.socket, "close");
+    await firstSetup.manager.shutdown();
+    await firstSetup.manager.flushRelaunchManifests();
+    await firstSetup.application.close();
+
+    const secondFactory = new FakePtyFactory();
+    const secondSetup = await startTestServer(
+      secondFactory,
+      undefined,
+      undefined,
+      firstSetup.config.dataDirectory,
+    );
+    application = secondSetup.application;
+    manager = secondSetup.manager;
+    const secondClient = await connect(secondSetup.url, secondSetup.config);
+    await nextMessage(
+      secondClient,
+      (message) => message.type === "server.welcome",
+    );
+    secondClient.socket.send(
+      JSON.stringify({
+        type: "relaunch.manifest.list",
+        requestId: "1140d344-f533-42d5-8bb6-0aee229435e4",
+      }),
+    );
+    const manifestList = await nextMessage(
+      secondClient,
+      (message) => message.type === "relaunch.manifest.list",
+    );
+    expect(manifestList).toMatchObject({
+      type: "relaunch.manifest.list",
+      manifests: [
+        {
+          id: manifestId,
+          sessionId: original.session.id,
+          displayName: "Recovery shell",
+          launchPreset: "shell",
+        },
+      ],
+    });
+    expect(secondSetup.manager.list()).toEqual([]);
+
+    secondClient.socket.send(
+      JSON.stringify({
+        type: "session.relaunch",
+        requestId: "10ee7231-a4a2-472f-879b-401ae6d195a4",
+        manifestId,
+        cols: 100,
+        rows: 30,
+      }),
+    );
+    const successor = await nextMessage(
+      secondClient,
+      (message) => message.type === "session.created",
+    );
+    if (successor.type !== "session.created") {
+      throw new Error("Expected a successor session");
+    }
+    expect(successor.session.id).not.toBe(original.session.id);
+    expect(successor.session.relaunchManifest).toMatchObject({
+      predecessorSessionId: original.session.id,
+      displayName: "Recovery shell",
+    });
+    expect(secondFactory.createCalls).toHaveLength(1);
+
+    secondClient.socket.close();
+    await once(secondClient.socket, "close");
   });
 
   it("accepts only exact authenticated loopback Claude observations without decisions", async () => {
@@ -361,6 +733,155 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await once(client.socket, "close");
   });
 
+  it("bridges only the exact authenticated Codex runtime and publishes native evidence", async () => {
+    const token = "c".repeat(43);
+    const observer = new CodexObserver({
+      baseUrl: "http://127.0.0.1:4174",
+      executable: "/opt/test/bin/codex",
+      environment: { PATH: "/opt/test/bin" },
+      capability: { available: true, version: "0.145.0" },
+      tokenFactory: () => token,
+    });
+    const child = new FakeCodexRuntimeChild();
+    const runtimeBridge = new CodexRuntimeBridge(observer, () => child);
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      null,
+      undefined,
+      observer,
+      runtimeBridge,
+    );
+    application = setup.application;
+    manager = setup.manager;
+    const client = await connect(setup.url, setup.config);
+    await nextMessage(client, (message) => message.type === "server.welcome");
+    client.socket.send(
+      JSON.stringify({
+        type: "session.create",
+        requestId: "59c47714-3fed-4cb8-8897-4b8e3d2f9138",
+        payload: {
+          cwd: process.cwd(),
+          launchPreset: "codex",
+          cols: 90,
+          rows: 28,
+        },
+      }),
+    );
+    const created = await nextMessage(
+      client,
+      (message) => message.type === "session.created",
+    );
+    if (created.type !== "session.created") {
+      throw new Error("Expected a created Codex session.");
+    }
+    expect(factory.createCalls[0]).toMatchObject({
+      executable: "/opt/test/bin/codex",
+      environment: { PACIUM_CODEX_RUNTIME_TOKEN: token },
+    });
+    expect(JSON.stringify(factory.createCalls[0]?.args)).not.toContain(token);
+
+    const runtime = new WebSocket(
+      `${setup.url}/api/provider/codex/${created.session.id}/runtime`,
+      {
+        headers: {
+          host: "127.0.0.1:4174",
+          authorization: `Bearer ${token}`,
+        },
+      },
+    );
+    await once(runtime, "open");
+    const clientRequest = JSON.stringify({
+      method: "initialize",
+      id: 0,
+      params: {
+        clientInfo: {
+          name: "private client",
+          title: "private title",
+          version: "1",
+        },
+      },
+    });
+    const childInput = nextStreamChunk(child.stdin);
+    runtime.send(clientRequest);
+    expect((await childInput).toString("utf8")).toBe(`${clientRequest}\n`);
+
+    const serverMessage = JSON.stringify({
+      method: "turn/started",
+      params: {
+        threadId: "thread-1",
+        turn: {
+          id: "turn-1",
+          status: "inProgress",
+          items: [{ type: "userMessage", text: "private prompt" }],
+        },
+      },
+    });
+    const forwarded = nextRawMessage(runtime);
+    child.stdout.write(`${serverMessage}\n`);
+    expect((await forwarded).toString()).toBe(serverMessage);
+    const updated = await nextMessage(
+      client,
+      (message) =>
+        message.type === "session.updated" &&
+        message.session.id === created.session.id,
+    );
+    expect(updated).toMatchObject({
+      type: "session.updated",
+      session: {
+        providerObservation: {
+          health: { state: "ready", source: "native" },
+          attention: { state: "working", source: "native" },
+          activities: [{ kind: "turn_started" }],
+        },
+      },
+    });
+    expect(JSON.stringify(updated)).not.toContain("private prompt");
+    expect(JSON.stringify(updated)).not.toContain("private client");
+
+    client.socket.close();
+    await once(client.socket, "close");
+    const reconnected = await connect(setup.url, setup.config);
+    await nextMessage(
+      reconnected,
+      (message) => message.type === "server.welcome",
+    );
+    reconnected.socket.send(
+      JSON.stringify({
+        type: "session.list",
+        requestId: "69c47714-3fed-4cb8-8897-4b8e3d2f9139",
+      }),
+    );
+    const listed = await nextMessage(
+      reconnected,
+      (message) => message.type === "session.list",
+    );
+    if (listed.type === "session.list") {
+      expect(listed.sessions[0]?.providerObservation?.diagnostics).toEqual([]);
+    }
+    expect(listed).toMatchObject({
+      type: "session.list",
+      sessions: [
+        {
+          id: created.session.id,
+          processState: "live",
+          providerObservation: {
+            health: { state: "ready", source: "native" },
+            activities: [{ kind: "turn_started" }],
+          },
+        },
+      ],
+    });
+
+    runtime.close(1000);
+    await once(runtime, "close");
+    reconnected.socket.close();
+    await once(reconnected.socket, "close");
+  });
+
   it("gets, replaces, conflicts, and preserves Pacium config over the socket", async () => {
     const setup = await startTestServer(new FakePtyFactory());
     application = setup.application;
@@ -524,9 +1045,12 @@ describe("localhost HTTP and WebSocket boundary", () => {
       retryable: false,
     });
     expect(manager.hasSession(liveSession.id)).toBe(true);
-    await expect(lstat(setup.config.dataDirectory)).rejects.toMatchObject({
-      code: "ENOENT",
-    });
+    await expect(
+      lstat(join(setup.config.dataDirectory, "pacium.json")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(
+      lstat(join(setup.config.dataDirectory, "queue-state.json")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
 
     client.socket.close();
     await once(client.socket, "close");
@@ -1439,7 +1963,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await once(client.socket, "close");
 
     await setup.application.close();
-    setup.manager.shutdown();
+    await setup.manager.shutdown();
     application = undefined;
     manager = undefined;
 
@@ -2590,6 +3114,50 @@ describe("localhost HTTP and WebSocket boundary", () => {
     expect(deniedOrigin.status).toBe(403);
   });
 
+  it("serves bounded diagnostics through the local protected-read boundary", async () => {
+    const setup = await startTestServer(new FakePtyFactory());
+    application = setup.application;
+    manager = setup.manager;
+    const httpUrl = setup.url.replace("ws://", "http://");
+    const allowedOrigin = [...setup.config.allowedOrigins][0] ?? "";
+    const headers = {
+      authorization: `Bearer ${setup.config.accessToken}`,
+      origin: allowedOrigin,
+    };
+
+    const allowed = await fetch(`${httpUrl}/api/diagnostics`, { headers });
+    expect(allowed.status).toBe(200);
+    expect(allowed.headers.get("cache-control")).toBe("no-store");
+    const snapshot = DiagnosticsSnapshotSchema.parse(await allowed.json());
+    expect(snapshot.overview.sessions.total).toBe(0);
+    expect(snapshot.overview.queueStatus).toBe("unconfigured");
+    expect(manager.list()).toEqual([]);
+
+    const head = await fetch(`${httpUrl}/api/diagnostics`, {
+      method: "HEAD",
+      headers,
+    });
+    expect(head.status).toBe(200);
+    expect(head.headers.get("cache-control")).toBe("no-store");
+    expect(await head.text()).toBe("");
+
+    const localPost = await fetch(`${httpUrl}/api/diagnostics`, {
+      method: "POST",
+      headers,
+    });
+    expect(localPost.status).toBe(405);
+
+    const deniedToken = await fetch(`${httpUrl}/api/diagnostics`, {
+      headers: { ...headers, authorization: "Bearer wrong-token" },
+    });
+    expect(deniedToken.status).toBe(403);
+
+    const deniedOrigin = await fetch(`${httpUrl}/api/diagnostics`, {
+      headers: { ...headers, origin: "https://hostile.example" },
+    });
+    expect(deniedOrigin.status).toBe(403);
+  });
+
   it("authorizes remote bootstrap and protected reads only through exact Serve evidence", async () => {
     const tailscaleServe = testTailscaleServeConfig();
     const setup = await startTestServer(
@@ -2630,8 +3198,44 @@ describe("localhost HTTP and WebSocket boundary", () => {
       currentPath: process.cwd(),
     });
 
+    const diagnostics = await requestHttp(`${httpUrl}/api/diagnostics`, {
+      method: "POST",
+      headers: {
+        ...headers,
+        authorization: `Bearer ${setup.config.accessToken}`,
+      },
+    });
+    expect(diagnostics.status).toBe(200);
+    expect(DiagnosticsSnapshotSchema.parse(diagnostics.json)).toMatchObject({
+      schemaVersion: 1,
+      overview: { sessions: { total: 0 } },
+    });
+
+    const remoteGet = await requestHttp(`${httpUrl}/api/diagnostics`, {
+      headers: {
+        ...headers,
+        authorization: `Bearer ${setup.config.accessToken}`,
+      },
+    });
+    expect(remoteGet.status).toBe(405);
+
+    const bodyAttempt = await requestHttp(`${httpUrl}/api/diagnostics`, {
+      method: "POST",
+      headers: {
+        ...headers,
+        authorization: `Bearer ${setup.config.accessToken}`,
+        "content-length": "2",
+      },
+      body: "{}",
+    });
+    expect(bodyAttempt.status).toBe(400);
+
     const localHealth = await fetch(`${httpUrl}/api/health`);
     expect(localHealth.status).toBe(200);
+    expect(localHealth.headers.get("x-pacium-protocol")).toBe(
+      String(PROTOCOL_VERSION),
+    );
+    await expect(localHealth.json()).resolves.toEqual({ status: "ok" });
   });
 
   it("denies spoofed, missing, duplicate, and unlisted Serve identity before bootstrap", async () => {
@@ -2830,6 +3434,9 @@ async function startTestServer(
   dataDirectory?: string,
   tailscaleServe: TailscaleServeConfig | null = null,
   claudeObserver?: ClaudeObserver,
+  codexObserver?: CodexObserver,
+  codexRuntimeBridge?: CodexRuntimeBridge,
+  tmuxAdapter?: TmuxAdapter,
 ): Promise<{
   application: PaciumHttpServer;
   manager: SessionManager;
@@ -2849,6 +3456,7 @@ async function startTestServer(
     homeDirectory: process.env.HOME ?? process.cwd(),
     dataDirectory: dataDirectory ?? join(fixtureRoot, "data"),
     shell: "/bin/zsh",
+    tmuxSocket: null,
     environmentKeys: [],
     verificationCatalog: verification?.catalog ?? {
       configured: false,
@@ -2872,9 +3480,12 @@ async function startTestServer(
       {
         id: "codex",
         label: "Codex",
-        available: false,
-        unavailableReason: "Codex is not installed or not on PATH.",
-        executable: null,
+        available: codexObserver !== undefined,
+        unavailableReason:
+          codexObserver === undefined
+            ? "Codex is not installed or not on PATH."
+            : null,
+        executable: codexObserver === undefined ? null : "/opt/test/bin/codex",
         args: [],
         classification: {
           type: "codex",
@@ -2903,6 +3514,8 @@ async function startTestServer(
       },
     ],
   };
+  const relaunchManifests = new RelaunchManifestStore(config.dataDirectory);
+  await relaunchManifests.initialize();
   const manager = new SessionManager(
     factory,
     config.launchPresets,
@@ -2992,6 +3605,10 @@ async function startTestServer(
     config.verificationCatalog,
     verification?.runner,
     claudeObserver,
+    codexObserver,
+    relaunchManifests,
+    config.environmentKeys,
+    tmuxAdapter,
   );
   const application = createPaciumHttpServer(
     config,
@@ -2999,6 +3616,7 @@ async function startTestServer(
     createPaciumConfigStore(config, manager),
     undefined,
     claudeObserver,
+    codexRuntimeBridge,
   );
   application.server.listen(0, config.host);
   await once(application.server, "listening");
@@ -3215,6 +3833,30 @@ async function nextMessage(
   }
   return new Promise<ServerMessage>((resolve) => {
     client.pending.push({ predicate, resolve });
+  });
+}
+
+function nextStreamChunk(stream: PassThrough): Promise<Buffer> {
+  return new Promise<Buffer>((resolve, reject) => {
+    stream.once("data", (chunk: unknown) => {
+      if (Buffer.isBuffer(chunk)) {
+        resolve(chunk);
+        return;
+      }
+      reject(new Error("Expected the stream to emit a Buffer."));
+    });
+  });
+}
+
+function nextRawMessage(socket: WebSocket): Promise<Buffer> {
+  return new Promise<Buffer>((resolve, reject) => {
+    socket.once("message", (data, isBinary) => {
+      if (isBinary) {
+        reject(new Error("Expected a Codex runtime text frame."));
+        return;
+      }
+      resolve(Buffer.from(toArrayBuffer(data)));
+    });
   });
 }
 

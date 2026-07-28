@@ -47,8 +47,27 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for Claude observations", () => {
-    expect(PROTOCOL_VERSION).toBe(20);
+  it("advances the wire contract for tmux keep-alive", () => {
+    expect(PROTOCOL_VERSION).toBe(24);
+  });
+
+  it("accepts only a manifest identity and dimensions for relaunch", () => {
+    const request = {
+      type: "session.relaunch",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      manifestId: "d1825955-65c5-4344-9830-d9f158b05c16",
+      cols: 100,
+      rows: 30,
+    };
+    expect(ClientMessageSchema.safeParse(request).success).toBe(true);
+    expect(
+      ClientMessageSchema.safeParse({
+        ...request,
+        cwd: "/tmp/forged",
+        command: "/bin/sh",
+        environment: { TOKEN: "secret" },
+      }).success,
+    ).toBe(false);
   });
 
   it("accepts only server-owned launch preset identifiers", () => {
@@ -65,7 +84,11 @@ describe("client protocol", () => {
     expect(
       ClientMessageSchema.safeParse({
         ...baseMessage,
-        payload: { ...baseMessage.payload, launchPreset: "codex" },
+        payload: {
+          ...baseMessage.payload,
+          launchPreset: "codex",
+          keepAlive: true,
+        },
       }).success,
     ).toBe(true);
     expect(
@@ -76,6 +99,18 @@ describe("client protocol", () => {
           launchPreset: "/bin/zsh -lc dangerous",
           command: "/bin/zsh",
           args: ["-lc", "dangerous"],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      ClientMessageSchema.safeParse({
+        ...baseMessage,
+        payload: {
+          ...baseMessage.payload,
+          launchPreset: "codex",
+          keepAlive: true,
+          tmuxName: "forged",
+          socket: "/tmp/forged.sock",
         },
       }).success,
     ).toBe(false);
@@ -877,7 +912,13 @@ describe("server connection authority evidence", () => {
     capabilities: {
       directPty: true,
       reconnectSnapshot: true,
-      tmux: false,
+      tmux: {
+        state: "unconfigured",
+        serverId: null,
+        executable: null,
+        version: null,
+        detail: "No optional tmux socket is configured.",
+      },
       launchPresets: [
         {
           id: "shell",
@@ -1000,7 +1041,7 @@ describe("agent classification contract", () => {
     ).toBe(false);
   });
 
-  it("requires classification and provider state on every session summary", () => {
+  it("requires classification, provider state, and a relaunch manifest", () => {
     const session = {
       id: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
       epoch: 1,
@@ -1011,6 +1052,26 @@ describe("agent classification contract", () => {
       commandLabel: "Codex",
       agentClassification: classification,
       providerObservation,
+      relaunchManifest: {
+        schemaVersion: 1,
+        id: "d1825955-65c5-4344-9830-d9f158b05c16",
+        sessionId: "5fe26a52-3f3c-41ef-8dba-6f93062eeec5",
+        predecessorSessionId: null,
+        displayName: "Meta",
+        launchPreset: "codex",
+        provider: "codex",
+        command: {
+          executable: "/usr/local/bin/codex",
+          args: [],
+        },
+        cwd: "/tmp",
+        repository: null,
+        environmentKeys: ["HOME", "PATH"],
+        runtime: "pty",
+        resumeReference: null,
+        createdAt: "2026-07-27T10:00:00.000Z",
+        updatedAt: "2026-07-27T10:00:00.000Z",
+      },
       repository: {
         status: "not_repository",
         root: null,
@@ -1038,6 +1099,12 @@ describe("agent classification contract", () => {
       SessionSummarySchema.safeParse({
         ...session,
         agentClassification: undefined,
+      }).success,
+    ).toBe(false);
+    expect(
+      SessionSummarySchema.safeParse({
+        ...session,
+        relaunchManifest: undefined,
       }).success,
     ).toBe(false);
     expect(
@@ -1073,6 +1140,15 @@ describe("agent classification contract", () => {
           label: "Shell",
         },
         providerObservation: null,
+        relaunchManifest: {
+          ...session.relaunchManifest,
+          launchPreset: "shell",
+          provider: null,
+          command: {
+            executable: "/bin/zsh",
+            args: ["-l"],
+          },
+        },
       }).success,
     ).toBe(true);
   });

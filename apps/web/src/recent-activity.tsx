@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import type { TerminalTextExcerpt } from "@pacium/terminal-ui";
+
 import {
   attentionConfidenceLabel,
   attentionSourceLabel,
@@ -5,17 +8,37 @@ import {
 } from "./attention-model.js";
 import type {
   ActivityFact,
+  ActivityFactKind,
+  ActivityFactTarget,
   ActivitySourceSummary,
   RecentActivity,
 } from "./recent-activity-model.js";
+import { ProviderStatusPanel } from "./provider-status.js";
 
 export function RecentActivityPanel({
   activity,
+  connectionBoundary,
+  onOpenSource,
+  onReadTerminalExcerpt,
   onRefresh,
 }: {
   activity: RecentActivity | null;
+  connectionBoundary: string;
+  onOpenSource: (target: ActivityFactTarget) => void;
+  onReadTerminalExcerpt: () => TerminalTextExcerpt | null;
   onRefresh: () => void;
 }) {
+  const [terminalExcerpt, setTerminalExcerpt] = useState<
+    TerminalTextExcerpt | "unavailable" | null
+  >(null);
+  const fallbackBoundary = `${connectionBoundary}:${
+    activity?.terminalFallback.boundaryKey ?? "no-session"
+  }`;
+
+  useEffect(() => {
+    setTerminalExcerpt(null);
+  }, [fallbackBoundary]);
+
   if (activity === null) {
     return (
       <section
@@ -102,6 +125,13 @@ export function RecentActivityPanel({
         </div>
       </section>
 
+      {activity.providerStatus !== null && (
+        <ProviderStatusPanel
+          onOpenTerminal={() => onOpenSource("terminal")}
+          status={activity.providerStatus}
+        />
+      )}
+
       <section
         aria-labelledby="activity-facts-heading"
         className="activity-section"
@@ -115,11 +145,58 @@ export function RecentActivityPanel({
         ) : (
           <ol className="activity-fact-list">
             {activity.facts.map((fact) => (
-              <ActivityFactRow fact={fact} key={fact.id} />
+              <ActivityFactRow
+                fact={fact}
+                key={fact.id}
+                onOpenSource={onOpenSource}
+              />
             ))}
           </ol>
         )}
       </section>
+
+      {activity.terminalFallback.recommended && (
+        <section
+          aria-labelledby="activity-terminal-fallback-heading"
+          className="activity-section activity-terminal-fallback"
+        >
+          <header>
+            <span>
+              <h2 id="activity-terminal-fallback-heading">Terminal fallback</h2>
+              <p>{activity.terminalFallback.reason}</p>
+            </span>
+            {terminalExcerpt === null ? (
+              <button
+                onClick={() => {
+                  setTerminalExcerpt(onReadTerminalExcerpt() ?? "unavailable");
+                }}
+                type="button"
+              >
+                Show recent terminal text
+              </button>
+            ) : (
+              <span className="activity-terminal-fallback-actions">
+                <button
+                  onClick={() => {
+                    setTerminalExcerpt(
+                      onReadTerminalExcerpt() ?? "unavailable",
+                    );
+                  }}
+                  type="button"
+                >
+                  Refresh excerpt
+                </button>
+                <button onClick={() => setTerminalExcerpt(null)} type="button">
+                  Hide
+                </button>
+              </span>
+            )}
+          </header>
+          {terminalExcerpt !== null && (
+            <TerminalFallbackResult result={terminalExcerpt} />
+          )}
+        </section>
+      )}
 
       <section
         aria-labelledby="activity-sources-heading"
@@ -127,9 +204,11 @@ export function RecentActivityPanel({
       >
         <h2 id="activity-sources-heading">Evidence sources</h2>
         <ul>
-          {activity.sources.map((source) => (
-            <ActivitySourceRow key={source.id} source={source} />
-          ))}
+          {activity.sources
+            .filter(({ id }) => id !== "provider")
+            .map((source) => (
+              <ActivitySourceRow key={source.id} source={source} />
+            ))}
         </ul>
         {activity.partial && (
           <p className="activity-partial-note" role="note">
@@ -147,12 +226,21 @@ export function RecentActivityPanel({
   );
 }
 
-function ActivityFactRow({ fact }: { fact: ActivityFact }) {
+function ActivityFactRow({
+  fact,
+  onOpenSource,
+}: {
+  fact: ActivityFact;
+  onOpenSource: (target: ActivityFactTarget) => void;
+}) {
   return (
     <li>
-      <article>
+      <article className={`activity-card is-${fact.tone} is-${fact.kind}`}>
         <header>
-          <span>{sourceLabel(fact.source)}</span>
+          <span className="activity-card-kind">
+            <i aria-hidden="true" />
+            {activityKindLabel(fact.kind)}
+          </span>
           <EvidenceTime
             meaning={fact.timestampMeaning}
             timestamp={fact.timestamp}
@@ -160,8 +248,59 @@ function ActivityFactRow({ fact }: { fact: ActivityFact }) {
         </header>
         <strong>{fact.title}</strong>
         <p>{fact.detail}</p>
+        <footer>
+          <span className="activity-card-metadata">
+            {fact.metadata.map((item) => (
+              <small key={item}>{item}</small>
+            ))}
+          </span>
+          <button
+            aria-label={`Open ${targetLabel(fact.target)} source for ${fact.title}`}
+            onClick={() => onOpenSource(fact.target)}
+            type="button"
+          >
+            {targetLabel(fact.target)}
+          </button>
+        </footer>
       </article>
     </li>
+  );
+}
+
+export function TerminalFallbackResult({
+  result,
+}: {
+  result: TerminalTextExcerpt | "unavailable";
+}) {
+  if (result === "unavailable") {
+    return (
+      <p className="activity-terminal-fallback-state" role="status">
+        The rendered terminal buffer is unavailable. Open this terminal and try
+        again; its process state is unchanged.
+      </p>
+    );
+  }
+  if (result.status === "empty") {
+    return (
+      <p className="activity-terminal-fallback-state" role="status">
+        No non-empty recent terminal text is available. No agent state was
+        inferred.
+      </p>
+    );
+  }
+  return (
+    <div className="activity-terminal-excerpt">
+      <span aria-label="Terminal excerpt evidence labels">
+        <small>Terminal-derived</small>
+        <small>Low confidence</small>
+        <small>Not interpreted</small>
+        <small>
+          {result.lineCount} {plural(result.lineCount, "line")}
+          {result.truncated ? " · bounded" : ""}
+        </small>
+      </span>
+      <pre>{result.text}</pre>
+    </div>
   );
 }
 
@@ -204,16 +343,52 @@ function activitySummary(activity: RecentActivity): string {
   return `${activity.facts.length} ${plural(activity.facts.length, "fact")} · fully inspected`;
 }
 
-function sourceLabel(source: ActivityFact["source"]): string {
-  switch (source) {
-    case "process":
+function activityKindLabel(kind: ActivityFactKind): string {
+  switch (kind) {
+    case "process_started":
+    case "process_exited":
       return "Process";
-    case "provider":
-      return "Provider";
-    case "git":
-      return "Git";
+    case "provider_session":
+      return "Session";
+    case "provider_prompt":
+      return "Prompt";
+    case "provider_turn":
+      return "Turn";
+    case "provider_message":
+      return "Message";
+    case "provider_tool":
+      return "Tool";
+    case "provider_plan":
+      return "Plan";
+    case "provider_approval":
+      return "Approval";
+    case "provider_question":
+      return "Question";
+    case "provider_usage":
+      return "Usage";
+    case "provider_completion":
+      return "Completion";
+    case "provider_failure":
+      return "Failure";
+    case "git_changes":
+      return "Working tree";
+    case "git_commit":
+      return "Commit";
     case "verification":
-      return "Verification";
+      return "Check";
+  }
+}
+
+function targetLabel(target: ActivityFactTarget): string {
+  switch (target) {
+    case "terminal":
+      return "Terminal";
+    case "changes":
+      return "Changes";
+    case "history":
+      return "History";
+    case "checks":
+      return "Checks";
   }
 }
 

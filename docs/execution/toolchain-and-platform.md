@@ -1,14 +1,20 @@
-# Initial toolchain and platform decision
+# Toolchain and supported-platform decision
 
 - Status: Approved default for the first build
 - Recorded: 2026-07-26
-- Review point: after the first real-terminal slice
+- Review point: when adding another host, architecture, distribution, or
+  runtime major
 
 ## Platform
 
-The first supported platform is **macOS on Apple silicon**.
+The supported host matrix is deliberately narrow:
 
-Linux compatibility should be preserved where it does not complicate the first slice, but Linux is not a release gate until Milestone 5. Windows is out of initial scope.
+- macOS on Apple silicon;
+- Ubuntu 24.04 LTS on x86-64.
+
+No other Linux distribution/version, Linux arm64, Windows, WSL, ChromeOS, BSD,
+or container target is supported. See
+[ADR-0017](../decisions/ADR-0017-supported-hosts-and-development-packages.md).
 
 ## Runtime and package manager
 
@@ -41,12 +47,15 @@ TypeScript 7 is not selected because the current `typescript-eslint` release dec
 
 ### Terminal
 
-- `node-pty` `1.1.0`.
+- `node-pty` `1.1.0` with the committed Pacium macOS descriptor-cleanup patch.
 - `@xterm/xterm` `6.0.0`.
 - `@xterm/headless` `6.0.0`.
 - `@xterm/addon-serialize` `0.14.0`.
 
-The first implementation spike must confirm that xterm headless plus serialization is sufficient for bounded browser reconnection. If it is not, change only the restoration implementation, not the PTY/session contract.
+The implemented headless terminal plus serialization boundary provides bounded
+browser reconnection. The production macOS bundle statically includes its
+xterm, WebSocket, validation, and shared-contract JavaScript; only patched
+`node-pty` remains a packaged native runtime dependency.
 
 ### Testing and quality
 
@@ -84,7 +93,46 @@ The first shell must establish:
 
 ## Native-build requirement
 
-`node-pty` may require the supported native build toolchain. The clean-install test must run on a fresh supported macOS account and document the exact prerequisite. The current development machine must accept the Xcode license before Git and native-module verification can be considered reproducible.
+Pacium compiles its patched `node-pty` sources on macOS rather than using the
+upstream prebuilt binary. Node.js `24.18.x`, Xcode command-line build tools, and
+an accepted Xcode license are therefore required. The patch closes the
+parent-side slave PTY, process-watcher kqueue, and temporary low-number PTY
+descriptors found by PC-072. PC-074 packages and executes that arm64 native
+module from an isolated install. A fresh supported macOS account with accepted
+Xcode license remains a PC-076 release-evidence gate rather than a claim from
+the current development machine.
+
+## macOS package boundary
+
+- `pnpm package:macos` emits one deterministic-content unsigned/unnotarized
+  `darwin-arm64` archive plus SHA-256 checksum.
+- Node.js is not redistributed. The fixed launcher accepts one absolute
+  `PACIUM_NODE_BINARY` or a common fixed installation path and enforces
+  24.18.x.
+- `pnpm package:macos:verify` rebuilds deterministically, validates its strict
+  manifest, installs/upgrades in a generated temporary destination, loads and
+  drives the packaged native PTY, starts the production server, and proves
+  state-preserving uninstall.
+- Developer ID signing and notarization are mandatory before a release can be
+  declared.
+
+## Ubuntu Linux package boundary
+
+- `pnpm package:linux` emits one deterministic-content unsigned
+  `ubuntu-24.04-linux-x64` archive plus SHA-256 checksum.
+- Node.js, a browser, shells, and optional tools are not redistributed. The
+  fixed launcher accepts one absolute `PACIUM_NODE_BINARY` or a fixed common
+  location and enforces Node.js 24.18.x.
+- `/bin/bash` is the fallback shell. Application metadata defaults to
+  `${XDG_STATE_HOME:-~/.local/state}/pacium-control`.
+- `pnpm package:linux:verify` rebuilds deterministically, validates its strict
+  manifest, installs/upgrades in generated temporary destinations, loads and
+  drives the packaged x64 ELF PTY, starts the production server, verifies exact
+  reuse and active-uninstall refusal, and proves state-preserving removal.
+- The tar archive is a user-local development artifact, not `.deb`, RPM,
+  AppImage, Flatpak, Snap, systemd, or root/global installation.
+- Signing, public delivery, clean-account, and owner acceptance remain PC-076
+  gates.
 
 ## Upgrade policy
 

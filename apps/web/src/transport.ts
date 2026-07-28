@@ -1,9 +1,11 @@
 import {
+  DiagnosticsSnapshotSchema,
   DirectoryListingSchema,
   PROTOCOL_VERSION,
   ServerMessageSchema,
   decodeTerminalDataFrame,
   type ClientMessage,
+  type DiagnosticsSnapshot,
   type DirectoryListing,
   type LaunchPresetId,
   type QueueApprovalDecisionPayload,
@@ -66,12 +68,26 @@ export class PaciumTransport {
     this.send({ type: "session.list", requestId: crypto.randomUUID() });
   }
 
+  public listRelaunchManifests(): void {
+    this.send({
+      type: "relaunch.manifest.list",
+      requestId: crypto.randomUUID(),
+    });
+  }
+
+  public listTmuxSessions(): string {
+    const requestId = crypto.randomUUID();
+    this.send(tmuxSessionsListMessage(requestId));
+    return requestId;
+  }
+
   public createSession(input: {
     cwd: string;
     displayName?: string;
     launchPreset: LaunchPresetId;
     cols: number;
     rows: number;
+    keepAlive?: boolean;
   }): string {
     const requestId = crypto.randomUUID();
     this.send(sessionCreateMessage(input, requestId));
@@ -84,6 +100,25 @@ export class PaciumTransport {
       requestId: crypto.randomUUID(),
       sessionId,
     });
+  }
+
+  public relaunch(manifestId: string, cols: number, rows: number): string {
+    const requestId = crypto.randomUUID();
+    this.send(relaunchSessionMessage(manifestId, cols, rows, requestId));
+    return requestId;
+  }
+
+  public attachTmux(
+    serverId: string,
+    sessionId: string,
+    cols: number,
+    rows: number,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(
+      tmuxSessionAttachMessage(serverId, sessionId, cols, rows, requestId),
+    );
+    return requestId;
   }
 
   public input(sessionId: string, data: string): string {
@@ -277,6 +312,15 @@ export class PaciumTransport {
     });
   }
 
+  public async getDiagnostics(): Promise<DiagnosticsSnapshot> {
+    if (this.accessToken === null) {
+      throw new Error(
+        "Pacium is still connecting. Try loading diagnostics again.",
+      );
+    }
+    return fetchDiagnostics({ accessToken: this.accessToken });
+  }
+
   private async connect(): Promise<void> {
     this.emit({
       type: "connection",
@@ -311,6 +355,7 @@ export class PaciumTransport {
         this.retryAttempt = 0;
         this.emit({ type: "connection", state: "connected" });
         this.listSessions();
+        this.listRelaunchManifests();
         this.requestPaciumConfig();
         this.requestQueueObservation();
       });
@@ -622,22 +667,65 @@ export function sessionCreateMessage(
     launchPreset: LaunchPresetId;
     cols: number;
     rows: number;
+    keepAlive?: boolean;
   },
   requestId: string,
 ): Extract<ClientMessage, { type: "session.create" }> {
-  const payload =
-    input.displayName === undefined
-      ? {
-          cwd: input.cwd,
-          launchPreset: input.launchPreset,
-          cols: input.cols,
-          rows: input.rows,
-        }
-      : input;
+  const payload = {
+    cwd: input.cwd,
+    launchPreset: input.launchPreset,
+    cols: input.cols,
+    rows: input.rows,
+    ...(input.displayName === undefined
+      ? {}
+      : { displayName: input.displayName }),
+    ...(input.keepAlive === undefined ? {} : { keepAlive: input.keepAlive }),
+  };
   return {
     type: "session.create",
     requestId,
     payload,
+  };
+}
+
+export function relaunchSessionMessage(
+  manifestId: string,
+  cols: number,
+  rows: number,
+  requestId: string,
+): Extract<ClientMessage, { type: "session.relaunch" }> {
+  return {
+    type: "session.relaunch",
+    requestId,
+    manifestId,
+    cols,
+    rows,
+  };
+}
+
+export function tmuxSessionsListMessage(
+  requestId: string,
+): Extract<ClientMessage, { type: "tmux.sessions.list" }> {
+  return {
+    type: "tmux.sessions.list",
+    requestId,
+  };
+}
+
+export function tmuxSessionAttachMessage(
+  serverId: string,
+  sessionId: string,
+  cols: number,
+  rows: number,
+  requestId: string,
+): Extract<ClientMessage, { type: "tmux.session.attach" }> {
+  return {
+    type: "tmux.session.attach",
+    requestId,
+    serverId,
+    sessionId,
+    cols,
+    rows,
   };
 }
 
@@ -699,6 +787,52 @@ export async function fetchDirectoryListing(input: {
   const parsed = DirectoryListingSchema.safeParse(await response.json());
   if (!parsed.success) {
     throw new Error("The Pacium host returned an invalid directory listing.");
+  }
+  return parsed.data;
+}
+
+export async function fetchDiagnostics(input: {
+  accessToken: string;
+  fetcher?: typeof fetch;
+  secure?: boolean;
+}): Promise<DiagnosticsSnapshot> {
+  const fetcher = input.fetcher ?? fetch;
+  const response = await fetcher("/api/diagnostics", {
+    credentials: "same-origin",
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${input.accessToken}`,
+    },
+    method: browserReadMethod(
+      input.secure === undefined
+        ? typeof window === "undefined"
+          ? "http:"
+          : window.location.protocol
+        : input.secure
+          ? "https:"
+          : "http:",
+    ),
+  });
+  if (!response.ok) {
+    let message = `Diagnostics failed with HTTP ${response.status}`;
+    try {
+      const body = (await response.json()) as unknown;
+      if (
+        typeof body === "object" &&
+        body !== null &&
+        "error" in body &&
+        typeof body.error === "string"
+      ) {
+        message = body.error;
+      }
+    } catch {
+      // Keep the bounded HTTP status message when no JSON error exists.
+    }
+    throw new Error(message);
+  }
+  const parsed = DiagnosticsSnapshotSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    throw new Error("The Pacium host returned invalid diagnostics.");
   }
   return parsed.data;
 }

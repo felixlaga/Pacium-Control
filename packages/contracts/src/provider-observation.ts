@@ -188,6 +188,42 @@ export const CodexActivityExtensionSchema = z
     threadId: z.string().min(1).max(200).nullable(),
     turnId: z.string().min(1).max(200).nullable(),
     itemType: z.string().min(1).max(120).nullable(),
+    modelContextWindow: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable(),
+    totalInputTokens: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable(),
+    totalCachedInputTokens: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable(),
+    totalOutputTokens: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable(),
+    totalReasoningOutputTokens: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable(),
+    totalTokens: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable(),
   })
   .strict();
 

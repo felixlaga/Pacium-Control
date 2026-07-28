@@ -122,14 +122,15 @@ See [Milestone 4](docs/execution/milestone-4-agent-integrations.md).
 
 Deliverables:
 
-- optional tmux attachment and keep-alive mode;
+- optional tmux attachment (PC-070 complete) and keep-alive mode (PC-071 complete);
 - optional Tailscale Serve access with verified operator identity;
 - startup recovery and honest ended-session handling;
-- bounded diagnostic export;
-- macOS packaging first, with Linux according to the supported-platform decision;
-- performance budgets and soak tests;
+- bounded diagnostic export (PC-073 complete);
+- macOS packaging (PC-074 complete) and the exact Ubuntu 24.04 x64 path
+  (PC-075 complete);
+- performance budgets and soak tests (PC-072 complete);
 - accessibility and interaction polish;
-- release verification.
+- release verification (PC-076 audit complete with a NO-GO release decision).
 
 Exit criteria:
 
@@ -140,6 +141,13 @@ Exit criteria:
 - all limitations are documented.
 
 See [Milestone 5](docs/execution/milestone-5-polish.md).
+
+Implementation status: the defined PC-063 through PC-076 roadmap is complete.
+PC-076 found the development packages reproducible and the automated core
+green, while signing/notarization, a fresh macOS account, real tailnet and
+provider canaries, manual accessibility/sustained use, an authorized dependency
+advisory audit, and owner release acceptance remain mandatory blockers. Those
+blocked gates do not authorize more roadmap implementation or a release claim.
 
 ## Explicitly deferred
 

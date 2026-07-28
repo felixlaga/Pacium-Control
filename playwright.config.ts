@@ -1,6 +1,7 @@
-import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 
 import { defineConfig } from "@playwright/test";
 
@@ -11,16 +12,44 @@ const verificationConfigPath = join(verificationDirectory, "verification.json");
 const paciumStateDirectory =
   process.env.PACIUM_E2E_STATE_DIRECTORY ??
   mkdtempSync(join(tmpdir(), "pacium-playwright-state-"));
+const providerFixtureDirectory = mkdtempSync(
+  join(tmpdir(), "pacium-playwright-provider-"),
+);
+const configuredVerificationRepository =
+  process.env.PACIUM_E2E_VERIFICATION_REPOSITORY;
+const verificationRepositoryDirectory =
+  configuredVerificationRepository ??
+  mkdtempSync(join(tmpdir(), "pacium-playwright-verification-repository-"));
 const queueFixturePath = join(paciumStateDirectory, "NEEDS-FELIX");
 const objectiveFixturePath = join(paciumStateDirectory, "OBJECTIVE");
 const planFixturePath = join(paciumStateDirectory, "PLAN");
+const tmuxExecutable = ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux"].find(
+  existsSync,
+);
+if (configuredVerificationRepository === undefined) {
+  writeFileSync(
+    join(verificationRepositoryDirectory, "README.md"),
+    "Pacium verification fixture.\n",
+  );
+  for (const args of [
+    ["init", "--quiet"],
+    ["config", "user.email", "pacium@example.test"],
+    ["config", "user.name", "Pacium E2E"],
+    ["add", "README.md"],
+    ["commit", "--quiet", "-m", "verification fixture"],
+  ]) {
+    execFileSync("/usr/bin/git", args, {
+      cwd: verificationRepositoryDirectory,
+    });
+  }
+}
 writeFileSync(
   verificationConfigPath,
   JSON.stringify({
     version: 1,
     repositories: [
       {
-        root: realpathSync(process.cwd()),
+        root: realpathSync(verificationRepositoryDirectory),
         presets: [
           {
             id: "verify",
@@ -48,8 +77,42 @@ process.env.PACIUM_E2E_STATE_DIRECTORY = paciumStateDirectory;
 process.env.PACIUM_E2E_QUEUE_PATH = queueFixturePath;
 process.env.PACIUM_E2E_OBJECTIVE_PATH = objectiveFixturePath;
 process.env.PACIUM_E2E_PLAN_PATH = planFixturePath;
+process.env.PACIUM_E2E_PROVIDER_DIRECTORY = providerFixtureDirectory;
+process.env.PACIUM_E2E_VERIFICATION_REPOSITORY =
+  verificationRepositoryDirectory;
 process.env.PACIUM_VERIFICATION_CONFIG = verificationConfigPath;
 process.env.PACIUM_DATA_DIR = paciumStateDirectory;
+writeFileSync(
+  join(providerFixtureDirectory, "claude"),
+  [
+    "#!/bin/sh",
+    'if [ "$1" = "--version" ]; then',
+    "  printf '1.0.0-fixture\\n'",
+    "  exit 0",
+    "fi",
+    'exec "${SHELL:-/bin/sh}" -l',
+    "",
+  ].join("\n"),
+  { mode: 0o700 },
+);
+process.env.PATH = `${providerFixtureDirectory}${delimiter}${process.env.PATH ?? ""}`;
+if (tmuxExecutable !== undefined) {
+  const tmuxDirectory = mkdtempSync(join(tmpdir(), "pacium-playwright-tmux-"));
+  const tmuxSocket = join(tmuxDirectory, "server.sock");
+  execFileSync(tmuxExecutable, [
+    "-S",
+    tmuxSocket,
+    "new-session",
+    "-d",
+    "-s",
+    "pacium-e2e",
+    "-c",
+    process.cwd(),
+  ]);
+  process.env.PACIUM_TMUX_SOCKET = tmuxSocket;
+  process.env.PACIUM_E2E_TMUX_DIRECTORY = tmuxDirectory;
+  process.env.PACIUM_E2E_TMUX_EXECUTABLE = tmuxExecutable;
+}
 writeFileSync(queueFixturePath, "Initial private queue\n", { mode: 0o600 });
 writeFileSync(objectiveFixturePath, "Make local agents easy to supervise.\n", {
   mode: 0o600,

@@ -8,7 +8,9 @@ export default defineConfig({
     include: [
       "apps/**/*.test.ts",
       "apps/**/*.test.tsx",
+      "packaging/**/*.test.mjs",
       "packages/**/*.test.ts",
+      "scripts/**/*.test.mjs",
     ],
     restoreMocks: true,
   },

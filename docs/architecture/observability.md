@@ -71,7 +71,12 @@ Metrics remain local until a future remote-observability design is approved.
 
 ## Diagnostics
 
-An explicit diagnostics screen or export may include:
+PC-073 implements one operator-invoked, response-only version-1 diagnostics
+snapshot. The protected `/api/diagnostics` read projects already loaded
+application state; it performs no refresh, filesystem read, provider probe,
+terminal operation, command, durable write, upload, or background poll.
+
+The screen and exact preview include:
 
 - application and dependency versions;
 - platform and PTY capability;
@@ -82,4 +87,12 @@ An explicit diagnostics screen or export may include:
 - optional tmux capability;
 - redaction manifest.
 
-The operator previews export contents before saving.
+Session identities are export-local labels. Queue and provider evidence is
+aggregate or fixed-code metadata rather than raw content. The structural
+allowlist omits terminal input/output/titles, source identities, PIDs, argv,
+paths, Git content, queue contents/decisions, provider content/fields,
+environments/credentials, host/operator identity, and relaunch metadata.
+
+The operator must preview the exact inert JSON before the browser-local
+download is enabled. Pacium does not create or retain a server-side support
+file. A failed explicit refresh keeps the prior snapshot visibly stale.

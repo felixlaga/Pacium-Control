@@ -1,8 +1,37 @@
 # Operator runbook
 
-> Historical blueprint: use the active local architecture and first-build plan until a local operator runbook is written.
+For the implemented user-local application lifecycle, use the
+[macOS package runbook](macos-package.md) or the
+[Ubuntu Linux package runbook](linux-package.md). For optional remote ingress,
+use the [Tailscale Serve runbook](tailscale-serve.md).
 
-This runbook defines routine operational actions once the product exists.
+## Current release posture
+
+PC-076 is complete with a `NO-GO` decision. Pacium is a Development snapshot;
+do not tag, publish, sign, notarize, or describe either package as a release.
+The exact blockers and artifact evidence are in the
+[release-readiness assessment](../execution/release-readiness-assessment.md).
+
+Before using a source checkout as a development candidate:
+
+1. use Node.js 24.18.x and pnpm 11.17.0 on an exact supported host;
+2. require a clean immutable Git head;
+3. run `pnpm release:preflight`;
+4. run `pnpm verify`, `pnpm test:soak`, the matching package verifier, and
+   `pnpm test:e2e`;
+5. confirm the produced checksum and manifest rather than reusing an older
+   artifact.
+
+`release:preflight` is read-only and does not sign, publish, contact a
+registry, change Tailscale, or approve a provider action. Package uninstallers
+own only the recognized application tree and command link; state,
+repositories, queues, provider stores, and external tmux targets remain
+outside package ownership.
+
+The remaining sections contain retained operational guidance. References to a
+broker, multi-user control, central coordinator, backup service, or production
+deployment describe the superseded architecture and are not current Pacium
+components.
 
 ## Check system health
 

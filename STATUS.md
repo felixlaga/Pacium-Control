@@ -11,16 +11,43 @@ worker summaries, and read-only objective/plan plus recent-decision context are
 complete enough for continued slicing. Optional Tailscale Serve access is
 implemented at the application boundary, and the working-directory picker
 refresh is complete. The bounded provider observation contract is complete;
-the narrow Pacium-launched Claude Code observer is complete, and Codex native
-observation is next.
+the narrow Pacium-launched Claude Code and Codex native observers are complete.
+Clean activity cards with an explicit browser-local terminal fallback are
+complete. Explicit provider compatibility, health, freshness, capability, and
+diagnostic degradation is complete. Durable secret-free relaunch manifests and
+explicit linked-successor recovery complete the planned native-enrichment
+slice. One explicitly configured local tmux socket can now be discovered and
+one exact published session can be attached through the existing terminal
+workspace. Explicit tmux keep-alive launches and bounded automatic restart
+reattachment are complete.
+The bounded PC-072 lifecycle, memory, browser-model, and real-PTY descriptor
+soak baseline is complete. PC-073 bounded redaction-aware diagnostics,
+protected reads, exact preview, and browser-local JSON export are complete.
+PC-074 adds the first user-local Apple-silicon application archive, exact
+`pacium` command, deterministic manifest/checksum, safe upgrade/uninstall
+lifecycle, and installed production/native-PTY verification. The artifact is
+explicitly unsigned and unnotarized.
+PC-075 adds one separate user-local Ubuntu 24.04 x64 archive, exact XDG
+defaults, deterministic manifest/checksum, safe package lifecycle, source-built
+x64 native-PTY verification, and pinned hosted Linux verification. The Linux
+artifact is explicitly unsigned, not distro-native, and not a broader Linux
+compatibility claim.
+PC-076 completes the defined roadmap with an evidence-backed `NO-GO` release
+assessment. The exact-source macOS build, deterministic native PTY and package,
+full automated suite, soak, browser workflows, tracked-secret scan, and package
+inventory are green. Pacium remains a Development snapshot because the current
+registry advisory audit, fresh-account run, signing/notarization, real
+tailnet/provider canaries, manual accessibility/sustained use, and owner
+release acceptance are not evidenced.
 
 Pacium Control now has an executable React application, loopback local server,
 direct-PTY session manager, typed WebSocket protocol, and automated terminal,
 Git, queue, and Pacium-context tests. This proves the bounded local
-compatibility workflow described below; it does not prove live provider-native
-Codex observation or management, a manual real-provider Claude canary, a real
-deployed tailnet/grants/public boundary, durable PTYs, packaging, or release
-readiness.
+compatibility workflow described below. It does not prove manual real-provider
+Claude/Codex canaries, a real deployed tailnet/grants/public boundary, durable
+direct PTYs, broader Linux distribution/architecture support, signing,
+notarization, or release acceptance. The release audit is complete; its
+decision is `NO-GO`.
 
 ## Product direction
 
@@ -56,11 +83,56 @@ The secondary product is **Pacium mode**:
   canonical `*.ts.net` HTTPS Origin, bounded exact operator-login allowlist,
   canonical local-Origin isolation, exact remote Host/Origin/login checks,
   Funnel denial, and the unchanged ephemeral token for protected transport.
-- Protocol-20 per-socket Local or Tailscale/login evidence, plus one strict
+- Protocol-24 per-socket Local or Tailscale/login evidence, plus one strict
   nullable provider-observation snapshot per session, and a compact accessible
   connection badge that clears stale identity on disconnect.
 - Bounded xterm headless snapshots that let a new browser transport attach to a still-live PTY.
 - A fixed server-owned Shell, Codex, and Claude Code launch catalog with honest executable availability.
+- A bounded private version-1 relaunch-manifest catalog that survives
+  local-server restart with fixed preset command metadata, canonical cwd and
+  repository reference, environment key names only, exact successor lineage,
+  and optional native resume-ID evidence. Detached manifests are separate from
+  live sessions; explicit relaunch starts a fresh PTY and never resumes a
+  provider automatically.
+- An optional one-socket tmux adapter with bounded executable/version/socket
+  capability evidence, fixed no-shell session discovery, exact target
+  revalidation, PTY-backed client attachment, explicit runtime labels, and
+  retained identity-only reattachment manifests. Direct PTYs remain the
+  default, and disconnecting a Pacium client never invokes `kill-session`.
+- Explicit ready-only tmux keep-alive launch for fixed Shell, Codex, and Claude
+  presets with generated target names, direct command arguments, durable
+  automatic-reattach policy, exact-client detach, bounded deduplicated startup
+  restoration, fresh predecessor-linked identities, and no command rerun when
+  a target is missing.
+- An isolated scalar-only lifecycle soak covering 20 idle terminals, one
+  long-running agent, 100 create/close cycles, 8 MiB output, 100 snapshots,
+  explicit peak/retained RSS and live-heap budgets, and a five-real-PTY FD
+  canary. Browser models separately cover 2,000 split operations and 5,000
+  notification cursors.
+- A response-only strict version-1 diagnostics projection with fixed collection,
+  string, and 256 KiB response bounds; export-local session labels; component,
+  version, process, provider, aggregate queue, tmux, and fixed-code evidence;
+  and a complete inclusion/omission manifest. One protected no-store
+  Local/Tailscale read feeds a routed modal with explicit refresh, stale
+  last-good recovery, exact inert JSON preview, and preview-gated browser-local
+  download. It reads no terminal buffer, executes no command, performs no
+  source refresh, and persists or uploads nothing.
+- An unsigned, unnotarized Apple-silicon macOS development package containing
+  one `Pacium Control.app`, exact user-local `pacium` link, production
+  browser/server assets, minimal source-built arm64 `node-pty`, strict
+  relative-path content manifest, checksum, staged upgrade/rollback, active
+  process lease, and exact owned uninstall. Node.js 24.18.x remains external;
+  package operations preserve application state and external workspaces.
+- A separate unsigned Ubuntu 24.04 x64 development archive with production
+  browser/server assets, minimal source-built x64 ELF `node-pty`, exact
+  user-local `pacium` link, strict manifest/checksum, no-sudo XDG install,
+  staged upgrade/rollback, active-process refusal, and exact owned uninstall.
+  It is not distro-native and makes no claim for another Linux target.
+- A bounded release preflight and candidate-specific PC-076 assessment that
+  distinguish pass, fail, blocked, not-applicable, and not-run evidence. The
+  preflight fails closed on unsupported hosts/runtimes, dirty source,
+  forbidden tracked or archive paths, missing contracts, checksum/manifest
+  mismatch, and unsupported distribution claims without emitting content.
 - A token-protected, read-only host directory browser with canonical paths,
   direct absolute-path navigation, repository markers, filtering,
   hidden-folder control, breadcrumbs, failure-safe browser-local recent
@@ -96,8 +168,22 @@ The secondary product is **Pacium mode**:
   provider facts, provider observer health/freshness, direct-PTY lifecycle,
   changed-file totals, three recent local commits, and the current/latest
   verification run into at most seven deterministic facts with explicit
-  observed/occurred timestamps, source availability, partial errors, Refresh,
-  reconnect recovery, and no terminal/provider narrative.
+  observed/occurred timestamps, compact kind/tone/source metadata, one
+  Terminal/Changes/History/Checks source action, source availability, partial
+  errors, Refresh, reconnect recovery, and no provider narrative. Without ready
+  provider evidence, one explicit operator action may reveal only four
+  non-empty lines and 800 Unicode characters from the already-rendered xterm
+  buffer as inert browser-local, terminal-derived, low-confidence,
+  not-interpreted evidence that clears at session, connection, evidence, and
+  reload boundaries.
+- A compact provider-status Activity section for Claude Code and Codex with
+  explicit ready/unavailable/unsupported/degraded/failed/stale state, provider
+  and adapter versions, source/confidence/freshness, all bounded capabilities,
+  safe diagnostic code/message/time, terminal independence, and fixed recovery
+  guidance. Diagnostic scalar fields are excluded. A browser-only 30-second
+  and visibility-restoration clock expires ready snapshots without server or
+  terminal polling; each non-ready state links to the existing direct terminal
+  and PC-063 fallback without implying task failure.
 - A version-1 provider observation contract with fixed capability/activity/
   diagnostic bounds, typed Claude/Codex extensions, distinct questions and
   approvals, source/confidence/freshness evidence, secret-like diagnostic-key
@@ -108,6 +194,13 @@ The secondary product is **Pacium mode**:
   bounded deduplication, typed lifecycle/tool/question/approval/completion/
   failure evidence, optional strict status usage scalars, and no provider
   decisions, settings-file edits, raw payload retention, or terminal coupling.
+- A process-local Codex observer for supported Pacium-launched Codex PTYs with
+  capability-probed remote/App Server surfaces, one random environment-only
+  token and exact loopback route per session, one authenticated transparent
+  WebSocket-to-JSONL bridge, strict bounded native lifecycle/tool/plan/usage/
+  question/approval/failure metadata, browser-reconnect preservation, and no
+  prompt/message/command/output/diff/path/request-content retention or
+  generated provider decisions.
 - Protocol-17 strict Pacium workspace configuration for explicit Meta,
   Orchestrator, and worker session/preset bindings; canonical repositories;
   verification references; and queue, future-delivery, objective, and plan path
@@ -240,22 +333,21 @@ The secondary product is **Pacium mode**:
 
 ## What is not present
 
-- No packaged `pacium` launcher or release artifact.
-- No durable session restoration after local-server restart.
+- No Developer ID-signed, notarized, publicly delivered, or owner-accepted
+  release artifact. No supported Linux target beyond Ubuntu 24.04 x64.
+- No durable direct-PTY process restoration after local-server restart.
 - No completed manual screen-reader, visual contrast, or full terminal-lifecycle browser review.
 - No general browser editor for workspace identity, repositories, workers,
   queue sources, delivery methods, context sources, or verification references,
   and no shortcut customization.
-- No live Codex observer, externally launched Claude attachment, packaged
-  Claude status-line companion, or provider decision/control actions. The
-  Claude hook transport is fixture/integration verified but has not completed a
-  manual real-provider canary on this machine.
+- No externally launched Claude/Codex attachment, packaged Claude status-line
+  companion, or provider decision/control actions. Both provider transports
+  are fixture/integration verified but have not completed manual real-provider
+  canaries on this machine.
 - No multi-item parsing, provider-native acknowledgement/activity, worker
   launching/reconfiguration, task state, or causal decision-to-Git/terminal
   correlation.
-- No tmux adapter.
-
-Do not extrapolate from the working terminal slice to any capability in this list.
+  Do not extrapolate from the working terminal slice to any capability in this list.
 
 ## Current evidence
 
@@ -263,16 +355,91 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 118 test files and 743 tests,
-  plus the 913.94 kB web JavaScript, 109.81 kB stylesheet, and 368.49 kB
-  local-server production builds passed.
-- `pnpm test:e2e`: fourteen Chromium workflows passed for skip navigation, panel
+- Supported Node.js 24.18.0 exact-source `pnpm verify`: formatting, lint, type
+  checking, 142 test files and 930 tests, plus the 967.23 kB web JavaScript,
+  128.54 kB
+  stylesheet, and the split local-server production build passed.
+- `pnpm test:e2e`: twenty Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
   changed-file/diff/history/Activity inspection, and configured verification
   run/reload/cancel without terminal reselection. General/Pacium coverage
   proved pointer, chord, palette, reload persistence, unchanged selected PTY
   and inspector context, configured-state presentation, and narrow layouts.
+- PC-070 focused contract, config, parser, real-socket, session-manager,
+  authenticated WebSocket, transport, action-semantics, and dialog tests
+  passed. Its isolated real-tmux Chromium workflow listed one server-owned
+  target, attached it without browser socket/argv authority, sent terminal
+  input, reconnected after reload, closed only the browser view, disconnected
+  only the tmux client, and then verified the external tmux server session was
+  still alive.
+- PC-071 focused contract, manifest, transport, adapter, manager, lifecycle,
+  semantic-render, and real-tmux evidence passed. The isolated real PTY/tmux
+  workflow launched a fixed shell preset, sent terminal input, detached the
+  exact client, restarted the manager, restored one fresh predecessor-linked
+  client, deliberately closed it, and verified the managed target remained.
+  Chromium verifies the ready-only option is explicit and unchecked by default.
+- PC-072 supported Node.js 24.18.0 soak evidence covered 20 idle terminals, one
+  long-running agent, 100 create/close cycles, 8,388,608 output bytes, 100
+  snapshots, 2,000 split operations, and 5,000 notification updates. The
+  isolated runner completed in 3,908 ms with 141,787,136-byte peak and retained
+  RSS growth, 5,343,056-byte retained live heap, a 162,368-character snapshot,
+  zero final sessions, and `/dev/fd` 18 -> 18 across five real PTYs. The canary
+  found and fixed parent-side slave PTY, kqueue, and temporary low-number PTY
+  descriptor leaks in the pinned macOS `node-pty`.
+- PC-073 focused evidence passed 8 contract/projection tests, both targeted
+  protected HTTP workflows, and 43 browser transport/model/render/palette
+  checks. Hostile fixtures exclude terminal/provider/queue/Git content,
+  credentials, paths, IDs, PIDs, commands, host details, and relaunch metadata.
+  Its Chromium workflow parsed the actual downloaded JSON; retained a live PTY
+  across Back, Escape, direct routing, and browser reload; kept last-good state
+  after a failed refresh; and covered 200% zoom, forced colors, reduced motion,
+  focus restoration, and isolated PTY cleanup.
+- PC-076 `pnpm package:macos:verify` deterministically rebuilt
+  `pacium-control-0.0.0-darwin-arm64.tar.gz` from separate source roots at
+  573,683 bytes with SHA-256
+  `923fe2f41533eee7c8591999002d783212e679545e959aca6ceba8d96415075c`
+  and 28 manifested files. The isolated installed package loaded arm64
+  `pty.node`/`spawn-helper`, exchanged Unicode terminal data, resized and
+  closed the PTY, installed/upgraded, served exact production health/assets,
+  reused a verified running instance, refused active uninstall, uninstalled
+  idempotently, and preserved state/repository/provider/tmux sentinels.
+- PC-076 separate source roots produced identical loadable native files:
+  `pty.node` SHA-256
+  `50d506c692c05c2037450b88f550ff0ba9ea1aed0b4f2e15b9b2ad529a237ea3`
+  and `spawn-helper` SHA-256
+  `5f581b5794183c8783108fbdff0f570de48cab0a91506ee27048f310e6a25c2d`.
+  One release gate now rejects source/debug symbol metadata while retaining the
+  Mach-O UUID and ad-hoc signature required to load on macOS.
+- PC-075’s pinned Ubuntu 24.04.4 x64 workflow used Node.js 24.18.0 and pnpm
+  11.17.0 with a frozen source-native install. It passed 141 test files and 922
+  tests, the full production build, an x64 real-PTY lifecycle soak, Linux
+  package verification, and all applicable Chromium workflows. The soak
+  completed in 2,034 ms with 135,872,512-byte peak/retained RSS growth,
+  5,230,168-byte retained live heap, a 162,368-character snapshot, zero final
+  sessions, and `/dev/fd` 32 -> 32.
+- The Linux verifier deterministically rebuilt
+  `pacium-control-0.0.0-linux-x64.tar.gz` at 584,044 bytes with SHA-256
+  `b5da9fadf2db663123be8bc2a3d888d8a7d18520bb00bfbeb83b067e8fb5f7ca`
+  and 27 manifested files. It loaded and drove the packaged x64 ELF PTY,
+  installed/upgraded, served exact production health/assets, reused the exact
+  running instance, refused active uninstall, uninstalled idempotently, and
+  preserved external state. The artifact reports unsigned and not
+  distro-native.
+- PC-063 focused evidence passed 39 activity-model, semantic-render, and
+  terminal-excerpt tests. Its Chromium workflow exercised deterministic compact
+  cards, all four source destinations, explicit terminal capture/refresh/hide,
+  session and reload invalidation, retained PTY selection, terminal focus,
+  320 CSS px, 200% zoom, forced colors, and reduced motion without adding a
+  server read, terminal input, persistence, status inference, or decision path.
+- PC-064 focused evidence passed 81 Codex/Claude adapter, provider-status,
+  semantic-render, recent-activity, and freshness-clock tests. Fixtures cover
+  unsupported versus unavailable, degraded versus failed, fresh recovery,
+  missing Claude version, expiry without attention, every visible state,
+  diagnostic-field exclusion, hostile text, and terminal independence. Its
+  real Claude Code browser canary sent no prompt and verified eight capability
+  rows, terminal focus, explicit fallback, reload clearing, 320 CSS px, 200%
+  zoom, forced colors, and reduced motion.
 - PC-077 browser evidence kept the exact current connection authority visible
   as Local through ordinary operation, reload, narrow layout, forced colors,
   and reduced motion without promoting terminal or provider output to identity.
@@ -288,6 +455,14 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
   enforcement, empty no-decision responses, duplicate and provider-session
   rejection, release-token invalidation, browser reconnect state, bounded
   usage presentation, and exclusion of prompt/transcript/tool/status secrets.
+- PC-062 focused contract, Codex normalizer, observer, PTY lifecycle, private
+  App Server bridge, HTTP upgrade, reconnect, attention, and Activity evidence
+  passed. It covers capability fallback, environment-only token authority,
+  exact Host/Origin/path/bearer enforcement, single-client ownership,
+  unchanged bidirectional protocol forwarding, malformed/oversized input,
+  child exit, PTY release, browser reconnect preservation, cumulative usage,
+  deduplication, distinct questions/approvals, and exclusion of prompt/message/
+  plan/command/output/diff/path/request/auth content.
 - PC-050 browser evidence projected one exact live worker and one preset-only
   worker without launching or inferring either, selected only the existing
   worker PTY, opened/refreshed/closed Control context with focus return,
@@ -344,7 +519,7 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
   keyboard-accessible at 200% zoom.
 - `pnpm build`: web and local-server production bundles completed.
 - `pnpm dev`: Vite and the source local server started together; the UI and direct health route both returned 200.
-- The protocol-version-20 boundary passed strict contract, atomic-store,
+- The protocol-version-21 boundary passed strict contract, atomic-store,
   canonical path/reference, authenticated WebSocket revision/conflict, PTY
   survival, bounded queue reader/observer/classifier, content-free bulk item
   evidence, exact-current base64 text inspection, stale/config/disconnect
@@ -359,16 +534,22 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 Evidence boundaries:
 
-- The current shell exposed Node.js `26.4.0`, not the approved Node.js `24.18.x`; the commands passed with an engine warning, so the supported runtime remains unverified.
+- The ordinary interactive shell still exposes Node.js 26.4.0, but PC-072
+  through PC-075 verification used the approved Node.js 24.18.0 runtime
+  explicitly. A fresh supported macOS account remains unverified; hosted
+  Ubuntu evidence is exact to the pinned runner, not another Linux target.
 - The repository Playwright suite ran in headless Chromium after its browser
   binary was installed and verified the PC-028, PC-034, PC-035, PC-036, PC-037,
   and PC-038 workflows. The connected in-app browser backend remained
   unavailable, so manual visual, screen-reader, and full type/refresh/close
   terminal review are still open.
-- The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
-- `node-pty` used its shipped Darwin arm64 prebuild. Its helper arrived without an executable bit; a narrow postinstall guard repairs that mode.
+- The Xcode license check passes on the current development account. That does
+  not substitute for the blocked fresh-account package exercise.
+- `node-pty` is compiled from pinned sources on each supported target. The
+  package builders require the matching arm64 or x64 native module and copy
+  only its recognized runtime files.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
-- The current web bundle is 913.94 kB before gzip and emits Vite's chunk-size
+- The current web bundle is 929.58 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
 - Proxy-shaped Serve application tests do not prove the owner's real Tailscale
   installation, DNS/certificate, deployed grants, Funnel/public/LAN state, or
@@ -390,20 +571,27 @@ Evidence boundaries:
 11. Questions and approvals remain distinct.
 12. Tailscale Serve is the only supported remote ingress; public access, multi-user authorization, and multi-host coordination remain out of scope.
 
-## Open decisions for Milestone 0
+## Blocked release evidence
 
-- Confirm Node.js 24 and `node-pty` on a clean supported macOS account with the Xcode license accepted.
-- Complete browser, accessibility, terminal-escape, and sustained-output testing.
-- Decide whether the current ephemeral bootstrap token lifecycle is sufficient for the packaged launcher.
-- Packaging strategy after the development CLI works.
+- Confirm Node.js 24 and the source-built packaged `node-pty` on a clean
+  supported macOS account with the Xcode license accepted.
+- Complete manual screen-reader, visual, terminal-lifecycle, and sustained-use
+  acceptance; automated browser/accessibility and bounded soak evidence is
+  already green.
+- Complete the real Tailscale Serve/grants/Funnel/public/revocation canary.
+- Complete real Claude Code and Codex canaries.
+- Run an explicitly authorized current dependency advisory audit.
+- Complete Developer ID signing, notarization, and explicit owner release
+  acceptance.
 
-The initial runtime, package manager, application stack, and macOS-first platform are fixed in [the toolchain decision](docs/execution/toolchain-and-platform.md).
+The runtime, package manager, application stack, and exact supported hosts are
+fixed in [the toolchain decision](docs/execution/toolchain-and-platform.md).
 
 ## Next action
 
-Implement the Codex observer in PC-062, then explicit capability degradation
-in PC-064 before durability and packaging.
-Complete the real Tailscale
-Serve/grants/Funnel/public canary, pinned Node.js 24 clean-install, CI, broader
-browser/security, manual accessibility, and sustained-output gates before
-release.
+The defined implementation roadmap ends at PC-076 and is complete. Do not
+start follow-on implementation or publication from this status. A future
+release attempt begins only when the owner supplies the explicit authority and
+real evidence listed in the
+[PC-076 assessment](docs/execution/release-readiness-assessment.md); until then,
+keep using and describing Pacium as a Development snapshot.

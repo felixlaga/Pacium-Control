@@ -7,6 +7,7 @@ import {
   type ProviderActivity,
   type ProviderCapability,
   type ProviderCapabilityId,
+  type ProviderDiagnostic,
   type ProviderObservationSnapshot,
 } from "@pacium/contracts";
 import { z } from "zod";
@@ -348,6 +349,19 @@ function unavailableObservation(
     "usage",
     "completion",
   ];
+  const diagnostics: ProviderDiagnostic[] =
+    providerVersion === null
+      ? [
+          {
+            code: "claude.version_unavailable",
+            severity: "warning",
+            message:
+              "Claude Code version detection is unavailable; hook compatibility is not confirmed.",
+            observedAt,
+            fields: [],
+          },
+        ]
+      : [];
   return {
     contractVersion: 1,
     provider: "claude",
@@ -363,7 +377,7 @@ function unavailableObservation(
     capabilities: capabilities.map((id) => unknownCapability(id)),
     attention: null,
     activities: [],
-    diagnostics: [],
+    diagnostics,
     observedAt,
     staleAfter: addMinutes(observedAt, 5),
   };
@@ -642,6 +656,9 @@ function applyStatusObservation(
     activities: [activity, ...previous.activities].slice(
       0,
       MAX_PROVIDER_ACTIVITIES,
+    ),
+    diagnostics: previous.diagnostics.filter(
+      ({ code }) => code !== "claude.version_unavailable",
     ),
     observedAt,
     staleAfter: addMinutes(observedAt, 5),

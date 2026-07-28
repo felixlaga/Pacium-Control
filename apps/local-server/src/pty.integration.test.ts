@@ -6,9 +6,10 @@ import { SessionManager } from "./session-manager.js";
 
 describe("real PTY integration", () => {
   it("runs a command through the invoking user's shell", async () => {
+    const shell = process.platform === "linux" ? "/bin/bash" : "/bin/zsh";
     const config = loadServerConfig({
       ...process.env,
-      SHELL: "/bin/zsh",
+      SHELL: shell,
       PACIUM_DEFAULT_CWD: process.cwd(),
     });
     const manager = new SessionManager(
@@ -39,6 +40,6 @@ describe("real PTY integration", () => {
 
     expect(output).toContain("PACIUM_REAL_PTY_OK");
     expect(manager.list()[0]?.processState).toBe("exited");
-    manager.shutdown();
+    await manager.shutdown();
   }, 10_000);
 });
