@@ -55,7 +55,7 @@ async function main(): Promise<void> {
 
   const lockPath = process.env.PACIUM_PACKAGE_LOCK;
   if (lockPath === undefined) {
-    throw new Error("PACIUM_PACKAGE_LOCK is required by the macOS launcher.");
+    throw new Error("PACIUM_PACKAGE_LOCK is required by the package launcher.");
   }
   const releaseLock = acquirePackageProcessLock({
     lockPath,

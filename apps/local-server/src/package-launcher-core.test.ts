@@ -41,11 +41,14 @@ describe("package launcher contract", () => {
       assertSupportedPackageRuntime("darwin", "arm64", "24.18.0"),
     ).not.toThrow();
     expect(() =>
+      assertSupportedPackageRuntime("linux", "x64", "24.18.0"),
+    ).not.toThrow();
+    expect(() =>
       assertSupportedPackageRuntime("linux", "arm64", "24.18.0"),
-    ).toThrow("darwin-arm64");
+    ).toThrow("darwin-arm64 or Ubuntu linux-x64");
     expect(() =>
       assertSupportedPackageRuntime("darwin", "x64", "24.18.0"),
-    ).toThrow("darwin-arm64");
+    ).toThrow("darwin-arm64 or Ubuntu linux-x64");
     expect(() =>
       assertSupportedPackageRuntime("darwin", "arm64", "24.19.0"),
     ).toThrow("24.18.x");

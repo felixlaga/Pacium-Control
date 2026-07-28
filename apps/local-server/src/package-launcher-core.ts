@@ -42,9 +42,12 @@ export function assertSupportedPackageRuntime(
   architecture: string,
   nodeVersion: string,
 ): void {
-  if (platform !== "darwin" || architecture !== "arm64") {
+  const supportedTarget =
+    (platform === "darwin" && architecture === "arm64") ||
+    (platform === "linux" && architecture === "x64");
+  if (!supportedTarget) {
     throw new Error(
-      "Pacium Control requires Apple-silicon macOS (darwin-arm64).",
+      "Pacium Control requires darwin-arm64 or Ubuntu linux-x64.",
     );
   }
   if (!SUPPORTED_NODE_VERSION.test(nodeVersion)) {
