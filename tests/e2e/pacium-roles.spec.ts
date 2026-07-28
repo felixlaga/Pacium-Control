@@ -45,48 +45,29 @@ test("assigns, opens, launches, and durably binds the two primary roles", async 
   const workspaceStatus = page.locator(".workspace-status");
   await expect(workspaceStatus).toContainText("Ordinary terminal");
 
-  const composer = page.getByRole("region", {
-    name: "Send to one exact terminal",
-  });
-  const prompt = composer.getByLabel("Prompt");
-  await composer.getByLabel("Target").selectOption("role:meta");
-  await prompt.fill("printf 'PC043_TARGET\\n'");
-  await prompt.press("Enter");
-  await expect(prompt).toHaveValue("printf 'PC043_TARGET\\n'");
-  await expect(workspaceStatus).toContainText("Ordinary terminal");
-  await prompt.press("Control+Enter");
-  await expect(page.locator(".notice")).toContainText(
-    "Terminal input accepted for Meta. Agent handling is not confirmed.",
-  );
-  await expect(composer.getByLabel("Target")).toHaveValue("");
-  await expect(prompt).toHaveValue("");
-  await expect(workspaceStatus).toContainText("Ordinary terminal");
-
   await meta.getByRole("button", { name: "Open" }).click();
   await expect(workspaceStatus).toContainText("Meta existing");
+  await page
+    .getByLabel("Meta existing terminal")
+    .locator(".xterm-helper-textarea")
+    .focus();
+  await page.keyboard.type("printf 'PC079_META_DIRECT\\n'");
+  await page.keyboard.press("Enter");
   await expect(
     page.getByLabel("Meta existing terminal").locator(".xterm-rows"),
-  ).toContainText("PC043_TARGET");
+  ).toContainText("PC079_META_DIRECT");
   await expect(
     page.locator(".session-item", { hasText: "Meta existing" }),
   ).toHaveCount(1);
-
-  await composer.getByLabel("Target").selectOption("role:meta");
-  await prompt.fill("first line\nsecond line");
-  await expect(composer).toContainText(
-    "Line breaks and terminal control characters are not allowed.",
-  );
-  await expect(composer.getByRole("button", { name: "Send" })).toBeDisabled();
-  await prompt.fill("unsent mode-scoped draft");
+  await expect(
+    page.getByRole("region", { name: "Send to one exact terminal" }),
+  ).toHaveCount(0);
 
   const general = page.getByRole("button", { name: "General" });
   await general.click();
   await expect(page.locator(".pacium-role-group")).toBeHidden();
-  await expect(composer).toBeHidden();
   await page.getByRole("button", { name: "Pacium" }).click();
   await expect(meta).toBeVisible();
-  await expect(composer.getByLabel("Target")).toHaveValue("");
-  await expect(prompt).toHaveValue("");
   await expect(workspaceStatus).toContainText("Meta existing");
 
   const orchestrator = roleCard(page, "orchestrator");
@@ -120,14 +101,10 @@ test("assigns, opens, launches, and durably binds the two primary roles", async 
     page.locator(".session-item", { hasText: "Orchestrator" }),
   ).toHaveCount(1);
 
-  await composer.getByLabel("Target").selectOption("role:orchestrator");
-  await prompt.fill("unsent refresh-scoped draft");
   await page.reload();
   await expect(
     page.getByRole("region", { name: "Send to one exact terminal" }),
-  ).toBeVisible();
-  await expect(page.getByLabel("Target")).toHaveValue("");
-  await expect(page.getByLabel("Prompt")).toHaveValue("");
+  ).toHaveCount(0);
   await expect(roleCard(page, "meta")).toHaveAttribute(
     "aria-label",
     /Meta role, Connected/,

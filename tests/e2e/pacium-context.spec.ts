@@ -52,15 +52,15 @@ test("supervises configured workers and explicit control context without replaci
 
   const workers = page.getByRole("region", { name: "Workers" });
   await expect(workers).toBeVisible();
-  await expect(workers).toContainText(
-    "Configured identities only. Process evidence does not prove task progress.",
-  );
+  await expect(workers).not.toContainText("Configured identities only");
   const liveWorker = workers.getByRole("article", {
     name: /Worker alpha worker, Live process/,
   });
-  await expect(liveWorker).toContainText("Shell");
-  await expect(liveWorker).toContainText(basename(process.cwd()));
-  await expect(liveWorker).toContainText("Not inspected");
+  await expect(liveWorker).toHaveAttribute(
+    "title",
+    new RegExp(basename(process.cwd())),
+  );
+  await expect(liveWorker).toContainText("Live process");
   const reserveWorker = workers.getByRole("article", {
     name: /Reserve worker worker, Configured · not started/,
   });
@@ -73,7 +73,10 @@ test("supervises configured workers and explicit control context without replaci
     page.getByLabel("Worker alpha terminal").locator(".xterm"),
   ).toBeVisible();
 
-  const contextTrigger = page.getByRole("button", { name: "Open context" });
+  const contextTrigger = page.getByRole("button", {
+    name: "Context",
+    exact: true,
+  });
   await contextTrigger.focus();
   await contextTrigger.press("Enter");
   const inspector = page.getByRole("complementary", {
@@ -107,7 +110,7 @@ test("supervises configured workers and explicit control context without replaci
   await expect(
     page.getByRole("complementary", { name: "Session inspector" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Open context" }).click();
+  await page.getByRole("button", { name: "Context", exact: true }).click();
   const reconnectedInspector = page.getByRole("complementary", {
     name: "Control context inspector",
   });
@@ -123,7 +126,7 @@ test("supervises configured workers and explicit control context without replaci
   ).toBeVisible();
   await expect(status).toContainText("Worker alpha");
   await page.getByRole("button", { name: "Pacium" }).click();
-  await page.getByRole("button", { name: "Open context" }).click();
+  await page.getByRole("button", { name: "Context", exact: true }).click();
   await page.setViewportSize({ width: 320, height: 720 });
   await page.emulateMedia({
     forcedColors: "active",

@@ -1,5 +1,6 @@
 export * from "./directories.js";
 export * from "./diagnostics.js";
+export * from "./host-setup.js";
 export * from "./pacium-config.js";
 export * from "./pacium-context.js";
 export * from "./provider-observation.js";

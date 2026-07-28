@@ -24,23 +24,20 @@ export function PaciumWorkers({
           {projection.detail}
         </p>
       ) : (
-        <>
-          <p className="pacium-workers-boundary">{projection.detail}</p>
-          <ul className="pacium-worker-list">
-            {projection.workers.map((worker) => (
-              <li key={worker.id}>
-                <PaciumWorkerRow
-                  model={worker}
-                  onOpen={() => {
-                    if (worker.sessionId !== null && worker.canOpen) {
-                      onOpen(worker.sessionId);
-                    }
-                  }}
-                />
-              </li>
-            ))}
-          </ul>
-        </>
+        <ul className="pacium-worker-list" title={projection.detail}>
+          {projection.workers.map((worker) => (
+            <li key={worker.id}>
+              <PaciumWorkerRow
+                model={worker}
+                onOpen={() => {
+                  if (worker.sessionId !== null && worker.canOpen) {
+                    onOpen(worker.sessionId);
+                  }
+                }}
+              />
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );
@@ -57,6 +54,7 @@ function PaciumWorkerRow({
     <article
       aria-label={`${model.label} worker, ${model.statusLabel}, attention ${model.attentionLabel}`}
       className={`pacium-worker-row status-${model.status}`}
+      title={`${model.commandLabel} · ${model.repositoryLabel} · ${model.attentionLabel} · ${model.changesLabel}`}
     >
       <header>
         <span aria-hidden="true" className="pacium-worker-glyph">
@@ -64,7 +62,9 @@ function PaciumWorkerRow({
         </span>
         <span>
           <strong>{model.label}</strong>
-          <small>{model.statusLabel}</small>
+          <small>
+            {model.statusLabel} · {model.attentionLabel}
+          </small>
         </span>
         {model.canOpen && (
           <button onClick={onOpen} type="button">
@@ -72,58 +72,10 @@ function PaciumWorkerRow({
           </button>
         )}
       </header>
-      <dl>
-        <Evidence
-          detail={model.commandEvidence}
-          label="Runtime"
-          value={model.commandLabel}
-        />
-        <Evidence
-          detail={model.repositoryEvidence}
-          label="Repository"
-          value={model.repositoryLabel}
-        />
-        <Evidence
-          detail={model.attentionEvidence}
-          label="Attention"
-          value={model.attentionLabel}
-        />
-        <Evidence
-          detail={model.changesEvidence}
-          label="Changes"
-          value={model.changesLabel}
-        />
-      </dl>
-      {model.attentionObservedAt !== null && (
-        <time dateTime={model.attentionObservedAt}>
-          Attention observed {formatTime(model.attentionObservedAt)}
-        </time>
-      )}
+      <span className="visually-hidden">
+        {model.commandEvidence} {model.repositoryEvidence}{" "}
+        {model.attentionEvidence} {model.changesEvidence}
+      </span>
     </article>
   );
-}
-
-function Evidence({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-}) {
-  return (
-    <div title={detail}>
-      <dt>{label}</dt>
-      <dd>{value}</dd>
-      <span className="visually-hidden">{detail}</span>
-    </div>
-  );
-}
-
-function formatTime(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.valueOf())
-    ? "at an unavailable time"
-    : date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }

@@ -9,6 +9,7 @@ import {
   loadLocalAllowedOrigins,
   loadServerConfig,
   loadTailscaleServeConfig,
+  resolveMetaTmuxSessionName,
   resolvePaciumDataDirectory,
   resolveTmuxSocket,
 } from "./config.js";
@@ -56,6 +57,38 @@ describe("local server configuration", () => {
       `/${"a".repeat(4097)}`,
     ]) {
       expect(() => resolveTmuxSocket(path)).toThrow("PACIUM_TMUX_SOCKET");
+    }
+  });
+
+  it("accepts one exact Meta tmux name only with a configured socket", () => {
+    expect(resolveMetaTmuxSessionName(undefined, null)).toBeNull();
+    expect(resolveMetaTmuxSessionName("meta", "/private/tmp/pacium.sock")).toBe(
+      "meta",
+    );
+    expect(
+      loadServerConfig({
+        HOME: process.env.HOME,
+        SHELL: "/bin/sh",
+        PACIUM_TMUX_SOCKET: "/private/tmp/pacium.sock",
+        PACIUM_META_TMUX_SESSION: "meta",
+      }).metaTmuxSessionName,
+    ).toBe("meta");
+  });
+
+  it("rejects partial or unsafe Meta tmux startup configuration", () => {
+    expect(() => resolveMetaTmuxSessionName("meta", null)).toThrow(
+      "requires PACIUM_TMUX_SOCKET",
+    );
+    for (const name of [
+      "",
+      " meta",
+      "meta ",
+      "meta\nhidden",
+      "m".repeat(201),
+    ]) {
+      expect(() =>
+        resolveMetaTmuxSessionName(name, "/private/tmp/pacium.sock"),
+      ).toThrow("PACIUM_META_TMUX_SESSION");
     }
   });
 

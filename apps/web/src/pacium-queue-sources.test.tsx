@@ -14,9 +14,11 @@ describe("Pacium queue list semantics", () => {
     );
     expect(markup).toContain('id="queue-item-needs-felix"');
     expect(markup).toContain("Question from Needs Felix");
-    expect(markup).toContain("Meta · high confidence");
+    expect(markup).toContain("Meta · Seen");
     expect(markup).toContain("Seen");
-    expect(markup).toContain("decisions stay local until explicit delivery");
+    expect(markup).not.toContain(
+      "decisions stay local until explicit delivery",
+    );
     expect(markup).not.toContain("bbbbbbbb");
     expect(markup).not.toContain("A supported plain-text legacy marker");
     expect(markup).not.toContain("2 KiB");
@@ -44,12 +46,12 @@ describe("Pacium queue list semantics", () => {
     const markup = render(projection);
 
     expect(markup).toContain("Watch error · Meta");
-    expect(markup).toContain("could not be watched");
-    expect(markup).toContain("disconnected");
+    expect(markup).not.toContain("could not be watched");
+    expect(markup).not.toContain("disconnected");
     expect(markup).toContain("<button disabled");
   });
 
-  it("escapes hostile labels, paths, and errors as text", () => {
+  it("escapes hostile labels and omits path and error detail", () => {
     const projection = ready();
     projection.sources[0]!.source.label = "<script>queue()</script>";
     projection.sources[0]!.source.path = '"><img src=x onerror=queue()>';
@@ -77,8 +79,8 @@ describe("Pacium queue list semantics", () => {
     const markup = render(projection);
 
     expect(markup).toContain("&lt;script&gt;queue()&lt;/script&gt;");
-    expect(markup).toContain("&lt;img src=x onerror=queue()&gt;");
-    expect(markup).toContain("&lt;/small&gt;&lt;script&gt;read()");
+    expect(markup).not.toContain("onerror=queue");
+    expect(markup).not.toContain("script&gt;read");
     expect(markup).not.toContain("<script>");
     expect(markup).not.toContain("<img");
   });
@@ -110,7 +112,7 @@ describe("Pacium queue list semantics", () => {
     ];
     const markup = render(projection);
 
-    expect(markup).toContain("Conflict · Source changed after decision");
+    expect(markup).toContain(">Conflict</small>");
     expect(markup).toContain("1 conflict signal");
     expect(markup).not.toContain("ffffffff");
   });

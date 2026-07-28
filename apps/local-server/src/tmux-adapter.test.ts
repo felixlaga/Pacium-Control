@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   TmuxAdapter,
   createTmuxAdapter,
+  discoverDefaultTmuxSocket,
   parseTmuxClient,
   parseTmuxLaunch,
   parseTmuxSessions,
@@ -271,6 +272,19 @@ describe("tmux adapter", () => {
         HOME: process.env.HOME ?? "",
         TERM: "xterm-256color",
       });
+      const defaultSocket = await discoverDefaultTmuxSocket(
+        {
+          PATH: process.env.PATH ?? "",
+          HOME: process.env.HOME ?? "",
+        },
+        (_executable, args) => {
+          expect(args).toEqual(["display-message", "-p", "#{socket_path}"]);
+          return Promise.resolve({ stdout: `${socket}\n`, stderr: "" });
+        },
+      );
+      await expect(realpath(defaultSocket!)).resolves.toBe(
+        await realpath(socket),
+      );
 
       const capability = adapter.capability();
       expect(capability).toMatchObject({

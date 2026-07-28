@@ -79,7 +79,7 @@ Deliverables:
 
 - General/Pacium toggle;
 - pinned Meta and Orchestrator sessions;
-- explicit prompt target selection;
+- direct conversation in the selected Meta terminal;
 - conservative queue-file observation;
 - separate question and approval presentation;
 - answer delivery, acknowledgement, conflict, and provenance;

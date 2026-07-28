@@ -2,6 +2,61 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## Unreleased — Meta-first remote workspace
+
+### Added
+
+- A local-only Host setup panel under Workspace settings discovers the default
+  same-user tmux sessions and signed-in Tailscale node, accepts one published
+  Meta session ID, and presents consent/ready actions without configuration
+  text fields.
+- Private version-1 `host-setup.json` persists the exact derived socket, tmux
+  name, fixed loopback port, tailnet Origin, and login with atomic replacement
+  and environment override compatibility.
+
+### Changed
+
+- One optional exact `PACIUM_META_TMUX_SESSION` now attaches through the
+  existing server-owned tmux socket/adapter and publishes only bounded
+  protocol-25 capability evidence.
+- A fresh browser selects that exact immutable Pacium session once, enters
+  Pacium presentation, and collapses secondary panels. Later navigation
+  remains operator-owned.
+- The duplicate Pacium prompt-target composer is removed. Meta conversation
+  happens in the actual terminal.
+- Role, workspace, worker, and queue chrome use compact rows with less visible
+  copy and no tall fixed card presentation.
+- The Tailscale Serve runbook now documents the full open-URL-to-Meta startup
+  configuration and distinguishes it from Tailscale SSH check-mode login.
+- Button-driven local setup is now the primary configuration path; command
+  examples remain operations-only recovery material.
+
+### Security
+
+- Browser messages cannot choose an SSH host, tmux socket, session name,
+  executable, or arguments. Pacium never runs SSH, starts tmux, or recreates a
+  missing Meta session; the only Tailscale mutation is the local-only fixed
+  exception below.
+- ADR-0018 allows only authenticated loopback setup to run the fixed
+  `tailscale serve --bg --yes 4174` mutation. Remote setup, unknown existing
+  Serve replacement, arbitrary arguments, sudo, passwords, grants, and Funnel
+  remain prohibited.
+
+### Verification
+
+- Current formatting, lint, type checks, 144 test files and 923 tests, and
+  production builds passed.
+- All 20 ordinary Chromium workflows and the separate PC-079 isolated
+  real-tmux workflow passed before the PC-080 setup panel was added.
+- A separate isolated real-tmux Chromium workflow passed fresh Meta focus,
+  terminal input, refresh snapshot restoration, and one Pacium session.
+- The PC-080 fake-Tailscale browser workflow is implemented, but its final
+  Chromium rerun was blocked by the browser-execution approval service. No
+  rendered-pass claim is made for that new workflow.
+- Verification used Node.js 26.4.0 because the required Node.js 24.18.x runtime
+  was unavailable. The real `felix-harness` canary remains external
+  owner-environment evidence.
+
 ## 0.46.0 — Release-readiness audit — 2026-07-28
 
 ### Added

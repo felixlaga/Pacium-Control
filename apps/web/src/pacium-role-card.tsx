@@ -70,6 +70,9 @@ export function PaciumRoleCard({
       aria-label={`${model.label} role, ${model.statusLabel}`}
       className={`pacium-role-card status-${model.status}`}
       data-role={model.role}
+      title={[model.detail, model.context, model.connectionLabel]
+        .filter((value) => value !== null)
+        .join(" · ")}
     >
       <header>
         <span className="pacium-role-glyph" aria-hidden="true">
@@ -80,13 +83,9 @@ export function PaciumRoleCard({
           <span>{model.statusLabel}</span>
         </div>
       </header>
-      <p>{model.detail}</p>
-      {model.context !== null && (
-        <small className="pacium-role-context" title={model.context}>
-          {model.context}
-        </small>
-      )}
-      <small className="pacium-role-connection">{model.connectionLabel}</small>
+      <span className="visually-hidden">
+        {model.detail} {model.context} {model.connectionLabel}
+      </span>
       <div className="pacium-role-actions">
         {model.sessionId !== null && model.canOpen && (
           <button onClick={onOpen} type="button">

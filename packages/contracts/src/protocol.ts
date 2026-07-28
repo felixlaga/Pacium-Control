@@ -11,6 +11,7 @@ import {
   RelaunchManifestSchema,
 } from "./relaunch-manifest.js";
 import {
+  MetaSessionCapabilitySchema,
   TmuxCapabilitySchema,
   TmuxSessionsObservationSchema,
   TmuxTargetSchema,
@@ -36,7 +37,7 @@ import {
   QueueResolutionResultSchema,
 } from "./queue-reconciliation.js";
 
-export const PROTOCOL_VERSION = 24 as const;
+export const PROTOCOL_VERSION = 25 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -1391,6 +1392,7 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
       capabilities: z.object({
         directPty: z.literal(true),
         reconnectSnapshot: z.literal(true),
+        metaSession: MetaSessionCapabilitySchema,
         tmux: TmuxCapabilitySchema,
         launchPresets: z.array(LaunchPresetCapabilitySchema).length(3),
       }),
@@ -1399,6 +1401,7 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("session.list"),
     requestId: RequestIdSchema,
+    metaSession: MetaSessionCapabilitySchema,
     sessions: z.array(SessionSummarySchema),
   }),
   z.object({

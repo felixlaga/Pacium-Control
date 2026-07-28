@@ -1,6 +1,10 @@
 # Send one bounded prompt to an explicit Pacium target
 
-**Status:** Complete
+**Status:** Complete historically; UI removed by owner-directed PC-079
+
+> PC-079 removed this duplicate composer. Ordinary Meta conversation now uses
+> the selected terminal directly. This file remains historical evidence for
+> the earlier slice.
 
 ## Problem
 

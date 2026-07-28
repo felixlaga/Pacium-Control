@@ -23,6 +23,10 @@ const verificationRepositoryDirectory =
 const queueFixturePath = join(paciumStateDirectory, "NEEDS-FELIX");
 const objectiveFixturePath = join(paciumStateDirectory, "OBJECTIVE");
 const planFixturePath = join(paciumStateDirectory, "PLAN");
+const tailscaleFixtureStatePath = join(
+  paciumStateDirectory,
+  "tailscale-serve-enabled",
+);
 const tmuxExecutable = ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux"].find(
   existsSync,
 );
@@ -77,6 +81,8 @@ process.env.PACIUM_E2E_STATE_DIRECTORY = paciumStateDirectory;
 process.env.PACIUM_E2E_QUEUE_PATH = queueFixturePath;
 process.env.PACIUM_E2E_OBJECTIVE_PATH = objectiveFixturePath;
 process.env.PACIUM_E2E_PLAN_PATH = planFixturePath;
+process.env.PACIUM_E2E_TAILSCALE_STATE = tailscaleFixtureStatePath;
+process.env.PACIUM_ENV_ALLOWLIST = "PACIUM_E2E_TAILSCALE_STATE";
 process.env.PACIUM_E2E_PROVIDER_DIRECTORY = providerFixtureDirectory;
 process.env.PACIUM_E2E_VERIFICATION_REPOSITORY =
   verificationRepositoryDirectory;
@@ -91,6 +97,35 @@ writeFileSync(
     "  exit 0",
     "fi",
     'exec "${SHELL:-/bin/sh}" -l',
+    "",
+  ].join("\n"),
+  { mode: 0o700 },
+);
+writeFileSync(
+  join(providerFixtureDirectory, "tailscale"),
+  [
+    "#!/bin/sh",
+    'if [ "$1" = "status" ] && [ "$2" = "--json" ]; then',
+    '  printf \'%s\\n\' \'{"BackendState":"Running","Self":{"DNSName":"felix-harness.example-tailnet.ts.net.","UserID":42},"User":{"42":{"LoginName":"felix@example.com"}}}\'',
+    "  exit 0",
+    "fi",
+    'if [ "$1" = "serve" ] && [ "$2" = "status" ] && [ "$3" = "--json" ]; then',
+    '  if [ -f "$PACIUM_E2E_TAILSCALE_STATE" ]; then',
+    '    printf \'%s\\n\' \'{"Web":{"felix-harness.example-tailnet.ts.net:443":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:4174"}}}}}\'',
+    "  else",
+    "    printf '%s\\n' '{}'",
+    "  fi",
+    "  exit 0",
+    "fi",
+    'if [ "$1" = "serve" ] && [ "$2" = "--bg" ] && [ "$3" = "--yes" ] && [ "$4" = "4174" ]; then',
+    '  : > "$PACIUM_E2E_TAILSCALE_STATE"',
+    "  exit 0",
+    "fi",
+    'if [ "$1" = "serve" ] && [ "$2" = "--https=443" ] && [ "$3" = "off" ]; then',
+    '  rm -f "$PACIUM_E2E_TAILSCALE_STATE"',
+    "  exit 0",
+    "fi",
+    "exit 1",
     "",
   ].join("\n"),
   { mode: 0o700 },
@@ -110,6 +145,9 @@ if (tmuxExecutable !== undefined) {
     process.cwd(),
   ]);
   process.env.PACIUM_TMUX_SOCKET = tmuxSocket;
+  if (process.env.PACIUM_E2E_META_FOCUS === "1") {
+    process.env.PACIUM_META_TMUX_SESSION = "pacium-e2e";
+  }
   process.env.PACIUM_E2E_TMUX_DIRECTORY = tmuxDirectory;
   process.env.PACIUM_E2E_TMUX_EXECUTABLE = tmuxExecutable;
 }

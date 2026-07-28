@@ -37,6 +37,72 @@ afterEach(async () => {
 
 describe("real tmux keep-alive lifecycle", () => {
   it.runIf(tmuxExecutable !== undefined)(
+    "automatically attaches one exact configured Meta target without duplication",
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), "pacium-meta-real-"));
+      const socket = join(root, "server.sock");
+      fixtures.push({ root, socket });
+      await execFileAsync(tmuxExecutable!, [
+        "-S",
+        socket,
+        "new-session",
+        "-d",
+        "-s",
+        "meta",
+        "-c",
+        process.cwd(),
+      ]);
+      const config = loadServerConfig({
+        ...process.env,
+        PACIUM_DATA_DIR: join(root, "state"),
+        PACIUM_DEFAULT_CWD: process.cwd(),
+        PACIUM_TMUX_SOCKET: socket,
+        PACIUM_META_TMUX_SESSION: "meta",
+        SHELL: supportedShell,
+      });
+      const store = new RelaunchManifestStore(config.dataDirectory);
+      await store.initialize();
+      const adapter = await createTmuxAdapter(
+        config.tmuxSocket,
+        buildChildEnvironment(config.environmentKeys),
+      );
+      const manager = createManager(config, store, adapter);
+      let terminalOutput = "";
+      manager.onTerminalData((event) => {
+        terminalOutput += event.data;
+      });
+
+      const first = await manager.attachConfiguredMetaTmux(
+        config.metaTmuxSessionName,
+      );
+      expect(first.state).toBe("ready");
+      expect(typeof first.sessionId).toBe("string");
+      await expect(
+        manager.attachConfiguredMetaTmux(config.metaTmuxSessionName),
+      ).resolves.toEqual(first);
+      expect(manager.list()).toHaveLength(1);
+      manager.input(first.sessionId!, "printf 'PC-079 Meta ready\\n'\r");
+      await vi.waitFor(
+        () => expect(terminalOutput).toContain("PC-079 Meta ready"),
+        { timeout: 5_000 },
+      );
+
+      await manager.shutdown();
+      await expect(adapter.discover()).resolves.toMatchObject({
+        status: "ready",
+        sessions: [
+          {
+            target: {
+              sessionName: "meta",
+            },
+          },
+        ],
+      });
+    },
+    15_000,
+  );
+
+  it.runIf(tmuxExecutable !== undefined)(
     "keeps one managed target through client and manager restart",
     async () => {
       const root = await mkdtemp(join(tmpdir(), "pacium-keepalive-real-"));

@@ -609,6 +609,30 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
   and revocation propagation checks remain an explicit release gate rather than
   claimed repository evidence.
 
+### PC-079 Make remote Pacium open directly into Meta
+
+- Remove the duplicate prompt-target composer, compact Pacium chrome, and make
+  one exact server-configured existing tmux session the automatic Meta
+  terminal after a fresh browser connection.
+- Current status: implemented and repository/browser verified. Protocol 25
+  carries bounded Meta capability evidence. The tmux name and socket remain
+  startup-owned, exact, and absent from browser authority; Pacium never runs
+  SSH, creates a missing target, or changes Tailscale configuration. The real
+  `felix-harness` Serve/tmux canary remains owner environment evidence.
+
+### PC-080 Replace shell configuration with local Host setup
+
+- Discover the same-user default tmux target and signed-in Tailscale identity,
+  then enable and persist the fixed private Serve-to-Meta path through local
+  settings buttons.
+- Current status: implemented and repository verified. ADR-0018 limits the
+  flow to authenticated loopback requests, one published tmux session ID, one
+  fixed Serve command, private atomic state, and verified Tailscale consent
+  links. Its fake-Tailscale Chromium scenario is implemented but the final
+  rendered rerun was blocked by browser-execution approval infrastructure.
+  The real host canary, remote configuration, and general command authority
+  remain outside the claimed evidence.
+
 ## Deferred backlog
 
 These items require a future strategy and ADR:

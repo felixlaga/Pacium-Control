@@ -19,6 +19,8 @@ import {
   decodeTerminalDataFrame,
   DiagnosticsSnapshotSchema,
   DirectoryListingSchema,
+  HostSetupApplyResultSchema,
+  HostSetupSnapshotSchema,
   PROTOCOL_VERSION,
   ServerMessageSchema,
   type PaciumWorkspace,
@@ -3158,6 +3160,111 @@ describe("localhost HTTP and WebSocket boundary", () => {
     expect(deniedOrigin.status).toBe(403);
   });
 
+  it("keeps host setup local-only and identity-only", async () => {
+    const inspect = vi.fn(() =>
+      Promise.resolve(
+        HostSetupSnapshotSchema.parse({
+          status: "ready",
+          tmuxSessions: [{ id: "$4", name: "Meta" }],
+          selectedTmuxSessionId: null,
+          tailscale: {
+            state: "ready",
+            origin: "https://host.example-tailnet.ts.net",
+            login: "owner@example.com",
+          },
+          remoteUrl: null,
+          canApply: true,
+          detail: "Choose Meta.",
+        }),
+      ),
+    );
+    const apply = vi.fn(() =>
+      Promise.resolve(
+        HostSetupApplyResultSchema.parse({
+          outcome: "configured",
+          snapshot: {
+            status: "configured",
+            tmuxSessions: [{ id: "$4", name: "Meta" }],
+            selectedTmuxSessionId: "$4",
+            tailscale: {
+              state: "ready",
+              origin: "https://host.example-tailnet.ts.net",
+              login: "owner@example.com",
+            },
+            remoteUrl: "https://host.example-tailnet.ts.net",
+            canApply: false,
+            detail: "Remote Meta configured.",
+          },
+          approvalUrl: null,
+        }),
+      ),
+    );
+    const setup = await startTestServer(
+      new FakePtyFactory(),
+      undefined,
+      undefined,
+      undefined,
+      {
+        origin: "https://host.example-tailnet.ts.net",
+        hostname: "host.example-tailnet.ts.net",
+        operatorLogins: new Set(["owner@example.com"]),
+      },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { inspect, apply },
+    );
+    application = setup.application;
+    manager = setup.manager;
+    const httpUrl = setup.url.replace("ws://", "http://");
+    const localHeaders = {
+      authorization: `Bearer ${setup.config.accessToken}`,
+      origin: "http://127.0.0.1:4173",
+    };
+
+    const inspected = await requestHttp(`${httpUrl}/api/host-setup`, {
+      headers: localHeaders,
+    });
+    expect(inspected.status).toBe(200);
+    expect(inspect).toHaveBeenCalledOnce();
+
+    const hostile = await requestHttp(`${httpUrl}/api/host-setup/apply`, {
+      method: "POST",
+      headers: {
+        ...localHeaders,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        tmuxSessionId: "$4",
+        command: "ssh root@host",
+      }),
+    });
+    expect(hostile.status).toBe(400);
+    expect(apply).not.toHaveBeenCalled();
+
+    const applied = await requestHttp(`${httpUrl}/api/host-setup/apply`, {
+      method: "POST",
+      headers: {
+        ...localHeaders,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ tmuxSessionId: "$4" }),
+    });
+    expect(applied.status).toBe(200);
+    expect(apply).toHaveBeenCalledWith({ tmuxSessionId: "$4" });
+
+    const remote = await requestHttp(`${httpUrl}/api/host-setup`, {
+      headers: {
+        authorization: `Bearer ${setup.config.accessToken}`,
+        host: "host.example-tailnet.ts.net",
+        origin: "https://host.example-tailnet.ts.net",
+        "tailscale-user-login": "owner@example.com",
+      },
+    });
+    expect(remote.status).toBe(403);
+  });
+
   it("authorizes remote bootstrap and protected reads only through exact Serve evidence", async () => {
     const tailscaleServe = testTailscaleServeConfig();
     const setup = await startTestServer(
@@ -3437,6 +3544,7 @@ async function startTestServer(
   codexObserver?: CodexObserver,
   codexRuntimeBridge?: CodexRuntimeBridge,
   tmuxAdapter?: TmuxAdapter,
+  hostSetup?: Parameters<typeof createPaciumHttpServer>[6],
 ): Promise<{
   application: PaciumHttpServer;
   manager: SessionManager;
@@ -3457,6 +3565,7 @@ async function startTestServer(
     dataDirectory: dataDirectory ?? join(fixtureRoot, "data"),
     shell: "/bin/zsh",
     tmuxSocket: null,
+    metaTmuxSessionName: null,
     environmentKeys: [],
     verificationCatalog: verification?.catalog ?? {
       configured: false,
@@ -3617,6 +3726,7 @@ async function startTestServer(
     undefined,
     claudeObserver,
     codexRuntimeBridge,
+    hostSetup,
   );
   application.server.listen(0, config.host);
   await once(application.server, "listening");

@@ -21,6 +21,7 @@ ADRs record durable decisions and their consequences. They are not implementatio
 | [0015](ADR-0015-minimal-local-state.md)                      | Minimal local filesystem state                      | Accepted               |
 | [0016](ADR-0016-tailscale-serve-access.md)                   | Optional Tailscale Serve access to loopback Pacium  | Accepted               |
 | [0017](ADR-0017-supported-hosts-and-development-packages.md) | Apple-silicon macOS and Ubuntu 24.04 x64 hosts      | Accepted               |
+| [0018](ADR-0018-local-host-setup.md)                         | Local-only fixed tmux and Tailscale host setup      | Accepted               |
 
 ## Status meanings
 

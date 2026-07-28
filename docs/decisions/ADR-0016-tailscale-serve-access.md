@@ -4,6 +4,7 @@
 - Date: 2026-07-27
 - Owner approval: Explicit product direction in the 2026-07-27 implementation session
 - Amends: [ADR-0014](ADR-0014-localhost-single-process.md)
+- Amended by: [ADR-0018](ADR-0018-local-host-setup.md)
 
 ## Context
 
@@ -21,7 +22,10 @@ Pacium gains an optional remote-access mode with these boundaries:
 - Tailscale Serve is the only supported initial remote ingress.
 - Tailscale Funnel and public exposure are prohibited.
 - Pacium runs on the same host as the PTYs, Meta, Orchestrator, queue files, and optional tmux sessions it controls.
-- The operator configures one exact HTTPS tailnet origin and an explicit allowlist of Tailscale user logins.
+- Pacium requires one exact HTTPS tailnet origin and an explicit allowlist of
+  Tailscale user logins. The operator may supply them as explicit environment
+  overrides, or use ADR-0018's authenticated loopback-only setup to derive
+  them from the current Tailscale node.
 - Remote bootstrap and WebSocket upgrades require trusted Tailscale Serve identity headers plus the existing ephemeral Pacium token.
 - Direct localhost use continues to use the existing local Origin and token flow without requiring Tailscale.
 - Tailnet IP addresses are never treated as permanent human identity.
@@ -41,7 +45,10 @@ Pacium gains an optional remote-access mode with these boundaries:
 
 ### Negative
 
-- Tailscale installation, HTTPS enablement, Serve configuration, and grants become release dependencies for remote mode.
+- Tailscale installation, HTTPS enablement, Serve configuration, and grants
+  become release dependencies for remote mode. ADR-0018 may perform only its
+  fixed local setup operation; all other Tailscale administration remains
+  external.
 - A trusted local process on the Pacium host can still reach the loopback service with the invoking user's authority.
 - Identity-header assumptions require explicit tests and must not be generalized to arbitrary reverse proxies.
 - The initial mode does not combine sessions from several Pacium hosts into one UI.

@@ -1,12 +1,16 @@
 import {
   DiagnosticsSnapshotSchema,
   DirectoryListingSchema,
+  HostSetupApplyResultSchema,
+  HostSetupSnapshotSchema,
   PROTOCOL_VERSION,
   ServerMessageSchema,
   decodeTerminalDataFrame,
   type ClientMessage,
   type DiagnosticsSnapshot,
   type DirectoryListing,
+  type HostSetupApplyResult,
+  type HostSetupSnapshot,
   type LaunchPresetId,
   type QueueApprovalDecisionPayload,
   type QueueItemInspectionIdentity,
@@ -319,6 +323,29 @@ export class PaciumTransport {
       );
     }
     return fetchDiagnostics({ accessToken: this.accessToken });
+  }
+
+  public async getHostSetup(): Promise<HostSetupSnapshot> {
+    if (this.accessToken === null) {
+      throw new Error(
+        "Pacium is still connecting. Try loading host setup again.",
+      );
+    }
+    return fetchHostSetup({ accessToken: this.accessToken });
+  }
+
+  public async applyHostSetup(
+    tmuxSessionId: string,
+  ): Promise<HostSetupApplyResult> {
+    if (this.accessToken === null) {
+      throw new Error(
+        "Pacium is still connecting. Try applying host setup again.",
+      );
+    }
+    return applyHostSetup({
+      accessToken: this.accessToken,
+      tmuxSessionId,
+    });
   }
 
   private async connect(): Promise<void> {
@@ -835,6 +862,77 @@ export async function fetchDiagnostics(input: {
     throw new Error("The Pacium host returned invalid diagnostics.");
   }
   return parsed.data;
+}
+
+export async function fetchHostSetup(input: {
+  accessToken: string;
+  fetcher?: typeof fetch;
+}): Promise<HostSetupSnapshot> {
+  const fetcher = input.fetcher ?? fetch;
+  const response = await fetcher("/api/host-setup", {
+    credentials: "same-origin",
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${input.accessToken}`,
+    },
+    method: "GET",
+  });
+  if (!response.ok) {
+    throw new Error(await boundedHttpError(response, "Host setup"));
+  }
+  const parsed = HostSetupSnapshotSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    throw new Error("The Pacium host returned invalid setup evidence.");
+  }
+  return parsed.data;
+}
+
+export async function applyHostSetup(input: {
+  accessToken: string;
+  tmuxSessionId: string;
+  fetcher?: typeof fetch;
+}): Promise<HostSetupApplyResult> {
+  const fetcher = input.fetcher ?? fetch;
+  const response = await fetcher("/api/host-setup/apply", {
+    body: JSON.stringify({ tmuxSessionId: input.tmuxSessionId }),
+    credentials: "same-origin",
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${input.accessToken}`,
+      "content-type": "application/json",
+    },
+    method: "POST",
+  });
+  if (!response.ok) {
+    throw new Error(await boundedHttpError(response, "Host setup"));
+  }
+  const parsed = HostSetupApplyResultSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    throw new Error("The Pacium host returned an invalid setup result.");
+  }
+  return parsed.data;
+}
+
+async function boundedHttpError(
+  response: Response,
+  label: string,
+): Promise<string> {
+  let message = `${label} failed with HTTP ${response.status}`;
+  try {
+    const body = (await response.json()) as unknown;
+    if (
+      typeof body === "object" &&
+      body !== null &&
+      "error" in body &&
+      typeof body.error === "string" &&
+      body.error.length <= 300
+    ) {
+      message = body.error;
+    }
+  } catch {
+    // Keep the bounded HTTP status message.
+  }
+  return message;
 }
 
 export function browserReadMethod(protocol: string): "GET" | "POST" {

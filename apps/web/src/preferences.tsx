@@ -1,4 +1,8 @@
-import type { LaunchPresetCapability } from "@pacium/contracts";
+import type {
+  HostSetupApplyResult,
+  HostSetupSnapshot,
+  LaunchPresetCapability,
+} from "@pacium/contracts";
 import { useRef, useState, type FormEvent } from "react";
 
 import { handleModalKeyDown } from "./modal-focus.js";
@@ -16,6 +20,7 @@ import {
   type ThemePreference,
   type WorkspacePreferences,
 } from "./preferences-model.js";
+import { HostSetupPanel } from "./host-setup-panel.js";
 
 interface PreferencesDialogProps {
   launchPresets: LaunchPresetCapability[];
@@ -24,6 +29,9 @@ interface PreferencesDialogProps {
   notificationPermission: NotificationPermission | "unsupported";
   onRequestNotificationPermission: () => void;
   preferences: WorkspacePreferences;
+  hostSetupLocal: boolean;
+  loadHostSetup: () => Promise<HostSetupSnapshot>;
+  applyHostSetup: (tmuxSessionId: string) => Promise<HostSetupApplyResult>;
 }
 
 export function PreferencesDialog({
@@ -33,6 +41,9 @@ export function PreferencesDialog({
   notificationPermission,
   onRequestNotificationPermission,
   preferences,
+  hostSetupLocal,
+  loadHostSetup,
+  applyHostSetup,
 }: PreferencesDialogProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const [draft, setDraft] = useState(preferences);
@@ -67,7 +78,9 @@ export function PreferencesDialog({
           <div>
             <span className="eyebrow">Local view</span>
             <h2 id="preferences-title">Workspace settings</h2>
-            <p>Stored in this browser. PTYs and repositories are unchanged.</p>
+            <p>
+              View preferences stay in this browser. Host setup stays private.
+            </p>
           </div>
           <button aria-label="Cancel settings" onClick={onCancel} type="button">
             ×
@@ -76,6 +89,16 @@ export function PreferencesDialog({
 
         <form onSubmit={submit}>
           <div className="preferences-sections">
+            <PreferenceSection
+              description="Choose the existing Meta session and enable private tailnet access."
+              title="Host setup"
+            >
+              <HostSetupPanel
+                apply={applyHostSetup}
+                load={loadHostSetup}
+                local={hostSetupLocal}
+              />
+            </PreferenceSection>
             <PreferenceSection
               description="Choose calm application colors and spacing."
               title="Appearance"

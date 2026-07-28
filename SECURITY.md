@@ -60,8 +60,22 @@ Optional remote access is supported only through the trust boundary in ADR-0016:
   when remote mode is enabled.
 - Network grants and application identity checks are both required.
 - A Tailscale IP is never treated as permanent user identity.
-- Protocol 18 exposes only Local, or Tailscale plus the current exact verified
+- Protocol 25 exposes only Local, or Tailscale plus the current exact verified
   login. Connection identity is cleared on disconnect and never persisted.
+
+Host setup is accepted only through a protected local loopback request. It
+publishes current tmux session IDs, derives bounded current-node identity from
+Tailscale, refuses unknown existing Serve configuration, and owns only the
+fixed `serve --bg --yes 4174` mutation. The browser cannot supply a socket,
+name, Origin, login, executable, host, command, or arguments. Remote requests
+are denied. Pacium never starts tmux, recreates a missing session, invokes SSH,
+handles a password, edits grants, or enables Funnel.
+
+Successful setup is stored as private versioned `host-setup.json`. It contains
+only the fixed loopback port, canonical socket, exact tmux name, tailnet
+Origin, and exact login; it contains no Tailscale credential, key, Pacium
+token, environment, or terminal content. Explicit startup environment values
+remain higher-priority overrides.
 
 Current Tailscale Serve strips inbound identity/Funnel headers, preserves the
 tailnet Host, and adds verified identity context before the loopback proxy

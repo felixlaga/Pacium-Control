@@ -187,6 +187,7 @@ export class WebSocketHub {
       capabilities: {
         directPty: true,
         reconnectSnapshot: true,
+        metaSession: this.sessions.metaSessionCapability(),
         tmux: this.sessions.tmuxCapability(),
         launchPresets: presetCapabilities(this.config.launchPresets),
       },
@@ -291,9 +292,13 @@ export class WebSocketHub {
   ): Promise<void> {
     switch (message.type) {
       case "session.list":
+        await this.sessions.attachConfiguredMetaTmux(
+          this.config.metaTmuxSessionName,
+        );
         this.send(client.socket, {
           type: "session.list",
           requestId: message.requestId,
+          metaSession: this.sessions.metaSessionCapability(),
           sessions: this.sessions.list(),
         });
         return;

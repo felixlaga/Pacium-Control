@@ -23,7 +23,7 @@ Missing or ended sessions remain visible with launch, relaunch, or attach action
 
 - pinned in Pacium mode;
 - one-keystroke focus;
-- explicit target in the prompt composer;
+- direct conversation in the selected Meta terminal;
 - recent meaningful activity;
 - related queue items;
 - source-labelled summaries.
@@ -67,13 +67,13 @@ works.
 
 ## Steering
 
-The composer always displays the target:
+Meta conversation uses the actual selected terminal. When one exact Meta tmux
+target is configured at startup, a fresh browser selects it once and collapses
+secondary panels. Pacium never infers Meta from terminal text or a display
+name, and later operator selection is not overridden.
 
-```text
-Meta | Orchestrator | Selected worker
-```
-
-Changing workspace or mode cannot silently preserve an unsafe target. Terminal input and structured prompt delivery remain distinct interactions.
+Queue decision delivery remains a separate reviewed interaction. Terminal
+input is not an approval, and a queue answer is not terminal input.
 
 ## Evidence
 
