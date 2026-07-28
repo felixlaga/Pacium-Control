@@ -11,6 +11,7 @@
     "dev": "pnpm --parallel --stream --filter @pacium/web --filter @pacium/local-server dev",
     "build": "pnpm -r --if-present build",
     "package:macos": "pnpm build && node packaging/macos/build.mjs",
+    "package:macos:verify": "pnpm package:macos && node packaging/macos/verify.mjs",
     "start": "pnpm --filter @pacium/local-server start",
     "test": "vitest run",
     "test:soak": "node --expose-gc --import tsx apps/local-server/src/lifecycle-soak-runner.ts",
