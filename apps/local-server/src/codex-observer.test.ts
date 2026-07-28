@@ -138,11 +138,43 @@ describe("Codex observer preparation and authorization", () => {
       args: [],
       environment: {},
       observation: {
-        health: { state: "unavailable" },
+        health: { state: "unsupported", confidence: "confirmed" },
         providerVersion: "0.100.0",
+        diagnostics: [
+          {
+            code: "codex.runtime_unsupported",
+            severity: "warning",
+            fields: [],
+          },
+        ],
       },
     });
     expect(unsupported.observation.health.detail).toContain("remote TUI");
+    expect(
+      unsupported.observation.capabilities.every(
+        ({ availability, confidence }) =>
+          availability === "unsupported" && confidence === "confirmed",
+      ),
+    ).toBe(true);
+    const unavailable = new CodexObserver({
+      baseUrl: "http://127.0.0.1:4174",
+      executable: "/opt/test/bin/codex",
+      environment: {},
+      capability: {
+        available: false,
+        version: null,
+        reason: "version_unavailable",
+      },
+    }).prepare(sessionId, now);
+    expect(unavailable.observation).toMatchObject({
+      health: { state: "unavailable", confidence: "low" },
+      diagnostics: [{ code: "codex.version_unavailable" }],
+    });
+    expect(
+      unavailable.observation.capabilities.every(
+        ({ availability }) => availability === "unknown",
+      ),
+    ).toBe(true);
     expect(
       () =>
         new CodexObserver({
@@ -245,21 +277,39 @@ describe("Codex observer state reduction", () => {
     expect(updates).toHaveLength(6);
   });
 
-  it("marks malformed known events and transport failure as bounded degradation", () => {
+  it("distinguishes degraded input, fatal transport failure, and fresh recovery", () => {
     const instance = observer();
     instance.prepare(sessionId, now);
+    const observationUpdates: Array<{
+      health: string;
+      severity: string | undefined;
+    }> = [];
+    instance.onUpdate((_id, observation) => {
+      observationUpdates.push({
+        health: observation.health.state,
+        severity: observation.diagnostics[0]?.severity,
+      });
+    });
     expect(
       instance.ingestServerMessage(sessionId, {
         method: "turn/started",
         params: { threadId, turn: { id: "", status: "inProgress" } },
       }),
     ).toEqual({ status: "rejected", code: "invalid_event" });
+    expect(observationUpdates[0]).toEqual({
+      health: "degraded",
+      severity: "warning",
+    });
     const recovered = instance.ingestServerMessage(sessionId, {
       method: "turn/started",
       params: {
         threadId,
         turn: { id: turnId, status: "inProgress" },
       },
+    });
+    expect(observationUpdates.at(-1)).toEqual({
+      health: "ready",
+      severity: undefined,
     });
     expect(recovered).toMatchObject({
       status: "accepted",
@@ -279,8 +329,24 @@ describe("Codex observer state reduction", () => {
     expect(duplicate).toMatchObject({
       status: "duplicate",
       observation: {
-        health: { state: "degraded" },
-        diagnostics: [{ code: "codex.child_exit" }],
+        health: { state: "failed" },
+        diagnostics: [
+          { code: "codex.child_exit", severity: "error", fields: [] },
+        ],
+      },
+    });
+    const fresh = instance.ingestServerMessage(sessionId, {
+      method: "turn/completed",
+      params: {
+        threadId,
+        turn: { id: turnId, status: "completed" },
+      },
+    });
+    expect(fresh).toMatchObject({
+      status: "accepted",
+      observation: {
+        health: { state: "ready" },
+        diagnostics: [],
       },
     });
   });

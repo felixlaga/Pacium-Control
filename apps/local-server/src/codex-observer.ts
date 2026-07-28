@@ -251,7 +251,7 @@ export class CodexObserver {
       session.observation,
       this.now(),
       code,
-      "The private Codex runtime transport failed.",
+      codexFailureMessage(code),
     );
     this.emit(sessionId, session.observation);
   }
@@ -355,6 +355,8 @@ function unavailableObservation(
   observedAt: string,
   capability: CodexRuntimeCapability,
 ): ProviderObservationSnapshot {
+  const unsupported =
+    !capability.available && capability.reason !== "version_unavailable";
   const detail = capability.available
     ? "Codex native transport is prepared but no authenticated event has arrived."
     : capability.reason === "version_unavailable"
@@ -362,21 +364,44 @@ function unavailableObservation(
       : capability.reason === "remote_unavailable"
         ? "This Codex CLI does not expose the required remote TUI options."
         : "This Codex CLI does not expose the required App Server listener.";
+  const diagnostic: ProviderDiagnostic | null = capability.available
+    ? null
+    : capability.reason === "version_unavailable"
+      ? {
+          code: "codex.version_unavailable",
+          severity: "warning",
+          message:
+            "Codex version detection is unavailable; native compatibility is not confirmed.",
+          observedAt,
+          fields: [],
+        }
+      : {
+          code: "codex.runtime_unsupported",
+          severity: "warning",
+          message:
+            capability.reason === "remote_unavailable"
+              ? "The installed Codex CLI lacks the required remote TUI capability."
+              : "The installed Codex CLI lacks the required App Server listener capability.",
+          observedAt,
+          fields: [],
+        };
   return ProviderObservationSnapshotSchema.parse({
     contractVersion: 1,
     provider: "codex",
     adapterVersion: CODEX_OBSERVER_ADAPTER_VERSION,
     providerVersion: capability.version,
     health: {
-      state: "unavailable",
+      state: unsupported ? "unsupported" : "unavailable",
       source: "none",
-      confidence: "low",
+      confidence: unsupported ? "confirmed" : "low",
       detail,
     },
-    capabilities: CAPABILITIES.map(unknownCapability),
+    capabilities: CAPABILITIES.map((id) =>
+      unsupported ? unsupportedCapability(id, detail) : unknownCapability(id),
+    ),
     attention: null,
     activities: [],
-    diagnostics: [],
+    diagnostics: diagnostic === null ? [] : [diagnostic],
     observedAt,
     staleAfter: addMinutes(observedAt, 5),
   });
@@ -409,9 +434,7 @@ function applyEvent(
             0,
             MAX_PROVIDER_ACTIVITIES,
           ),
-    diagnostics: previous.diagnostics.filter(
-      ({ code }) => code !== "codex.invalid_event",
-    ),
+    diagnostics: [],
     observedAt,
     staleAfter: addMinutes(observedAt, 5),
   });
@@ -423,9 +446,10 @@ function degradedObservation(
   code: string,
   message: string,
 ): ProviderObservationSnapshot {
+  const failed = fatalCodexFailure(code);
   const diagnostic: ProviderDiagnostic = {
-    code: code.slice(0, 120),
-    severity: "warning",
+    code: code.slice(0, 80),
+    severity: failed ? "error" : "warning",
     message,
     observedAt,
     fields: [],
@@ -433,7 +457,7 @@ function degradedObservation(
   return ProviderObservationSnapshotSchema.parse({
     ...previous,
     health: {
-      state: "degraded",
+      state: failed ? "failed" : "degraded",
       source: "native",
       confidence: "confirmed",
       detail: message,
@@ -475,6 +499,54 @@ function unknownCapability(id: ProviderCapabilityId): ProviderCapability {
     confidence: "low",
     detail: "No authenticated Codex evidence supports this capability yet.",
   };
+}
+
+function unsupportedCapability(
+  id: ProviderCapabilityId,
+  detail: string,
+): ProviderCapability {
+  return {
+    id,
+    availability: "unsupported",
+    source: "none",
+    confidence: "confirmed",
+    detail,
+  };
+}
+
+function fatalCodexFailure(code: string): boolean {
+  return new Set([
+    "codex.spawn_failed",
+    "codex.invalid_jsonl",
+    "codex.jsonl_too_large",
+    "codex.bridge_backpressure",
+    "codex.bridge_send",
+    "codex.child_stdin",
+    "codex.child_stdout",
+    "codex.child_error",
+    "codex.child_exit",
+  ]).has(code);
+}
+
+function codexFailureMessage(code: string): string {
+  switch (code) {
+    case "codex.spawn_failed":
+      return "The private Codex App Server could not start.";
+    case "codex.invalid_jsonl":
+    case "codex.jsonl_too_large":
+      return "The private Codex App Server emitted data outside the bounded runtime contract.";
+    case "codex.bridge_backpressure":
+    case "codex.bridge_send":
+      return "The private Codex runtime bridge could not forward bounded events safely.";
+    case "codex.child_stdin":
+    case "codex.child_stdout":
+    case "codex.child_error":
+      return "The private Codex App Server transport failed.";
+    case "codex.child_exit":
+      return "The private Codex App Server exited.";
+    default:
+      return "The private Codex runtime transport degraded.";
+  }
 }
 
 function rememberFingerprint(
