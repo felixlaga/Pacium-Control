@@ -13,10 +13,8 @@ import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import type { RelaunchManifest } from "@pacium/contracts";
 
-import {
-  RelaunchManifestStore,
-  RelaunchManifestStoreError,
-} from "./relaunch-manifest-store.js";
+import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
+import type { RelaunchManifestStoreError } from "./relaunch-manifest-store.js";
 
 function manifest(
   id = "66bd01dc-a1c3-4341-9c3c-153027b7f098",

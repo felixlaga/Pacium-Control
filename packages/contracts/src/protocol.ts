@@ -6,7 +6,10 @@ import {
 } from "./pacium-config.js";
 import { PaciumContextObservationSchema } from "./pacium-context.js";
 import { ProviderObservationSnapshotSchema } from "./provider-observation.js";
-import { RelaunchManifestSchema } from "./relaunch-manifest.js";
+import {
+  MAX_RELAUNCH_MANIFESTS,
+  RelaunchManifestSchema,
+} from "./relaunch-manifest.js";
 import {
   QueueApprovalDecisionPayloadSchema,
   QueueDecisionResultSchema,
@@ -1367,7 +1370,7 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal("relaunch.manifest.list"),
       requestId: RequestIdSchema,
-      manifests: z.array(RelaunchManifestSchema),
+      manifests: z.array(RelaunchManifestSchema).max(MAX_RELAUNCH_MANIFESTS),
     })
     .strict(),
   z
