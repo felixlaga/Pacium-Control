@@ -1,12 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import {
-  mkdir,
-  mkdtemp,
-  realpath,
-  symlink,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -151,13 +145,7 @@ describe("tmux adapter", () => {
       const canonicalSocket = await realpath(socket);
       const spec = await adapter.attachSpec(target.serverId, target.sessionId);
       expect(spec).toMatchObject({
-        args: [
-          "-S",
-          canonicalSocket,
-          "attach-session",
-          "-t",
-          target.sessionId,
-        ],
+        args: ["-S", canonicalSocket, "attach-session", "-t", target.sessionId],
         target: {
           serverId: target.serverId,
           sessionId: target.sessionId,
