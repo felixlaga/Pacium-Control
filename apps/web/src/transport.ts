@@ -113,13 +113,7 @@ export class PaciumTransport {
   ): string {
     const requestId = crypto.randomUUID();
     this.send(
-      tmuxSessionAttachMessage(
-        serverId,
-        sessionId,
-        cols,
-        rows,
-        requestId,
-      ),
+      tmuxSessionAttachMessage(serverId, sessionId, cols, rows, requestId),
     );
     return requestId;
   }

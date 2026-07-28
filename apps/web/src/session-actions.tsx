@@ -371,8 +371,8 @@ export function RelaunchSessionDialog({
               {manifest.runtime === "tmux"
                 ? "Not applicable · the exact tmux target is revalidated"
                 : manifest.resumeReference === null
-                ? "No native resume identifier observed · provider state is not resumed automatically"
-                : `${manifest.resumeReference.provider} identifier retained · not resumed automatically`}
+                  ? "No native resume identifier observed · provider state is not resumed automatically"
+                  : `${manifest.resumeReference.provider} identifier retained · not resumed automatically`}
             </dd>
           </div>
         </dl>
