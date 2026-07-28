@@ -4090,7 +4090,14 @@ kbd {
   white-space: nowrap;
 }
 
-.activity-fact-list,
+.activity-fact-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .activity-sources > ul {
   margin: 0;
   padding: 0;
@@ -4100,22 +4107,46 @@ kbd {
   background: var(--panel-raised);
 }
 
-.activity-fact-list > li,
 .activity-sources > ul > li {
   border-bottom: 1px solid var(--border);
 }
 
-.activity-fact-list > li:last-child,
 .activity-sources > ul > li:last-child {
   border-bottom: 0;
 }
 
 .activity-fact-list article {
+  --activity-tone: var(--text-faint);
   display: flex;
+  position: relative;
   min-width: 0;
-  padding: 9px;
+  overflow: hidden;
+  padding: 9px 9px 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--panel-raised) 96%, var(--activity-tone));
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
+}
+
+.activity-fact-list article.is-active {
+  --activity-tone: var(--accent-strong);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+
+.activity-fact-list article.is-attention {
+  --activity-tone: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 34%, var(--border));
+}
+
+.activity-fact-list article.is-success {
+  --activity-tone: var(--green);
+  border-color: color-mix(in srgb, var(--green) 28%, var(--border));
+}
+
+.activity-fact-list article.is-danger {
+  --activity-tone: var(--red);
+  border-color: color-mix(in srgb, var(--red) 34%, var(--border));
 }
 
 .activity-fact-list article > header {
@@ -4127,6 +4158,25 @@ kbd {
   color: var(--text-faint);
   font-size: 7px;
   text-transform: uppercase;
+}
+
+.activity-card-kind {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  color: var(--activity-tone);
+  font-weight: 650;
+  letter-spacing: 0.05em;
+}
+
+.activity-card-kind > i {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .activity-fact-list article > header time {
@@ -4149,9 +4199,127 @@ kbd {
 
 .activity-fact-list article > p {
   margin: 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.activity-fact-list article > footer {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 7px;
+  margin-top: 1px;
+}
+
+.activity-card-metadata {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.activity-card-metadata > small,
+.activity-terminal-excerpt > span small {
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-faint);
+  background: var(--panel);
+  font-size: 7px;
+  line-height: 1.2;
+}
+
+.activity-fact-list article > footer button,
+.activity-terminal-fallback button {
+  min-height: 24px;
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--panel-raised);
+  cursor: pointer;
+  font-size: 8px;
+}
+
+.activity-fact-list article > footer button:hover,
+.activity-terminal-fallback button:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.activity-terminal-fallback {
+  padding: 9px;
+  border: 1px dashed color-mix(in srgb, var(--amber) 34%, var(--border));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--panel-raised) 96%, var(--amber));
+}
+
+.activity-terminal-fallback > header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.activity-terminal-fallback > header > span:first-child {
+  min-width: 0;
+}
+
+.activity-terminal-fallback h2 {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.activity-terminal-fallback header p,
+.activity-terminal-fallback-state {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
   color: var(--text-faint);
   font-size: 8px;
   line-height: 1.45;
+}
+
+.activity-terminal-fallback-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.activity-terminal-excerpt {
+  min-width: 0;
+  margin-top: 8px;
+}
+
+.activity-terminal-excerpt > span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 5px;
+}
+
+.activity-terminal-excerpt pre {
+  max-height: 132px;
+  margin: 0;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--bg);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 8px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .activity-sources > ul > li {
@@ -6801,6 +6969,9 @@ html[data-density="comfortable"] .terminal-panel {
   .queue-decision-error,
   .queue-inspector-message,
   .queue-inspector-safety,
+  .activity-card,
+  .activity-terminal-fallback,
+  .activity-terminal-excerpt pre,
   .pacium-role-binding-dialog,
   .pacium-binding-options > label {
     forced-color-adjust: auto;
