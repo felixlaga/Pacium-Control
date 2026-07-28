@@ -1,14 +1,20 @@
-# Initial toolchain and platform decision
+# Toolchain and supported-platform decision
 
 - Status: Approved default for the first build
 - Recorded: 2026-07-26
-- Review point: after the first real-terminal slice
+- Review point: when adding another host, architecture, distribution, or
+  runtime major
 
 ## Platform
 
-The first supported platform is **macOS on Apple silicon**.
+The supported host matrix is deliberately narrow:
 
-Linux compatibility should be preserved where it does not complicate the first slice, but Linux is not a release gate until Milestone 5. Windows is out of initial scope.
+- macOS on Apple silicon;
+- Ubuntu 24.04 LTS on x86-64.
+
+No other Linux distribution/version, Linux arm64, Windows, WSL, ChromeOS, BSD,
+or container target is supported. See
+[ADR-0017](../decisions/ADR-0017-supported-hosts-and-development-packages.md).
 
 ## Runtime and package manager
 
@@ -109,6 +115,24 @@ the current development machine.
   state-preserving uninstall.
 - Developer ID signing and notarization are mandatory before a release can be
   declared.
+
+## Ubuntu Linux package boundary
+
+- `pnpm package:linux` emits one deterministic-content unsigned
+  `ubuntu-24.04-linux-x64` archive plus SHA-256 checksum.
+- Node.js, a browser, shells, and optional tools are not redistributed. The
+  fixed launcher accepts one absolute `PACIUM_NODE_BINARY` or a fixed common
+  location and enforces Node.js 24.18.x.
+- `/bin/bash` is the fallback shell. Application metadata defaults to
+  `${XDG_STATE_HOME:-~/.local/state}/pacium-control`.
+- `pnpm package:linux:verify` rebuilds deterministically, validates its strict
+  manifest, installs/upgrades in generated temporary destinations, loads and
+  drives the packaged x64 ELF PTY, starts the production server, verifies exact
+  reuse and active-uninstall refusal, and proves state-preserving removal.
+- The tar archive is a user-local development artifact, not `.deb`, RPM,
+  AppImage, Flatpak, Snap, systemd, or root/global installation.
+- Signing, public delivery, clean-account, and owner acceptance remain PC-076
+  gates.
 
 ## Upgrade policy
 

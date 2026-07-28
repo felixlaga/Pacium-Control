@@ -240,7 +240,7 @@ Application shortcuts pause while a terminal or text input owns the keyboard. Us
 
 ## Primary experience
 
-The implemented macOS development-package command:
+Both supported development packages install the same command:
 
 ```bash
 pacium
@@ -259,6 +259,19 @@ by default. Node is an explicit external prerequisite; provider CLIs, Git,
 tmux, repositories, credentials, queue files, and Pacium state are not bundled
 or removed. The artifact is unsigned and unnotarized, so it is not yet a
 release. See the [macOS package runbook](docs/operations/macos-package.md).
+
+On Ubuntu 24.04 x64, build and exercise the separate unsigned user-local
+archive:
+
+```bash
+pnpm package:linux:verify
+```
+
+It installs without `sudo` into
+`${XDG_DATA_HOME:-$HOME/.local/share}/pacium-control` and `~/.local/bin` by
+default. It is not a distro-native package and makes no compatibility claim for
+another distribution, version, or architecture. See the
+[Ubuntu Linux package runbook](docs/operations/linux-package.md).
 
 The application should let the operator:
 

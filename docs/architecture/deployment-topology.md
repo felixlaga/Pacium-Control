@@ -31,6 +31,23 @@ application metadata, repositories, provider stores, queue files, and external
 tmux targets remain outside package ownership. The artifact is intentionally
 unsigned and unnotarized until PC-076.
 
+## Ubuntu Linux development package
+
+PC-075 implements one Ubuntu 24.04 x64 archive containing the production
+server/browser assets, minimal source-built x64 ELF `node-pty`, an exact
+`pacium` command, installer, uninstaller, manifest, checksum, and embedded
+guide. Node.js 24.18.x remains an external prerequisite.
+
+Installation is unprivileged and defaults to the XDG user data convention.
+The launcher and process lifecycle use the same exact loopback health,
+foreground ownership, browser independence, direct-PTY, optional tmux, and
+external-state contracts as macOS. `/usr/bin/xdg-open` is optional; failure to
+open a browser leaves the server and PTYs alive and prints the fixed URL.
+
+The archive is explicitly not a broad Linux claim or distro-native package.
+Other distributions, versions, architectures, WSL, containers, services,
+autostart, and root/global installation are unsupported.
+
 ## Optional remote operation
 
 ```text
