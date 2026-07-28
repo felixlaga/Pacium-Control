@@ -8,6 +8,7 @@ import {
   loadServerConfig,
   loadTailscaleServeConfig,
   resolvePaciumDataDirectory,
+  resolveTmuxSocket,
 } from "./config.js";
 
 describe("local server configuration", () => {
@@ -29,6 +30,31 @@ describe("local server configuration", () => {
       configured: false,
       repositories: [],
     });
+  });
+
+  it("keeps tmux optional and accepts one bounded absolute socket path", () => {
+    expect(resolveTmuxSocket(undefined)).toBeNull();
+    expect(resolveTmuxSocket("/private/tmp/pacium/../tmux.sock")).toBe(
+      "/private/tmp/tmux.sock",
+    );
+    expect(
+      loadServerConfig({
+        HOME: process.env.HOME,
+        SHELL: "/bin/zsh",
+        PACIUM_TMUX_SOCKET: "/private/tmp/pacium.sock",
+      }).tmuxSocket,
+    ).toBe("/private/tmp/pacium.sock");
+  });
+
+  it("rejects broad, relative, control-bearing, and unbounded tmux paths", () => {
+    for (const path of [
+      "/",
+      "relative/tmux.sock",
+      "/private/tmp/tmux\nhidden.sock",
+      `/${"a".repeat(4097)}`,
+    ]) {
+      expect(() => resolveTmuxSocket(path)).toThrow("PACIUM_TMUX_SOCKET");
+    }
   });
 
   it("keeps Tailscale Serve disabled when both remote values are absent", () => {

@@ -37,6 +37,7 @@ export interface ServerConfig {
   homeDirectory: string;
   dataDirectory: string;
   shell: string;
+  tmuxSocket: string | null;
   environmentKeys: readonly string[];
   launchPresets: readonly LaunchPresetDefinition[];
   verificationCatalog: VerificationCatalog;
@@ -69,6 +70,7 @@ export function loadServerConfig(
     homeDirectory,
   );
   const shell = environment.SHELL ?? "/bin/zsh";
+  const tmuxSocket = resolveTmuxSocket(environment.PACIUM_TMUX_SOCKET);
 
   if (!shell.startsWith("/") || !existsSync(shell)) {
     throw new Error(
@@ -103,6 +105,7 @@ export function loadServerConfig(
     homeDirectory,
     dataDirectory,
     shell,
+    tmuxSocket,
     environmentKeys: [
       ...new Set([...DEFAULT_ENVIRONMENT_KEYS, ...extraEnvironmentKeys]),
     ],
@@ -111,6 +114,28 @@ export function loadServerConfig(
       environment.PACIUM_VERIFICATION_CONFIG,
     ),
   };
+}
+
+export function resolveTmuxSocket(
+  configuredPath: string | undefined,
+): string | null {
+  if (configuredPath === undefined) {
+    return null;
+  }
+  if (
+    !isAbsolute(configuredPath) ||
+    configuredPath.length > 4096 ||
+    hasControlCharacter(configuredPath)
+  ) {
+    throw new Error(
+      "PACIUM_TMUX_SOCKET must be one bounded absolute path without controls.",
+    );
+  }
+  const resolved = normalize(configuredPath);
+  if (resolved === parse(resolved).root) {
+    throw new Error("PACIUM_TMUX_SOCKET must name one Unix socket.");
+  }
+  return resolved;
 }
 
 export function loadLocalAllowedOrigins(
