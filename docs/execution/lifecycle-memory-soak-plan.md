@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `4cfd3fa`
 - Target milestone: Milestone 5 — Durability, packaging, and polish
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -40,7 +40,9 @@ cursors far beyond ordinary use while asserting existing four-pane and
 ### Modules touched
 
 - Root package scripts: explicit soak entry point.
-- Local server: test-only runner/helpers; no production endpoint.
+- Local server: test-only runner/helpers and PTY listener cleanup; no production
+  endpoint.
+- Native dependency: narrow macOS descriptor cleanup patch compiled from source.
 - Web models: high-count tests only.
 - Documentation: status, backlog, milestone, risk, changelog.
 
@@ -86,6 +88,8 @@ cursors far beyond ordinary use while asserting existing four-pane and
 ## Compatibility
 
 - Supported versions: Node.js 24.18.x, macOS Apple silicon first.
+- The pinned macOS `node-pty` package compiles the committed descriptor patch
+  from source and therefore requires the documented accepted Xcode toolchain.
 - Fallback behavior: FD count is nullable on hosts without `/dev/fd` or
   `/proc/self/fd`; memory and deterministic bounds remain mandatory.
 - Rollback: remove test-only runner/script; production behavior and state are

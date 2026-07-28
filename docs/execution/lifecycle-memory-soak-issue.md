@@ -41,25 +41,25 @@ monitoring or long-term field evidence.
 
 ## Acceptance criteria
 
-- [ ] One documented `pnpm test:soak` command runs in an isolated process and
+- [x] One documented `pnpm test:soak` command runs in an isolated process and
       fails nonzero when a fixed budget is exceeded.
-- [ ] Twenty idle terminal models plus one long-running session remain usable
+- [x] Twenty idle terminal models plus one long-running session remain usable
       and are fully released.
-- [ ] At least 100 create/close cycles leave no live sessions, force timers, or
+- [x] At least 100 create/close cycles leave no live sessions, force timers, or
       retained fake PTY listeners.
-- [ ] At least 8 MiB of terminal output produces a snapshot within the existing
+- [x] At least 8 MiB of terminal output produces a snapshot within the existing
       protocol bound, and 100 reconnect snapshot reads do not create sessions
       or replay input.
-- [ ] Peak RSS grows by no more than 256 MiB, post-cleanup retained RSS grows
+- [x] Peak RSS grows by no more than 256 MiB, post-cleanup retained RSS grows
       by no more than 192 MiB, and retained live heap grows by no more than
       32 MiB in the isolated supported-runtime process.
-- [ ] A real-PTY cleanup canary returns file-descriptor count to within four of
+- [x] A real-PTY cleanup canary returns file-descriptor count to within four of
       baseline when `/dev/fd` or `/proc/self/fd` is available.
-- [ ] Two thousand split operations never exceed four panes or produce
+- [x] Two thousand split operations never exceed four panes or produce
       duplicate node/session identities.
-- [ ] Five thousand attention updates retain at most 200 cursor entries and
+- [x] Five thousand attention updates retain at most 200 cursor entries and
       never redeliver the same important event.
-- [ ] Full verification, the explicit soak command, and all Chromium workflows
+- [x] Full verification, the explicit soak command, and all Chromium workflows
       pass.
 
 ## User experience
@@ -72,7 +72,8 @@ values, paths, prompts, and provider content are excluded.
 ## Architecture
 
 - Systems and modules touched: root scripts, a test-only local-server soak
-  runner, split-layout tests, attention-inbox tests, execution evidence.
+  runner, PTY lifecycle cleanup, a narrow macOS `node-pty` descriptor patch,
+  split-layout tests, attention-inbox tests, and execution evidence.
 - Systems of record: PTYs remain process truth; soak observations are
   disposable test output only.
 - State transitions: create -> live -> output/snapshot -> ended/closed; no new
@@ -129,3 +130,20 @@ The retained RSS ceiling was calibrated after repeated Node 24.18 runs retained
 about 144 MiB of allocator pages after GC despite releasing the terminal
 models. The separate 32 MiB live-heap ceiling distinguishes retained
 application objects from reusable V8/macOS allocator pages.
+
+## Completion evidence
+
+Completed on 2026-07-28.
+
+- Supported Node.js 24.18.0 `pnpm test:soak` equivalent completed in 3,908 ms:
+  141,787,136-byte peak and retained RSS growth, 5,343,056-byte retained live
+  heap, 162,368 snapshot characters after 8,388,608 output bytes, 263 terminal
+  events, zero final sessions, and `/dev/fd` 18 -> 18 across five real PTYs.
+- The canary exposed and the committed dependency patch closes the macOS
+  parent-side slave PTY, kqueue, and temporary low-number PTY descriptors.
+- `pnpm verify` passed formatting, lint, every workspace type check, 132 test
+  files and 863 tests, plus the 949.29 kB web JavaScript, 122.44 kB stylesheet,
+  and 458.05 kB local-server production bundles.
+- `pnpm test:e2e` passed all 19 Chromium workflows.
+- No production endpoint, persisted soak result, terminal transcript,
+  environment value, provider call, or protocol change was added.
