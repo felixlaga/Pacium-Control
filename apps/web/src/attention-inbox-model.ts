@@ -228,8 +228,8 @@ function normalizeAttentionInbox(
 ): AttentionInboxState {
   const entries = state.entries
     .filter(isCursorEntry)
-    .toSorted((left, right) => left.sessionId.localeCompare(right.sessionId))
-    .slice(-MAX_ATTENTION_INBOX_ENTRIES);
+    .slice(-MAX_ATTENTION_INBOX_ENTRIES)
+    .toSorted((left, right) => left.sessionId.localeCompare(right.sessionId));
   return { version: 1, entries };
 }
 
