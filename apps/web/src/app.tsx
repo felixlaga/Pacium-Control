@@ -43,6 +43,8 @@ import {
   type PaletteCommand,
 } from "./command-palette-model.js";
 import { DirectoryPicker } from "./directory-picker.js";
+import { DiagnosticsDialog } from "./diagnostics.js";
+import { isDiagnosticsRoute } from "./diagnostics-model.js";
 import { handleModalKeyDown } from "./modal-focus.js";
 import { AgentClassificationCard } from "./agent-classification.js";
 import { TmuxAttachDialog } from "./tmux-attach-dialog.js";
@@ -325,6 +327,8 @@ export function App() {
   const queueInspectorInvokerRef = useRef<HTMLElement | null>(null);
   const contextInspectorInvokerRef = useRef<HTMLElement | null>(null);
   const settingsInvokerRef = useRef<HTMLElement | null>(null);
+  const diagnosticsInvokerRef = useRef<HTMLElement | null>(null);
+  const diagnosticsHistoryEntryRef = useRef(false);
   const transportRef = useRef<PaciumTransport | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() =>
     loadWorkspaceMode(window.localStorage),
@@ -380,6 +384,9 @@ export function App() {
     null,
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(() =>
+    isDiagnosticsRoute(window.location.pathname),
+  );
   const [preferences, setPreferences] = useState<WorkspacePreferences>(() =>
     loadPreferences(window.localStorage),
   );
@@ -2568,6 +2575,65 @@ export function App() {
     restoreControlFocus(settingsInvokerRef, "settings-trigger");
   };
 
+  const openDiagnostics = () => {
+    diagnosticsInvokerRef.current =
+      paletteView !== null
+        ? paletteInvokerRef.current
+        : activeControl("diagnostics-trigger");
+    setCapturedPaneId(null);
+    if (!isDiagnosticsRoute(window.location.pathname)) {
+      diagnosticsHistoryEntryRef.current = true;
+      window.history.pushState(
+        { paciumRoute: "diagnostics" },
+        "",
+        "/diagnostics",
+      );
+    }
+    setDiagnosticsOpen(true);
+  };
+
+  const closeDiagnostics = () => {
+    if (
+      isDiagnosticsRoute(window.location.pathname) &&
+      diagnosticsHistoryEntryRef.current
+    ) {
+      window.history.back();
+      return;
+    }
+    if (isDiagnosticsRoute(window.location.pathname)) {
+      window.history.replaceState({ paciumRoute: "workspace" }, "", "/");
+    }
+    diagnosticsHistoryEntryRef.current = false;
+    setDiagnosticsOpen(false);
+    restoreControlFocus(diagnosticsInvokerRef, "diagnostics-trigger");
+  };
+
+  const loadDiagnostics = useCallback(() => {
+    const transport = transportRef.current;
+    return transport === null
+      ? Promise.reject(
+          new Error(
+            "Pacium is still connecting. Running terminals are unchanged.",
+          ),
+        )
+      : transport.getDiagnostics();
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const open = isDiagnosticsRoute(window.location.pathname);
+      setDiagnosticsOpen(open);
+      if (!open) {
+        diagnosticsHistoryEntryRef.current = false;
+        restoreControlFocus(diagnosticsInvokerRef, "diagnostics-trigger");
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
   const applyPreferences = (next: WorkspacePreferences) => {
     setPreferences(next);
     setSettingsOpen(false);
@@ -2949,6 +3015,9 @@ export function App() {
       case "open-settings":
         openSettings();
         return;
+      case "open-diagnostics":
+        openDiagnostics();
+        return;
       case "toggle-sidebar":
         toggleSidebarPanel();
         return;
@@ -3027,7 +3096,8 @@ export function App() {
     relaunchManifest !== null ||
     editingPaciumRole !== null ||
     paletteView !== null ||
-    settingsOpen;
+    settingsOpen ||
+    diagnosticsOpen;
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -3434,6 +3504,15 @@ export function App() {
               <span aria-hidden="true">▐</span>
             </button>
             <ConnectionBadge access={connectionAccess} state={connection} />
+            <button
+              aria-label="Open diagnostics"
+              id="diagnostics-trigger"
+              onClick={openDiagnostics}
+              title="Diagnostics and redacted support export"
+              type="button"
+            >
+              Diagnostics
+            </button>
             <button
               aria-keyshortcuts="Meta+K Control+K"
               id="command-palette-trigger"
@@ -4019,6 +4098,13 @@ export function App() {
             void requestNotificationPermission();
           }}
           preferences={preferences}
+        />
+      )}
+      {diagnosticsOpen && (
+        <DiagnosticsDialog
+          connection={connection}
+          load={loadDiagnostics}
+          onClose={closeDiagnostics}
         />
       )}
       {paletteView !== null && (
