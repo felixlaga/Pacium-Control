@@ -62,7 +62,7 @@ test("diagnostics preview and local export preserve terminal state across routin
   );
   const downloadPath = await download.path();
   expect(downloadPath).not.toBeNull();
-  const exported = JSON.parse(await readFile(downloadPath!, "utf8")) as {
+  const exported = JSON.parse(await readFile(downloadPath, "utf8")) as {
     schemaVersion: number;
     sessions: Array<{ label: string }>;
     redactionManifest: { omitted: string[] };
