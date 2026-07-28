@@ -89,16 +89,14 @@ describe("real tmux keep-alive lifecycle", () => {
 
       await first.shutdown();
       await first.flushRelaunchManifests();
-      await expect(adapter.discover()).resolves.toMatchObject({
-        status: "ready",
-        sessions: expect.arrayContaining([
-          expect.objectContaining({
-            target: expect.objectContaining({
-              sessionName: launched.tmuxTarget?.sessionName,
-            }),
-          }),
-        ]),
-      });
+      const afterShutdown = await adapter.discover();
+      expect(afterShutdown.status).toBe("ready");
+      expect(
+        afterShutdown.sessions.some(
+          ({ target }) =>
+            target.sessionName === launched.tmuxTarget?.sessionName,
+        ),
+      ).toBe(true);
 
       const second = createManager(config, store, adapter);
       const restored = await second.restoreKeepAliveSessions();
@@ -120,16 +118,14 @@ describe("real tmux keep-alive lifecycle", () => {
       expect(second.list()[0]?.id).not.toBe(launched.id);
       second.close(second.list()[0]!.id, true, crypto.randomUUID());
       await vi.waitFor(() => expect(second.list()).toEqual([]));
-      await expect(adapter.discover()).resolves.toMatchObject({
-        status: "ready",
-        sessions: expect.arrayContaining([
-          expect.objectContaining({
-            target: expect.objectContaining({
-              sessionName: launched.tmuxTarget?.sessionName,
-            }),
-          }),
-        ]),
-      });
+      const afterClose = await adapter.discover();
+      expect(afterClose.status).toBe("ready");
+      expect(
+        afterClose.sessions.some(
+          ({ target }) =>
+            target.sessionName === launched.tmuxTarget?.sessionName,
+        ),
+      ).toBe(true);
       await second.shutdown();
       await expect(adapter.discover()).resolves.toMatchObject({
         status: "ready",

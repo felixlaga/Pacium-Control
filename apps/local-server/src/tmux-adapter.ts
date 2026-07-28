@@ -342,6 +342,7 @@ export class TmuxAdapter {
       if (recovered === undefined) {
         throw new Error(
           "tmux keep-alive launch timed out and no exact target was found.",
+          { cause: error },
         );
       }
       return {
