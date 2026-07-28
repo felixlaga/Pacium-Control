@@ -22,6 +22,7 @@ import type {
   QueueDeliveryResult,
   QueueQuestionAnswerPayload,
   QueueResolutionRequest,
+  RelaunchManifest,
   ServerMessage,
   SessionSummary,
   TerminalDataFrame,
@@ -207,11 +208,12 @@ import {
 import { RecentActivityPanel } from "./recent-activity.js";
 import { startProviderFreshnessClock } from "./provider-freshness-clock.js";
 import { RepositoryContextCard } from "./repository-context.js";
-import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
 import {
-  duplicateSessionInput,
-  relaunchSessionInput,
-} from "./session-actions-model.js";
+  RelaunchSessionDialog,
+  RenameSessionDialog,
+  SessionActionsMenu,
+} from "./session-actions.js";
+import { duplicateSessionInput } from "./session-actions-model.js";
 import { SplitWorkspace } from "./split-workspace.js";
 import {
   adjacentTerminalTabId,
@@ -303,6 +305,7 @@ export function App() {
   const paletteInvokerRef = useRef<HTMLElement | null>(null);
   const panelViewRef = useRef<ReturnType<typeof loadPanelView> | null>(null);
   const renameInvokerRef = useRef<HTMLElement | null>(null);
+  const relaunchInvokerRef = useRef<HTMLElement | null>(null);
   const roleEditorInvokerRef = useRef<HTMLElement | null>(null);
   const queueInspectorInvokerRef = useRef<HTMLElement | null>(null);
   const contextInspectorInvokerRef = useRef<HTMLElement | null>(null);
@@ -318,6 +321,11 @@ export function App() {
     useState<ConnectionAccess | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionListReady, setSessionListReady] = useState(false);
+  const [relaunchManifests, setRelaunchManifests] = useState<
+    RelaunchManifest[]
+  >([]);
+  const [relaunchManifestListReady, setRelaunchManifestListReady] =
+    useState(false);
   const [providerFreshnessNow, setProviderFreshnessNow] = useState(() =>
     new Date().toISOString(),
   );
@@ -343,6 +351,9 @@ export function App() {
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
   const [actionSessionId, setActionSessionId] = useState<string | null>(null);
   const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
+  const [relaunchManifestId, setRelaunchManifestId] = useState<string | null>(
+    null,
+  );
   const [paletteView, setPaletteView] = useState<CommandPaletteView | null>(
     null,
   );
@@ -1134,6 +1145,8 @@ export function App() {
       terminalRefs,
       setSessions,
       setSessionListReady,
+      setRelaunchManifests,
+      setRelaunchManifestListReady,
       setSelectedId,
       tabsRef,
       setTabs,
@@ -1621,6 +1634,14 @@ export function App() {
     sessions.find(({ id }) => id === actionSessionId) ?? null;
   const renameSession =
     sessions.find(({ id }) => id === renameSessionId) ?? null;
+  const relaunchManifest =
+    relaunchManifests.find(({ id }) => id === relaunchManifestId) ?? null;
+  const recoveryManifests = useMemo(() => {
+    const currentSessionIds = new Set(sessions.map(({ id }) => id));
+    return relaunchManifests
+      .filter(({ sessionId }) => !currentSessionIds.has(sessionId))
+      .slice(0, 8);
+  }, [relaunchManifests, sessions]);
   const renderedSessionIds = useMemo(() => {
     const panes = listPanes(layout.root);
     if (layout.maximizedPaneId !== null) {
@@ -2292,15 +2313,45 @@ export function App() {
     closeSessionActions();
   };
 
+  const openRelaunchManifest = (
+    manifest: RelaunchManifest,
+    invoker?: HTMLElement | null,
+  ) => {
+    relaunchInvokerRef.current =
+      invoker ??
+      actionInvokerRef.current ??
+      (document.activeElement as HTMLElement);
+    setRelaunchManifestId(manifest.id);
+    setActionSessionId(null);
+  };
+
   const relaunchSession = (session: SessionSummary) => {
-    const input = relaunchSessionInput(session);
-    if (input !== null) {
-      transportRef.current?.createSession(input);
+    if (session.relaunchManifest === undefined) {
       setNotice(
-        `Starting a new ${session.displayName} process from its retained preset and directory.`,
+        "This ended session has no valid retained launch manifest. Existing processes are unchanged.",
       );
+      closeSessionActions();
+      return;
     }
-    closeSessionActions();
+    openRelaunchManifest(session.relaunchManifest, actionInvokerRef.current);
+  };
+
+  const closeRelaunchDialog = () => {
+    setRelaunchManifestId(null);
+    restoreControlFocus(relaunchInvokerRef, "session-actions-trigger");
+  };
+
+  const confirmRelaunch = (manifest: RelaunchManifest) => {
+    const source = sessions.find(({ id }) => id === manifest.sessionId);
+    transportRef.current?.relaunch(
+      manifest.id,
+      source?.cols ?? 100,
+      source?.rows ?? 30,
+    );
+    setNotice(
+      `Starting a fresh ${manifest.displayName} process from its retained server manifest. Provider resume evidence is not applied automatically.`,
+    );
+    closeRelaunchDialog();
   };
 
   const interruptSession = (session: SessionSummary) => {
@@ -2826,6 +2877,7 @@ export function App() {
     createOpen ||
     actionSession !== null ||
     renameSession !== null ||
+    relaunchManifest !== null ||
     editingPaciumRole !== null ||
     paletteView !== null ||
     settingsOpen;
@@ -3104,6 +3156,45 @@ export function App() {
                 </section>
               ))}
             </div>
+          )}
+          <div className="section-heading recovery-heading">
+            <span>Recovery</span>
+            <span>{recoveryManifests.length}</span>
+          </div>
+          {!relaunchManifestListReady ? (
+            <p className="sidebar-empty">Reading retained launch manifests…</p>
+          ) : recoveryManifests.length === 0 ? (
+            <p className="sidebar-empty">
+              No detached process manifests need recovery.
+            </p>
+          ) : (
+            <ul className="session-list recovery-list">
+              {recoveryManifests.map((manifest) => (
+                <li key={manifest.id}>
+                  <button
+                    className="session-item recovery-item"
+                    onClick={(event) =>
+                      openRelaunchManifest(manifest, event.currentTarget)
+                    }
+                    title={`Preview retained ${manifest.launchPreset} manifest in ${manifest.cwd}`}
+                    type="button"
+                  >
+                    <span aria-hidden="true" className="recovery-icon">
+                      ↻
+                    </span>
+                    <span className="session-copy">
+                      <strong>{manifest.displayName}</strong>
+                      <span className="session-row-meta">
+                        <span className="preset-label">
+                          {manifest.launchPreset}
+                        </span>
+                        <span>{compactPath(manifest.cwd)}</span>
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </nav>
 
@@ -3781,6 +3872,14 @@ export function App() {
           session={actionSession}
         />
       )}
+      {relaunchManifest !== null && (
+        <RelaunchSessionDialog
+          connected={connection === "connected"}
+          manifest={relaunchManifest}
+          onCancel={closeRelaunchDialog}
+          onConfirm={() => confirmRelaunch(relaunchManifest)}
+        />
+      )}
       {renameSession !== null && (
         <RenameSessionDialog
           onCancel={closeRenameDialog}
@@ -3803,6 +3902,10 @@ function applyServerMessage(
   terminalRefs: React.MutableRefObject<Map<string, TerminalSurfaceHandle>>,
   setSessions: React.Dispatch<React.SetStateAction<SessionSummary[]>>,
   setSessionListReady: React.Dispatch<React.SetStateAction<boolean>>,
+  setRelaunchManifests: React.Dispatch<
+    React.SetStateAction<RelaunchManifest[]>
+  >,
+  setRelaunchManifestListReady: React.Dispatch<React.SetStateAction<boolean>>,
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>,
   tabsRef: React.MutableRefObject<TerminalTab[]>,
   setTabs: React.Dispatch<React.SetStateAction<TerminalTab[]>>,
@@ -3834,14 +3937,33 @@ function applyServerMessage(
         return restoredTab?.sessionId ?? message.sessions[0]?.id ?? null;
       });
       return;
+    case "relaunch.manifest.list":
+      setRelaunchManifests(message.manifests);
+      setRelaunchManifestListReady(true);
+      return;
+    case "relaunch.manifest.updated":
+      setRelaunchManifests((current) =>
+        upsertRelaunchManifest(current, message.manifest),
+      );
+      return;
     case "session.created":
       setSessions((current) => upsertSession(current, message.session));
+      if (message.session.relaunchManifest !== undefined) {
+        setRelaunchManifests((current) =>
+          upsertRelaunchManifest(current, message.session.relaunchManifest!),
+        );
+      }
       setTabs((current) => openTerminalTab(current, message.session.id));
       setSelectedId(message.session.id);
       return;
     case "session.updated":
     case "session.exited":
       setSessions((current) => upsertSession(current, message.session));
+      if (message.session.relaunchManifest !== undefined) {
+        setRelaunchManifests((current) =>
+          upsertRelaunchManifest(current, message.session.relaunchManifest!),
+        );
+      }
       return;
     case "session.closed":
       syncRefs.current.delete(message.sessionId);
@@ -3926,6 +4048,17 @@ function upsertSession(
   }
   return sessions.map((session) =>
     session.id === incoming.id ? incoming : session,
+  );
+}
+
+function upsertRelaunchManifest(
+  manifests: RelaunchManifest[],
+  incoming: RelaunchManifest,
+): RelaunchManifest[] {
+  return [incoming, ...manifests.filter(({ id }) => id !== incoming.id)].sort(
+    (left, right) =>
+      right.createdAt.localeCompare(left.createdAt) ||
+      right.id.localeCompare(left.id),
   );
 }
 
