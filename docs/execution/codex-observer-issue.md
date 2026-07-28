@@ -58,32 +58,32 @@ inspector.
 
 ## Acceptance criteria
 
-- [ ] Unsupported or unavailable App Server capability leaves the ordinary
+- [x] Unsupported or unavailable App Server capability leaves the ordinary
       direct Codex launch unchanged and observer-unavailable.
-- [ ] A supported Pacium-created Codex session receives an exact local bridge
+- [x] A supported Pacium-created Codex session receives an exact local bridge
       URL and the name of a session-scoped token environment variable; the
       token never appears in argv or provider snapshots.
-- [ ] The bridge requires one live registered session, exact loopback Host,
+- [x] The bridge requires one live registered session, exact loopback Host,
       no Origin, exact UUID path, a valid bearer token, and bounded text
       WebSocket frames.
-- [ ] Exactly one active TUI connection can own a session bridge, and browser
+- [x] Exactly one active TUI connection can own a session bridge, and browser
       or remote-shaped upgrades are rejected.
-- [ ] The private App Server child receives and emits newline-delimited
+- [x] The private App Server child receives and emits newline-delimited
       messages unchanged; malformed or oversized lines fail closed without raw
       logging or unbounded buffering.
-- [ ] Thread, turn, item, plan, usage, error, approval, and question fixtures
+- [x] Thread, turn, item, plan, usage, error, approval, and question fixtures
       produce honest source-labelled activity, attention, health, freshness,
       and capability evidence.
-- [ ] Prompts, agent text, plans, commands, output, diffs, paths, questions,
+- [x] Prompts, agent text, plans, commands, output, diffs, paths, questions,
       approval reasons, tool payloads, auth data, and raw frames never enter
       provider snapshots or browser facts.
-- [ ] App Server exit, transport loss, duplicate events, provider-ID drift,
+- [x] App Server exit, transport loss, duplicate events, provider-ID drift,
       PTY exit, close, and local-server shutdown release resources and report
       bounded failure or stale evidence honestly.
-- [ ] The observer never emits a JSON-RPC response or decision on behalf of the
+- [x] The observer never emits a JSON-RPC response or decision on behalf of the
       operator.
-- [ ] Shell and Claude launch/observation behavior is unchanged.
-- [ ] Browser refresh preserves current process-local Codex evidence while the
+- [x] Shell and Claude launch/observation behavior is unchanged.
+- [x] Browser refresh preserves current process-local Codex evidence while the
       PTY and local server remain alive.
 
 ## User experience
@@ -172,3 +172,18 @@ process state. No approval or question action is added.
 - The App Server WebSocket surface is experimental. PC-064 must own explicit
   unsupported-version and degraded-capability presentation rather than
   silently assuming forward compatibility.
+
+## Completion evidence
+
+- Codex CLI `0.145.0` supplied the generated JSON schema and exact capability
+  evidence used by the fixture-driven adapter. Capability support is probed at
+  startup rather than inferred from that version.
+- Focused contract, normalizer, observer, bridge, session lifecycle, HTTP
+  upgrade, reconnect, and Activity tests passed, including content exclusion,
+  exact forwarding, one-client authorization, oversized input, child exit, PTY
+  release, and browser refresh.
+- `pnpm verify` passed 121 test files and 766 tests plus all formatting, lint,
+  type-check, and production-build gates.
+- `pnpm test:e2e` passed all 14 Chromium workflows.
+- No real-provider prompt was sent and no user Codex configuration was changed,
+  so a manual live-provider canary remains an explicit external gate.
