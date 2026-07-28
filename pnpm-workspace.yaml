@@ -8,3 +8,6 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - globals@17.8.0
+
+patchedDependencies:
+  node-pty@1.1.0: patches/node-pty@1.1.0.patch
