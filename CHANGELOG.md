@@ -2,6 +2,49 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.37.0 — clean agent activity cards — 2026-07-28
+
+### Added
+
+- Deterministic compact presentation kinds, restrained operational tones,
+  bounded metadata, and one Terminal, Changes, History, or Checks source action
+  for provider, process, Git, and verification facts.
+- Distinct prompt, message, turn, tool, plan, question, approval, usage,
+  completion, and failure cards. Questions and approvals remain separate and
+  neither adds a provider or Pacium decision action.
+- A read-only xterm handle backed by a pure excerpt bounder. One explicit
+  operator click may read only the newest four non-empty rendered lines and 800
+  Unicode characters when provider evidence is not ready.
+- Inert terminal fallback presentation labelled terminal-derived,
+  low-confidence, and not interpreted, with explicit Refresh and Hide controls
+  and session, connection, provider-evidence, unmount, and reload invalidation.
+- Hostile control, bidi, HTML-like, and long Unicode text neutralization and
+  bounds before component state; no new protocol, server read, polling, input,
+  attach, persistence, notification, attention, queue, or provider-control
+  path.
+
+### Verified
+
+- Focused activity-model, semantic-render, and terminal-excerpt suites passed
+  all 39 tests.
+- `pnpm verify` passed formatting, lint, every workspace type check, 122 test
+  files and 786 tests, plus the 921.56 kB web JavaScript, 112.89 kB stylesheet,
+  and 409.10 kB local-server production bundles.
+- `pnpm test:e2e` passed all 15 Chromium workflows. PC-063 coverage exercised
+  all four source destinations, explicit capture/refresh/hide, terminal focus,
+  unchanged selection, session/reload clearing, 320 CSS px, 200% zoom, forced
+  colors, and reduced motion.
+
+### Known limitations
+
+- The excerpt is an operator-requested view of the selected browser's parsed
+  xterm buffer, not provider state or a transcript store. It can be empty or
+  unavailable and is intentionally not shared across browsers.
+- Rich unsupported-version, observer-failure, stale-event, and recovery
+  diagnostics remain PC-064. Relaunch manifests remain PC-065.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's existing chunk-size warning.
+
 ## 0.36.0 — Codex native observer — 2026-07-28
 
 ### Added
