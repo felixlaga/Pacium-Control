@@ -1,9 +1,11 @@
 import {
+  DiagnosticsSnapshotSchema,
   DirectoryListingSchema,
   PROTOCOL_VERSION,
   ServerMessageSchema,
   decodeTerminalDataFrame,
   type ClientMessage,
+  type DiagnosticsSnapshot,
   type DirectoryListing,
   type LaunchPresetId,
   type QueueApprovalDecisionPayload,
@@ -308,6 +310,15 @@ export class PaciumTransport {
       accessToken: this.accessToken,
       ...(path === undefined ? {} : { path }),
     });
+  }
+
+  public async getDiagnostics(): Promise<DiagnosticsSnapshot> {
+    if (this.accessToken === null) {
+      throw new Error(
+        "Pacium is still connecting. Try loading diagnostics again.",
+      );
+    }
+    return fetchDiagnostics({ accessToken: this.accessToken });
   }
 
   private async connect(): Promise<void> {
@@ -776,6 +787,52 @@ export async function fetchDirectoryListing(input: {
   const parsed = DirectoryListingSchema.safeParse(await response.json());
   if (!parsed.success) {
     throw new Error("The Pacium host returned an invalid directory listing.");
+  }
+  return parsed.data;
+}
+
+export async function fetchDiagnostics(input: {
+  accessToken: string;
+  fetcher?: typeof fetch;
+  secure?: boolean;
+}): Promise<DiagnosticsSnapshot> {
+  const fetcher = input.fetcher ?? fetch;
+  const response = await fetcher("/api/diagnostics", {
+    credentials: "same-origin",
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${input.accessToken}`,
+    },
+    method: browserReadMethod(
+      input.secure === undefined
+        ? typeof window === "undefined"
+          ? "http:"
+          : window.location.protocol
+        : input.secure
+          ? "https:"
+          : "http:",
+    ),
+  });
+  if (!response.ok) {
+    let message = `Diagnostics failed with HTTP ${response.status}`;
+    try {
+      const body = (await response.json()) as unknown;
+      if (
+        typeof body === "object" &&
+        body !== null &&
+        "error" in body &&
+        typeof body.error === "string"
+      ) {
+        message = body.error;
+      }
+    } catch {
+      // Keep the bounded HTTP status message when no JSON error exists.
+    }
+    throw new Error(message);
+  }
+  const parsed = DiagnosticsSnapshotSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    throw new Error("The Pacium host returned invalid diagnostics.");
   }
   return parsed.data;
 }

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   browserReadMethod,
+  fetchDiagnostics,
   fetchDirectoryListing,
   paciumConfigGetMessage,
   paciumConfigReplaceMessage,
@@ -491,5 +492,119 @@ describe("directory transport", () => {
         fetcher,
       }),
     ).rejects.toThrow("Directory unavailable");
+  });
+});
+
+describe("diagnostics transport", () => {
+  const snapshot = {
+    schemaVersion: 1,
+    generatedAt: "2026-07-28T07:30:00.000Z",
+    application: {
+      paciumVersion: "0.0.0",
+      protocolVersion: 24,
+      nodeVersion: "24.18.0",
+      platform: "darwin",
+      architecture: "arm64",
+      dependencyVersions: {
+        nodePty: "1.1.0-pacium.1",
+        xtermHeadless: "6.0.0",
+        xtermBrowser: "6.0.0",
+        react: "19.2.8",
+        ws: "8.21.1",
+        zod: "4.4.3",
+      },
+    },
+    overview: {
+      state: "healthy",
+      sessions: {
+        total: 0,
+        creating: 0,
+        live: 0,
+        closing: 0,
+        exited: 0,
+        failed: 0,
+        directPty: 0,
+        tmux: 0,
+      },
+      queueStatus: "unconfigured",
+      queueSources: 0,
+      queueItems: {
+        question: 0,
+        approval: 0,
+        failure: 0,
+        review: 0,
+        unknown: 0,
+      },
+      queueConflicts: 0,
+      tmuxStatus: "unconfigured",
+      tmuxVersion: null,
+    },
+    components: [],
+    sessions: [],
+    sessionsTruncated: false,
+    diagnostics: [],
+    diagnosticsTruncated: false,
+    redactionManifest: { included: [], omitted: [] },
+  };
+
+  it("sends the ephemeral token and validates the bounded snapshot", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify(snapshot), { status: 200 }),
+      );
+
+    await expect(
+      fetchDiagnostics({ accessToken: "secret", fetcher }),
+    ).resolves.toMatchObject({ schemaVersion: 1 });
+    const call = fetcher.mock.calls[0];
+    expect(call?.[0]).toBe("/api/diagnostics");
+    expect(call?.[1]?.credentials).toBe("same-origin");
+    expect(call?.[1]?.method).toBe("GET");
+    expect(new Headers(call?.[1]?.headers).get("authorization")).toBe(
+      "Bearer secret",
+    );
+  });
+
+  it("uses a bodyless POST for HTTPS protected reads", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(JSON.stringify(snapshot), { status: 200 }),
+      );
+
+    await fetchDiagnostics({
+      accessToken: "secret",
+      secure: true,
+      fetcher,
+    });
+
+    expect(fetcher.mock.calls[0]?.[1]?.method).toBe("POST");
+    expect(fetcher.mock.calls[0]?.[1]?.body).toBeUndefined();
+  });
+
+  it("rejects malformed success responses and surfaces bounded errors", async () => {
+    await expect(
+      fetchDiagnostics({
+        accessToken: "secret",
+        fetcher: vi
+          .fn<typeof fetch>()
+          .mockResolvedValue(new Response("{}", { status: 200 })),
+      }),
+    ).rejects.toThrow("invalid diagnostics");
+
+    await expect(
+      fetchDiagnostics({
+        accessToken: "secret",
+        fetcher: vi.fn<typeof fetch>().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              error: "Pacium could not construct bounded diagnostics.",
+            }),
+            { status: 500 },
+          ),
+        ),
+      }),
+    ).rejects.toThrow("could not construct bounded diagnostics");
   });
 });
