@@ -11,6 +11,11 @@ import {
   RelaunchManifestSchema,
 } from "./relaunch-manifest.js";
 import {
+  TmuxCapabilitySchema,
+  TmuxSessionsObservationSchema,
+  TmuxTargetSchema,
+} from "./tmux.js";
+import {
   QueueApprovalDecisionPayloadSchema,
   QueueDecisionResultSchema,
   QueueItemDecisionStateSchema,
@@ -31,7 +36,7 @@ import {
   QueueResolutionResultSchema,
 } from "./queue-reconciliation.js";
 
-export const PROTOCOL_VERSION = 22 as const;
+export const PROTOCOL_VERSION = 23 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -1093,7 +1098,8 @@ export const SessionSummarySchema = z
     providerObservation: ProviderObservationSnapshotSchema.nullable(),
     relaunchManifest: RelaunchManifestSchema.optional(),
     repository: RepositoryObservationSchema,
-    runtime: z.literal("pty"),
+    runtime: z.enum(["pty", "tmux"]),
+    tmuxTarget: TmuxTargetSchema.nullable().optional(),
     processState: ProcessStateSchema,
     pid: z.number().int().positive().nullable(),
     cols: z.number().int().min(2).max(500),
@@ -1123,6 +1129,19 @@ export const SessionSummarySchema = z
         message:
           "Provider observation must match the server-owned launch preset.",
         path: ["providerObservation"],
+      });
+    }
+    if (
+      (session.runtime === "tmux") !==
+        ((session.tmuxTarget ?? null) !== null) ||
+      session.runtime !== session.relaunchManifest.runtime ||
+      JSON.stringify(session.tmuxTarget ?? null) !==
+        JSON.stringify(session.relaunchManifest.tmuxTarget ?? null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Session runtime and tmux target evidence must agree.",
+        path: ["tmuxTarget"],
       });
     }
     if (
@@ -1171,6 +1190,22 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
       type: z.literal("session.relaunch"),
       requestId: RequestIdSchema,
       manifestId: z.string().uuid(),
+      cols: z.number().int().min(2).max(500),
+      rows: z.number().int().min(1).max(300),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("tmux.sessions.list"),
+      requestId: RequestIdSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("tmux.session.attach"),
+      requestId: RequestIdSchema,
+      serverId: z.string().min(1).max(64),
+      sessionId: z.string().min(1).max(64),
       cols: z.number().int().min(2).max(500),
       rows: z.number().int().min(1).max(300),
     })
@@ -1351,7 +1386,7 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
       capabilities: z.object({
         directPty: z.literal(true),
         reconnectSnapshot: z.literal(true),
-        tmux: z.literal(false),
+        tmux: TmuxCapabilitySchema,
         launchPresets: z.array(LaunchPresetCapabilitySchema).length(3),
       }),
     })
@@ -1377,6 +1412,13 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal("relaunch.manifest.updated"),
       manifest: RelaunchManifestSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("tmux.sessions"),
+      requestId: RequestIdSchema,
+      observation: TmuxSessionsObservationSchema,
     })
     .strict(),
   z.object({

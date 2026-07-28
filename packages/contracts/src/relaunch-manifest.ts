@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ProviderIdSchema } from "./provider-observation.js";
+import { TmuxTargetSchema } from "./tmux.js";
 
 export const RELAUNCH_MANIFEST_SCHEMA_VERSION = 1 as const;
 export const RELAUNCH_MANIFEST_STATE_SCHEMA_VERSION = 1 as const;
@@ -56,7 +57,8 @@ export const RelaunchManifestSchema = z
     environmentKeys: z
       .array(SafeEnvironmentKeySchema)
       .max(MAX_RELAUNCH_ENVIRONMENT_KEYS),
-    runtime: z.literal("pty"),
+    runtime: z.enum(["pty", "tmux"]),
+    tmuxTarget: TmuxTargetSchema.nullable().optional(),
     resumeReference: RelaunchResumeReferenceSchema.nullable(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
@@ -72,6 +74,16 @@ export const RelaunchManifestSchema = z
         code: "custom",
         message: "Manifest provider must match its launch preset.",
         path: ["provider"],
+      });
+    }
+    if (
+      (manifest.runtime === "tmux") !==
+      ((manifest.tmuxTarget ?? null) !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Only a tmux manifest contains a tmux target.",
+        path: ["tmuxTarget"],
       });
     }
     if (

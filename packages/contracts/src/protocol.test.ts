@@ -47,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for relaunch manifests", () => {
-    expect(PROTOCOL_VERSION).toBe(22);
+  it("advances the wire contract for optional tmux attachment", () => {
+    expect(PROTOCOL_VERSION).toBe(23);
   });
 
   it("accepts only a manifest identity and dimensions for relaunch", () => {
@@ -896,7 +896,13 @@ describe("server connection authority evidence", () => {
     capabilities: {
       directPty: true,
       reconnectSnapshot: true,
-      tmux: false,
+      tmux: {
+        state: "unconfigured",
+        serverId: null,
+        executable: null,
+        version: null,
+        detail: "No optional tmux socket is configured.",
+      },
       launchPresets: [
         {
           id: "shell",
