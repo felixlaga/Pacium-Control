@@ -19,6 +19,7 @@ import {
   type RepositoryObservation,
   type RelaunchManifest,
   type SessionSummary,
+  type TmuxTarget,
   VerificationObservationSchema,
   type VerificationObservation,
   type VerificationRun,
@@ -80,7 +81,16 @@ export interface CreateSessionInput {
   cols: number;
   rows: number;
   predecessorSessionId?: string;
+  keepAlive?: boolean;
   tmux?: TmuxAttachSpec;
+  retainedKeepAliveManifest?: RelaunchManifest;
+}
+
+export interface TmuxRestoreResult {
+  attempted: number;
+  restored: number;
+  unavailable: number;
+  deferred: number;
 }
 
 export interface SessionSnapshot {
@@ -121,6 +131,7 @@ export class SessionError extends Error {
 }
 
 export class SessionManager {
+  private static readonly MAX_STARTUP_TMUX_REATTACHMENTS = 20;
   private readonly sessions = new Map<string, ManagedSession>();
   private readonly dataListeners = new Set<
     (event: TerminalDataEvent) => void
@@ -274,6 +285,9 @@ export class SessionManager {
     }
     const tmuxTarget = manifest.tmuxTarget ?? null;
     if (manifest.runtime === "tmux" && tmuxTarget !== null) {
+      if (manifest.tmuxMode === "keep_alive") {
+        return this.reattachKeepAliveManifest(manifest, cols, rows);
+      }
       return this.attachTmux(
         tmuxTarget.serverId,
         tmuxTarget.sessionId,
@@ -350,15 +364,170 @@ export class SessionManager {
     });
   }
 
+  public async restoreKeepAliveSessions(
+    cols = 100,
+    rows = 30,
+  ): Promise<TmuxRestoreResult> {
+    const candidates = this.listRelaunchManifests().filter(
+      (manifest) =>
+        manifest.runtime === "tmux" &&
+        manifest.tmuxMode === "keep_alive" &&
+        (manifest.tmuxTarget ?? null) !== null,
+    );
+    const activeTargets = new Set(
+      [...this.sessions.values()].flatMap(({ summary }) =>
+        summary.runtime === "tmux" && summary.tmuxTarget != null
+          ? [tmuxTargetKey(summary.tmuxTarget)]
+          : [],
+      ),
+    );
+    const selected: RelaunchManifest[] = [];
+    const selectedTargets = new Set<string>();
+    for (const manifest of candidates) {
+      const target = manifest.tmuxTarget;
+      if (target === null || target === undefined) {
+        continue;
+      }
+      const key = tmuxTargetKey(target);
+      if (activeTargets.has(key) || selectedTargets.has(key)) {
+        continue;
+      }
+      selectedTargets.add(key);
+      selected.push(manifest);
+    }
+    const attempted = Math.min(
+      selected.length,
+      SessionManager.MAX_STARTUP_TMUX_REATTACHMENTS,
+    );
+    let restored = 0;
+    for (const manifest of selected.slice(0, attempted)) {
+      try {
+        await this.reattachKeepAliveManifest(manifest, cols, rows);
+        restored += 1;
+      } catch {
+        // The retained manifest remains the recovery evidence. Startup never
+        // reruns a missing target or its command.
+      }
+    }
+    return {
+      attempted,
+      restored,
+      unavailable: attempted - restored,
+      deferred: Math.max(0, selected.length - attempted),
+    };
+  }
+
+  private async launchKeepAlivePreset(
+    cwd: string,
+    preset: LaunchPresetDefinition & { executable: string },
+    cols: number,
+    rows: number,
+  ): Promise<TmuxAttachSpec> {
+    if (this.tmuxAdapter === undefined) {
+      throw new SessionError(
+        "TMUX_UNCONFIGURED",
+        "No optional tmux socket is configured. The direct terminal was not launched.",
+      );
+    }
+    try {
+      return await this.tmuxAdapter.launchSpec({
+        sessionName: `pacium-${randomUUID()}`,
+        cwd,
+        cols,
+        rows,
+        executable: preset.executable,
+        args: preset.args,
+      });
+    } catch (error) {
+      throw new SessionError(
+        "TMUX_KEEP_ALIVE_FAILED",
+        error instanceof Error
+          ? error.message
+          : "The tmux keep-alive target could not be created.",
+        true,
+      );
+    }
+  }
+
+  private async reattachKeepAliveManifest(
+    manifest: RelaunchManifest,
+    cols: number,
+    rows: number,
+  ): Promise<SessionSummary> {
+    const target = manifest.tmuxTarget;
+    if (
+      this.tmuxAdapter === undefined ||
+      target === null ||
+      target === undefined ||
+      manifest.tmuxMode !== "keep_alive"
+    ) {
+      throw new SessionError(
+        "TMUX_TARGET_UNAVAILABLE",
+        "The retained keep-alive target is unavailable.",
+        true,
+      );
+    }
+    let attached: TmuxAttachSpec;
+    try {
+      attached = await this.tmuxAdapter.attachSpec(
+        target.serverId,
+        target.sessionId,
+      );
+    } catch (error) {
+      throw new SessionError(
+        "TMUX_TARGET_UNAVAILABLE",
+        error instanceof Error
+          ? error.message
+          : "The retained keep-alive target is unavailable.",
+        true,
+      );
+    }
+    return this.create({
+      displayName: manifest.displayName,
+      launchPreset: manifest.launchPreset,
+      cwd: manifest.cwd,
+      cols,
+      rows,
+      predecessorSessionId: manifest.sessionId,
+      tmux: {
+        ...attached,
+        mode: "keep_alive",
+        launchCommand: manifest.command,
+      },
+      retainedKeepAliveManifest: manifest,
+    });
+  }
+
   public async create(input: CreateSessionInput): Promise<SessionSummary> {
     const cwd = await this.validateCwd(input.cwd);
-    const preset = this.requireAvailablePreset(input.launchPreset);
-    const tmux = input.tmux;
+    const preset =
+      input.retainedKeepAliveManifest === undefined
+        ? this.requireAvailablePreset(input.launchPreset)
+        : {
+            ...this.requireKnownPreset(input.launchPreset),
+            executable: input.retainedKeepAliveManifest.command.executable,
+          };
+    if (input.keepAlive === true && input.tmux !== undefined) {
+      throw new SessionError(
+        "INVALID_TMUX_LAUNCH",
+        "A session cannot request and supply a tmux target together.",
+      );
+    }
+    const tmux =
+      input.keepAlive === true
+        ? await this.launchKeepAlivePreset(
+            cwd,
+            preset,
+            input.cols,
+            input.rows,
+          )
+        : input.tmux;
+    const tmuxMode = tmux?.mode ?? (tmux === undefined ? null : "attached");
     const id = randomUUID();
     const createdAt = new Date().toISOString();
     const repository = await this.inspectRepository(cwd, createdAt);
     const displayName =
-      (tmux === undefined
+      (tmux === undefined || tmuxMode === "keep_alive"
         ? input.displayName?.trim()
         : tmux.target.sessionName) ||
       (preset.id === "shell"
@@ -404,10 +573,17 @@ export class SessionManager {
       predecessorSessionId: input.predecessorSessionId ?? null,
       displayName,
       launchPreset: preset.id,
-      provider: tmux === undefined && preset.id !== "shell" ? preset.id : null,
+      provider:
+        preset.id !== "shell" &&
+        (tmux === undefined || tmuxMode === "keep_alive")
+          ? preset.id
+          : null,
       command: {
-        executable: tmux?.executable ?? preset.executable,
-        args: [...(tmux?.args ?? preset.args)],
+        executable:
+          tmux?.launchCommand?.executable ??
+          tmux?.executable ??
+          preset.executable,
+        args: [...(tmux?.launchCommand?.args ?? tmux?.args ?? preset.args)],
       },
       cwd,
       repository:
@@ -420,10 +596,27 @@ export class SessionManager {
       environmentKeys: [...new Set(this.environmentKeys)].slice(0, 32),
       runtime: tmux === undefined ? "pty" : "tmux",
       tmuxTarget: tmux?.target ?? null,
+      tmuxMode,
       resumeReference: null,
       createdAt,
       updatedAt: createdAt,
     };
+
+    const persistBeforeClient = tmuxMode === "keep_alive";
+    if (persistBeforeClient) {
+      try {
+        await this.relaunchManifests?.upsert(relaunchManifest);
+      } catch (error) {
+        terminal.dispose();
+        throw new SessionError(
+          "TMUX_MANIFEST_WRITE_FAILED",
+          error instanceof Error
+            ? `${error.message} The new tmux target may still be running; inspect tmux before retrying.`
+            : "The keep-alive manifest could not be stored. The tmux target may still be running.",
+          true,
+        );
+      }
+    }
 
     let pty: PtyProcess;
     try {
@@ -445,15 +638,19 @@ export class SessionManager {
       this.codexObserver?.release(id);
       terminal.dispose();
       throw new SessionError(
-        "PTY_SPAWN_FAILED",
-        error instanceof Error
-          ? error.message
-          : "The terminal process could not start",
+        persistBeforeClient ? "TMUX_CLIENT_SPAWN_FAILED" : "PTY_SPAWN_FAILED",
+        persistBeforeClient
+          ? "The tmux target was created and retained, but its Pacium client could not start. Use Recovery or restart Pacium to reattach."
+          : error instanceof Error
+            ? error.message
+            : "The terminal process could not start",
         true,
       );
     }
     try {
-      await this.relaunchManifests?.upsert(relaunchManifest);
+      if (!persistBeforeClient) {
+        await this.relaunchManifests?.upsert(relaunchManifest);
+      }
     } catch (error) {
       try {
         pty.kill("SIGTERM");
@@ -483,9 +680,11 @@ export class SessionManager {
         commandLabel:
           tmux === undefined
             ? preset.label
-            : `tmux · ${tmux.target.sessionName}`,
+            : tmuxMode === "keep_alive"
+              ? `tmux keep-alive · ${preset.label}`
+              : `tmux · ${tmux.target.sessionName}`,
         agentClassification:
-          tmux === undefined
+          tmux === undefined || tmuxMode === "keep_alive"
             ? {
                 ...preset.classification,
                 observedAt: createdAt,
@@ -504,6 +703,7 @@ export class SessionManager {
         repository,
         runtime: tmux === undefined ? "pty" : "tmux",
         tmuxTarget: tmux?.target ?? null,
+        tmuxMode,
         processState: "live",
         pid: pty.pid,
         cols: input.cols,
@@ -965,6 +1165,17 @@ export class SessionManager {
     return { ...preset, executable: preset.executable };
   }
 
+  private requireKnownPreset(id: LaunchPresetId): LaunchPresetDefinition {
+    const preset = this.launchPresets.find((candidate) => candidate.id === id);
+    if (preset === undefined) {
+      throw new SessionError(
+        "PRESET_UNAVAILABLE",
+        "The retained launch preset is no longer known.",
+      );
+    }
+    return preset;
+  }
+
   private requireVerificationRepository(session: ManagedSession): {
     root: string;
     presets: readonly VerificationPresetDefinition[];
@@ -1110,6 +1321,10 @@ function mapVerificationRunnerError(error: unknown): SessionError {
     "The configured verification process could not be started.",
     true,
   );
+}
+
+function tmuxTargetKey(target: TmuxTarget): string {
+  return `${target.serverId}\u0000${target.sessionId}`;
 }
 
 function splitTerminalData(data: string): string[] {

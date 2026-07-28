@@ -16,7 +16,11 @@ import type { GitHistoryInspector } from "./git-history.js";
 import type { RepositoryInspector } from "./repository-context.js";
 import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
 import { SessionError, SessionManager } from "./session-manager.js";
-import { TmuxAdapter, type TmuxAttachSpec } from "./tmux-adapter.js";
+import {
+  TmuxAdapter,
+  type TmuxAttachSpec,
+  type TmuxLaunchInput,
+} from "./tmux-adapter.js";
 import type { VerificationCatalog } from "./verification-config.js";
 import { VerificationRunner } from "./verification-runner.js";
 
@@ -107,6 +111,8 @@ function createManager(
 }
 
 class FixtureTmuxAdapter extends TmuxAdapter {
+  public readonly launches: TmuxLaunchInput[] = [];
+
   public constructor() {
     super(
       "/private/tmp/pacium-test.sock",
@@ -120,7 +126,10 @@ class FixtureTmuxAdapter extends TmuxAdapter {
     serverId: string,
     sessionId: string,
   ): Promise<TmuxAttachSpec> {
-    if (serverId !== "configured" || sessionId !== "$7") {
+    if (
+      serverId !== "configured" ||
+      (sessionId !== "$7" && sessionId !== "$8")
+    ) {
       return Promise.reject(
         new Error("The selected tmux session is no longer available."),
       );
@@ -132,16 +141,57 @@ class FixtureTmuxAdapter extends TmuxAdapter {
         "/private/tmp/pacium-test.sock",
         "attach-session",
         "-t",
-        "$7",
+        sessionId,
       ],
       cwd: process.cwd(),
       target: {
         serverId: "configured",
-        sessionId: "$7",
-        sessionName: "Meta",
+        sessionId,
+        sessionName: sessionId === "$8" ? "pacium-managed" : "Meta",
         observedAt: "2026-07-28T10:00:00.000Z",
       },
     });
+  }
+
+  public override launchSpec(input: TmuxLaunchInput): Promise<TmuxAttachSpec> {
+    this.launches.push(input);
+    return Promise.resolve({
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-test.sock",
+        "attach-session",
+        "-t",
+        "$8",
+      ],
+      cwd: input.cwd,
+      target: {
+        serverId: "configured",
+        sessionId: "$8",
+        sessionName: input.sessionName,
+        observedAt: "2026-07-28T10:00:00.000Z",
+      },
+      mode: "keep_alive",
+      launchCommand: {
+        executable: input.executable,
+        args: input.args,
+      },
+    });
+  }
+}
+
+class FailingPtyFactory extends FakePtyFactory {
+  public override create(
+    options: Parameters<FakePtyFactory["create"]>[0],
+  ): ReturnType<FakePtyFactory["create"]> {
+    this.createCalls.push(options);
+    throw new Error("Synthetic tmux client spawn failure.");
+  }
+}
+
+class UnavailableTmuxAdapter extends FixtureTmuxAdapter {
+  public override attachSpec(): Promise<TmuxAttachSpec> {
+    return Promise.reject(new Error("Synthetic missing tmux target."));
   }
 }
 
@@ -230,7 +280,7 @@ describe("SessionManager", () => {
     );
 
     await expect(
-      manager.attachTmux("configured", "$8", 100, 30),
+      manager.attachTmux("configured", "$9", 100, 30),
     ).rejects.toMatchObject({
       code: "TMUX_TARGET_UNAVAILABLE",
       retryable: true,
@@ -278,6 +328,250 @@ describe("SessionManager", () => {
     expect(factory.processes[0]?.resizes).toEqual([{ cols: 110, rows: 34 }]);
     manager.shutdown();
     expect(factory.processes[0]?.signals).toEqual(["SIGHUP"]);
+  });
+
+  it("launches a fixed preset as durable tmux evidence before its client", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pacium-keep-alive-"));
+    const store = new RelaunchManifestStore(join(root, "data"));
+    await store.initialize();
+    const factory = new FakePtyFactory();
+    const adapter = new FixtureTmuxAdapter();
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      store,
+      ["HOME", "PATH"],
+      adapter,
+    );
+
+    const session = await manager.create({
+      cwd: process.cwd(),
+      displayName: "Durable Codex",
+      launchPreset: "codex",
+      cols: 100,
+      rows: 30,
+      keepAlive: true,
+    });
+    expect(adapter.launches).toHaveLength(1);
+    expect(adapter.launches[0]).toMatchObject({
+      cwd: process.cwd(),
+      cols: 100,
+      rows: 30,
+      executable: "/opt/test/bin/codex",
+      args: [],
+    });
+    expect(adapter.launches[0]?.sessionName).toMatch(/^pacium-/);
+    expect(session).toMatchObject({
+      displayName: "Durable Codex",
+      launchPreset: "codex",
+      commandLabel: "tmux keep-alive · Codex",
+      runtime: "tmux",
+      tmuxMode: "keep_alive",
+      tmuxTarget: {
+        serverId: "configured",
+        sessionId: "$8",
+      },
+      agentClassification: {
+        type: "codex",
+        source: "launch_preset",
+      },
+      providerObservation: {
+        provider: "codex",
+        health: {
+          state: "unavailable",
+          source: "none",
+        },
+      },
+      relaunchManifest: {
+        provider: "codex",
+        command: {
+          executable: "/opt/test/bin/codex",
+          args: [],
+        },
+        runtime: "tmux",
+        tmuxMode: "keep_alive",
+      },
+    });
+    expect(store.list()).toHaveLength(1);
+    expect(factory.createCalls[0]).toMatchObject({
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-test.sock",
+        "attach-session",
+        "-t",
+        "$8",
+      ],
+    });
+    manager.shutdown();
+  });
+
+  it("retains recovery evidence when the keep-alive client cannot spawn", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pacium-keep-alive-failure-"));
+    const store = new RelaunchManifestStore(join(root, "data"));
+    await store.initialize();
+    const manager = createManager(
+      new FailingPtyFactory(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      store,
+      [],
+      new FixtureTmuxAdapter(),
+    );
+
+    await expect(
+      manager.create({
+        cwd: process.cwd(),
+        displayName: "Durable failure",
+        launchPreset: "codex",
+        cols: 100,
+        rows: 30,
+        keepAlive: true,
+      }),
+    ).rejects.toMatchObject({
+      code: "TMUX_CLIENT_SPAWN_FAILED",
+      retryable: true,
+    });
+    expect(manager.list()).toHaveLength(0);
+    expect(store.list()).toMatchObject([
+      {
+        displayName: "Durable failure",
+        tmuxMode: "keep_alive",
+        tmuxTarget: { sessionId: "$8" },
+      },
+    ]);
+  });
+
+  it("restores only the newest unique keep-alive target after restart", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pacium-keep-alive-restore-"));
+    const store = new RelaunchManifestStore(join(root, "data"));
+    await store.initialize();
+    const firstFactory = new FakePtyFactory();
+    const first = createManager(
+      firstFactory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      store,
+      [],
+      new FixtureTmuxAdapter(),
+    );
+    await first.create({
+      cwd: process.cwd(),
+      displayName: "Direct",
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+    await first.attachTmux("configured", "$7", 80, 24);
+    const durable = await first.create({
+      cwd: process.cwd(),
+      displayName: "Durable",
+      launchPreset: "codex",
+      cols: 100,
+      rows: 30,
+      keepAlive: true,
+    });
+    first.shutdown();
+    await first.flushRelaunchManifests();
+
+    const secondFactory = new FakePtyFactory();
+    const second = createManager(
+      secondFactory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      store,
+      [],
+      new FixtureTmuxAdapter(),
+    );
+    await expect(second.restoreKeepAliveSessions()).resolves.toEqual({
+      attempted: 1,
+      restored: 1,
+      unavailable: 0,
+      deferred: 0,
+    });
+    expect(second.list()).toHaveLength(1);
+    expect(second.list()[0]).toMatchObject({
+      displayName: "Durable",
+      launchPreset: "codex",
+      tmuxMode: "keep_alive",
+      relaunchManifest: {
+        predecessorSessionId: durable.id,
+      },
+    });
+    await expect(second.restoreKeepAliveSessions()).resolves.toEqual({
+      attempted: 0,
+      restored: 0,
+      unavailable: 0,
+      deferred: 0,
+    });
+    second.shutdown();
+    await second.flushRelaunchManifests();
+
+    const unavailable = createManager(
+      new FakePtyFactory(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      store,
+      [],
+      new UnavailableTmuxAdapter(),
+    );
+    await expect(unavailable.restoreKeepAliveSessions()).resolves.toEqual({
+      attempted: 1,
+      restored: 0,
+      unavailable: 1,
+      deferred: 0,
+    });
+    expect(unavailable.list()).toHaveLength(0);
+    expect(
+      store
+        .list()
+        .some(
+          (manifest) =>
+            manifest.tmuxMode === "keep_alive" &&
+            manifest.tmuxTarget?.sessionId === "$8",
+        ),
+    ).toBe(true);
   });
 
   it("reports exact live sessions and fixed launch presets without mutation", async () => {
