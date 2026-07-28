@@ -18,7 +18,7 @@ describe("local server configuration", () => {
     expect(() =>
       loadServerConfig({
         PACIUM_HOST: "0.0.0.0",
-        SHELL: "/bin/zsh",
+        SHELL: "/bin/sh",
       }),
     ).toThrow();
   });
@@ -26,7 +26,7 @@ describe("local server configuration", () => {
   it("keeps verification unavailable without explicit configuration", () => {
     expect(
       loadServerConfig({
-        SHELL: "/bin/zsh",
+        SHELL: "/bin/sh",
       }).verificationCatalog,
     ).toEqual({
       configured: false,
@@ -42,7 +42,7 @@ describe("local server configuration", () => {
     expect(
       loadServerConfig({
         HOME: process.env.HOME,
-        SHELL: "/bin/zsh",
+        SHELL: "/bin/sh",
         PACIUM_TMUX_SOCKET: "/private/tmp/pacium.sock",
       }).tmuxSocket,
     ).toBe("/private/tmp/pacium.sock");
@@ -103,7 +103,7 @@ describe("local server configuration", () => {
   it("keeps the Serve origin separate from local browser origins", () => {
     const config = loadServerConfig({
       HOME: process.env.HOME,
-      SHELL: "/bin/zsh",
+      SHELL: "/bin/sh",
       PACIUM_TAILSCALE_ORIGIN: "https://pacium-host.example-tailnet.ts.net",
       PACIUM_TAILSCALE_OPERATOR_LOGINS: "owner@example.com",
     });

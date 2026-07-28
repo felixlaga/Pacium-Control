@@ -49,7 +49,7 @@ describe("launch preset catalog", () => {
     await writeFile(codex, "#!/bin/sh\n");
     await chmod(codex, 0o755);
 
-    const definitions = buildLaunchPresetDefinitions("/bin/zsh", {
+    const definitions = buildLaunchPresetDefinitions("/bin/sh", {
       PATH: join(directory, "bin"),
     });
     expect(presetCapabilities(definitions)).toEqual([
@@ -75,7 +75,7 @@ describe("launch preset catalog", () => {
   });
 
   it("classifies only the exact server-owned launch preset", () => {
-    const definitions = buildLaunchPresetDefinitions("/bin/zsh", { PATH: "" });
+    const definitions = buildLaunchPresetDefinitions("/bin/sh", { PATH: "" });
 
     expect(
       definitions.map(({ id, classification }) => ({
