@@ -42,6 +42,7 @@ target_app="$applications_directory/Pacium Control.app"
 owned_executable="$target_app/Contents/MacOS/pacium-control"
 package_entry="$target_app/Contents/Resources/app/apps/local-server/dist/package-launcher.js"
 command_link="$bin_directory/pacium"
+process_lock="/tmp/com.pacium.control.$(/usr/bin/id -u).lock"
 
 if [ -L "$target_app" ]; then
   fail "the application destination is a symlink."
@@ -58,9 +59,20 @@ elif [ -e "$command_link" ]; then
   fail "the pacium command destination is a foreign file."
 fi
 
-if [ -e "$target_app" ] &&
-  /usr/bin/pgrep -f "$package_entry" >/dev/null 2>&1; then
-  fail "Pacium Control is running. Stop its foreground server first."
+if [ -L "$process_lock" ]; then
+  fail "the package process lease is a symlink."
+elif [ -f "$process_lock" ]; then
+  lock_pid=$(/usr/bin/sed -n '1p' "$process_lock")
+  lock_entry=$(/usr/bin/sed -n '2p' "$process_lock")
+  if [ "$lock_entry" = "$package_entry" ]; then
+    case "$lock_pid" in
+      '' | *[!0-9]*) fail "the package process lease is malformed." ;;
+    esac
+    if /bin/kill -0 "$lock_pid" 2>/dev/null; then
+      fail "Pacium Control is running. Stop its foreground server first."
+    fi
+    /bin/rm -f "$process_lock"
+  fi
 fi
 
 removed_app=0

@@ -6,7 +6,15 @@ fail() {
   exit 1
 }
 
-contents_directory=$(CDPATH= cd "$(dirname "$0")/.." && pwd -P)
+launcher_path=$0
+if [ -L "$launcher_path" ]; then
+  launcher_path=$(/usr/bin/readlink "$launcher_path")
+  case "$launcher_path" in
+    /*) ;;
+    *) fail "the pacium command link is not absolute." ;;
+  esac
+fi
+contents_directory=$(CDPATH= cd "$(dirname "$launcher_path")/.." && pwd -P)
 package_entry="$contents_directory/Resources/app/apps/local-server/dist/package-launcher.js"
 
 [ -f "$package_entry" ] || fail "the installed application is incomplete."
@@ -47,5 +55,8 @@ fi
 
 PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$HOME/.bun/bin:$HOME/.local/share/pnpm:/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PATH
+
+PACIUM_PACKAGE_LOCK="/tmp/com.pacium.control.$(/usr/bin/id -u).lock"
+export PACIUM_PACKAGE_LOCK
 
 exec "$node_binary" "$package_entry" "$@"

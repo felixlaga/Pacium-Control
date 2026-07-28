@@ -6,6 +6,7 @@ import {
   probePaciumServer,
   resolvePackagePort,
 } from "./package-launcher-core.js";
+import { acquirePackageProcessLock } from "./package-process-lock.js";
 
 const PACKAGE_VERSION = "0.0.0";
 
@@ -52,6 +53,15 @@ async function main(): Promise<void> {
     return;
   }
 
+  const lockPath = process.env.PACIUM_PACKAGE_LOCK;
+  if (lockPath === undefined) {
+    throw new Error("PACIUM_PACKAGE_LOCK is required by the macOS launcher.");
+  }
+  const releaseLock = acquirePackageProcessLock({
+    lockPath,
+    packageEntry: process.argv[1] ?? "",
+  });
+  process.once("exit", releaseLock);
   process.env.PACIUM_OPEN_BROWSER = options.openBrowser ? "1" : "0";
   await import("./index.js");
 }
