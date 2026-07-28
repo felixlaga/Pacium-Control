@@ -1,5 +1,31 @@
 import { expect, test } from "@playwright/test";
 
+test.afterEach(async ({ page }) => {
+  const openDialog = page.getByRole("dialog");
+  if ((await openDialog.count()) > 0) {
+    await page.keyboard.press("Escape");
+  }
+  const sidebar = page.getByRole("complementary", {
+    name: "Session navigation",
+  });
+  const sessions = sidebar
+    .locator(".session-item")
+    .filter({ hasText: "Recovery fixture" });
+  while ((await sessions.count()) > 0) {
+    const previousCount = await sessions.count();
+    await sessions.first().click({ button: "right" });
+    page.once("dialog", (dialog) => dialog.accept());
+    await page
+      .getByRole("button", {
+        name: /Terminate process and close|Remove session/,
+      })
+      .click();
+    await expect
+      .poll(() => sessions.count(), { timeout: 10_000 })
+      .toBeLessThan(previousCount);
+  }
+});
+
 test("previews a detached manifest and relaunches a fresh successor", async ({
   page,
 }) => {
