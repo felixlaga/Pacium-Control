@@ -6,6 +6,7 @@ import {
 } from "./pacium-config.js";
 import { PaciumContextObservationSchema } from "./pacium-context.js";
 import { ProviderObservationSnapshotSchema } from "./provider-observation.js";
+import { RelaunchManifestSchema } from "./relaunch-manifest.js";
 import {
   QueueApprovalDecisionPayloadSchema,
   QueueDecisionResultSchema,
@@ -27,7 +28,7 @@ import {
   QueueResolutionResultSchema,
 } from "./queue-reconciliation.js";
 
-export const PROTOCOL_VERSION = 21 as const;
+export const PROTOCOL_VERSION = 22 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -1087,6 +1088,7 @@ export const SessionSummarySchema = z
     commandLabel: z.string().min(1).max(40),
     agentClassification: AgentClassificationSchema,
     providerObservation: ProviderObservationSnapshotSchema.nullable(),
+    relaunchManifest: RelaunchManifestSchema,
     repository: RepositoryObservationSchema,
     runtime: z.literal("pty"),
     processState: ProcessStateSchema,
@@ -1112,6 +1114,19 @@ export const SessionSummarySchema = z
         path: ["providerObservation"],
       });
     }
+    if (
+      session.relaunchManifest.sessionId !== session.id ||
+      session.relaunchManifest.launchPreset !== session.launchPreset ||
+      session.relaunchManifest.cwd !== session.cwd ||
+      session.relaunchManifest.displayName !== session.displayName
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "Relaunch manifest identity and launch context must match the session.",
+        path: ["relaunchManifest"],
+      });
+    }
   });
 
 export type SessionSummary = z.infer<typeof SessionSummarySchema>;
@@ -1135,6 +1150,21 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
       })
       .strict(),
   }),
+  z
+    .object({
+      type: z.literal("relaunch.manifest.list"),
+      requestId: RequestIdSchema,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("session.relaunch"),
+      requestId: RequestIdSchema,
+      manifestId: z.string().uuid(),
+      cols: z.number().int().min(2).max(500),
+      rows: z.number().int().min(1).max(300),
+    })
+    .strict(),
   z.object({
     type: z.literal("terminal.attach"),
     requestId: RequestIdSchema,
@@ -1326,6 +1356,19 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
     requestId: RequestIdSchema,
     session: SessionSummarySchema,
   }),
+  z
+    .object({
+      type: z.literal("relaunch.manifest.list"),
+      requestId: RequestIdSchema,
+      manifests: z.array(RelaunchManifestSchema),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("relaunch.manifest.updated"),
+      manifest: RelaunchManifestSchema,
+    })
+    .strict(),
   z.object({
     type: z.literal("session.updated"),
     session: SessionSummarySchema,
