@@ -121,6 +121,10 @@ export class RelaunchManifestStore {
     return manifest === undefined ? null : structuredClone(manifest);
   }
 
+  public async settle(): Promise<void> {
+    await this.writeTail;
+  }
+
   public upsert(manifest: RelaunchManifest): Promise<RelaunchManifest> {
     this.requireInitialized();
     const parsed = RelaunchManifestSchema.parse(manifest);

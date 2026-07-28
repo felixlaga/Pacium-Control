@@ -231,6 +231,10 @@ export class SessionManager {
     return this.launchPresets.some(({ id }) => id === launchPreset);
   }
 
+  public async flushRelaunchManifests(): Promise<void> {
+    await this.relaunchManifests?.settle();
+  }
+
   public listRelaunchManifests(): RelaunchManifest[] {
     if (this.relaunchManifests !== undefined) {
       return this.relaunchManifests.list();

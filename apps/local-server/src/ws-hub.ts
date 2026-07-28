@@ -109,6 +109,10 @@ export class WebSocketHub {
     this.unsubscribeSessions = sessions.onSessionEvent((event) => {
       if (event.type === "updated") {
         this.broadcast({ type: "session.updated", session: event.session });
+        this.broadcast({
+          type: "relaunch.manifest.updated",
+          manifest: event.session.relaunchManifest,
+        });
         return;
       }
       if (event.type === "exited") {
@@ -291,6 +295,13 @@ export class WebSocketHub {
           sessions: this.sessions.list(),
         });
         return;
+      case "relaunch.manifest.list":
+        this.send(client.socket, {
+          type: "relaunch.manifest.list",
+          requestId: message.requestId,
+          manifests: this.sessions.listRelaunchManifests(),
+        });
+        return;
       case "session.create": {
         const session = await this.sessions.create(
           message.payload.displayName === undefined
@@ -307,6 +318,20 @@ export class WebSocketHub {
                 rows: message.payload.rows,
                 displayName: message.payload.displayName,
               },
+        );
+        client.subscriptions.add(session.id);
+        this.send(client.socket, {
+          type: "session.created",
+          requestId: message.requestId,
+          session,
+        });
+        return;
+      }
+      case "session.relaunch": {
+        const session = await this.sessions.relaunch(
+          message.manifestId,
+          message.cols,
+          message.rows,
         );
         client.subscriptions.add(session.id);
         this.send(client.socket, {

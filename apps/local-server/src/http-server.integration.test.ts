@@ -37,6 +37,7 @@ import {
   type PaciumHttpServer,
 } from "./http-server.js";
 import { createPaciumConfigStore } from "./pacium-config-service.js";
+import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
 import { SessionManager } from "./session-manager.js";
 import type { VerificationCatalog } from "./verification-config.js";
 import { VerificationRunner } from "./verification-runner.js";
@@ -76,6 +77,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
 
   afterEach(async () => {
     manager?.shutdown();
+    await manager?.flushRelaunchManifests();
     if (application !== undefined) {
       await application.close();
     }
@@ -178,6 +180,105 @@ describe("localhost HTTP and WebSocket boundary", () => {
 
     second.socket.close();
     await once(second.socket, "close");
+  });
+
+  it("lists a retained manifest after restart and relaunches one exact successor", async () => {
+    const firstFactory = new FakePtyFactory();
+    const firstSetup = await startTestServer(firstFactory);
+    const firstClient = await connect(firstSetup.url, firstSetup.config);
+    await nextMessage(
+      firstClient,
+      (message) => message.type === "server.welcome",
+    );
+    firstClient.socket.send(
+      JSON.stringify({
+        type: "session.create",
+        requestId: "bd889331-1af5-4128-87ef-973a19651e1f",
+        payload: {
+          cwd: process.cwd(),
+          displayName: "Recovery shell",
+          launchPreset: "shell",
+          cols: 90,
+          rows: 28,
+        },
+      }),
+    );
+    const original = await nextMessage(
+      firstClient,
+      (message) => message.type === "session.created",
+    );
+    if (original.type !== "session.created") {
+      throw new Error("Expected an original session");
+    }
+    const manifestId = original.session.relaunchManifest.id;
+    firstClient.socket.close();
+    await once(firstClient.socket, "close");
+    firstSetup.manager.shutdown();
+    await firstSetup.manager.flushRelaunchManifests();
+    await firstSetup.application.close();
+
+    const secondFactory = new FakePtyFactory();
+    const secondSetup = await startTestServer(
+      secondFactory,
+      undefined,
+      undefined,
+      firstSetup.config.dataDirectory,
+    );
+    application = secondSetup.application;
+    manager = secondSetup.manager;
+    const secondClient = await connect(secondSetup.url, secondSetup.config);
+    await nextMessage(
+      secondClient,
+      (message) => message.type === "server.welcome",
+    );
+    secondClient.socket.send(
+      JSON.stringify({
+        type: "relaunch.manifest.list",
+        requestId: "1140d344-f533-42d5-8bb6-0aee229435e4",
+      }),
+    );
+    const manifestList = await nextMessage(
+      secondClient,
+      (message) => message.type === "relaunch.manifest.list",
+    );
+    expect(manifestList).toMatchObject({
+      type: "relaunch.manifest.list",
+      manifests: [
+        {
+          id: manifestId,
+          sessionId: original.session.id,
+          displayName: "Recovery shell",
+          launchPreset: "shell",
+        },
+      ],
+    });
+    expect(secondSetup.manager.list()).toEqual([]);
+
+    secondClient.socket.send(
+      JSON.stringify({
+        type: "session.relaunch",
+        requestId: "10ee7231-a4a2-472f-879b-401ae6d195a4",
+        manifestId,
+        cols: 100,
+        rows: 30,
+      }),
+    );
+    const successor = await nextMessage(
+      secondClient,
+      (message) => message.type === "session.created",
+    );
+    if (successor.type !== "session.created") {
+      throw new Error("Expected a successor session");
+    }
+    expect(successor.session.id).not.toBe(original.session.id);
+    expect(successor.session.relaunchManifest).toMatchObject({
+      predecessorSessionId: original.session.id,
+      displayName: "Recovery shell",
+    });
+    expect(secondFactory.createCalls).toHaveLength(1);
+
+    secondClient.socket.close();
+    await once(secondClient.socket, "close");
   });
 
   it("accepts only exact authenticated loopback Claude observations without decisions", async () => {
@@ -683,9 +784,12 @@ describe("localhost HTTP and WebSocket boundary", () => {
       retryable: false,
     });
     expect(manager.hasSession(liveSession.id)).toBe(true);
-    await expect(lstat(setup.config.dataDirectory)).rejects.toMatchObject({
-      code: "ENOENT",
-    });
+    await expect(
+      lstat(join(setup.config.dataDirectory, "pacium.json")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(
+      lstat(join(setup.config.dataDirectory, "queue-state.json")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
 
     client.socket.close();
     await once(client.socket, "close");
@@ -3067,6 +3171,8 @@ async function startTestServer(
       },
     ],
   };
+  const relaunchManifests = new RelaunchManifestStore(config.dataDirectory);
+  await relaunchManifests.initialize();
   const manager = new SessionManager(
     factory,
     config.launchPresets,
@@ -3157,6 +3263,8 @@ async function startTestServer(
     verification?.runner,
     claudeObserver,
     codexObserver,
+    relaunchManifests,
+    config.environmentKeys,
   );
   const application = createPaciumHttpServer(
     config,

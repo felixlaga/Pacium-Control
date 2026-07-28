@@ -7,6 +7,7 @@ import { createHostActions } from "./host-actions.js";
 import { createPaciumConfigStore } from "./pacium-config-service.js";
 import { NodePtyFactory } from "./pty-adapter.js";
 import { QueueObserver } from "./queue-observer.js";
+import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
 import { SessionManager } from "./session-manager.js";
 import { VerificationRunner } from "./verification-runner.js";
 
@@ -39,6 +40,8 @@ const codexRuntimeBridge =
 const verificationRunner = new VerificationRunner({
   environment: childEnvironment,
 });
+const relaunchManifests = new RelaunchManifestStore(config.dataDirectory);
+await relaunchManifests.initialize();
 const sessions = new SessionManager(
   new NodePtyFactory(config),
   config.launchPresets,
@@ -51,6 +54,8 @@ const sessions = new SessionManager(
   verificationRunner,
   claudeObserver,
   codexObserver,
+  relaunchManifests,
+  config.environmentKeys,
 );
 const paciumConfig = createPaciumConfigStore(config, sessions);
 const queueObserver = new QueueObserver();
@@ -78,6 +83,7 @@ async function shutdown(signal: string): Promise<void> {
   shuttingDown = true;
   process.stdout.write(`Received ${signal}; closing terminal sessions.\n`);
   sessions.shutdown();
+  await sessions.flushRelaunchManifests();
   await application.close();
 }
 
