@@ -1,14 +1,23 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, realpath, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  TmuxAdapter,
   createTmuxAdapter,
+  parseTmuxLaunch,
   parseTmuxSessions,
   resolveSafeTmuxSocketLocation,
 } from "./tmux-adapter.js";
@@ -85,6 +94,86 @@ describe("tmux adapter", () => {
     ]);
   });
 
+  it("launches only direct server-owned tmux command arguments", async () => {
+    const calls: Array<{ executable: string; args: readonly string[] }> = [];
+    const adapter = new TmuxAdapter(
+      "/private/tmp/pacium-test.sock",
+      "/opt/test/bin/tmux",
+      "tmux 3.7b",
+      {},
+      (executable, args) => {
+        calls.push({ executable, args });
+        return Promise.resolve({
+          stdout:
+            "$7__PACIUM_TMUX_FIELD__pacium-00000000-0000-4000-8000-000000000071\n",
+          stderr: "",
+        });
+      },
+    );
+    const literalArgument = "literal; touch /private/tmp/not-executed";
+    const spec = await adapter.launchSpec({
+      sessionName: "pacium-00000000-0000-4000-8000-000000000071",
+      cwd: "/work/pacium",
+      cols: 100,
+      rows: 30,
+      executable: "/opt/test/bin/codex",
+      args: ["--literal", literalArgument],
+    });
+
+    expect(calls).toEqual([
+      {
+        executable: "/opt/test/bin/tmux",
+        args: [
+          "-S",
+          "/private/tmp/pacium-test.sock",
+          "new-session",
+          "-d",
+          "-P",
+          "-F",
+          "#{session_id}__PACIUM_TMUX_FIELD__#{session_name}",
+          "-s",
+          "pacium-00000000-0000-4000-8000-000000000071",
+          "-c",
+          "/work/pacium",
+          "-x",
+          "100",
+          "-y",
+          "30",
+          "/opt/test/bin/codex",
+          "--literal",
+          literalArgument,
+        ],
+      },
+    ]);
+    expect(spec).toMatchObject({
+      mode: "keep_alive",
+      target: {
+        serverId: "configured",
+        sessionId: "$7",
+      },
+      launchCommand: {
+        executable: "/opt/test/bin/codex",
+        args: ["--literal", literalArgument],
+      },
+    });
+    expect(() =>
+      parseTmuxLaunch(
+        "$7__PACIUM_TMUX_FIELD__forged-name\n",
+        "2026-07-28T10:00:00.000Z",
+      ),
+    ).not.toThrow();
+    await expect(
+      adapter.launchSpec({
+        sessionName: "browser-chosen-name",
+        cwd: "/work/pacium",
+        cols: 100,
+        rows: 30,
+        executable: "/opt/test/bin/codex",
+        args: [],
+      }),
+    ).rejects.toThrow("invalid");
+  });
+
   it("rejects malformed, duplicate, and control-bearing output", () => {
     expect(() =>
       parseTmuxSessions(
@@ -153,6 +242,38 @@ describe("tmux adapter", () => {
         },
       });
       expect(spec.executable).toMatch(/\/tmux$/);
+
+      const marker = join(root, "direct-argv.txt");
+      const sideEffect = join(root, "must-not-exist");
+      const literal = `literal; touch ${sideEffect}`;
+      const launched = await adapter.launchSpec({
+        sessionName: "pacium-00000000-0000-4000-8000-000000000071",
+        cwd: process.cwd(),
+        cols: 100,
+        rows: 30,
+        executable: process.execPath,
+        args: [
+          "-e",
+          "require('node:fs').writeFileSync(process.argv[1], process.argv[2]); setInterval(() => {}, 1000)",
+          marker,
+          literal,
+        ],
+      });
+      expect(launched).toMatchObject({
+        mode: "keep_alive",
+        target: {
+          sessionName: "pacium-00000000-0000-4000-8000-000000000071",
+        },
+      });
+      await vi.waitFor(
+        async () => {
+          await expect(readFile(marker, "utf8")).resolves.toBe(literal);
+        },
+        { timeout: 2_000 },
+      );
+      await expect(readFile(sideEffect, "utf8")).rejects.toMatchObject({
+        code: "ENOENT",
+      });
     },
   );
 });

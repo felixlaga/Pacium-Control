@@ -4,9 +4,11 @@ import { basename, dirname, isAbsolute, join, parse } from "node:path";
 import { promisify } from "node:util";
 
 import {
+  MAX_RELAUNCH_COMMAND_ARGUMENTS,
   MAX_TMUX_SESSIONS,
   TmuxSessionSchema,
   TmuxSessionsObservationSchema,
+  TmuxTargetSchema,
   type TmuxCapability,
   type TmuxSession,
   type TmuxSessionsObservation,
@@ -18,7 +20,9 @@ import { findExecutable } from "./launch-presets.js";
 const execFileAsync = promisify(execFile);
 const SERVER_ID = "configured";
 const DISCOVERY_TIMEOUT_MS = 2_000;
+const LAUNCH_TIMEOUT_MS = 5_000;
 const MAX_DISCOVERY_BYTES = 64 * 1024;
+const MAX_LAUNCH_BYTES = 4 * 1024;
 const FIELD_SEPARATOR = "__PACIUM_TMUX_FIELD__";
 const FORMAT = [
   "#{session_id}",
@@ -28,12 +32,45 @@ const FORMAT = [
   "#{session_created}",
   "#{pane_current_path}",
 ].join(FIELD_SEPARATOR);
+const LAUNCH_FORMAT = ["#{session_id}", "#{session_name}"].join(
+  FIELD_SEPARATOR,
+);
+const PACIUM_SESSION_NAME =
+  /^pacium-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+interface TmuxCommandOptions {
+  encoding: "utf8";
+  env: Readonly<Record<string, string>>;
+  timeout: number;
+  maxBuffer: number;
+  windowsHide: boolean;
+}
+
+type TmuxCommandExecutor = (
+  executable: string,
+  args: readonly string[],
+  options: TmuxCommandOptions,
+) => Promise<{ stdout: string; stderr: string }>;
 
 export interface TmuxAttachSpec {
   executable: string;
   args: readonly string[];
   cwd: string;
   target: TmuxTarget;
+  mode?: "attached" | "keep_alive";
+  launchCommand?: {
+    executable: string;
+    args: readonly string[];
+  };
+}
+
+export interface TmuxLaunchInput {
+  sessionName: string;
+  cwd: string;
+  cols: number;
+  rows: number;
+  executable: string;
+  args: readonly string[];
 }
 
 export class TmuxAdapter {
@@ -42,6 +79,7 @@ export class TmuxAdapter {
     private readonly executable: string | null,
     private readonly version: string | null,
     private readonly environment: Readonly<Record<string, string>>,
+    private readonly execute: TmuxCommandExecutor = executeTmux,
   ) {}
 
   public capability(): TmuxCapability {
@@ -118,7 +156,7 @@ export class TmuxAdapter {
       );
     }
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execute(
         this.executable,
         ["-S", this.socketPath, "list-sessions", "-F", FORMAT],
         {
@@ -184,7 +222,99 @@ export class TmuxAdapter {
       ],
       cwd: session.currentPath ?? process.cwd(),
       target: session.target,
+      mode: "attached",
     };
+  }
+
+  public async launchSpec(input: TmuxLaunchInput): Promise<TmuxAttachSpec> {
+    if (
+      this.capability().state !== "ready" ||
+      this.socketPath === null ||
+      this.executable === null
+    ) {
+      throw new Error("tmux keep-alive is unavailable.");
+    }
+    validateLaunchInput(input);
+    const observedAt = new Date().toISOString();
+    const args = [
+      "-S",
+      this.socketPath,
+      "new-session",
+      "-d",
+      "-P",
+      "-F",
+      LAUNCH_FORMAT,
+      "-s",
+      input.sessionName,
+      "-c",
+      input.cwd,
+      "-x",
+      String(input.cols),
+      "-y",
+      String(input.rows),
+      input.executable,
+      ...input.args,
+    ];
+    try {
+      const result = await this.execute(this.executable, args, {
+        encoding: "utf8",
+        env: { ...this.environment },
+        timeout: LAUNCH_TIMEOUT_MS,
+        maxBuffer: MAX_LAUNCH_BYTES,
+        windowsHide: true,
+      });
+      const target = parseTmuxLaunch(result.stdout, observedAt);
+      if (target.sessionName !== input.sessionName) {
+        throw new Error("tmux returned a different keep-alive target.");
+      }
+      return {
+        executable: this.executable,
+        args: [
+          "-S",
+          this.socketPath,
+          "attach-session",
+          "-t",
+          target.sessionId,
+        ],
+        cwd: input.cwd,
+        target,
+        mode: "keep_alive",
+        launchCommand: {
+          executable: input.executable,
+          args: [...input.args],
+        },
+      };
+    } catch (error) {
+      if (!didTimeOut(error)) {
+        throw error;
+      }
+      const observation = await this.discover();
+      const recovered = observation.sessions.find(
+        ({ target }) => target.sessionName === input.sessionName,
+      );
+      if (recovered === undefined) {
+        throw new Error(
+          "tmux keep-alive launch timed out and no exact target was found.",
+        );
+      }
+      return {
+        executable: this.executable,
+        args: [
+          "-S",
+          this.socketPath,
+          "attach-session",
+          "-t",
+          recovered.target.sessionId,
+        ],
+        cwd: input.cwd,
+        target: recovered.target,
+        mode: "keep_alive",
+        launchCommand: {
+          executable: input.executable,
+          args: [...input.args],
+        },
+      };
+    }
   }
 }
 
@@ -307,6 +437,32 @@ export function parseTmuxSessions(
   return sessions;
 }
 
+export function parseTmuxLaunch(
+  stdout: string,
+  observedAt: string,
+): TmuxTarget {
+  if (
+    Buffer.byteLength(stdout) === 0 ||
+    Buffer.byteLength(stdout) > MAX_LAUNCH_BYTES
+  ) {
+    throw new Error("tmux keep-alive launch output is invalid.");
+  }
+  const lines = stdout.trimEnd().split("\n");
+  if (lines.length !== 1) {
+    throw new Error("tmux keep-alive launch output is malformed.");
+  }
+  const [sessionId, sessionName, ...extra] = lines[0]!.split(FIELD_SEPARATOR);
+  if (extra.length > 0) {
+    throw new Error("tmux keep-alive launch output is malformed.");
+  }
+  return TmuxTargetSchema.parse({
+    serverId: SERVER_ID,
+    sessionId,
+    sessionName,
+    observedAt,
+  });
+}
+
 function errorObservation(
   status: "unconfigured" | "unavailable" | "error",
   serverId: string | null,
@@ -334,4 +490,47 @@ function isMissingPathError(error: unknown): boolean {
     "code" in error &&
     (error as { code?: unknown }).code === "ENOENT"
   );
+}
+
+function validateLaunchInput(input: TmuxLaunchInput): void {
+  if (
+    !PACIUM_SESSION_NAME.test(input.sessionName) ||
+    !isAbsolute(input.cwd) ||
+    !isAbsolute(input.executable) ||
+    input.cols < 2 ||
+    input.cols > 500 ||
+    input.rows < 1 ||
+    input.rows > 300 ||
+    input.args.length > MAX_RELAUNCH_COMMAND_ARGUMENTS ||
+    [input.cwd, input.executable, ...input.args].some(
+      (value) =>
+        value.length > 4096 ||
+        [...value].some((character) => character.codePointAt(0) === 0),
+    )
+  ) {
+    throw new Error("tmux keep-alive launch input is invalid.");
+  }
+}
+
+function didTimeOut(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "killed" in error &&
+    (error as { killed?: unknown }).killed === true
+  );
+}
+
+async function executeTmux(
+  executable: string,
+  args: readonly string[],
+  options: TmuxCommandOptions,
+): Promise<{ stdout: string; stderr: string }> {
+  const result = await execFileAsync(executable, [...args], {
+    encoding: options.encoding,
+    env: { ...options.env },
+    timeout: options.timeout,
+    maxBuffer: options.maxBuffer,
+    windowsHide: options.windowsHide,
+  });
+  return { stdout: result.stdout, stderr: result.stderr };
 }
