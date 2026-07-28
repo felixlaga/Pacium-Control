@@ -123,6 +123,20 @@ describe("session action surfaces", () => {
     expect(markup).toContain("Remove this ended session record");
   });
 
+  it("labels tmux client actions without claiming the server session ends", () => {
+    const markup = renderToStaticMarkup(
+      <SessionActionsMenu
+        {...callbacks}
+        session={{ ...session, runtime: "tmux" }}
+      />,
+    );
+
+    expect(markup).toContain("Use explicit reattach");
+    expect(markup).toContain("Client and tmux server session keep running");
+    expect(markup).toContain("Disconnect tmux client and close");
+    expect(markup).toContain("tmux session may continue");
+  });
+
   it("renders a bounded rename dialog with the current label", () => {
     const markup = renderToStaticMarkup(
       <RenameSessionDialog
@@ -155,5 +169,30 @@ describe("session action surfaces", () => {
     expect(markup).toContain("not resumed automatically");
     expect(markup).not.toContain("thread-1");
     expect(markup).toContain("Start fresh process");
+  });
+
+  it("previews tmux reattachment as a new client without a server restart", () => {
+    const markup = renderToStaticMarkup(
+      <RelaunchSessionDialog
+        connected
+        manifest={{
+          ...session.relaunchManifest!,
+          runtime: "tmux",
+          provider: null,
+          tmuxTarget: {
+            serverId: "configured",
+            sessionId: "$4",
+            sessionName: "Meta",
+            observedAt: "2026-07-28T10:00:00.000Z",
+          },
+        }}
+        onCancel={() => {}}
+        onConfirm={() => {}}
+      />,
+    );
+    expect(markup).toContain("fresh tmux client");
+    expect(markup).toContain("external tmux server session is not restarted");
+    expect(markup).toContain("<dd>tmux</dd>");
+    expect(markup).toContain("Reattach tmux client");
   });
 });

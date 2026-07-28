@@ -100,6 +100,16 @@ describe("session actions", () => {
     ).toHaveLength(120);
   });
 
+  it("requires explicit reattachment instead of duplicating a tmux target", () => {
+    expect(
+      sessionActionAvailability({ ...session, runtime: "tmux" }),
+    ).toMatchObject({
+      canDuplicate: false,
+      canInterrupt: true,
+      canTerminate: true,
+    });
+  });
+
   it("builds relaunch input only for an ended session", () => {
     expect(relaunchSessionInput(session)).toBeNull();
     expect(

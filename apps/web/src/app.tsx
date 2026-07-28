@@ -2108,7 +2108,9 @@ export function App() {
     setCapturedPaneId(null);
     if (session !== undefined) {
       setNotice(
-        `${session.displayName} pane closed. Its process and tab are still available.`,
+        session.runtime === "tmux"
+          ? `${session.displayName} pane closed. Its tmux client, server session, and tab are still available.`
+          : `${session.displayName} pane closed. Its process and tab are still available.`,
       );
     }
   };
@@ -2131,9 +2133,11 @@ export function App() {
     setLayout(clearSessionFromLayout(layoutRef.current, sessionId));
     setSelectedId(next.selectedId);
     setNotice(
-      `${
-        session?.displayName ?? "Terminal"
-      } tab closed. Its process is still running in the sidebar.`,
+      session?.runtime === "tmux"
+        ? `${session.displayName} tab closed. Its tmux client and server session are still running.`
+        : `${
+            session?.displayName ?? "Terminal"
+          } tab closed. Its process is still running in the sidebar.`,
     );
   };
 
@@ -2421,7 +2425,9 @@ export function App() {
     const isLive =
       session.processState === "live" || session.processState === "closing";
     const consequence = isLive
-      ? `Terminate “${session.displayName}”? Pacium will send SIGTERM and force termination if it does not exit.`
+      ? session.runtime === "tmux"
+        ? `Disconnect the tmux client for “${session.displayName}”? Pacium will close only its attachment; the tmux server session may continue.`
+        : `Terminate “${session.displayName}”? Pacium will send SIGTERM and force termination if it does not exit.`
       : `Remove the ended session “${session.displayName}” from Pacium?`;
     if (!window.confirm(consequence)) {
       return;

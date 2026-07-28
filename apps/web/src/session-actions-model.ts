@@ -26,7 +26,8 @@ export function sessionActionAvailability(
     session.processState === "exited" || session.processState === "failed";
   return {
     canCopyDirectory: true,
-    canDuplicate: session.processState !== "creating",
+    canDuplicate:
+      session.runtime === "pty" && session.processState !== "creating",
     canInterrupt: live,
     canRelaunch: ended,
     canRename: session.processState !== "closing",

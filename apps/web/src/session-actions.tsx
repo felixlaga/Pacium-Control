@@ -89,7 +89,11 @@ export function SessionActionsMenu({
             onClick={onRename}
           />
           <ActionButton
-            detail="New PTY · same preset and folder"
+            detail={
+              session.runtime === "tmux"
+                ? "Use explicit reattach for this external target"
+                : "New PTY · same preset and folder"
+            }
             disabled={!availability.canDuplicate}
             icon="⧉"
             label="Duplicate session"
@@ -98,12 +102,18 @@ export function SessionActionsMenu({
           <ActionButton
             detail={
               availability.canRelaunch
-                ? "New PTY from retained launch context"
+                ? session.runtime === "tmux"
+                  ? "New client for the retained tmux target"
+                  : "New PTY from retained launch context"
                 : "Available after this process ends"
             }
             disabled={!availability.canRelaunch}
             icon="↻"
-            label="Relaunch ended session"
+            label={
+              session.runtime === "tmux"
+                ? "Reattach ended tmux client"
+                : "Relaunch ended session"
+            }
             onClick={onRelaunch}
           />
         </div>
@@ -128,7 +138,11 @@ export function SessionActionsMenu({
             onClick={onRevealRepository}
           />
           <ActionButton
-            detail="PTY keeps running"
+            detail={
+              session.runtime === "tmux"
+                ? "Client and tmux server session keep running"
+                : "PTY keeps running"
+            }
             icon="—"
             label="Close browser view"
             onClick={onCloseView}
@@ -137,7 +151,11 @@ export function SessionActionsMenu({
 
         <div className="session-action-group process-actions">
           <ActionButton
-            detail="Send SIGINT · process may continue"
+            detail={
+              session.runtime === "tmux"
+                ? "Send SIGINT · tmux server session may continue"
+                : "Send SIGINT · process may continue"
+            }
             disabled={!availability.canInterrupt}
             icon="^C"
             label="Interrupt process"
@@ -147,12 +165,20 @@ export function SessionActionsMenu({
             danger
             detail={
               live
-                ? "Confirm, send SIGTERM, then force if needed"
+                ? session.runtime === "tmux"
+                  ? "Disconnect this client only · tmux session may continue"
+                  : "Confirm, send SIGTERM, then force if needed"
                 : "Remove this ended session record"
             }
             disabled={!availability.canTerminate}
             icon="×"
-            label={live ? "Terminate process and close" : "Remove session"}
+            label={
+              live
+                ? session.runtime === "tmux"
+                  ? "Disconnect tmux client and close"
+                  : "Terminate process and close"
+                : "Remove session"
+            }
             onClick={onTerminate}
           />
         </div>
@@ -283,7 +309,8 @@ export function RelaunchSessionDialog({
   onConfirm,
 }: RelaunchSessionDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const provider = manifest.provider ?? "Shell";
+  const provider =
+    manifest.runtime === "tmux" ? "tmux" : (manifest.provider ?? "Shell");
   const command = [manifest.command.executable, ...manifest.command.args].join(
     " ",
   );
@@ -309,8 +336,9 @@ export function RelaunchSessionDialog({
           </button>
         </div>
         <p className="dialog-note">
-          Pacium will start a fresh PTY with a new immutable session ID. The
-          previous process is not adopted or changed.
+          {manifest.runtime === "tmux"
+            ? "Pacium will revalidate the retained target and start a fresh tmux client with a new immutable Pacium session ID. The external tmux server session is not restarted or killed."
+            : "Pacium will start a fresh PTY with a new immutable session ID. The previous process is not adopted or changed."}
         </p>
         <dl className="relaunch-manifest-facts">
           <div>
@@ -340,7 +368,9 @@ export function RelaunchSessionDialog({
           <div>
             <dt>Provider resume</dt>
             <dd>
-              {manifest.resumeReference === null
+              {manifest.runtime === "tmux"
+                ? "Not applicable · the exact tmux target is revalidated"
+                : manifest.resumeReference === null
                 ? "No native resume identifier observed · provider state is not resumed automatically"
                 : `${manifest.resumeReference.provider} identifier retained · not resumed automatically`}
             </dd>
@@ -357,7 +387,9 @@ export function RelaunchSessionDialog({
             onClick={onConfirm}
             type="button"
           >
-            Start fresh process
+            {manifest.runtime === "tmux"
+              ? "Reattach tmux client"
+              : "Start fresh process"}
           </button>
         </div>
         {!connected && (
