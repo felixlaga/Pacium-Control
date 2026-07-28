@@ -1,6 +1,8 @@
-import { realpath } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   FIXED_GIT_MAX_OUTPUT_BYTES,
@@ -30,8 +32,18 @@ function result(stdout: string, exitCode = 0, stderr = ""): GitCommandResult {
 }
 
 describe("repository context inspection", () => {
+  const temporaryDirectories: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      temporaryDirectories
+        .splice(0)
+        .map((directory) => rm(directory, { recursive: true, force: true })),
+    );
+  });
+
   it("derives branch and main-worktree evidence from fixed commands", async () => {
-    const cwd = await realpath(process.cwd());
+    const cwd = await fixtureRoot();
     const gitDirectory = `${cwd}/.git`;
     const runGit = runner([
       result(`${cwd}\n${gitDirectory}\n${gitDirectory}\n`),
@@ -70,9 +82,10 @@ describe("repository context inspection", () => {
   });
 
   it("distinguishes detached, unborn, and linked worktrees", async () => {
-    const cwd = await realpath(process.cwd());
+    const cwd = await fixtureRoot();
     const linkedGitDirectory = `${cwd}/apps`;
     const commonDirectory = `${cwd}/.git`;
+    await mkdir(linkedGitDirectory);
     const detached = await inspectRepositoryContext(cwd, {
       observedAt,
       runGit: runner([
@@ -104,7 +117,7 @@ describe("repository context inspection", () => {
   });
 
   it("keeps an ordinary folder distinct from Git inspection failure", async () => {
-    const cwd = await realpath(process.cwd());
+    const cwd = await fixtureRoot({ includeGitDirectory: false });
     const notRepository = await inspectRepositoryContext(cwd, {
       observedAt,
       runGit: runner([
@@ -129,7 +142,7 @@ describe("repository context inspection", () => {
   });
 
   it("bounds malformed identity, branch, commit, and command failure", async () => {
-    const cwd = await realpath(process.cwd());
+    const cwd = await fixtureRoot();
     const gitDirectory = `${cwd}/.git`;
     const malformedIdentity = await inspectRepositoryContext(cwd, {
       observedAt,
@@ -164,8 +177,8 @@ describe("repository context inspection", () => {
   });
 
   it("rejects a reported root that does not contain the session cwd", async () => {
-    const cwd = await realpath(process.cwd());
-    const temporaryRoot = await realpath("/tmp");
+    const cwd = await fixtureRoot({ includeGitDirectory: false });
+    const temporaryRoot = await fixtureRoot();
     const context = await inspectRepositoryContext(cwd, {
       observedAt,
       runGit: runner([
@@ -180,4 +193,15 @@ describe("repository context inspection", () => {
       error: { code: "invalid_output" },
     });
   });
+
+  async function fixtureRoot(
+    options: { includeGitDirectory?: boolean } = {},
+  ): Promise<string> {
+    const root = await mkdtemp(join(tmpdir(), "pacium-repository-context-"));
+    temporaryDirectories.push(root);
+    if (options.includeGitDirectory !== false) {
+      await mkdir(join(root, ".git"));
+    }
+    return realpath(root);
+  }
 });
