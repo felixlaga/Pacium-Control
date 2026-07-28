@@ -1,13 +1,23 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  realpath,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createTmuxAdapter, parseTmuxSessions } from "./tmux-adapter.js";
+import {
+  createTmuxAdapter,
+  parseTmuxSessions,
+  resolveSafeTmuxSocketLocation,
+} from "./tmux-adapter.js";
 
 const execFileAsync = promisify(execFile);
 const sockets: string[] = [];
@@ -41,6 +51,22 @@ describe("tmux adapter", () => {
       sessions: [],
       error: { code: "not_configured" },
     });
+  });
+
+  it("rejects repository and non-canonical socket locations at startup", async () => {
+    const repository = await mkdtemp(join(tmpdir(), "pacium-tmux-repo-"));
+    await mkdir(join(repository, ".git"));
+    await expect(
+      resolveSafeTmuxSocketLocation(join(repository, "tmux.sock")),
+    ).rejects.toThrow("outside Git repositories");
+
+    const canonicalRoot = await mkdtemp(join(tmpdir(), "pacium-tmux-path-"));
+    const aliasRoot = join(tmpdir(), `pacium-tmux-alias-${Date.now()}`);
+    await writeFile(join(canonicalRoot, "tmux.sock"), "");
+    await symlink(canonicalRoot, aliasRoot);
+    await expect(
+      resolveSafeTmuxSocketLocation(join(aliasRoot, "tmux.sock")),
+    ).resolves.toBe(join(await realpath(canonicalRoot), "tmux.sock"));
   });
 
   it("parses bounded machine-format evidence", () => {
@@ -122,9 +148,16 @@ describe("tmux adapter", () => {
         ],
       });
       const target = observation.sessions[0]!.target;
+      const canonicalSocket = await realpath(socket);
       const spec = await adapter.attachSpec(target.serverId, target.sessionId);
       expect(spec).toMatchObject({
-        args: ["-S", socket, "attach-session", "-t", target.sessionId],
+        args: [
+          "-S",
+          canonicalSocket,
+          "attach-session",
+          "-t",
+          target.sessionId,
+        ],
         target: {
           serverId: target.serverId,
           sessionId: target.sessionId,

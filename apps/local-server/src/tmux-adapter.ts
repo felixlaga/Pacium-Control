@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
-import { lstat } from "node:fs/promises";
-import { isAbsolute } from "node:path";
+import { lstat, realpath } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, parse } from "node:path";
 import { promisify } from "node:util";
 
 import {
@@ -195,9 +195,10 @@ export async function createTmuxAdapter(
   if (socketPath === null) {
     return new TmuxAdapter(null, null, null, environment);
   }
+  const safeSocketPath = await resolveSafeTmuxSocketLocation(socketPath);
   const executable = findExecutable("tmux", environment.PATH);
   if (executable === null) {
-    return new TmuxAdapter(socketPath, null, null, environment);
+    return new TmuxAdapter(safeSocketPath, null, null, environment);
   }
   let version: string | null;
   try {
@@ -213,9 +214,51 @@ export async function createTmuxAdapter(
       ? candidate
       : null;
   } catch {
-    return new TmuxAdapter(socketPath, executable, null, environment);
+    return new TmuxAdapter(safeSocketPath, executable, null, environment);
   }
-  return new TmuxAdapter(socketPath, executable, version, environment);
+  return new TmuxAdapter(safeSocketPath, executable, version, environment);
+}
+
+export async function resolveSafeTmuxSocketLocation(
+  socketPath: string,
+): Promise<string> {
+  let canonicalPath = socketPath;
+  try {
+    canonicalPath = await realpath(socketPath);
+  } catch (error) {
+    if (!isMissingPathError(error)) {
+      throw error;
+    }
+    try {
+      canonicalPath = join(
+        await realpath(dirname(socketPath)),
+        basename(socketPath),
+      );
+    } catch (parentError) {
+      if (!isMissingPathError(parentError)) {
+        throw parentError;
+      }
+    }
+  }
+
+  let current = dirname(canonicalPath);
+  const root = parse(current).root;
+  while (true) {
+    try {
+      await lstat(join(current, ".git"));
+      throw new Error(
+        "PACIUM_TMUX_SOCKET must be located outside Git repositories.",
+      );
+    } catch (error) {
+      if (!isMissingPathError(error)) {
+        throw error;
+      }
+    }
+    if (current === root) {
+      return canonicalPath;
+    }
+    current = dirname(current);
+  }
 }
 
 export function parseTmuxSessions(
@@ -283,4 +326,12 @@ function errorObservation(
     sessions: [],
     error: { code, message },
   });
+}
+
+function isMissingPathError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "ENOENT"
+  );
 }
