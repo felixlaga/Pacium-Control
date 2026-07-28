@@ -2,6 +2,57 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.36.0 — Codex native observer — 2026-07-28
+
+### Added
+
+- Protocol 21 bounded cumulative Codex context-window, input, cached-input,
+  output, reasoning-output, and total-token fields within the strict
+  provider-matched observation boundary.
+- Capability-probed observation for supported Pacium-launched Codex PTYs. Each
+  session receives one exact loopback remote URL and random environment-only
+  token, while unsupported capability leaves the ordinary direct launch
+  unchanged and observer-unavailable.
+- One authenticated, no-Origin, exact-Host, exact-UUID, single-client
+  WebSocket bridge per observed session. It starts only the canonical Codex
+  executable as `app-server --listen stdio://` and forwards bounded valid
+  TUI/App Server messages unchanged over private JSONL stdio.
+- Strict thread, turn, item, plan, usage, failure, approval, and question
+  normalization with deduplicated source/confidence/freshness evidence and
+  bounded Activity details. Prompt, message, plan, command, output, diff, path,
+  request, credential, environment, and raw-frame content is discarded.
+- Explicit bridge cleanup for PTY exit/removal, browser-independent session
+  lifecycle, transport failure, child exit, local-server shutdown, malformed or
+  oversized data, plus preservation of current process-local native evidence
+  across browser reconnect.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 121 test
+  files and 766 tests, plus the 914.86 kB web JavaScript, 109.81 kB stylesheet,
+  and 409.10 kB local-server production bundles.
+- `pnpm test:e2e` passed all 14 Chromium workflows.
+- Focused capability, contract, normalizer, observer, bridge, session
+  lifecycle, HTTP upgrade, reconnect, and Activity tests cover unsupported
+  fallback, token separation, exact authority, one-client ownership, unchanged
+  bidirectional forwarding, invalid/oversized input, child exit, PTY release,
+  duplicate/foreign identity handling, usage, distinct questions/approvals,
+  content exclusion, and the absence of generated JSON-RPC decisions.
+
+### Known limitations
+
+- Codex App Server's remote WebSocket surface is experimental. Pacium probes
+  required capabilities and fixtures against installed Codex CLI `0.145.0`;
+  PC-064 still owns richer unsupported-version and degraded-capability UX.
+- Only supported Codex sessions launched by Pacium are observed. Existing
+  external sessions are not adopted, and bridge children, tokens, and
+  observations disappear with the local server.
+- Current evidence does not include a manual real-provider canary because no
+  prompt was sent and no user configuration was changed. Pacium does not
+  prompt, steer, interrupt, answer, approve, or otherwise decide for Codex.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's existing chunk-size warning.
+
 ## 0.35.0 — Claude Code observer — 2026-07-28
 
 ### Added
