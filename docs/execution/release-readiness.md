@@ -1,6 +1,23 @@
 # Release readiness
 
-> Historical blueprint: this checklist targets the superseded remote deployment. The local packaged release checklist will be completed under Milestone 5.
+## Current local package gate
+
+PC-074 completes only the unsigned Apple-silicon development-package boundary:
+
+- deterministic archive, strict manifest, and checksum;
+- supported-runtime production build and installed native-PTY canary;
+- user-local install, same-version upgrade, rollback structure, exact-instance
+  reuse, active-uninstall refusal, and state-preserving uninstall;
+- explicit unsigned, unnotarized, and not-release-eligible evidence.
+
+It does not complete this checklist. PC-075 still owns the supported Linux
+decision/evidence. PC-076 owns the clean-account run, Developer ID signing and
+notarization, real-tailnet boundary, manual accessibility and sustained-use
+review, exact limitations, and owner acceptance.
+
+The remaining sections are retained as a broad evidence inventory. Any
+superseded multi-user/broker item must be interpreted through the active
+localhost architecture rather than claimed as a current component.
 
 ## Release classes
 

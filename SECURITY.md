@@ -82,6 +82,24 @@ public-reachability gate.
 - Validate working directories and repository roots.
 - Bound environment inheritance and never persist complete environments.
 
+## Package lifecycle safety
+
+- The macOS development package runs without `sudo` and accepts only absolute
+  non-root install parent directories.
+- Install and upgrade recognize the exact `com.pacium.control` bundle and
+  exact owned `pacium` symlink before replacing either.
+- A complete sibling stage is validated before replacement; the prior bundle
+  remains available for rollback until the command link is committed.
+- An ephemeral mode-0600 process lease proves whether the exact installed
+  package is active without broad process enumeration. It contains only a PID
+  and package-entry path, is never bundled, and is removed on normal exit.
+- Uninstall refuses symlinked or foreign bundle/link targets and never owns
+  Pacium state, repositories, provider credentials, queue files, or external
+  tmux sessions.
+- Package manifests and checksums contain fixed relative file metadata only.
+  Node.js and optional CLIs remain external, and the artifact is explicitly
+  unsigned/unnotarized until release signing evidence exists.
+
 ## Browser terminal safety
 
 - Treat terminal bytes, titles, OSC sequences, hyperlinks, and clipboard requests as untrusted.

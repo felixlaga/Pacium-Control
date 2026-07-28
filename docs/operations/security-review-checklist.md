@@ -19,9 +19,28 @@ Use this checklist for security-sensitive pull requests and milestone gates.
 - [x] Local/Tailscale negative tests, exact preview/download Chromium evidence,
       full verification, and the complete browser suite pass.
 
-Residual release gates remain the PC-074 clean-install/package boundary,
-PC-075 Linux path, and PC-076 release review. This checklist does not claim
-those gates.
+## PC-074 macOS package evidence
+
+- [x] The builder fails closed outside darwin-arm64/Node 24.18.x and without
+      production assets or the source-built arm64 PTY module/helper.
+- [x] The strict manifest/checksum contain only relative file metadata and no
+      machine, credential, terminal, repository, queue, provider, or identity
+      content.
+- [x] The launcher accepts only fixed options/runtime paths, validates the
+      bounded loopback port, identifies an existing Pacium instance exactly,
+      and opens only its fixed loopback URL after listen.
+- [x] Install/upgrade/uninstall use absolute non-root destinations, exact bundle
+      and command-link ownership, sibling staging/rollback, and a private
+      ephemeral active-process lease without `sudo` or broad process access.
+- [x] Foreign targets are refused; package verification proves installed native
+      PTY operation, production assets, active-uninstall denial, exact-instance
+      reuse, idempotent removal, and external-state preservation.
+- [x] The development manifest and `codesign` evidence both report unsigned,
+      unnotarized, and not release-eligible.
+
+Residual release gates remain the PC-075 Linux path and PC-076 clean-account,
+signing/notarization, security, accessibility, and owner review. This checklist
+does not claim those gates.
 
 ## Identity
 
