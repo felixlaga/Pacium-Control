@@ -83,55 +83,55 @@ describe("tmux adapter", () => {
   it.runIf(tmuxExecutable !== undefined)(
     "discovers and resolves one isolated real tmux target",
     async () => {
-    const root = await mkdtemp(join(tmpdir(), "pacium-tmux-"));
-    const socket = join(root, "server.sock");
-    sockets.push(socket);
-    await execFileAsync(tmuxExecutable!, [
-      "-S",
-      socket,
-      "new-session",
-      "-d",
-      "-s",
-      "pacium-fixture",
-      "-c",
-      process.cwd(),
-    ]);
-    const adapter = await createTmuxAdapter(socket, {
-      PATH: process.env.PATH ?? "",
-      HOME: process.env.HOME ?? "",
-      TERM: "xterm-256color",
-    });
+      const root = await mkdtemp(join(tmpdir(), "pacium-tmux-"));
+      const socket = join(root, "server.sock");
+      sockets.push(socket);
+      await execFileAsync(tmuxExecutable!, [
+        "-S",
+        socket,
+        "new-session",
+        "-d",
+        "-s",
+        "pacium-fixture",
+        "-c",
+        process.cwd(),
+      ]);
+      const adapter = await createTmuxAdapter(socket, {
+        PATH: process.env.PATH ?? "",
+        HOME: process.env.HOME ?? "",
+        TERM: "xterm-256color",
+      });
 
-    expect(adapter.capability()).toMatchObject({
-      state: "ready",
-      serverId: "configured",
-      version: expect.stringMatching(/^tmux /),
-    });
-    const observation = await adapter.discover();
-    expect(observation).toMatchObject({
-      status: "ready",
-      sessions: [
-        {
-          target: {
-            serverId: "configured",
-            sessionName: "pacium-fixture",
+      expect(adapter.capability()).toMatchObject({
+        state: "ready",
+        serverId: "configured",
+        version: expect.stringMatching(/^tmux /),
+      });
+      const observation = await adapter.discover();
+      expect(observation).toMatchObject({
+        status: "ready",
+        sessions: [
+          {
+            target: {
+              serverId: "configured",
+              sessionName: "pacium-fixture",
+            },
+            currentPath: process.cwd(),
           },
-          currentPath: process.cwd(),
+        ],
+      });
+      const target = observation.sessions[0]!.target;
+      await expect(
+        adapter.attachSpec(target.serverId, target.sessionId),
+      ).resolves.toMatchObject({
+        executable: expect.stringMatching(/\/tmux$/),
+        args: ["-S", socket, "attach-session", "-t", target.sessionId],
+        target: {
+          serverId: target.serverId,
+          sessionId: target.sessionId,
+          sessionName: target.sessionName,
         },
-      ],
-    });
-    const target = observation.sessions[0]!.target;
-    await expect(
-      adapter.attachSpec(target.serverId, target.sessionId),
-    ).resolves.toMatchObject({
-      executable: expect.stringMatching(/\/tmux$/),
-      args: ["-S", socket, "attach-session", "-t", target.sessionId],
-      target: {
-        serverId: target.serverId,
-        sessionId: target.sessionId,
-        sessionName: target.sessionName,
-      },
-    });
+      });
     },
   );
 });

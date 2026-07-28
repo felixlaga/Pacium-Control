@@ -104,7 +104,9 @@ export function TmuxAttachDialog({
         <fieldset className="tmux-session-list">
           <legend>Available sessions</legend>
           {loading && sessions.length === 0 ? (
-            <p className="tmux-empty-state">Inspecting the configured socket…</p>
+            <p className="tmux-empty-state">
+              Inspecting the configured socket…
+            </p>
           ) : error !== null ? (
             <p className="tmux-error-state" role="alert">
               {error} Direct terminals remain available.
@@ -142,7 +144,9 @@ export function TmuxAttachDialog({
                     {session.windows === 1 ? "window" : "windows"} ·{" "}
                     {session.attachedClients} attached
                   </small>
-                  <small>{session.currentPath ?? "Current path unavailable"}</small>
+                  <small>
+                    {session.currentPath ?? "Current path unavailable"}
+                  </small>
                 </span>
               </label>
             ))

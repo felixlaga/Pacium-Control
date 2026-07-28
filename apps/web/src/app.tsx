@@ -360,9 +360,7 @@ export function App() {
   });
   const [defaultCwd, setDefaultCwd] = useState("");
   const [launchPresets, setLaunchPresets] = useState(INITIAL_LAUNCH_PRESETS);
-  const [tmuxCapability, setTmuxCapability] = useState(
-    INITIAL_TMUX_CAPABILITY,
-  );
+  const [tmuxCapability, setTmuxCapability] = useState(INITIAL_TMUX_CAPABILITY);
   const [tmuxObservation, setTmuxObservation] =
     useState<TmuxSessionsObservation | null>(null);
   const [tmuxOpen, setTmuxOpen] = useState(false);
