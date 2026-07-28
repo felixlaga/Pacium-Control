@@ -51,38 +51,38 @@ content, provider content, or operator identity.
 
 ## Acceptance criteria
 
-- [ ] A strict version-1 contract caps component, session, diagnostic, version,
+- [x] A strict version-1 contract caps component, session, diagnostic, version,
       manifest, and serialized-response size and rejects extra fields.
-- [ ] The snapshot includes Pacium/protocol/runtime/dependency versions,
+- [x] The snapshot includes Pacium/protocol/runtime/dependency versions,
       platform capability, component health, sanitized PTY/session state,
       provider health, queue status, optional tmux status, and fixed diagnostic
       code counts.
-- [ ] Session rows use generated export-local labels and never expose immutable
+- [x] Session rows use generated export-local labels and never expose immutable
       session IDs, names, cwd/repository/path data, PID, command argv,
       relaunch metadata, terminal bytes, or provider activity content.
-- [ ] Queue evidence is count/status/type/conflict metadata only and excludes
+- [x] Queue evidence is count/status/type/conflict metadata only and excludes
       source IDs, paths, hashes, decisions, notes, answers, delivery targets,
       and source text.
-- [ ] Provider evidence is availability/health/version/count metadata plus
+- [x] Provider evidence is availability/health/version/count metadata plus
       fixed adapter-authored diagnostic codes only; raw and scalar diagnostic
       fields, activities, prompts, messages, plans, commands, paths, and tokens
       are excluded.
-- [ ] `/api/diagnostics` requires the exact protected Origin/Host/access-token
+- [x] `/api/diagnostics` requires the exact protected Origin/Host/access-token
       boundary, accepts only the existing safe read method for Local or
       Tailscale access, rejects a body, sends `no-store`, and makes no mutation.
-- [ ] Diagnostics open from both the header and command palette at
+- [x] Diagnostics open from both the header and command palette at
       `/diagnostics`, preserve terminal process/layout/selection/input state,
       and return focus predictably.
-- [ ] Loading, ready, unavailable, degraded, empty, refresh-failure, and
+- [x] Loading, ready, unavailable, degraded, empty, refresh-failure, and
       disconnected states say which terminal processes survived and what the
       operator can do.
-- [ ] Download remains unavailable until the operator opens the exact inert JSON
+- [x] Download remains unavailable until the operator opens the exact inert JSON
       preview; the eventual download is created only in the browser.
-- [ ] The redaction manifest lists included and omitted categories, and tests
+- [x] The redaction manifest lists included and omitted categories, and tests
       scan serialized fixtures for representative paths, tokens, terminal
       markers, queue text, Git content, provider content, IDs, PIDs, hostnames,
       and operator identity.
-- [ ] Full verification and all Chromium workflows pass.
+- [x] Full verification and all Chromium workflows pass.
 
 ## User experience
 
@@ -174,3 +174,24 @@ workspace focus without sending terminal input. The surface remains usable at
 
 - None. The first slice is JSON-only and structurally redacted; archives,
   uploads, raw logs, and opt-in content remain out of scope.
+
+## Completion evidence
+
+Completed on 2026-07-28.
+
+- Focused contract and projection tests passed 8 checks; protected Local and
+  Tailscale endpoint tests passed both targeted workflows; browser transport,
+  model, semantic-render, and palette tests passed 43 checks.
+- Hostile fixtures proved structural exclusion of terminal/provider/queue/Git
+  content, credentials, paths, IDs, PIDs, commands, host details, and relaunch
+  metadata from serialized snapshots.
+- The dedicated Chromium workflow parsed the actual browser-local download,
+  preserved one live PTY through Back, Escape, direct routing, and browser
+  reload, retained last-good evidence after a failed refresh, and covered 200%
+  zoom, forced colors, reduced motion, and explicit fixture cleanup.
+- Supported Node.js 24.18.0 `pnpm verify` passed 136 test files and 880 tests;
+  production bundles were 967.16 kB web JavaScript, 128.54 kB CSS, and
+  478.21 kB local-server JavaScript. All 20 Chromium workflows passed.
+- WebSocket protocol remains 24. No database, persisted diagnostic state,
+  server export, telemetry, provider probe, filesystem read, terminal input,
+  process signal, or command endpoint was added.

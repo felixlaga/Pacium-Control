@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `673275b`
 - Target milestone: Milestone 5 — Durability, packaging, and polish
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -246,3 +246,22 @@ an enum, bounded number, boolean, fixed message, validated version, or count.
   optional remote read follows ADR-0016.
 - Security: structurally allowlisted JSON, explicit preview, browser-only save,
   no content capture, and unchanged protected-read authority.
+
+## Completion record
+
+Completed on 2026-07-28 at the PC-073 boundary.
+
+- The strict response-only schema, pure server projection, protected
+  `/api/diagnostics` read, browser transport, routed modal, exact JSON preview,
+  and browser-local download are implemented.
+- The modal keeps last-good evidence on a failed explicit refresh, ignores late
+  responses, restores focus only when Diagnostics owned it, and requires an
+  explicit Retry when a direct route opened before bootstrap completed.
+- The implementation stayed within the planned authority: it projects already
+  loaded bounded metadata and performs no PTY, queue, Git, filesystem,
+  provider, tmux, persistence, telemetry, or shell action.
+- Focused checks passed, supported Node.js 24.18.0 full verification passed 136
+  test files and 880 tests, production builds passed, and all 20 Chromium
+  workflows passed.
+- PC-074 through PC-076 remain open. This completion is not packaging, Linux,
+  clean-install, or release-readiness evidence.
