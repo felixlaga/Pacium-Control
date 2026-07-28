@@ -1,19 +1,21 @@
 # Release readiness
 
-## Current local package gate
+## Current development-package gates
 
-PC-074 completes only the unsigned Apple-silicon development-package boundary:
+PC-074 and PC-075 complete two bounded development-package paths:
 
-- deterministic archive, strict manifest, and checksum;
-- supported-runtime production build and installed native-PTY canary;
+- Apple-silicon macOS, with a valid but unsigned/unnotarized app bundle;
+- Ubuntu 24.04 x64, with an unsigned, non-distro-native user-local archive;
+- deterministic archives, strict manifests, and checksums;
+- supported-runtime production builds and installed native-PTY canaries;
 - user-local install, same-version upgrade, rollback structure, exact-instance
-  reuse, active-uninstall refusal, and state-preserving uninstall;
-- explicit unsigned, unnotarized, and not-release-eligible evidence.
+  reuse, active/foreign-target refusal, and state-preserving uninstall;
+- complete supported-runtime repository, soak, package, and Chromium evidence.
 
-It does not complete this checklist. PC-075 still owns the supported Linux
-decision/evidence. PC-076 owns the clean-account run, Developer ID signing and
-notarization, real-tailnet boundary, manual accessibility and sustained-use
-review, exact limitations, and owner acceptance.
+They do not complete this checklist or imply another host. PC-076 owns the
+clean-account run, Developer ID signing and notarization decision/evidence,
+real-tailnet boundary, manual accessibility and sustained-use review, exact
+limitations, delivery posture, and owner acceptance.
 
 The remaining sections are retained as a broad evidence inventory. Any
 superseded multi-user/broker item must be interpreted through the active

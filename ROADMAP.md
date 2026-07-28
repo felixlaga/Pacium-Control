@@ -126,8 +126,8 @@ Deliverables:
 - optional Tailscale Serve access with verified operator identity;
 - startup recovery and honest ended-session handling;
 - bounded diagnostic export (PC-073 complete);
-- macOS packaging first (PC-074 complete), with Linux according to the
-  supported-platform decision;
+- macOS packaging (PC-074 complete) and the exact Ubuntu 24.04 x64 path
+  (PC-075 complete);
 - performance budgets and soak tests (PC-072 complete);
 - accessibility and interaction polish;
 - release verification.

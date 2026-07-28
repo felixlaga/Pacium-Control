@@ -570,6 +570,19 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-075 Validate supported Linux path
 
 - Build, PTY, browser, packaging, and documented limitations according to the platform decision.
+- Current status: complete. ADR-0017 supports exactly Ubuntu 24.04 x64 as the
+  Linux target. Platform defaults use `/bin/bash` and the XDG state convention;
+  browser opening and package runtime stay fixed and fail closed. One
+  deterministic-content unsigned, non-distro-native archive contains the
+  production app, minimal source-built x64 ELF PTY runtime, strict manifest,
+  checksum, exact command, no-sudo installer/uninstaller, and embedded guide.
+  Its isolated verifier covers native PTY operation, install/upgrade,
+  production health/assets, exact-instance reuse, active/foreign-target
+  refusal, idempotent removal, and state preservation. A read-only,
+  immutable-action, bounded Ubuntu workflow proves frozen source-native
+  install, full verification, soak, package lifecycle, applicable Chromium
+  workflows, and short-retention artifact upload. Other Linux targets and
+  release acceptance remain unsupported/PC-076.
 
 ### PC-076 Run release readiness
 

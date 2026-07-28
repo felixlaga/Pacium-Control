@@ -131,9 +131,25 @@ PC-074 completes the development-package portion of criteria 4, 5, and 8:
   install/upgrade/exact-instance reuse/uninstall, and confirmed explicitly
   unsigned/unnotarized status.
 
-PC-075 and PC-076 still own Linux validation, clean-account evidence,
-Developer ID signing/notarization, manual acceptance, and final release
-readiness.
+PC-075 completes the exact Ubuntu 24.04 x64 portion of criteria 4, 5, and 8:
+
+- ADR-0017 limits the second supported host to Ubuntu 24.04 LTS on x86-64 and
+  explicitly excludes other distributions, versions, architectures, services,
+  and root/global installation.
+- One deterministic-content archive contains the production application,
+  minimal source-built x64 ELF PTY runtime, strict manifest/checksum, exact
+  command, no-sudo XDG installer/uninstaller, and embedded guide.
+- The pinned hosted Ubuntu gate uses read-only repository permission, immutable
+  action SHAs, Node.js 24.18.0, pnpm 11.17.0, a frozen source-native install,
+  full verification, bounded soak, package verification, all applicable
+  Chromium workflows, and a short-retention artifact.
+- The package verifier covers native PTY input/Unicode/resize/exit,
+  install/upgrade, exact production health/assets/reuse, active and foreign
+  target refusal, idempotent removal, and external-state preservation.
+
+PC-076 still owns clean-account evidence, Developer ID signing/notarization,
+real-tailnet verification, manual accessibility and sustained-use acceptance,
+known limitations, and final release readiness.
 
 ## Demo
 
