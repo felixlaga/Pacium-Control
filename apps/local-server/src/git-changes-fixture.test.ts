@@ -72,6 +72,10 @@ describe("changed-file inspection against a Git fixture", () => {
         "main conflict",
       ]);
       const mergeResult = await runGitProcess(root, [
+        "-c",
+        "user.name=Pacium Test",
+        "-c",
+        "user.email=pacium@example.invalid",
         "merge",
         "fixture-conflict",
       ]);
