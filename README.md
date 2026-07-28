@@ -273,6 +273,18 @@ default. It is not a distro-native package and makes no compatibility claim for
 another distribution, version, or architecture. See the
 [Ubuntu Linux package runbook](docs/operations/linux-package.md).
 
+Before treating a clean Git head as a development candidate, run:
+
+```bash
+pnpm release:preflight
+```
+
+PC-076 completed the defined roadmap audit with a **NO-GO** decision. The
+packages are reproducible Development snapshots, not signed, notarized,
+owner-accepted, or published releases. See the
+[release-readiness assessment](docs/execution/release-readiness-assessment.md)
+for exact evidence and blocked gates.
+
 The application should let the operator:
 
 - launch a shell or coding agent in any repository;
