@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `f7c1148548fcbd7d9fd2938fac93696820a77df0`
 - Target milestone: Epic 5 / PC-063
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -181,3 +181,19 @@ observation changes.
   fallback is explicitly non-authoritative.
 - Security: no new network/process authority, no automatic read, strict
   browser-only bounds, inert rendering, and no persistence.
+
+## Result
+
+PC-063 is complete. The Activity inspector now renders deterministic compact
+provider, process, Git, and verification cards with one existing-surface source
+action each. When provider evidence is not ready, the operator can explicitly
+capture a four-line, 800-character browser-local xterm excerpt labelled
+terminal-derived, low-confidence, and not interpreted. The excerpt is never a
+fact or status and clears across session, connection, evidence, unmount, and
+reload boundaries.
+
+Focused evidence passed 39 tests. Full `pnpm verify` passed 122 test files and
+786 tests plus production builds, and all 15 Chromium workflows passed,
+including source navigation, capture/hide/refresh, invalidation, focus, narrow
+width, zoom, forced colors, and reduced motion. PC-064 capability degradation
+and PC-065 relaunch manifests remain outside this completed slice.

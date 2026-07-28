@@ -63,32 +63,32 @@ evidence-boundary change.
 
 ## Acceptance criteria
 
-- [ ] Provider prompt, message, turn, tool, plan, question, approval, usage,
+- [x] Provider prompt, message, turn, tool, plan, question, approval, usage,
       completion, and failure fixtures map to deterministic card kinds, tones,
       labels, metadata, and timestamps.
-- [ ] Questions and approvals remain visually and semantically distinct, and
+- [x] Questions and approvals remain visually and semantically distinct, and
       neither card adds a decision action.
-- [ ] Tool cards show only bounded typed tool/item labels; usage cards preserve
+- [x] Tool cards show only bounded typed tool/item labels; usage cards preserve
       Claude and Codex semantics without cross-provider comparison.
-- [ ] Process, Git changes, Git history, and verification facts retain honest
+- [x] Process, Git changes, Git history, and verification facts retain honest
       source and timestamp meaning within the same compact visual system.
-- [ ] Every card has one keyboard-accessible source action that opens the
+- [x] Every card has one keyboard-accessible source action that opens the
       existing Terminal, Changes, History, or Checks surface without changing
       PTY lifecycle.
-- [ ] Terminal fallback appears only without ready provider evidence and only
+- [x] Terminal fallback appears only without ready provider evidence and only
       after explicit operator action.
-- [ ] The fallback reads no more than four non-empty recent terminal lines and
+- [x] The fallback reads no more than four non-empty recent terminal lines and
       800 Unicode characters from the existing browser xterm buffer, performs
       no attach/input/server request, and stores nothing durably.
-- [ ] Terminal fallback is labelled terminal-derived, low-confidence, and not
+- [x] Terminal fallback is labelled terminal-derived, low-confidence, and not
       interpreted as agent status; it never enters the fact timeline,
       attention reducer, notifications, or provider snapshot.
-- [ ] Fallback text is inert, bounded, hidden on request, and cleared across
+- [x] Fallback text is inert, bounded, hidden on request, and cleared across
       selection, connection, and provider-evidence changes.
-- [ ] Empty/unrendered terminal, loading, partial evidence, 320 CSS px, 200%
+- [x] Empty/unrendered terminal, loading, partial evidence, 320 CSS px, 200%
       zoom, forced colors, reduced motion, focus, and keyboard states remain
       usable.
-- [ ] Full verification and browser workflows pass without changing terminal,
+- [x] Full verification and browser workflows pass without changing terminal,
       Claude, Codex, Git, queue, or Tailscale authority behavior.
 
 ## User experience
@@ -178,3 +178,21 @@ the PTY ended.
 - Provider-authored safe summaries remain unavailable in the current strict
   adapters. Future content display requires a separate bounded content contract
   and privacy review rather than relaxing this card slice.
+
+## Completion evidence
+
+- Focused activity-model, semantic-render, and terminal-excerpt suites passed
+  39 tests, covering all provider kinds, honest non-provider facts, metadata
+  bounds, source targets, fallback eligibility, Unicode limits, empty buffers,
+  hostile text, and no status inference.
+- `pnpm verify` passed formatting, lint, every workspace type check, 122 test
+  files and 786 tests, plus the production web and local-server builds.
+- `pnpm test:e2e` passed all 15 Chromium workflows. The PC-063 workflow
+  exercised Terminal, Changes, History, and Checks source actions; explicit
+  capture, refresh, hide, session invalidation, reload invalidation, 320 CSS
+  px, 200% zoom, forced colors, reduced motion, and terminal focus.
+- The fallback reads only the already-rendered xterm buffer after an operator
+  click. No protocol, server request, input, polling, persistence, provider
+  decision, Git authority, queue authority, or Tailscale authority changed.
+- Verification used Node.js 26.4.0 instead of supported Node.js 24.18.x, so the
+  supported-runtime clean-install gate remains open.
