@@ -329,6 +329,9 @@ export function App() {
   const settingsInvokerRef = useRef<HTMLElement | null>(null);
   const diagnosticsInvokerRef = useRef<HTMLElement | null>(null);
   const diagnosticsHistoryEntryRef = useRef(false);
+  const diagnosticsOpenRef = useRef(
+    isDiagnosticsRoute(window.location.pathname),
+  );
   const transportRef = useRef<PaciumTransport | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() =>
     loadWorkspaceMode(window.localStorage),
@@ -384,8 +387,8 @@ export function App() {
     null,
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [diagnosticsOpen, setDiagnosticsOpen] = useState(() =>
-    isDiagnosticsRoute(window.location.pathname),
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(
+    diagnosticsOpenRef.current,
   );
   const [preferences, setPreferences] = useState<WorkspacePreferences>(() =>
     loadPreferences(window.localStorage),
@@ -2589,6 +2592,7 @@ export function App() {
         "/diagnostics",
       );
     }
+    diagnosticsOpenRef.current = true;
     setDiagnosticsOpen(true);
   };
 
@@ -2604,6 +2608,7 @@ export function App() {
       window.history.replaceState({ paciumRoute: "workspace" }, "", "/");
     }
     diagnosticsHistoryEntryRef.current = false;
+    diagnosticsOpenRef.current = false;
     setDiagnosticsOpen(false);
     restoreControlFocus(diagnosticsInvokerRef, "diagnostics-trigger");
   };
@@ -2622,8 +2627,10 @@ export function App() {
   useEffect(() => {
     const handlePopState = () => {
       const open = isDiagnosticsRoute(window.location.pathname);
+      const wasOpen = diagnosticsOpenRef.current;
+      diagnosticsOpenRef.current = open;
       setDiagnosticsOpen(open);
-      if (!open) {
+      if (!open && wasOpen) {
         diagnosticsHistoryEntryRef.current = false;
         restoreControlFocus(diagnosticsInvokerRef, "diagnostics-trigger");
       }
