@@ -1,8 +1,9 @@
 # Operator runbook
 
 For the implemented user-local application lifecycle, use the
-[macOS package runbook](macos-package.md). For optional remote ingress, use the
-[Tailscale Serve runbook](tailscale-serve.md).
+[macOS package runbook](macos-package.md) or the
+[Ubuntu Linux package runbook](linux-package.md). For optional remote ingress,
+use the [Tailscale Serve runbook](tailscale-serve.md).
 
 The remaining sections contain retained operational guidance. References to a
 broker, multi-user control, central coordinator, backup service, or production
