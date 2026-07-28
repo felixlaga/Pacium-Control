@@ -13,18 +13,21 @@ test.afterEach(async ({ page }) => {
   if ((await dialog.count()) > 0) {
     await page.keyboard.press("Escape");
   }
-  const session = page
+  const sessions = page
     .locator(".session-item")
-    .filter({ hasText: "pacium-e2e" });
-  if ((await session.count()) > 0) {
-    await session.first().click({ button: "right" });
+    .filter({ hasText: /pacium-e2e|PC-071 keep-alive/ });
+  while ((await sessions.count()) > 0) {
+    const previousCount = await sessions.count();
+    await sessions.first().click({ button: "right" });
     page.once("dialog", (confirmation) => confirmation.accept());
     await page
       .getByRole("button", {
-        name: /Disconnect tmux client and close|Remove session/,
+        name: /Disconnect tmux client and close|Disconnect keep-alive client|Remove session/,
       })
       .click();
-    await expect(session).toHaveCount(0);
+    await expect
+      .poll(() => sessions.count(), { timeout: 10_000 })
+      .toBeLessThan(previousCount);
   }
 });
 
@@ -102,4 +105,21 @@ test("attaches, reconnects, and disconnects one external tmux session", async ({
     "#{session_name}",
   ]).toString();
   expect(output).toContain("pacium-e2e");
+});
+
+test("offers keep-alive as an explicit unchecked launch choice", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const workspaceStatus = page.locator(".workspace-status");
+  await expect(workspaceStatus).toContainText("Connected");
+
+  await page.getByRole("button", { name: "Open first terminal" }).click();
+  const createDialog = page.getByRole("dialog", { name: "Open a terminal" });
+  const keepAlive = createDialog.getByLabel("Keep alive with tmux");
+  await expect(keepAlive).not.toBeChecked();
+  await keepAlive.check();
+  await expect(createDialog).toContainText(
+    "Closing Pacium disconnects its client but does not kill the tmux target.",
+  );
 });
