@@ -2425,7 +2425,9 @@ export function App() {
       session.processState === "live" || session.processState === "closing";
     const consequence = isLive
       ? session.runtime === "tmux"
-        ? `Disconnect the tmux client for “${session.displayName}”? Pacium will close only its attachment; the tmux server session may continue.`
+        ? session.tmuxMode === "keep_alive"
+          ? `Disconnect the keep-alive client for “${session.displayName}”? The managed tmux target will continue and remains eligible for automatic reattachment on the next Pacium server start.`
+          : `Disconnect the tmux client for “${session.displayName}”? Pacium will close only its attachment; the tmux server session may continue.`
         : `Terminate “${session.displayName}”? Pacium will send SIGTERM and force termination if it does not exit.`
       : `Remove the ended session “${session.displayName}” from Pacium?`;
     if (!window.confirm(consequence)) {
@@ -3345,7 +3347,9 @@ export function App() {
                       <strong>{manifest.displayName}</strong>
                       <span className="session-row-meta">
                         <span className="preset-label">
-                          {manifest.launchPreset}
+                          {manifest.tmuxMode === "keep_alive"
+                            ? "tmux keep-alive · command not rerun"
+                            : manifest.launchPreset}
                         </span>
                         <span>{compactPath(manifest.cwd)}</span>
                       </span>

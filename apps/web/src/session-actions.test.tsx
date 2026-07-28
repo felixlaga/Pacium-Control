@@ -137,6 +137,46 @@ describe("session action surfaces", () => {
     expect(markup).toContain("tmux session may continue");
   });
 
+  it("labels managed keep-alive consequences and restart policy", () => {
+    const keepAliveManifest = {
+      ...session.relaunchManifest!,
+      runtime: "tmux" as const,
+      tmuxMode: "keep_alive" as const,
+      tmuxTarget: {
+        serverId: "configured",
+        sessionId: "$8",
+        sessionName: "pacium-managed",
+        observedAt: "2026-07-28T10:00:00.000Z",
+      },
+    };
+    const keepAliveSession: SessionSummary = {
+      ...session,
+      runtime: "tmux",
+      tmuxMode: "keep_alive",
+      tmuxTarget: keepAliveManifest.tmuxTarget,
+      relaunchManifest: keepAliveManifest,
+    };
+    const actions = renderToStaticMarkup(
+      <SessionActionsMenu {...callbacks} session={keepAliveSession} />,
+    );
+    const relaunch = renderToStaticMarkup(
+      <RelaunchSessionDialog
+        connected
+        manifest={keepAliveManifest}
+        onCancel={() => {}}
+        onConfirm={() => {}}
+      />,
+    );
+
+    expect(actions).toContain("managed target is not cloned");
+    expect(actions).toContain("managed tmux target keep running");
+    expect(actions).toContain("Disconnect keep-alive client");
+    expect(actions).toContain("target remains auto-restorable");
+    expect(relaunch).toContain("does not rerun its command");
+    expect(relaunch).toContain("Restart policy");
+    expect(relaunch).toContain("never rerun a missing command");
+  });
+
   it("renders a bounded rename dialog with the current label", () => {
     const markup = renderToStaticMarkup(
       <RenameSessionDialog

@@ -40,6 +40,7 @@ export function SessionActionsMenu({
   const firstActionRef = useRef<HTMLButtonElement>(null);
   const availability = sessionActionAvailability(session);
   const live = session.processState === "live";
+  const keepAlive = session.tmuxMode === "keep_alive";
 
   useEffect(() => {
     firstActionRef.current?.focus();
@@ -91,7 +92,9 @@ export function SessionActionsMenu({
           <ActionButton
             detail={
               session.runtime === "tmux"
-                ? "Use explicit reattach for this external target"
+                ? keepAlive
+                  ? "Start another preset; this managed target is not cloned"
+                  : "Use explicit reattach for this external target"
                 : "New PTY · same preset and folder"
             }
             disabled={!availability.canDuplicate}
@@ -140,7 +143,9 @@ export function SessionActionsMenu({
           <ActionButton
             detail={
               session.runtime === "tmux"
-                ? "Client and tmux server session keep running"
+                ? keepAlive
+                  ? "Client and managed tmux target keep running"
+                  : "Client and tmux server session keep running"
                 : "PTY keeps running"
             }
             icon="—"
@@ -153,7 +158,9 @@ export function SessionActionsMenu({
           <ActionButton
             detail={
               session.runtime === "tmux"
-                ? "Send SIGINT · tmux server session may continue"
+                ? keepAlive
+                  ? "Send SIGINT · managed tmux target may continue"
+                  : "Send SIGINT · tmux server session may continue"
                 : "Send SIGINT · process may continue"
             }
             disabled={!availability.canInterrupt}
@@ -166,7 +173,9 @@ export function SessionActionsMenu({
             detail={
               live
                 ? session.runtime === "tmux"
-                  ? "Disconnect this client only · tmux session may continue"
+                  ? keepAlive
+                    ? "Disconnect client only · target remains auto-restorable"
+                    : "Disconnect this client only · tmux session may continue"
                   : "Confirm, send SIGTERM, then force if needed"
                 : "Remove this ended session record"
             }
@@ -175,7 +184,9 @@ export function SessionActionsMenu({
             label={
               live
                 ? session.runtime === "tmux"
-                  ? "Disconnect tmux client and close"
+                  ? keepAlive
+                    ? "Disconnect keep-alive client"
+                    : "Disconnect tmux client and close"
                   : "Terminate process and close"
                 : "Remove session"
             }
@@ -311,6 +322,7 @@ export function RelaunchSessionDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
   const provider =
     manifest.runtime === "tmux" ? "tmux" : (manifest.provider ?? "Shell");
+  const keepAlive = manifest.tmuxMode === "keep_alive";
   const command = [manifest.command.executable, ...manifest.command.args].join(
     " ",
   );
@@ -337,7 +349,9 @@ export function RelaunchSessionDialog({
         </div>
         <p className="dialog-note">
           {manifest.runtime === "tmux"
-            ? "Pacium will revalidate the retained target and start a fresh tmux client with a new immutable Pacium session ID. The external tmux server session is not restarted or killed."
+            ? keepAlive
+              ? "Pacium will revalidate the retained managed target and start a fresh tmux client with a new immutable Pacium session ID. If that exact target is missing, Pacium does not rerun its command."
+              : "Pacium will revalidate the retained target and start a fresh tmux client with a new immutable Pacium session ID. The external tmux server session is not restarted or killed."
             : "Pacium will start a fresh PTY with a new immutable session ID. The previous process is not adopted or changed."}
         </p>
         <dl className="relaunch-manifest-facts">
@@ -375,6 +389,15 @@ export function RelaunchSessionDialog({
                   : `${manifest.resumeReference.provider} identifier retained · not resumed automatically`}
             </dd>
           </div>
+          {keepAlive && (
+            <div>
+              <dt>Restart policy</dt>
+              <dd>
+                Reattach this exact target automatically · never rerun a
+                missing command
+              </dd>
+            </div>
+          )}
         </dl>
         <div className="dialog-actions">
           <button onClick={onCancel} type="button">
