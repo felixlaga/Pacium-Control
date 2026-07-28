@@ -480,10 +480,44 @@ describe("localhost HTTP and WebSocket boundary", () => {
     expect(JSON.stringify(updated)).not.toContain("private prompt");
     expect(JSON.stringify(updated)).not.toContain("private client");
 
-    runtime.close(1000);
-    await once(runtime, "close");
     client.socket.close();
     await once(client.socket, "close");
+    const reconnected = await connect(setup.url, setup.config);
+    await nextMessage(
+      reconnected,
+      (message) => message.type === "server.welcome",
+    );
+    reconnected.socket.send(
+      JSON.stringify({
+        type: "session.list",
+        requestId: "69c47714-3fed-4cb8-8897-4b8e3d2f9139",
+      }),
+    );
+    const listed = await nextMessage(
+      reconnected,
+      (message) => message.type === "session.list",
+    );
+    if (listed.type === "session.list") {
+      expect(listed.sessions[0]?.providerObservation?.diagnostics).toEqual([]);
+    }
+    expect(listed).toMatchObject({
+      type: "session.list",
+      sessions: [
+        {
+          id: created.session.id,
+          processState: "live",
+          providerObservation: {
+            health: { state: "ready", source: "native" },
+            activities: [{ kind: "turn_started" }],
+          },
+        },
+      ],
+    });
+
+    runtime.close(1000);
+    await once(runtime, "close");
+    reconnected.socket.close();
+    await once(reconnected.socket, "close");
   });
 
   it("gets, replaces, conflicts, and preserves Pacium config over the socket", async () => {

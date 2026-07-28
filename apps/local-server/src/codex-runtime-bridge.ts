@@ -239,7 +239,7 @@ export class CodexRuntimeBridge {
           return;
         }
         webSocket.send(line, { binary: false }, (error) => {
-          if (error !== undefined) {
+          if (error instanceof Error) {
             finish(true, "codex.bridge_send");
           }
         });
