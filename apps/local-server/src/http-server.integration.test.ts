@@ -17,6 +17,7 @@ import { PassThrough } from "node:stream";
 import { FakePty, FakePtyFactory } from "@pacium/test-utils";
 import {
   decodeTerminalDataFrame,
+  DiagnosticsSnapshotSchema,
   DirectoryListingSchema,
   PROTOCOL_VERSION,
   ServerMessageSchema,
@@ -3113,6 +3114,50 @@ describe("localhost HTTP and WebSocket boundary", () => {
     expect(deniedOrigin.status).toBe(403);
   });
 
+  it("serves bounded diagnostics through the local protected-read boundary", async () => {
+    const setup = await startTestServer(new FakePtyFactory());
+    application = setup.application;
+    manager = setup.manager;
+    const httpUrl = setup.url.replace("ws://", "http://");
+    const allowedOrigin = [...setup.config.allowedOrigins][0] ?? "";
+    const headers = {
+      authorization: `Bearer ${setup.config.accessToken}`,
+      origin: allowedOrigin,
+    };
+
+    const allowed = await fetch(`${httpUrl}/api/diagnostics`, { headers });
+    expect(allowed.status).toBe(200);
+    expect(allowed.headers.get("cache-control")).toBe("no-store");
+    const snapshot = DiagnosticsSnapshotSchema.parse(await allowed.json());
+    expect(snapshot.overview.sessions.total).toBe(0);
+    expect(snapshot.overview.queueStatus).toBe("unconfigured");
+    expect(manager.list()).toEqual([]);
+
+    const head = await fetch(`${httpUrl}/api/diagnostics`, {
+      method: "HEAD",
+      headers,
+    });
+    expect(head.status).toBe(200);
+    expect(head.headers.get("cache-control")).toBe("no-store");
+    expect(await head.text()).toBe("");
+
+    const localPost = await fetch(`${httpUrl}/api/diagnostics`, {
+      method: "POST",
+      headers,
+    });
+    expect(localPost.status).toBe(405);
+
+    const deniedToken = await fetch(`${httpUrl}/api/diagnostics`, {
+      headers: { ...headers, authorization: "Bearer wrong-token" },
+    });
+    expect(deniedToken.status).toBe(403);
+
+    const deniedOrigin = await fetch(`${httpUrl}/api/diagnostics`, {
+      headers: { ...headers, origin: "https://hostile.example" },
+    });
+    expect(deniedOrigin.status).toBe(403);
+  });
+
   it("authorizes remote bootstrap and protected reads only through exact Serve evidence", async () => {
     const tailscaleServe = testTailscaleServeConfig();
     const setup = await startTestServer(
@@ -3152,6 +3197,38 @@ describe("localhost HTTP and WebSocket boundary", () => {
     expect(DirectoryListingSchema.parse(directories.json)).toMatchObject({
       currentPath: process.cwd(),
     });
+
+    const diagnostics = await requestHttp(`${httpUrl}/api/diagnostics`, {
+      method: "POST",
+      headers: {
+        ...headers,
+        authorization: `Bearer ${setup.config.accessToken}`,
+      },
+    });
+    expect(diagnostics.status).toBe(200);
+    expect(DiagnosticsSnapshotSchema.parse(diagnostics.json)).toMatchObject({
+      schemaVersion: 1,
+      overview: { sessions: { total: 0 } },
+    });
+
+    const remoteGet = await requestHttp(`${httpUrl}/api/diagnostics`, {
+      headers: {
+        ...headers,
+        authorization: `Bearer ${setup.config.accessToken}`,
+      },
+    });
+    expect(remoteGet.status).toBe(405);
+
+    const bodyAttempt = await requestHttp(`${httpUrl}/api/diagnostics`, {
+      method: "POST",
+      headers: {
+        ...headers,
+        authorization: `Bearer ${setup.config.accessToken}`,
+        "content-length": "2",
+      },
+      body: "{}",
+    });
+    expect(bodyAttempt.status).toBe(400);
 
     const localHealth = await fetch(`${httpUrl}/api/health`);
     expect(localHealth.status).toBe(200);

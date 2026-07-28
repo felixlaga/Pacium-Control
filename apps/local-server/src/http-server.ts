@@ -18,6 +18,8 @@ import {
   browseHostDirectories,
   DirectoryBrowserError,
 } from "./directory-browser.js";
+import { buildDiagnosticsSnapshot } from "./diagnostics.js";
+import { presetCapabilities } from "./launch-presets.js";
 import { buildSecurityHeaders, isValidAccessToken } from "./security.js";
 import { classifyRequestAccess, type RequestAccess } from "./remote-access.js";
 import type { PaciumConfigStore } from "./pacium-config-store.js";
@@ -41,7 +43,15 @@ export function createPaciumHttpServer(
   const webRoot = fileURLToPath(new URL("../../web/dist/", import.meta.url));
   const hub = new WebSocketHub(config, sessions, paciumConfig, queueObserver);
   const server = createServer((request, response) => {
-    void routeRequest(request, response, config, webRoot, claudeObserver);
+    void routeRequest(
+      request,
+      response,
+      config,
+      webRoot,
+      sessions,
+      queueObserver,
+      claudeObserver,
+    );
   });
 
   server.on("upgrade", (request, socket, head) => {
@@ -97,6 +107,8 @@ async function routeRequest(
   response: ServerResponse,
   config: ServerConfig,
   webRoot: string,
+  sessions: SessionManager,
+  queueObserver: QueueObserver,
   claudeObserver: ClaudeObserver | undefined,
 ): Promise<void> {
   applySecurityHeaders(response, config);
@@ -181,6 +193,37 @@ async function routeRequest(
           error: "Pacium could not inspect that host directory.",
         });
       }
+    }
+    return;
+  }
+
+  if (pathname === "/api/diagnostics") {
+    response.setHeader("cache-control", "no-store");
+    const access = authorizeProtectedApi(request, config);
+    if (access === null) {
+      sendJson(response, 403, { error: "Forbidden" });
+      return;
+    }
+    if (!isAllowedProtectedReadMethod(request.method, access)) {
+      sendJson(response, 405, { error: "Method not allowed" });
+      return;
+    }
+    if (request.method === "POST" && !hasEmptyRequestBody(request)) {
+      sendJson(response, 400, { error: "Request body is not allowed" });
+      return;
+    }
+    try {
+      const snapshot = buildDiagnosticsSnapshot({
+        sessions: sessions.list(),
+        queue: queueObserver.snapshot(),
+        tmux: sessions.tmuxCapability(),
+        launchPresets: presetCapabilities(config.launchPresets),
+      });
+      sendJson(response, 200, snapshot, request.method === "HEAD");
+    } catch {
+      sendJson(response, 500, {
+        error: "Pacium could not construct bounded diagnostics.",
+      });
     }
     return;
   }
