@@ -9,6 +9,7 @@ import { NodePtyFactory } from "./pty-adapter.js";
 import { QueueObserver } from "./queue-observer.js";
 import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
 import { SessionManager } from "./session-manager.js";
+import { createTmuxAdapter } from "./tmux-adapter.js";
 import { VerificationRunner } from "./verification-runner.js";
 
 const config = loadServerConfig();
@@ -42,6 +43,10 @@ const verificationRunner = new VerificationRunner({
 });
 const relaunchManifests = new RelaunchManifestStore(config.dataDirectory);
 await relaunchManifests.initialize();
+const tmuxAdapter = await createTmuxAdapter(
+  config.tmuxSocket,
+  childEnvironment,
+);
 const sessions = new SessionManager(
   new NodePtyFactory(config),
   config.launchPresets,
@@ -56,6 +61,7 @@ const sessions = new SessionManager(
   codexObserver,
   relaunchManifests,
   config.environmentKeys,
+  tmuxAdapter,
 );
 const paciumConfig = createPaciumConfigStore(config, sessions);
 const queueObserver = new QueueObserver();

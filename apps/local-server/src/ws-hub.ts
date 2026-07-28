@@ -187,7 +187,7 @@ export class WebSocketHub {
       capabilities: {
         directPty: true,
         reconnectSnapshot: true,
-        tmux: false,
+        tmux: this.sessions.tmuxCapability(),
         launchPresets: presetCapabilities(this.config.launchPresets),
       },
     });
@@ -304,6 +304,13 @@ export class WebSocketHub {
           manifests: this.sessions.listRelaunchManifests(),
         });
         return;
+      case "tmux.sessions.list":
+        this.send(client.socket, {
+          type: "tmux.sessions",
+          requestId: message.requestId,
+          observation: await this.sessions.discoverTmux(),
+        });
+        return;
       case "session.create": {
         const session = await this.sessions.create(
           message.payload.displayName === undefined
@@ -332,6 +339,21 @@ export class WebSocketHub {
       case "session.relaunch": {
         const session = await this.sessions.relaunch(
           message.manifestId,
+          message.cols,
+          message.rows,
+        );
+        client.subscriptions.add(session.id);
+        this.send(client.socket, {
+          type: "session.created",
+          requestId: message.requestId,
+          session,
+        });
+        return;
+      }
+      case "tmux.session.attach": {
+        const session = await this.sessions.attachTmux(
+          message.serverId,
+          message.sessionId,
           message.cols,
           message.rows,
         );

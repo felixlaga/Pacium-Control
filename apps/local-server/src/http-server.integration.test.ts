@@ -23,6 +23,7 @@ import {
   type PaciumWorkspace,
   type ServerMessage,
   type TerminalDataFrame,
+  type TmuxSessionsObservation,
 } from "@pacium/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket, type RawData } from "ws";
@@ -39,6 +40,7 @@ import {
 import { createPaciumConfigStore } from "./pacium-config-service.js";
 import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
 import { SessionManager } from "./session-manager.js";
+import { TmuxAdapter, type TmuxAttachSpec } from "./tmux-adapter.js";
 import type { VerificationCatalog } from "./verification-config.js";
 import { VerificationRunner } from "./verification-runner.js";
 
@@ -71,6 +73,63 @@ class FakeCodexRuntimeChild extends EventEmitter {
   public readonly kill = vi.fn(() => true);
 }
 
+class FixtureTmuxAdapter extends TmuxAdapter {
+  public constructor() {
+    super(
+      "/private/tmp/pacium-fixture.sock",
+      "/opt/test/bin/tmux",
+      "tmux 3.7b",
+      {},
+    );
+  }
+
+  public override async discover(): Promise<TmuxSessionsObservation> {
+    return {
+      status: "ready",
+      serverId: "configured",
+      observedAt: "2026-07-28T10:00:00.000Z",
+      sessions: [
+        {
+          target: {
+            serverId: "configured",
+            sessionId: "$4",
+            sessionName: "Orchestrator",
+            observedAt: "2026-07-28T10:00:00.000Z",
+          },
+          windows: 2,
+          attachedClients: 1,
+          createdAt: "2026-07-28T09:00:00.000Z",
+          currentPath: process.cwd(),
+        },
+      ],
+      error: null,
+    };
+  }
+
+  public override async attachSpec(
+    serverId: string,
+    sessionId: string,
+  ): Promise<TmuxAttachSpec> {
+    const observation = await this.discover();
+    const target = observation.sessions[0]!.target;
+    if (serverId !== target.serverId || sessionId !== target.sessionId) {
+      throw new Error("The selected tmux session is no longer available.");
+    }
+    return {
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-fixture.sock",
+        "attach-session",
+        "-t",
+        target.sessionId,
+      ],
+      cwd: process.cwd(),
+      target,
+    };
+  }
+}
+
 describe("localhost HTTP and WebSocket boundary", () => {
   let application: PaciumHttpServer | undefined;
   let manager: SessionManager | undefined;
@@ -86,6 +145,128 @@ describe("localhost HTTP and WebSocket boundary", () => {
         .splice(0)
         .map((path) => rm(path, { force: true, recursive: true })),
     );
+  });
+
+  it("lists and attaches only one server-published tmux identity", async () => {
+    const factory = new FakePtyFactory();
+    const setup = await startTestServer(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      new FixtureTmuxAdapter(),
+    );
+    application = setup.application;
+    manager = setup.manager;
+
+    const client = await connect(setup.url, setup.config);
+    const welcome = await nextMessageWithin(
+      client,
+      (message) => message.type === "server.welcome",
+      "tmux welcome",
+    );
+    expect(welcome).toMatchObject({
+      type: "server.welcome",
+      capabilities: {
+        tmux: {
+          state: "ready",
+          serverId: "configured",
+          version: "tmux 3.7b",
+        },
+      },
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "tmux.sessions.list",
+        requestId: "4baea524-29e6-4606-997e-4c23f003d380",
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) => message.type === "tmux.sessions",
+        "tmux session list",
+      ),
+    ).resolves.toMatchObject({
+      type: "tmux.sessions",
+      observation: {
+        status: "ready",
+        sessions: [
+          {
+            target: {
+              serverId: "configured",
+              sessionId: "$4",
+              sessionName: "Orchestrator",
+            },
+          },
+        ],
+      },
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "tmux.session.attach",
+        requestId: "e0600d64-cf85-4883-aa03-3fffb5d12dc8",
+        serverId: "configured",
+        sessionId: "$4",
+        cols: 100,
+        rows: 30,
+      }),
+    );
+    const created = await nextMessageWithin(
+      client,
+      (message) => message.type === "session.created",
+      "tmux session creation",
+    );
+    expect(created).toMatchObject({
+      type: "session.created",
+      session: {
+        runtime: "tmux",
+        commandLabel: "tmux · Orchestrator",
+      },
+    });
+    expect(factory.createCalls[0]).toMatchObject({
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-fixture.sock",
+        "attach-session",
+        "-t",
+        "$4",
+      ],
+    });
+
+    client.socket.send(
+      JSON.stringify({
+        type: "tmux.session.attach",
+        requestId: "5ff76c03-b4b5-49a4-ad1d-059857243481",
+        serverId: "configured",
+        sessionId: "$4",
+        socket: "/tmp/forged.sock",
+        cols: 100,
+        rows: 30,
+      }),
+    );
+    await expect(
+      nextMessageWithin(
+        client,
+        (message) =>
+          message.type === "error" &&
+          message.requestId === "5ff76c03-b4b5-49a4-ad1d-059857243481",
+        "forged tmux request rejection",
+      ),
+    ).resolves.toMatchObject({
+      type: "error",
+      code: "INVALID_MESSAGE",
+    });
+
+    client.socket.close();
+    await once(client.socket, "close");
   });
 
   it("keeps a PTY alive across browser transport reconnection", async () => {
@@ -3098,6 +3279,7 @@ async function startTestServer(
   claudeObserver?: ClaudeObserver,
   codexObserver?: CodexObserver,
   codexRuntimeBridge?: CodexRuntimeBridge,
+  tmuxAdapter?: TmuxAdapter,
 ): Promise<{
   application: PaciumHttpServer;
   manager: SessionManager;
@@ -3117,6 +3299,7 @@ async function startTestServer(
     homeDirectory: process.env.HOME ?? process.cwd(),
     dataDirectory: dataDirectory ?? join(fixtureRoot, "data"),
     shell: "/bin/zsh",
+    tmuxSocket: null,
     environmentKeys: [],
     verificationCatalog: verification?.catalog ?? {
       configured: false,
@@ -3268,6 +3451,7 @@ async function startTestServer(
     codexObserver,
     relaunchManifests,
     config.environmentKeys,
+    tmuxAdapter,
   );
   const application = createPaciumHttpServer(
     config,
