@@ -14,6 +14,7 @@ export type PaletteCommandAction =
   | { type: "toggle-maximize"; paneId: string }
   | { type: "show-shortcuts" }
   | { type: "open-settings" }
+  | { type: "open-diagnostics" }
   | { type: "toggle-sidebar" }
   | { type: "toggle-inspector" }
   | { type: "toggle-workspace-mode" }
@@ -332,12 +333,21 @@ export function buildPaletteCatalog(
       keywords: ["preferences", "appearance", "font", "scrollback"],
     }),
     command({
+      id: "workspace.open-diagnostics",
+      action: { type: "open-diagnostics" },
+      label: "Open diagnostics",
+      detail: "Inspect bounded health and prepare a redacted local export",
+      group: "Workspace",
+      rank: 29,
+      keywords: ["health", "support", "status", "redaction", "export"],
+    }),
+    command({
       id: "workspace.toggle-sidebar",
       action: { type: "toggle-sidebar" },
       label: `${input.sidebarOpen === false ? "Show" : "Hide"} session sidebar`,
       detail: "Navigation visibility only; terminals keep running",
       group: "Workspace",
-      rank: 29,
+      rank: 30,
       shortcut: "⌘B",
       keywords: ["sessions", "navigation", "panel"],
     }),
@@ -347,7 +357,7 @@ export function buildPaletteCatalog(
       label: `${input.inspectorOpen === false ? "Show" : "Hide"} inspector`,
       detail: "Context visibility only; terminal focus is unchanged",
       group: "Workspace",
-      rank: 30,
+      rank: 31,
       shortcut: "⌘⇧B",
       keywords: ["details", "context", "panel"],
     }),
