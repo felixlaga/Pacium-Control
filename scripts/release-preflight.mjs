@@ -13,6 +13,7 @@ import {
   inspectTrackedPaths,
   parseLinuxHostContract,
   preflightError,
+  releaseArtifactDefinition,
   validateReleaseManifest,
 } from "./release-preflight-contract.mjs";
 
@@ -169,19 +170,7 @@ async function assertRequiredSourcePaths() {
 }
 
 async function inspectCurrentPlatformArtifact(target, packageVersion) {
-  const definition =
-    target === "darwin-arm64"
-      ? {
-          directory: "macos",
-          archive: `pacium-control-${packageVersion}-darwin-arm64.tar.gz`,
-          manifest:
-            "Pacium Control.app/Contents/Resources/app/package-manifest.json",
-        }
-      : {
-          directory: "linux",
-          archive: `pacium-control-${packageVersion}-linux-x64.tar.gz`,
-          manifest: "pacium-control/app/package-manifest.json",
-        };
+  const definition = releaseArtifactDefinition(target, packageVersion);
   const archivePath = join(
     repositoryRoot,
     "dist",

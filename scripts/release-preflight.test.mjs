@@ -7,6 +7,7 @@ import {
   inspectTrackedPaths,
   isForbiddenReleasePath,
   parseLinuxHostContract,
+  releaseArtifactDefinition,
   validateReleaseManifest,
 } from "./release-preflight-contract.mjs";
 
@@ -98,6 +99,25 @@ describe("release preflight contract", () => {
       name: "Unsupported",
       version: "12",
     });
+  });
+
+  it("maps each supported target to its exact manifest path", () => {
+    expect(releaseArtifactDefinition("darwin-arm64", "0.0.0")).toEqual({
+      directory: "macos",
+      archive: "pacium-control-0.0.0-darwin-arm64.tar.gz",
+      manifest:
+        "Pacium Control.app/Contents/Resources/app/package-manifest.json",
+    });
+    expect(
+      releaseArtifactDefinition("ubuntu-24.04-linux-x64", "0.0.0"),
+    ).toEqual({
+      directory: "linux",
+      archive: "pacium-control-0.0.0-linux-x64.tar.gz",
+      manifest: "pacium-control/package-manifest.json",
+    });
+    expect(() => releaseArtifactDefinition("linux", "0.0.0")).toThrow(
+      "supported target",
+    );
   });
 
   it("rejects tracked runtime, state, environment, and key material paths", () => {

@@ -106,6 +106,28 @@ export function parseLinuxHostContract(contents) {
   };
 }
 
+export function releaseArtifactDefinition(target, packageVersion) {
+  if (target === "darwin-arm64") {
+    return {
+      directory: "macos",
+      archive: `pacium-control-${packageVersion}-darwin-arm64.tar.gz`,
+      manifest:
+        "Pacium Control.app/Contents/Resources/app/package-manifest.json",
+    };
+  }
+  if (target === "ubuntu-24.04-linux-x64") {
+    return {
+      directory: "linux",
+      archive: `pacium-control-${packageVersion}-linux-x64.tar.gz`,
+      manifest: "pacium-control/package-manifest.json",
+    };
+  }
+  throw preflightError(
+    "unsupported_host",
+    "Release artifact layout requires one supported target.",
+  );
+}
+
 export function inspectTrackedPaths(paths) {
   assertPathCollection(paths, MAX_TRACKED_FILES, "tracked");
   const forbidden = paths.filter(isForbiddenReleasePath);
