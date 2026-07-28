@@ -1,4 +1,5 @@
-import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -14,6 +15,9 @@ const paciumStateDirectory =
 const queueFixturePath = join(paciumStateDirectory, "NEEDS-FELIX");
 const objectiveFixturePath = join(paciumStateDirectory, "OBJECTIVE");
 const planFixturePath = join(paciumStateDirectory, "PLAN");
+const tmuxExecutable = ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux"].find(
+  existsSync,
+);
 writeFileSync(
   verificationConfigPath,
   JSON.stringify({
@@ -50,6 +54,23 @@ process.env.PACIUM_E2E_OBJECTIVE_PATH = objectiveFixturePath;
 process.env.PACIUM_E2E_PLAN_PATH = planFixturePath;
 process.env.PACIUM_VERIFICATION_CONFIG = verificationConfigPath;
 process.env.PACIUM_DATA_DIR = paciumStateDirectory;
+if (tmuxExecutable !== undefined) {
+  const tmuxDirectory = mkdtempSync(join(tmpdir(), "pacium-playwright-tmux-"));
+  const tmuxSocket = join(tmuxDirectory, "server.sock");
+  execFileSync(tmuxExecutable, [
+    "-S",
+    tmuxSocket,
+    "new-session",
+    "-d",
+    "-s",
+    "pacium-e2e",
+    "-c",
+    process.cwd(),
+  ]);
+  process.env.PACIUM_TMUX_SOCKET = tmuxSocket;
+  process.env.PACIUM_E2E_TMUX_DIRECTORY = tmuxDirectory;
+  process.env.PACIUM_E2E_TMUX_EXECUTABLE = tmuxExecutable;
+}
 writeFileSync(queueFixturePath, "Initial private queue\n", { mode: 0o600 });
 writeFileSync(objectiveFixturePath, "Make local agents easy to supervise.\n", {
   mode: 0o600,
