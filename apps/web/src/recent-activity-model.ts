@@ -3,6 +3,7 @@ import type {
   ProviderEvidenceConfidence,
   ProviderObservationSource,
   SessionSummary,
+  VerificationRun,
 } from "@pacium/contracts";
 
 import type { AttentionResult } from "./attention-model.js";
@@ -21,10 +22,31 @@ import {
 
 export const MAX_RECENT_ACTIVITY_COMMITS = 3;
 export const MAX_RECENT_ACTIVITY_FACTS = 7;
+export const MAX_ACTIVITY_FACT_METADATA = 4;
 
 export type ActivityFactSource =
   "process" | "provider" | "git" | "verification";
 export type ActivityTimestampMeaning = "occurred" | "observed";
+export type ActivityFactKind =
+  | "process_started"
+  | "process_exited"
+  | "provider_session"
+  | "provider_prompt"
+  | "provider_turn"
+  | "provider_message"
+  | "provider_tool"
+  | "provider_plan"
+  | "provider_approval"
+  | "provider_question"
+  | "provider_usage"
+  | "provider_completion"
+  | "provider_failure"
+  | "git_changes"
+  | "git_commit"
+  | "verification";
+export type ActivityFactTone =
+  "neutral" | "active" | "attention" | "success" | "danger";
+export type ActivityFactTarget = "terminal" | "changes" | "history" | "checks";
 export type ActivitySourceId =
   "provider" | "changes" | "history" | "verification";
 export type ActivitySourceStatus =
@@ -45,9 +67,13 @@ export interface ActivityCurrentEvidence {
 
 export interface ActivityFact {
   id: string;
+  kind: ActivityFactKind;
+  tone: ActivityFactTone;
   source: ActivityFactSource;
   title: string;
   detail: string;
+  metadata: string[];
+  target: ActivityFactTarget;
   timestamp: string;
   timestampMeaning: ActivityTimestampMeaning;
 }
@@ -63,6 +89,11 @@ export interface RecentActivity {
   current: ActivityCurrentEvidence;
   facts: ActivityFact[];
   sources: ActivitySourceSummary[];
+  terminalFallback: {
+    recommended: boolean;
+    reason: string;
+    boundaryKey: string;
+  };
   loading: boolean;
   partial: boolean;
 }
@@ -93,6 +124,7 @@ export function buildRecentActivity(
     },
     facts: facts.slice(0, MAX_RECENT_ACTIVITY_FACTS),
     sources,
+    terminalFallback: terminalFallback(input.session, sources),
     loading: sources.some(({ status }) => status === "loading"),
     partial: sources.some(({ status }) =>
       ["idle", "unavailable", "degraded", "stale", "error"].includes(status),
@@ -105,9 +137,13 @@ function processFacts(session: SessionSummary): ActivityFact[] {
   if (validTimestamp(session.createdAt)) {
     facts.push({
       id: `process:${session.id}:${session.epoch}:started`,
+      kind: "process_started",
+      tone: "neutral",
       source: "process",
       title: "Terminal process started",
       detail: "Pacium created this direct PTY process.",
+      metadata: ["Process observed", "Task progress unverified"],
+      target: "terminal",
       timestamp: session.createdAt,
       timestampMeaning: "occurred",
     });
@@ -115,9 +151,18 @@ function processFacts(session: SessionSummary): ActivityFact[] {
   if (session.exitedAt !== null && validTimestamp(session.exitedAt)) {
     facts.push({
       id: `process:${session.id}:${session.epoch}:exited`,
+      kind: "process_exited",
+      tone:
+        session.processState === "failed" ||
+        session.exitSignal !== null ||
+        (session.exitCode !== null && session.exitCode !== 0)
+          ? "danger"
+          : "neutral",
       source: "process",
       title: "Terminal process exited",
       detail: processExitDetail(session),
+      metadata: ["Process observed", "Task outcome unverified"],
+      target: "terminal",
       timestamp: session.exitedAt,
       timestampMeaning: "occurred",
     });
@@ -150,28 +195,29 @@ function providerFacts(session: SessionSummary): ActivityFact[] {
   if (observation === null) {
     return [];
   }
-  return observation.activities.map((activity) => ({
-    id: `provider:${observation.provider}:${activity.id}`,
-    source: "provider",
-    title: providerActivityTitle(activity.kind),
-    detail: providerActivityDetail(observation.provider, activity),
-    timestamp: activity.occurredAt,
-    timestampMeaning: "occurred",
-  }));
+  return observation.activities.map((activity) => {
+    const presentation = providerActivityPresentation(activity.kind);
+    return {
+      id: `provider:${observation.provider}:${activity.id}`,
+      kind: presentation.kind,
+      tone: presentation.tone,
+      source: "provider",
+      title: providerActivityTitle(activity.kind),
+      detail: providerActivityDetail(activity),
+      metadata: providerActivityMetadata(observation.provider, activity),
+      target: "terminal",
+      timestamp: activity.occurredAt,
+      timestampMeaning: "occurred",
+    };
+  });
 }
 
 function providerActivityDetail(
-  provider: "claude" | "codex",
   activity: NonNullable<
     SessionSummary["providerObservation"]
   >["activities"][number],
 ): string {
-  const details = [
-    providerLabel(provider),
-    providerSourceLabel(activity.source),
-    providerConfidenceLabel(activity.confidence),
-    activity.summary,
-  ];
+  const details = [activity.summary];
   if (activity.kind !== "usage_updated") {
     return details.join(" · ");
   }
@@ -221,6 +267,33 @@ function providerActivityDetail(
   return details.join(" · ");
 }
 
+function providerActivityMetadata(
+  provider: "claude" | "codex",
+  activity: NonNullable<
+    SessionSummary["providerObservation"]
+  >["activities"][number],
+): string[] {
+  const metadata = [
+    providerLabel(provider),
+    providerSourceLabel(activity.source),
+    providerConfidenceLabel(activity.confidence),
+  ];
+  if (
+    (activity.kind === "tool_started" || activity.kind === "tool_completed") &&
+    activity.extension.provider === "claude" &&
+    activity.extension.toolName !== null
+  ) {
+    metadata.push(activity.extension.toolName);
+  } else if (
+    (activity.kind === "tool_started" || activity.kind === "tool_completed") &&
+    activity.extension.provider === "codex" &&
+    activity.extension.itemType !== null
+  ) {
+    metadata.push(activity.extension.itemType);
+  }
+  return metadata.slice(0, MAX_ACTIVITY_FACT_METADATA);
+}
+
 function gitFacts({ changes, history }: RecentActivityInput): ActivityFact[] {
   const facts: ActivityFact[] = [];
   const changeObservation = visibleRepositoryChanges(changes);
@@ -233,6 +306,8 @@ function gitFacts({ changes, history }: RecentActivityInput): ActivityFact[] {
     const clean = fileCount === 0;
     facts.push({
       id: `git:changes:${changeObservation.observedAt}`,
+      kind: "git_changes",
+      tone: conflictCount > 0 ? "danger" : "neutral",
       source: "git",
       title: clean
         ? "Working tree observed clean"
@@ -244,6 +319,11 @@ function gitFacts({ changes, history }: RecentActivityInput): ActivityFact[] {
               ? ` · ${conflictCount} ${plural(conflictCount, "conflict")}`
               : ""
           }`,
+      metadata: [
+        "Git observed",
+        clean ? "Working tree clean" : `${fileCount} changed`,
+      ],
+      target: "changes",
       timestamp: changeObservation.observedAt,
       timestampMeaning: "observed",
     });
@@ -260,9 +340,13 @@ function gitFacts({ changes, history }: RecentActivityInput): ActivityFact[] {
       }
       facts.push({
         id: `git:commit:${commit.id}`,
+        kind: "git_commit",
+        tone: "neutral",
         source: "git",
         title: commit.subject,
         detail: `Git commit ${commit.id.slice(0, 8)} · author recorded as ${commit.authorName}`,
+        metadata: ["Git history", commit.id.slice(0, 8)],
+        target: "history",
         timestamp: commit.authoredAt,
         timestampMeaning: "occurred",
       });
@@ -289,13 +373,69 @@ function verificationFacts(
   return [
     {
       id: `verification:${run.runId}:${run.status}`,
+      kind: "verification",
+      tone: verificationTone(run.status),
       source: "verification",
       title: verificationTitle(run.status),
       detail: verificationDetail(preset, run),
+      metadata: ["Configured check", verificationStatusLabel(run.status)],
+      target: "checks",
       timestamp,
       timestampMeaning: "occurred",
     },
   ];
+}
+
+function verificationTone(status: VerificationRun["status"]): ActivityFactTone {
+  switch (status) {
+    case "running":
+    case "cancelling":
+      return "active";
+    case "passed":
+      return "success";
+    case "failed":
+    case "timed_out":
+    case "error":
+      return "danger";
+    case "cancelled":
+      return "neutral";
+  }
+}
+
+function verificationStatusLabel(status: VerificationRun["status"]): string {
+  return status.replaceAll("_", " ");
+}
+
+function terminalFallback(
+  session: SessionSummary,
+  sources: ActivitySourceSummary[],
+): RecentActivity["terminalFallback"] {
+  const provider = sources.find(({ id }) => id === "provider");
+  const providerBoundary =
+    session.providerObservation === null
+      ? "none"
+      : [
+          session.providerObservation.provider,
+          session.providerObservation.health.state,
+          session.providerObservation.observedAt,
+          session.providerObservation.staleAfter,
+        ].join(":");
+  if (provider?.status === "ready") {
+    return {
+      recommended: false,
+      reason:
+        "Fresh provider evidence is available. Open Terminal from a card for raw context.",
+      boundaryKey: `${session.id}:${session.epoch}:${providerBoundary}:ready`,
+    };
+  }
+  return {
+    recommended: true,
+    reason:
+      provider === undefined
+        ? "No provider observer applies to this terminal. A bounded terminal peek can provide raw context."
+        : "Provider evidence is not currently ready. A bounded terminal peek can provide low-confidence context.",
+    boundaryKey: `${session.id}:${session.epoch}:${providerBoundary}:${provider?.status ?? "not_applicable"}`,
+  };
 }
 
 function sourceSummaries({
@@ -583,6 +723,39 @@ function providerActivityTitle(kind: ProviderActivityKind): string {
       return "Provider session completed";
     case "failed":
       return "Provider failure observed";
+  }
+}
+
+function providerActivityPresentation(kind: ProviderActivityKind): {
+  kind: ActivityFactKind;
+  tone: ActivityFactTone;
+} {
+  switch (kind) {
+    case "session_started":
+      return { kind: "provider_session", tone: "neutral" };
+    case "prompt_submitted":
+      return { kind: "provider_prompt", tone: "active" };
+    case "turn_started":
+      return { kind: "provider_turn", tone: "active" };
+    case "message":
+      return { kind: "provider_message", tone: "neutral" };
+    case "tool_started":
+      return { kind: "provider_tool", tone: "active" };
+    case "tool_completed":
+      return { kind: "provider_tool", tone: "neutral" };
+    case "plan_updated":
+      return { kind: "provider_plan", tone: "active" };
+    case "approval_requested":
+      return { kind: "provider_approval", tone: "attention" };
+    case "question_requested":
+      return { kind: "provider_question", tone: "attention" };
+    case "usage_updated":
+      return { kind: "provider_usage", tone: "neutral" };
+    case "turn_completed":
+    case "session_completed":
+      return { kind: "provider_completion", tone: "success" };
+    case "failed":
+      return { kind: "provider_failure", tone: "danger" };
   }
 }
 

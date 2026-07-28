@@ -20,26 +20,37 @@ const activity: RecentActivity = {
   facts: [
     {
       id: "provider:codex:approval-1",
+      kind: "provider_approval",
+      tone: "attention",
       source: "provider",
       title: "Approval requested",
-      detail:
-        "Codex · Provider native · Confirmed · Command approval requested.",
+      detail: "Command approval requested.",
+      metadata: ["Codex", "Provider native", "Confirmed"],
+      target: "terminal",
       timestamp: "2026-07-27T10:06:00.000Z",
       timestampMeaning: "occurred",
     },
     {
       id: "git:commit:abc",
+      kind: "git_commit",
+      tone: "neutral",
       source: "git",
       title: "<script>hostile subject</script>",
       detail: "Git commit abcdef12 · author recorded as <operator>",
+      metadata: ["Git history", "abcdef12"],
+      target: "history",
       timestamp: "2026-07-27T10:05:00.000Z",
       timestampMeaning: "occurred",
     },
     {
       id: "git:changes:time",
+      kind: "git_changes",
+      tone: "neutral",
       source: "git",
       title: "2 changed files observed",
       detail: "+12 −3",
+      metadata: ["Git observed", "2 changed"],
+      target: "changes",
       timestamp: "2026-07-27T10:04:00.000Z",
       timestampMeaning: "observed",
     },
@@ -70,6 +81,12 @@ const activity: RecentActivity = {
       detail: "Verification is not configured.",
     },
   ],
+  terminalFallback: {
+    recommended: false,
+    reason:
+      "Fresh provider evidence is available. Open Terminal from a card for raw context.",
+    boundaryKey: "session:3:codex:ready",
+  },
   loading: false,
   partial: false,
 };
