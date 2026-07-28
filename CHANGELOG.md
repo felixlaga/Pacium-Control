@@ -2,6 +2,52 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.38.0 — explicit provider degradation — 2026-07-28
+
+### Added
+
+- Explicit Codex compatibility outcomes: undetectable version evidence remains
+  unavailable, while a detected CLI missing required remote or App Server
+  surfaces is unsupported with confirmed unsupported capabilities.
+- Separate degraded malformed-event and failed fatal-transport states with
+  fixed bounded severity/code/message/time diagnostics. Fresh authenticated
+  Codex evidence restores ready and clears transient adapter diagnostics.
+- A fixed Claude version-uncertainty diagnostic that remains compatible with
+  later valid hooks and clears when authenticated status supplies a version.
+- A pure provider-status projection for ready, unavailable, unsupported,
+  degraded, failed, and stale health; provider/adapter versions;
+  source/confidence/freshness; bounded capabilities; safe diagnostic
+  code/message/time; terminal independence; and fixed recovery guidance.
+- A compact Activity provider-status surface with one existing-terminal focus
+  action and state-specific PC-063 fallback copy. Diagnostic scalar fields and
+  raw provider content are deliberately excluded.
+- One browser-only 30-second freshness tick plus immediate visible-page refresh
+  so a ready snapshot expires even without provider attention. It makes no
+  server request, terminal read, provider action, or durable write.
+
+### Verified
+
+- Focused Codex/Claude adapter, provider-status model, semantic-render,
+  recent-activity, and freshness-clock coverage passed 81 tests.
+- `pnpm verify` passed formatting, lint, every workspace type check, 125 test
+  files and 815 tests, plus the 929.58 kB web JavaScript, 118.08 kB stylesheet,
+  and 411.54 kB local-server production bundles.
+- `pnpm test:e2e` passed all 16 Chromium workflows. The PC-064 canary launched
+  a real Claude Code PTY without sending a prompt, rendered eight capability
+  rows and current provider status, focused the unchanged terminal, exercised
+  explicit fallback and reload clearing, and remained usable at 320 CSS px,
+  200% zoom, forced colors, and reduced motion.
+
+### Known limitations
+
+- Capability probing remains authoritative; Pacium does not declare a
+  universal supported Claude Code or Codex version range.
+- Diagnostics are current bounded observer evidence, not a persisted log or
+  export. PC-073 still owns explicit previewable/redactable diagnostics.
+- Relaunch and resume metadata remain PC-065. Verification ran on Node.js
+  26.4.0 rather than pinned Node.js 24.18.x, and the web build retains Vite's
+  chunk-size warning.
+
 ## 0.37.0 — clean agent activity cards — 2026-07-28
 
 ### Added
