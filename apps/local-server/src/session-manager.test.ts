@@ -112,6 +112,10 @@ function createManager(
 
 class FixtureTmuxAdapter extends TmuxAdapter {
   public readonly launches: TmuxLaunchInput[] = [];
+  public readonly detachedClients: Array<{
+    sessionId: string;
+    clientPid: number;
+  }> = [];
 
   public constructor() {
     super(
@@ -177,6 +181,14 @@ class FixtureTmuxAdapter extends TmuxAdapter {
         args: input.args,
       },
     });
+  }
+
+  public override detachClient(
+    target: { sessionId: string },
+    clientPid: number,
+  ): Promise<void> {
+    this.detachedClients.push({ sessionId: target.sessionId, clientPid });
+    return Promise.resolve();
   }
 }
 
@@ -262,6 +274,7 @@ function emptyHistory(root: string | null, observedAt?: string) {
 describe("SessionManager", () => {
   it("attaches one revalidated tmux target through the existing PTY lifecycle", async () => {
     const factory = new FakePtyFactory();
+    const adapter = new FixtureTmuxAdapter();
     const manager = createManager(
       factory,
       undefined,
@@ -276,7 +289,7 @@ describe("SessionManager", () => {
       undefined,
       undefined,
       [],
-      new FixtureTmuxAdapter(),
+      adapter,
     );
 
     await expect(
@@ -326,8 +339,17 @@ describe("SessionManager", () => {
     manager.resize(session.id, 110, 34);
     expect(factory.processes[0]?.writes).toEqual(["pwd\r"]);
     expect(factory.processes[0]?.resizes).toEqual([{ cols: 110, rows: 34 }]);
-    manager.shutdown();
-    expect(factory.processes[0]?.signals).toEqual(["SIGHUP"]);
+    manager.close(session.id, true, crypto.randomUUID());
+    await vi.waitFor(() =>
+      expect(adapter.detachedClients).toEqual([
+        { sessionId: "$7", clientPid: factory.processes[0]?.pid },
+      ]),
+    );
+    expect(factory.processes[0]?.signals).toEqual([]);
+    factory.processes[0]?.emitExit(0, 0);
+    expect(manager.list()).toEqual([]);
+    await manager.shutdown();
+    expect(factory.processes[0]?.signals).toEqual([]);
   });
 
   it("launches a fixed preset as durable tmux evidence before its client", async () => {
@@ -412,7 +434,7 @@ describe("SessionManager", () => {
         "$8",
       ],
     });
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("retains recovery evidence when the keep-alive client cannot spawn", async () => {
@@ -496,7 +518,7 @@ describe("SessionManager", () => {
       rows: 30,
       keepAlive: true,
     });
-    first.shutdown();
+    await first.shutdown();
     await first.flushRelaunchManifests();
 
     const secondFactory = new FakePtyFactory();
@@ -537,7 +559,7 @@ describe("SessionManager", () => {
       unavailable: 0,
       deferred: 0,
     });
-    second.shutdown();
+    await second.shutdown();
     await second.flushRelaunchManifests();
 
     const unavailable = createManager(
@@ -590,7 +612,7 @@ describe("SessionManager", () => {
     });
     expect(manager.hasSession(session.id)).toBe(true);
 
-    manager.shutdown();
+    await manager.shutdown();
     expect(manager.hasSession(session.id)).toBe(false);
   });
 
@@ -653,7 +675,7 @@ describe("SessionManager", () => {
       },
     });
 
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("persists a secret-free manifest and relaunches an exact successor", async () => {
@@ -709,7 +731,7 @@ describe("SessionManager", () => {
     expect(JSON.stringify(manager.listRelaunchManifests())).not.toContain(
       "secret-value",
     );
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("does not destroy a PTY when no browser listener is attached", async () => {
@@ -728,7 +750,7 @@ describe("SessionManager", () => {
       "before refresh",
     );
 
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("requires explicit force to close a live shell", async () => {
@@ -772,7 +794,7 @@ describe("SessionManager", () => {
     expect(() => manager.rename(session.id, "   ")).toThrow(
       "between 1 and 120",
     );
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("reveals only the session's canonical repository root", async () => {
@@ -788,7 +810,7 @@ describe("SessionManager", () => {
 
     await manager.revealRepository(session.id);
     expect(revealPath).toHaveBeenCalledWith(session.repository.root);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("refreshes repository evidence without replacing or signalling the PTY", async () => {
@@ -822,7 +844,7 @@ describe("SessionManager", () => {
     expect(manager.list()[0]?.id).toBe(session.id);
     expect(factory.processes[0]?.signals).toEqual([]);
     expect(updates).toEqual(["feature"]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("reads changed files from server-owned repository evidence without signalling the PTY", async () => {
@@ -879,7 +901,7 @@ describe("SessionManager", () => {
       expect.any(String),
     );
     expect(factory.processes[0]?.signals).toEqual([]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("reads one diff from server-owned session evidence without changing the PTY", async () => {
@@ -932,7 +954,7 @@ describe("SessionManager", () => {
     );
     expect(factory.processes[0]).toBe(ptyProcess);
     expect(ptyProcess?.signals).toEqual([]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("reads history from server-owned session evidence without changing the PTY", async () => {
@@ -984,7 +1006,7 @@ describe("SessionManager", () => {
     );
     expect(factory.processes[0]).toBe(ptyProcess);
     expect(ptyProcess?.signals).toEqual([]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("reports verification as unavailable without explicit configuration", async () => {
@@ -1007,7 +1029,7 @@ describe("SessionManager", () => {
       manager.runRepositoryVerification(session.id, "verify"),
     ).rejects.toMatchObject({ code: "VERIFICATION_UNCONFIGURED" });
     expect(factory.processes[0]?.signals).toEqual([]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("runs only the configured preset for the session repository", async () => {
@@ -1057,7 +1079,7 @@ describe("SessionManager", () => {
       code: "VERIFICATION_PRESET_UNAVAILABLE",
     });
     expect(factory.processes[0]?.signals).toEqual([]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("cancels an exact verification run without signalling the PTY", async () => {
@@ -1098,7 +1120,7 @@ describe("SessionManager", () => {
       run: { status: "cancelled" },
     });
     expect(factory.processes[0]?.signals).toEqual([]);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("rejects a missing working directory without creating a PTY", async () => {
@@ -1162,7 +1184,7 @@ describe("SessionManager", () => {
       }),
     ).rejects.toMatchObject({ code: "PRESET_UNAVAILABLE" });
     expect(factory.processes).toHaveLength(1);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("prepares only Claude launches and applies authenticated observer updates", async () => {
@@ -1241,7 +1263,7 @@ describe("SessionManager", () => {
 
     factory.processes[0]?.emitExit(0, 0);
     expect(observer.hasSession(claude.id)).toBe(false);
-    manager.shutdown();
+    await manager.shutdown();
   });
 
   it("prepares only Codex launches and applies native observer updates", async () => {
@@ -1324,7 +1346,7 @@ describe("SessionManager", () => {
 
     factory.processes[0]?.emitExit(0, 0);
     expect(observer.hasSession(codex.id)).toBe(false);
-    manager.shutdown();
+    await manager.shutdown();
   });
 });
 

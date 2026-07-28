@@ -164,7 +164,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
   let manager: SessionManager | undefined;
 
   afterEach(async () => {
-    manager?.shutdown();
+    await manager?.shutdown();
     await manager?.flushRelaunchManifests();
     if (application !== undefined) {
       await application.close();
@@ -473,7 +473,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     }
     firstClient.socket.close();
     await once(firstClient.socket, "close");
-    firstSetup.manager.shutdown();
+    await firstSetup.manager.shutdown();
     await firstSetup.manager.flushRelaunchManifests();
     await firstSetup.application.close();
 
@@ -1962,7 +1962,7 @@ describe("localhost HTTP and WebSocket boundary", () => {
     await once(client.socket, "close");
 
     await setup.application.close();
-    setup.manager.shutdown();
+    await setup.manager.shutdown();
     application = undefined;
     manager = undefined;
 

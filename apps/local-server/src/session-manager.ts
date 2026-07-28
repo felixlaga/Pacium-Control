@@ -515,12 +515,7 @@ export class SessionManager {
     }
     const tmux =
       input.keepAlive === true
-        ? await this.launchKeepAlivePreset(
-            cwd,
-            preset,
-            input.cols,
-            input.rows,
-          )
+        ? await this.launchKeepAlivePreset(cwd, preset, input.cols, input.rows)
         : input.tmux;
     const tmuxMode = tmux?.mode ?? (tmux === undefined ? null : "attached");
     const id = randomUUID();
@@ -935,12 +930,28 @@ export class SessionManager {
       session.summary = { ...session.summary, processState: "closing" };
       session.closeRequestId = requestId;
       this.emitSession({ type: "updated", session: { ...session.summary } });
-      session.pty.kill("SIGTERM");
-      session.forceTimer = setTimeout(() => {
-        if (this.sessions.get(sessionId)?.summary.processState === "closing") {
-          session.pty.kill("SIGKILL");
-        }
-      }, 1_500);
+      if (
+        session.summary.runtime === "tmux" &&
+        session.summary.tmuxTarget !== null &&
+        session.summary.tmuxTarget !== undefined &&
+        this.tmuxAdapter !== undefined
+      ) {
+        void this.tmuxAdapter
+          .detachClient(session.summary.tmuxTarget, session.pty.pid)
+          .catch(() => session.pty.kill("SIGKILL"));
+      } else {
+        session.pty.kill("SIGTERM");
+      }
+      session.forceTimer = setTimeout(
+        () => {
+          if (
+            this.sessions.get(sessionId)?.summary.processState === "closing"
+          ) {
+            session.pty.kill("SIGKILL");
+          }
+        },
+        session.summary.runtime === "tmux" ? 3_000 : 1_500,
+      );
       session.forceTimer.unref();
       return;
     }
@@ -964,11 +975,12 @@ export class SessionManager {
     };
   }
 
-  public shutdown(): void {
+  public async shutdown(): Promise<void> {
     this.unsubscribeVerification?.();
     this.unsubscribeClaudeObserver?.();
     this.unsubscribeCodexObserver?.();
     this.verificationRunner?.shutdown();
+    const detachments: Promise<void>[] = [];
     for (const session of this.sessions.values()) {
       this.claudeObserver?.release(session.summary.id);
       this.codexObserver?.release(session.summary.id);
@@ -979,10 +991,29 @@ export class SessionManager {
         session.summary.processState === "live" ||
         session.summary.processState === "closing"
       ) {
-        session.pty.kill("SIGHUP");
+        if (
+          session.summary.runtime === "tmux" &&
+          session.summary.tmuxTarget !== null &&
+          session.summary.tmuxTarget !== undefined &&
+          this.tmuxAdapter !== undefined
+        ) {
+          detachments.push(
+            this.tmuxAdapter
+              .detachClient(session.summary.tmuxTarget, session.pty.pid)
+              .catch(() => {
+                console.warn(
+                  `Pacium could not detach tmux client ${session.summary.id}; forcing client exit.`,
+                );
+                session.pty.kill("SIGKILL");
+              }),
+          );
+        } else {
+          session.pty.kill("SIGHUP");
+        }
       }
       session.terminal.dispose();
     }
+    await Promise.all(detachments);
     this.sessions.clear();
   }
 

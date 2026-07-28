@@ -39,6 +39,6 @@ describe("real PTY integration", () => {
 
     expect(output).toContain("PACIUM_REAL_PTY_OK");
     expect(manager.list()[0]?.processState).toBe("exited");
-    manager.shutdown();
+    await manager.shutdown();
   }, 10_000);
 });

@@ -94,7 +94,7 @@ async function shutdown(signal: string): Promise<void> {
   }
   shuttingDown = true;
   process.stdout.write(`Received ${signal}; closing terminal sessions.\n`);
-  sessions.shutdown();
+  await sessions.shutdown();
   await sessions.flushRelaunchManifests();
   await application.close();
 }
