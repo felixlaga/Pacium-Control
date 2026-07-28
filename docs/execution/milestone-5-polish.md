@@ -83,7 +83,19 @@ PC-071 completes the keep-alive half of criteria 1 and 2:
 - Real tmux/PTY evidence covers input, client detach, manager restart, fresh
   identity, deliberate close, and target survival.
 
-PC-072 through PC-076 still own soak, diagnostics, packaging, Linux, and final
+PC-072 establishes the bounded personal-load evidence for criterion 3:
+
+- `pnpm test:soak` exercises 20 idle terminals, one long-running agent, 100
+  create/close cycles, 8 MiB output, 100 reconnect snapshots, explicit RSS and
+  live-heap budgets, and five real PTYs with a four-FD ceiling.
+- Browser-model tests churn 2,000 split operations and 5,000 attention cursors
+  while preserving the existing four-pane and 200-entry limits.
+- The real-PTY canary found and fixed three macOS native descriptor closures in
+  the pinned `node-pty`; supported Node 24 returned exactly to baseline.
+- This is a bounded development-machine baseline, not a multi-day field-soak or
+  production-monitoring claim.
+
+PC-073 through PC-076 still own diagnostics, packaging, Linux, and final
 release-readiness evidence.
 
 ## Demo

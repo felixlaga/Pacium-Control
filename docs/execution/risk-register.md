@@ -7,7 +7,7 @@ Review at every milestone.
 | R-01 | PTY behavior differs by OS/runtime version     |     Medium |        High | supported-platform matrix, real integration fixtures                 | input/resize/signal mismatch    |
 | R-02 | Browser refresh duplicates input               |     Medium |        High | session epochs, no automatic retry, contract tests                   | repeated command/text           |
 | R-03 | Local-server exit unexpectedly loses work      |       High | Medium/High | honest direct-PTY limitation, relaunch manifest, optional tmux later | operator expected survival      |
-| R-04 | Slow client causes unbounded output memory     |     Medium |        High | bounded buffers, backpressure, resync state, soak tests              | growing RSS or lag              |
+| R-04 | Slow client causes unbounded output memory     |     Medium |        High | bounded buffers, resync state, PC-072 RSS/heap soak budgets          | growing RSS or lag              |
 | R-05 | Terminal focus sends shortcuts to wrong target |     Medium |        High | explicit capture state, escape chord, browser tests                  | accidental command/input        |
 | R-06 | Two browser clients both write                 |     Medium |        High | one input owner per session, visible ownership                       | interleaved input               |
 | R-07 | Terminal escape sequence attacks UI            |     Medium |        High | xterm boundary, CSP, link/title/clipboard hardening                  | unsafe navigation or DOM effect |
@@ -24,7 +24,7 @@ Review at every milestone.
 | R-18 | Native event view hides terminal truth         |     Medium |      Medium | raw terminal always available, source labels                         | contradictory states            |
 | R-19 | Scope expands back into remote platform        |     Medium |        High | ADR-0013–0015, roadmap gates, deferred list                          | auth/multi-host work before MVP |
 | R-20 | UI becomes decorative or cluttered             |     Medium |        High | design tokens, hierarchy review, realistic density fixtures          | main terminal loses focus       |
-| R-21 | Native PTY dependency complicates install      |     Medium |        High | early clean-install spike, pinned toolchain, packaging evidence      | build failure on clean machine  |
+| R-21 | Native PTY dependency complicates install      |     Medium |        High | patched source build, pinned Xcode/Node, PC-074 clean-install gate   | build failure on clean machine  |
 | R-22 | Process-group cleanup kills wrong process      | Low/Medium |    Critical | isolated groups, PID lineage, integration tests                      | unrelated process affected      |
 | R-23 | Persisted logs/state contain secrets           |     Medium |        High | bounded metadata, no raw bytes/env, secret scans                     | secret scan alert               |
 | R-24 | Optional tmux becomes hidden requirement       |     Medium |      Medium | direct PTY release gate, capability labels                           | core test depends on tmux       |

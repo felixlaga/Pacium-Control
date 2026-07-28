@@ -530,6 +530,13 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-072 Add lifecycle and memory soak tests
 
 - Repeated create/close, reconnect, large output, long-running agent, split churn, and notification load.
+- Current status: complete. One scalar-only isolated command covers 20 idle
+  terminals, one long-running agent, 100 create/close cycles, 8 MiB output,
+  100 snapshots, memory budgets, and a five-real-PTY FD canary. Browser-model
+  tests cover 2,000 split operations and 5,000 notification cursors. The
+  canary also found and fixed macOS native descriptor leaks in the pinned
+  `node-pty`; supported Node 24, full verification, and all 19 Chromium
+  workflows passed.
 
 ### PC-073 Add diagnostics
 
