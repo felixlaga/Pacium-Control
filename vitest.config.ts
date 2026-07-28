@@ -10,6 +10,7 @@ export default defineConfig({
       "apps/**/*.test.tsx",
       "packaging/**/*.test.mjs",
       "packages/**/*.test.ts",
+      "scripts/**/*.test.mjs",
     ],
     restoreMocks: true,
   },
