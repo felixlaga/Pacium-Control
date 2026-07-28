@@ -3232,6 +3232,10 @@ describe("localhost HTTP and WebSocket boundary", () => {
 
     const localHealth = await fetch(`${httpUrl}/api/health`);
     expect(localHealth.status).toBe(200);
+    expect(localHealth.headers.get("x-pacium-protocol")).toBe(
+      String(PROTOCOL_VERSION),
+    );
+    await expect(localHealth.json()).resolves.toEqual({ status: "ok" });
   });
 
   it("denies spoofed, missing, duplicate, and unlisted Serve identity before bootstrap", async () => {

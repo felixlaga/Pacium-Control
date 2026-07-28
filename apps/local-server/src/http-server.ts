@@ -129,6 +129,7 @@ async function routeRequest(
       sendJson(response, 403, { error: "Forbidden" });
       return;
     }
+    response.setHeader("x-pacium-protocol", String(PROTOCOL_VERSION));
     sendJson(response, 200, { status: "ok" }, request.method === "HEAD");
     return;
   }
