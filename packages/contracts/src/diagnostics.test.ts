@@ -31,15 +31,26 @@ function snapshot(): DiagnosticsSnapshot {
       state: "healthy",
       sessions: {
         total: 1,
+        creating: 0,
         live: 1,
         closing: 0,
         exited: 0,
+        failed: 0,
         directPty: 1,
         tmux: 0,
       },
       queueStatus: "unconfigured",
       queueSources: 0,
+      queueItems: {
+        question: 0,
+        approval: 0,
+        failure: 0,
+        review: 0,
+        unknown: 0,
+      },
+      queueConflicts: 0,
       tmuxStatus: "unconfigured",
+      tmuxVersion: null,
     },
     components: [
       {

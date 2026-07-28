@@ -80,7 +80,7 @@ export const DiagnosticsSessionSchema = z
     launchPreset: z.enum(["shell", "codex", "claude"]),
     runtime: z.enum(["pty", "tmux"]),
     tmuxMode: z.enum(["attached", "keep_alive"]).nullable(),
-    processState: z.enum(["live", "closing", "exited"]),
+    processState: z.enum(["creating", "live", "closing", "exited", "failed"]),
     cols: z.number().int().min(1).max(1_000),
     rows: z.number().int().min(1).max(1_000),
     exitCode: z.number().int().min(-1).max(255).nullable(),
@@ -184,16 +184,29 @@ export const DiagnosticsSnapshotSchema = z
         sessions: z
           .object({
             total: z.number().int().nonnegative().max(100_000),
+            creating: z.number().int().nonnegative().max(100_000),
             live: z.number().int().nonnegative().max(100_000),
             closing: z.number().int().nonnegative().max(100_000),
             exited: z.number().int().nonnegative().max(100_000),
+            failed: z.number().int().nonnegative().max(100_000),
             directPty: z.number().int().nonnegative().max(100_000),
             tmux: z.number().int().nonnegative().max(100_000),
           })
           .strict(),
         queueStatus: z.enum(["unconfigured", "config_error", "ready"]),
         queueSources: z.number().int().nonnegative().max(1_000),
+        queueItems: z
+          .object({
+            question: z.number().int().nonnegative().max(1_000),
+            approval: z.number().int().nonnegative().max(1_000),
+            failure: z.number().int().nonnegative().max(1_000),
+            review: z.number().int().nonnegative().max(1_000),
+            unknown: z.number().int().nonnegative().max(1_000),
+          })
+          .strict(),
+        queueConflicts: z.number().int().nonnegative().max(10_000),
         tmuxStatus: z.enum(["unconfigured", "unavailable", "ready"]),
+        tmuxVersion: VersionTextSchema.nullable(),
       })
       .strict(),
     components: z
@@ -245,10 +258,18 @@ export const DiagnosticsSnapshotSchema = z
     );
     const { sessions } = snapshot.overview;
     if (
-      sessions.total !== sessions.live + sessions.closing + sessions.exited ||
+      sessions.total !==
+        sessions.creating +
+          sessions.live +
+          sessions.closing +
+          sessions.exited +
+          sessions.failed ||
       sessions.total !== sessions.directPty + sessions.tmux ||
       snapshot.sessions.length > sessions.total ||
-      snapshot.sessionsTruncated !== sessions.total > MAX_DIAGNOSTICS_SESSIONS
+      snapshot.sessionsTruncated !==
+        sessions.total > MAX_DIAGNOSTICS_SESSIONS ||
+      (snapshot.overview.tmuxStatus === "ready") !==
+        (snapshot.overview.tmuxVersion !== null)
     ) {
       context.addIssue({
         code: "custom",
