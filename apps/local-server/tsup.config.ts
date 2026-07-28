@@ -7,7 +7,17 @@ export default defineConfig({
   target: "node24",
   outDir: "dist",
   sourcemap: true,
+  shims: true,
+  banner: {
+    js: 'import { createRequire as __paciumCreateRequire } from "node:module"; const require = __paciumCreateRequire(import.meta.url);',
+  },
   clean: true,
   external: ["node-pty"],
-  noExternal: ["@pacium/contracts"],
+  noExternal: [
+    "@pacium/contracts",
+    "@xterm/addon-serialize",
+    "@xterm/headless",
+    "ws",
+    "zod",
+  ],
 });

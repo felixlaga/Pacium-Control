@@ -1,9 +1,12 @@
 import { realpath, stat } from "node:fs/promises";
 import { basename } from "node:path";
 import { randomUUID } from "node:crypto";
-import { createRequire } from "node:module";
 
-import type { SerializeAddon as SerializeAddonInstance } from "@xterm/addon-serialize";
+import {
+  SerializeAddon,
+  type SerializeAddon as SerializeAddonInstance,
+} from "@xterm/addon-serialize";
+import * as HeadlessTerminalModule from "@xterm/headless";
 import type {
   ITerminalInitOnlyOptions,
   ITerminalOptions,
@@ -50,18 +53,15 @@ import {
   type VerificationRunner,
 } from "./verification-runner.js";
 
-type SerializeAddonConstructor = new () => SerializeAddonInstance;
 type HeadlessTerminalConstructor = new (
   options?: ITerminalOptions & ITerminalInitOnlyOptions,
 ) => HeadlessTerminalInstance;
 
-const require = createRequire(import.meta.url);
-const { SerializeAddon } = require("@xterm/addon-serialize") as {
-  SerializeAddon: SerializeAddonConstructor;
-};
-const { Terminal: HeadlessTerminal } = require("@xterm/headless") as {
-  Terminal: HeadlessTerminalConstructor;
-};
+const { Terminal: HeadlessTerminal } = (
+  HeadlessTerminalModule as unknown as {
+    default: { Terminal: HeadlessTerminalConstructor };
+  }
+).default;
 
 interface ManagedSession {
   summary: SessionSummary;
