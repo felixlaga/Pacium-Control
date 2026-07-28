@@ -16,7 +16,10 @@ Clean activity cards with an explicit browser-local terminal fallback are
 complete. Explicit provider compatibility, health, freshness, capability, and
 diagnostic degradation is complete. Durable secret-free relaunch manifests and
 explicit linked-successor recovery complete the planned native-enrichment
-slice.
+slice. One explicitly configured local tmux socket can now be discovered and
+one exact published session can be attached through the existing terminal
+workspace; keep-alive launch presets and automatic restart reattachment remain
+PC-071.
 
 Pacium Control now has an executable React application, loopback local server,
 direct-PTY session manager, typed WebSocket protocol, and automated terminal,
@@ -59,7 +62,7 @@ The secondary product is **Pacium mode**:
   canonical `*.ts.net` HTTPS Origin, bounded exact operator-login allowlist,
   canonical local-Origin isolation, exact remote Host/Origin/login checks,
   Funnel denial, and the unchanged ephemeral token for protected transport.
-- Protocol-22 per-socket Local or Tailscale/login evidence, plus one strict
+- Protocol-23 per-socket Local or Tailscale/login evidence, plus one strict
   nullable provider-observation snapshot per session, and a compact accessible
   connection badge that clears stale identity on disconnect.
 - Bounded xterm headless snapshots that let a new browser transport attach to a still-live PTY.
@@ -70,6 +73,11 @@ The secondary product is **Pacium mode**:
   and optional native resume-ID evidence. Detached manifests are separate from
   live sessions; explicit relaunch starts a fresh PTY and never resumes a
   provider automatically.
+- An optional one-socket tmux adapter with bounded executable/version/socket
+  capability evidence, fixed no-shell session discovery, exact target
+  revalidation, PTY-backed client attachment, explicit runtime labels, and
+  retained identity-only reattachment manifests. Direct PTYs remain the
+  default, and disconnecting a Pacium client never invokes `kill-session`.
 - A token-protected, read-only host directory browser with canonical paths,
   direct absolute-path navigation, repository markers, filtering,
   hidden-folder control, breadcrumbs, failure-safe browser-local recent
@@ -283,7 +291,8 @@ The secondary product is **Pacium mode**:
 - No multi-item parsing, provider-native acknowledgement/activity, worker
   launching/reconfiguration, task state, or causal decision-to-Git/terminal
   correlation.
-- No tmux adapter.
+- No launch-under-tmux keep-alive preset or automatic tmux reattachment after
+  local-server restart.
 
 Do not extrapolate from the working terminal slice to any capability in this list.
 
@@ -293,16 +302,23 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- `pnpm verify`: formatting, lint, type checking, 125 test files and 815 tests,
-  plus the 929.58 kB web JavaScript, 118.08 kB stylesheet, and 411.54 kB
+- `pnpm verify`: formatting, lint, type checking, 130 test files and 849 tests,
+  plus the 947.23 kB web JavaScript, 121.76 kB stylesheet, and 444.68 kB
   local-server production builds passed.
-- `pnpm test:e2e`: sixteen Chromium workflows passed for skip navigation, panel
+- `pnpm test:e2e`: eighteen Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
   changed-file/diff/history/Activity inspection, and configured verification
   run/reload/cancel without terminal reselection. General/Pacium coverage
   proved pointer, chord, palette, reload persistence, unchanged selected PTY
   and inspector context, configured-state presentation, and narrow layouts.
+- PC-070 focused contract, config, parser, real-socket, session-manager,
+  authenticated WebSocket, transport, action-semantics, and dialog tests
+  passed. Its isolated real-tmux Chromium workflow listed one server-owned
+  target, attached it without browser socket/argv authority, sent terminal
+  input, reconnected after reload, closed only the browser view, disconnected
+  only the tmux client, and then verified the external tmux server session was
+  still alive.
 - PC-063 focused evidence passed 39 activity-model, semantic-render, and
   terminal-excerpt tests. Its Chromium workflow exercised deterministic compact
   cards, all four source destinations, explicit terminal capture/refresh/hide,
@@ -453,8 +469,8 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-PC-065 and Milestone 4 are complete. Start PC-070 optional tmux discovery and
-explicit attachment, followed by PC-071 keep-alive. Complete the real Tailscale
-Serve/grants/Funnel/public canary, pinned Node.js 24 clean-install, CI, broader
-browser/security, manual accessibility, and sustained-output gates before
-release.
+PC-070 optional tmux discovery and explicit attachment is complete. Start
+PC-071 launch-under-tmux keep-alive and automatic restart reattachment.
+Complete the real Tailscale Serve/grants/Funnel/public canary, pinned Node.js
+24 clean-install, CI, broader browser/security, manual accessibility, and
+sustained-output gates before release.

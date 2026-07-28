@@ -2,6 +2,47 @@
 
 All notable changes to the Pacium Control blueprint are recorded here.
 
+## 0.40.0 — optional tmux attachment — 2026-07-28
+
+### Added
+
+- Protocol 23 bounded tmux capability, session observation, exact attach
+  request, runtime target, and relaunch-manifest contracts.
+- Optional `PACIUM_TMUX_SOCKET` configuration for one bounded absolute local
+  Unix socket, plus executable/version detection that never starts a server.
+- Fixed no-shell, timeout- and output-bounded `list-sessions` discovery with
+  strict identities, safe text, duplicate rejection, and exact target
+  revalidation before fixed `attach-session` argv.
+- PTY-backed tmux clients that reuse terminal input, resize, snapshots,
+  refresh reconnect, tabs, splits, focus, repository context, and retained
+  attachment manifests while keeping direct PTYs as the default.
+- A compact `Attach tmux` dialog with loading, empty, unavailable, retry,
+  selection, observed-time, revalidation, and explicit client/server lifecycle
+  copy. Session actions never claim that closing the Pacium client kills the
+  external tmux server session.
+
+### Verified
+
+- `pnpm verify` passed formatting, lint, every workspace type check, 130 test
+  files and 849 tests, plus the 947.23 kB web JavaScript, 121.76 kB stylesheet,
+  and 444.68 kB local-server production bundles.
+- `pnpm test:e2e` passed all 18 Chromium workflows. The PC-070 isolated tmux
+  3.7b canary discovered and selected one published target, attached it,
+  exercised terminal input and browser reload, closed only the browser view,
+  disconnected only the client, and verified the external session still
+  existed afterward.
+
+### Known limitations
+
+- PC-070 attaches existing sessions only. PC-071 owns launch-under-tmux
+  keep-alive and automatic reattachment after local-server restart.
+- One startup-configured socket is supported; browser-selected sockets,
+  multiple servers, window/pane mutation, and `kill-session` are intentionally
+  unavailable.
+- Verification ran on Node.js 26.4.0 rather than pinned Node.js 24.18.x. The
+  web build retains Vite's chunk-size warning; packaging and remaining release
+  gates are PC-072 through PC-076.
+
 ## 0.39.0 — durable relaunch manifests — 2026-07-28
 
 ### Added
