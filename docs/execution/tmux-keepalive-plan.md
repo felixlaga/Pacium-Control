@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `e498da8d2e4c2e7ea29ae88dc5b8f7af188f962c`
 - Target milestone: Milestone 5 — Durability, packaging, and polish
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -132,6 +132,27 @@ revalidates sequentially, and creates fresh linked Pacium client identities.
 ## Open questions
 
 - None.
+
+## Completion evidence
+
+Completed on 2026-07-28.
+
+- Protocol 24, manifest, adapter, manager, transport, WebSocket, UI, recovery,
+  and lifecycle-focused tests pass.
+- The isolated real tmux 3.7b and real-PTY integration launches a fixed shell,
+  observes input, detaches the exact client, restarts the manager, restores one
+  fresh predecessor-linked client, deliberately closes it, and confirms the
+  target still exists. Missing, direct, external/manual, duplicate, and stale
+  manifests remain excluded from automatic restoration.
+- Chromium verifies the option is ready-only, explicit, and unchecked. The
+  existing external tmux workflow continues to prove terminal input, browser
+  reload, browser-view close, exact-client disconnect, and target survival.
+- `pnpm verify` passed 131 test files and 859 tests. Production bundles are
+  949.29 kB web JavaScript, 122.44 kB CSS, and 457.78 kB local-server
+  JavaScript.
+- `pnpm test:e2e` passed all 19 Chromium workflows.
+- Verification used Node.js 26.4.0 rather than supported Node.js 24.18.x.
+  PC-072 through PC-076 remain open; no release claim is made.
 
 ## Approval
 
