@@ -770,6 +770,25 @@ describe("SessionManager", () => {
     expect(factory.processes[0]?.signals).toEqual(["SIGTERM"]);
     factory.processes[0]?.emitExit(143, 15);
     expect(manager.list()).toHaveLength(0);
+    expect(factory.processes[0]?.dataListenerCount).toBe(0);
+    expect(factory.processes[0]?.exitListenerCount).toBe(0);
+  });
+
+  it("releases PTY listeners during server shutdown", async () => {
+    const factory = new FakePtyFactory();
+    const manager = createManager(factory);
+    await manager.create({
+      cwd: process.cwd(),
+      launchPreset: "shell",
+      cols: 80,
+      rows: 24,
+    });
+
+    expect(factory.processes[0]?.dataListenerCount).toBe(1);
+    expect(factory.processes[0]?.exitListenerCount).toBe(1);
+    await manager.shutdown();
+    expect(factory.processes[0]?.dataListenerCount).toBe(0);
+    expect(factory.processes[0]?.exitListenerCount).toBe(0);
   });
 
   it("renames session metadata and emits an updated summary", async () => {

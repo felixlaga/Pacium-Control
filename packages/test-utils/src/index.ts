@@ -15,6 +15,14 @@ export class FakePty {
     this.pid = pid;
   }
 
+  public get dataListenerCount(): number {
+    return this.dataListeners.size;
+  }
+
+  public get exitListenerCount(): number {
+    return this.exitListeners.size;
+  }
+
   public onData(listener: (data: string) => void): { dispose(): void } {
     this.dataListeners.add(listener);
     return {

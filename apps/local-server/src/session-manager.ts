@@ -66,6 +66,7 @@ const { Terminal: HeadlessTerminal } = require("@xterm/headless") as {
 interface ManagedSession {
   summary: SessionSummary;
   pty: PtyProcess;
+  ptySubscriptions: Array<{ dispose(): void }>;
   terminal: HeadlessTerminalInstance;
   serializer: SerializeAddonInstance;
   writeChain: Promise<void>;
@@ -709,6 +710,7 @@ export class SessionManager {
         exitSignal: null,
       },
       pty,
+      ptySubscriptions: [],
       terminal,
       serializer,
       writeChain: Promise.resolve(),
@@ -719,12 +721,14 @@ export class SessionManager {
 
     this.sessions.set(id, session);
 
-    pty.onData((data) => {
-      this.handleData(session, data);
-    });
-    pty.onExit((event) => {
-      this.handleExit(session, event.exitCode, event.signal);
-    });
+    session.ptySubscriptions.push(
+      pty.onData((data) => {
+        this.handleData(session, data);
+      }),
+      pty.onExit((event) => {
+        this.handleExit(session, event.exitCode, event.signal);
+      }),
+    );
 
     return { ...session.summary };
   }
@@ -1011,6 +1015,9 @@ export class SessionManager {
           session.pty.kill("SIGHUP");
         }
       }
+      for (const subscription of session.ptySubscriptions) {
+        subscription.dispose();
+      }
       session.terminal.dispose();
     }
     await Promise.all(detachments);
@@ -1158,6 +1165,9 @@ export class SessionManager {
     this.verificationRuns.delete(session.summary.id);
     this.claudeObserver?.release(session.summary.id);
     this.codexObserver?.release(session.summary.id);
+    for (const subscription of session.ptySubscriptions) {
+      subscription.dispose();
+    }
     session.terminal.dispose();
     this.sessions.delete(session.summary.id);
     const event: SessionEvent =
