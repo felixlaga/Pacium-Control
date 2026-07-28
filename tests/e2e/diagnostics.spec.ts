@@ -129,6 +129,23 @@ test("diagnostics preview and local export preserve terminal state across routin
   await dialog.getByRole("button", { name: "Close diagnostics" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(terminal.locator(".xterm-rows")).toContainText(terminalMarker);
+
+  await page.evaluate(() => {
+    document.documentElement.style.zoom = "1";
+  });
+  await page.setViewportSize({ height: 720, width: 1280 });
+  await page.emulateMedia({
+    forcedColors: "none",
+    reducedMotion: "no-preference",
+  });
+  page.once("dialog", (confirmation) => confirmation.accept());
+  await page.getByRole("button", { name: "Actions", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Terminate process and close" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Open first terminal" }),
+  ).toBeVisible();
 });
 
 async function openTerminal(page: Page) {
