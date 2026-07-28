@@ -3181,7 +3181,8 @@ export function App() {
               {recoveryManifests.map((manifest) => (
                 <li key={manifest.id}>
                   <button
-                    className="session-item recovery-item"
+                    aria-label={`Preview recovery for ${manifest.displayName}`}
+                    className="recovery-item"
                     onClick={(event) =>
                       openRelaunchManifest(manifest, event.currentTarget)
                     }

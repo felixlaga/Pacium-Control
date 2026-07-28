@@ -947,7 +947,22 @@ kbd {
 }
 
 .recovery-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  width: 100%;
   min-height: 44px;
+  padding: 8px 9px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.recovery-item:hover {
+  color: var(--text);
+  background: #ffffff08;
 }
 
 .recovery-icon {

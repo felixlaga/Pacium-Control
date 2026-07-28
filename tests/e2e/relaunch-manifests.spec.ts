@@ -29,9 +29,9 @@ test("previews a detached manifest and relaunches a fresh successor", async ({
   const sidebar = page.getByRole("complementary", {
     name: "Session navigation",
   });
-  const recovery = sidebar.getByRole("button", {
-    name: /Recovery fixture/,
-  });
+  const recovery = sidebar
+    .locator(".recovery-item")
+    .filter({ hasText: "Recovery fixture" });
   await expect(recovery).toBeVisible();
   await recovery.click();
 
@@ -50,8 +50,6 @@ test("previews a detached manifest and relaunches a fresh successor", async ({
   await recovery.click();
   await preview.getByRole("button", { name: "Start fresh process" }).click();
   await expect(workspaceStatus).toContainText("Recovery fixture");
-  await expect(
-    sidebar.getByText("No detached process manifests need recovery."),
-  ).toBeVisible();
+  await expect(recovery).toHaveCount(0);
   await expect(terminal.locator(".xterm-helper-textarea")).toBeVisible();
 });
