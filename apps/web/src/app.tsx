@@ -26,6 +26,9 @@ import type {
   ServerMessage,
   SessionSummary,
   TerminalDataFrame,
+  TmuxCapability,
+  TmuxSessionsObservation,
+  TmuxTarget,
 } from "@pacium/contracts";
 
 import { ConnectionBadge } from "./connection-badge.js";
@@ -42,6 +45,7 @@ import {
 import { DirectoryPicker } from "./directory-picker.js";
 import { handleModalKeyDown } from "./modal-focus.js";
 import { AgentClassificationCard } from "./agent-classification.js";
+import { TmuxAttachDialog } from "./tmux-attach-dialog.js";
 import { sessionAccessibleName } from "./agent-classification-model.js";
 import { AttentionEvidenceCard } from "./attention.js";
 import {
@@ -289,6 +293,14 @@ const INITIAL_LAUNCH_PRESETS: LaunchPresetCapability[] = [
   },
 ];
 
+const INITIAL_TMUX_CAPABILITY: TmuxCapability = {
+  state: "unconfigured",
+  serverId: null,
+  executable: null,
+  version: null,
+  detail: "Waiting for the local server.",
+};
+
 const TERMINAL_TABS_STORAGE_KEY = "pacium.terminalTabs";
 const SPLIT_LAYOUT_STORAGE_KEY = "pacium.splitLayout";
 
@@ -302,6 +314,9 @@ export function App() {
   );
   const actionInvokerRef = useRef<HTMLElement | null>(null);
   const createInvokerRef = useRef<HTMLElement | null>(null);
+  const tmuxInvokerRef = useRef<HTMLElement | null>(null);
+  const tmuxListRequestRef = useRef<string | null>(null);
+  const tmuxAttachRequestRef = useRef<string | null>(null);
   const paletteInvokerRef = useRef<HTMLElement | null>(null);
   const panelViewRef = useRef<ReturnType<typeof loadPanelView> | null>(null);
   const renameInvokerRef = useRef<HTMLElement | null>(null);
@@ -345,6 +360,15 @@ export function App() {
   });
   const [defaultCwd, setDefaultCwd] = useState("");
   const [launchPresets, setLaunchPresets] = useState(INITIAL_LAUNCH_PRESETS);
+  const [tmuxCapability, setTmuxCapability] = useState(
+    INITIAL_TMUX_CAPABILITY,
+  );
+  const [tmuxObservation, setTmuxObservation] =
+    useState<TmuxSessionsObservation | null>(null);
+  const [tmuxOpen, setTmuxOpen] = useState(false);
+  const [tmuxLoading, setTmuxLoading] = useState(false);
+  const [tmuxAttaching, setTmuxAttaching] = useState(false);
+  const [tmuxError, setTmuxError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [capturedPaneId, setCapturedPaneId] = useState<string | null>(null);
@@ -473,6 +497,18 @@ export function App() {
       setConnection(event.state);
       if (event.state !== "connected") {
         setConnectionAccess(null);
+        if (
+          tmuxListRequestRef.current !== null ||
+          tmuxAttachRequestRef.current !== null
+        ) {
+          tmuxListRequestRef.current = null;
+          tmuxAttachRequestRef.current = null;
+          setTmuxLoading(false);
+          setTmuxAttaching(false);
+          setTmuxError(
+            "The tmux request outcome is unknown after disconnect. Refresh the list before another attachment.",
+          );
+        }
         const pendingRoleLaunch = pendingPaciumRoleLaunchRef.current;
         if (pendingRoleLaunch !== null) {
           pendingPaciumRoleLaunchRef.current = null;
@@ -611,6 +647,30 @@ export function App() {
     }
     if (event.message.type === "server.welcome") {
       setConnectionAccess(event.message.connection);
+      setTmuxCapability(event.message.capabilities.tmux);
+    }
+    if (
+      event.message.type === "tmux.sessions" &&
+      event.message.requestId === tmuxListRequestRef.current
+    ) {
+      tmuxListRequestRef.current = null;
+      setTmuxLoading(false);
+      setTmuxError(null);
+      setTmuxObservation(event.message.observation);
+      return;
+    }
+    if (
+      event.message.type === "session.created" &&
+      event.message.requestId === tmuxAttachRequestRef.current
+    ) {
+      tmuxAttachRequestRef.current = null;
+      setTmuxAttaching(false);
+      setTmuxOpen(false);
+      setTmuxError(null);
+      setNotice(
+        `${event.message.session.displayName} attached through tmux. Closing this client will not kill the tmux server session.`,
+      );
+      restoreControlFocus(tmuxInvokerRef, "attach-tmux-trigger");
     }
     if (event.message.type === "command.result") {
       const currentPrompt = paciumPromptRef.current;
@@ -1011,6 +1071,20 @@ export function App() {
       event.message.type === "error" &&
       event.message.requestId !== undefined
     ) {
+      if (event.message.requestId === tmuxListRequestRef.current) {
+        tmuxListRequestRef.current = null;
+        setTmuxLoading(false);
+        setTmuxError(event.message.message);
+        return;
+      }
+      if (event.message.requestId === tmuxAttachRequestRef.current) {
+        tmuxAttachRequestRef.current = null;
+        setTmuxAttaching(false);
+        setTmuxError(
+          `${event.message.message} No attachment was retried automatically.`,
+        );
+        return;
+      }
       const rejectedContext = rejectPaciumContextResponse(
         paciumContextRef.current,
         event.message.requestId,
@@ -2262,6 +2336,63 @@ export function App() {
     restoreControlFocus(createInvokerRef, "new-terminal-trigger");
   };
 
+  const refreshTmuxSessions = () => {
+    const transport = transportRef.current;
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      tmuxListRequestRef.current !== null ||
+      tmuxAttachRequestRef.current !== null
+    ) {
+      setTmuxError(
+        "A live Pacium connection is required to inspect tmux sessions.",
+      );
+      return;
+    }
+    setTmuxError(null);
+    setTmuxLoading(true);
+    tmuxListRequestRef.current = transport.listTmuxSessions();
+  };
+
+  const openTmuxDialog = () => {
+    tmuxInvokerRef.current = activeControl("attach-tmux-trigger");
+    setCapturedPaneId(null);
+    setTmuxOpen(true);
+    setTmuxObservation(null);
+    refreshTmuxSessions();
+  };
+
+  const closeTmuxDialog = () => {
+    if (tmuxAttaching) {
+      return;
+    }
+    setTmuxOpen(false);
+    setTmuxError(null);
+    restoreControlFocus(tmuxInvokerRef, "attach-tmux-trigger");
+  };
+
+  const attachTmuxSession = (target: TmuxTarget) => {
+    const transport = transportRef.current;
+    if (
+      connection !== "connected" ||
+      transport === null ||
+      tmuxAttachRequestRef.current !== null
+    ) {
+      setTmuxError(
+        "A live Pacium connection is required to attach this tmux target.",
+      );
+      return;
+    }
+    setTmuxError(null);
+    setTmuxAttaching(true);
+    tmuxAttachRequestRef.current = transport.attachTmux(
+      target.serverId,
+      target.sessionId,
+      100,
+      30,
+    );
+  };
+
   const openSessionActions = (sessionId: string) => {
     actionInvokerRef.current = activeControl("session-actions-trigger");
     setCapturedPaneId(null);
@@ -3055,6 +3186,19 @@ export function App() {
           <span aria-hidden="true">＋</span>
           New terminal
         </button>
+        {tmuxCapability.state !== "unconfigured" && (
+          <button
+            className="attach-tmux-button"
+            disabled={tmuxOpen}
+            id="attach-tmux-trigger"
+            onClick={openTmuxDialog}
+            type="button"
+          >
+            <span aria-hidden="true">⌁</span>
+            Attach tmux
+            <small>{tmuxCapability.state}</small>
+          </button>
+        )}
 
         <nav aria-label="Terminal sessions" className="session-navigation">
           {workspaceMode === "pacium" && (
@@ -3823,6 +3967,19 @@ export function App() {
           loadDirectories={loadDirectories}
           onCancel={closeCreateDialog}
           onCreate={createSession}
+        />
+      )}
+      {tmuxOpen && (
+        <TmuxAttachDialog
+          attaching={tmuxAttaching}
+          capability={tmuxCapability}
+          connected={connection === "connected"}
+          error={tmuxError}
+          loading={tmuxLoading}
+          observation={tmuxObservation}
+          onAttach={attachTmuxSession}
+          onCancel={closeTmuxDialog}
+          onRefresh={refreshTmuxSessions}
         />
       )}
       {editingPaciumRole !== null && paciumRoleBindingOptions !== null && (
