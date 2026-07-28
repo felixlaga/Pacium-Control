@@ -53,6 +53,25 @@ Deterministic repository tests prove the loopback and proxy-shaped application
 boundary. A real owner tailnet canary, supported-runtime clean install, and
 public/Funnel/grant/revocation exercise remain Milestone-5 release evidence.
 
+## Implemented tmux attachment slice
+
+PC-070 completes the explicit attachment half of criteria 1 and 2:
+
+- Direct PTYs remain the default and tmux remains unconfigured unless one
+  absolute local Unix socket is supplied at startup.
+- Protocol 23 exposes bounded capability and session observations; the browser
+  sends only an exact published server/session identity and dimensions.
+- The server uses fixed no-shell discovery and attach argv, revalidates the
+  target, and runs the client through the existing PTY input, resize, snapshot,
+  tab, split, and reconnect pipeline.
+- Runtime and close copy distinguish the Pacium-owned tmux client from the
+  external server session. Pacium never invokes `kill-session`.
+- An isolated tmux 3.7b browser canary proves explicit attach, input, browser
+  reload, view close, client disconnect, and surviving external session state.
+
+PC-071 still owns launch-under-tmux keep-alive and automatic reattachment after
+local-server restart.
+
 ## Demo
 
 Install the packaged application on a clean account, run a sustained multi-session workflow, restart the browser and local server, reconnect optional tmux-backed sessions, operate Pacium mode, and remove the application without deleting repositories or provider credentials.

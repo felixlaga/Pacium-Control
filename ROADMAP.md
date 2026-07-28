@@ -122,7 +122,7 @@ See [Milestone 4](docs/execution/milestone-4-agent-integrations.md).
 
 Deliverables:
 
-- optional tmux attachment and keep-alive mode;
+- optional tmux attachment (PC-070 complete) and keep-alive mode (PC-071);
 - optional Tailscale Serve access with verified operator identity;
 - startup recovery and honest ended-session handling;
 - bounded diagnostic export;
