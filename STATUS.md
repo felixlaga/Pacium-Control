@@ -32,15 +32,22 @@ defaults, deterministic manifest/checksum, safe package lifecycle, source-built
 x64 native-PTY verification, and pinned hosted Linux verification. The Linux
 artifact is explicitly unsigned, not distro-native, and not a broader Linux
 compatibility claim.
+PC-076 completes the defined roadmap with an evidence-backed `NO-GO` release
+assessment. The exact-source macOS build, deterministic native PTY and package,
+full automated suite, soak, browser workflows, tracked-secret scan, and package
+inventory are green. Pacium remains a Development snapshot because the current
+registry advisory audit, fresh-account run, signing/notarization, real
+tailnet/provider canaries, manual accessibility/sustained use, and owner
+release acceptance are not evidenced.
 
 Pacium Control now has an executable React application, loopback local server,
 direct-PTY session manager, typed WebSocket protocol, and automated terminal,
 Git, queue, and Pacium-context tests. This proves the bounded local
-compatibility workflow described below; it does not prove provider management,
-manual real-provider Claude/Codex canaries, a real deployed
-tailnet/grants/public boundary, durable direct PTYs, broader Linux
-distribution/architecture support, signing, notarization, or release
-readiness.
+compatibility workflow described below. It does not prove manual real-provider
+Claude/Codex canaries, a real deployed tailnet/grants/public boundary, durable
+direct PTYs, broader Linux distribution/architecture support, signing,
+notarization, or release acceptance. The release audit is complete; its
+decision is `NO-GO`.
 
 ## Product direction
 
@@ -121,6 +128,11 @@ The secondary product is **Pacium mode**:
   user-local `pacium` link, strict manifest/checksum, no-sudo XDG install,
   staged upgrade/rollback, active-process refusal, and exact owned uninstall.
   It is not distro-native and makes no claim for another Linux target.
+- A bounded release preflight and candidate-specific PC-076 assessment that
+  distinguish pass, fail, blocked, not-applicable, and not-run evidence. The
+  preflight fails closed on unsupported hosts/runtimes, dirty source,
+  forbidden tracked or archive paths, missing contracts, checksum/manifest
+  mismatch, and unsupported distribution claims without emitting content.
 - A token-protected, read-only host directory browser with canonical paths,
   direct absolute-path navigation, repository markers, filtering,
   hidden-folder control, breadcrumbs, failure-safe browser-local recent
@@ -343,8 +355,9 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- Supported Node.js 24.18.0 `pnpm verify`: formatting, lint, type checking, 141
-  test files and 922 tests, plus the 967.23 kB web JavaScript, 128.54 kB
+- Supported Node.js 24.18.0 exact-source `pnpm verify`: formatting, lint, type
+  checking, 142 test files and 930 tests, plus the 967.23 kB web JavaScript,
+  128.54 kB
   stylesheet, and the split local-server production build passed.
 - `pnpm test:e2e`: twenty Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
@@ -382,14 +395,22 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
   across Back, Escape, direct routing, and browser reload; kept last-good state
   after a failed refresh; and covered 200% zoom, forced colors, reduced motion,
   focus restoration, and isolated PTY cleanup.
-- PC-074 `pnpm package:macos:verify` deterministically rebuilt
-  `pacium-control-0.0.0-darwin-arm64.tar.gz` at 576,781 bytes with SHA-256
-  `c19403a7ff7dee64fbb63ce3f3566763552eb0e762b2d284a7327194843f7c92`
+- PC-076 `pnpm package:macos:verify` deterministically rebuilt
+  `pacium-control-0.0.0-darwin-arm64.tar.gz` from separate source roots at
+  573,683 bytes with SHA-256
+  `923fe2f41533eee7c8591999002d783212e679545e959aca6ceba8d96415075c`
   and 28 manifested files. The isolated installed package loaded arm64
   `pty.node`/`spawn-helper`, exchanged Unicode terminal data, resized and
   closed the PTY, installed/upgraded, served exact production health/assets,
   reused a verified running instance, refused active uninstall, uninstalled
   idempotently, and preserved state/repository/provider/tmux sentinels.
+- PC-076 separate source roots produced identical loadable native files:
+  `pty.node` SHA-256
+  `50d506c692c05c2037450b88f550ff0ba9ea1aed0b4f2e15b9b2ad529a237ea3`
+  and `spawn-helper` SHA-256
+  `5f581b5794183c8783108fbdff0f570de48cab0a91506ee27048f310e6a25c2d`.
+  One release gate now rejects source/debug symbol metadata while retaining the
+  Mach-O UUID and ad-hoc signature required to load on macOS.
 - PC-075’s pinned Ubuntu 24.04.4 x64 workflow used Node.js 24.18.0 and pnpm
   11.17.0 with a frozen source-native install. It passed 141 test files and 922
   tests, the full production build, an x64 real-PTY lifecycle soak, Linux
@@ -522,7 +543,8 @@ Evidence boundaries:
   and PC-038 workflows. The connected in-app browser backend remained
   unavailable, so manual visual, screen-reader, and full type/refresh/close
   terminal review are still open.
-- The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
+- The Xcode license check passes on the current development account. That does
+  not substitute for the blocked fresh-account package exercise.
 - `node-pty` is compiled from pinned sources on each supported target. The
   package builders require the matching arm64 or x64 native module and copy
   only its recognized runtime files.
@@ -549,24 +571,27 @@ Evidence boundaries:
 11. Questions and approvals remain distinct.
 12. Tailscale Serve is the only supported remote ingress; public access, multi-user authorization, and multi-host coordination remain out of scope.
 
-## Open release evidence
+## Blocked release evidence
 
 - Confirm Node.js 24 and the source-built packaged `node-pty` on a clean
   supported macOS account with the Xcode license accepted.
-- Complete browser, accessibility, terminal-escape, and sustained-output testing.
+- Complete manual screen-reader, visual, terminal-lifecycle, and sustained-use
+  acceptance; automated browser/accessibility and bounded soak evidence is
+  already green.
 - Complete the real Tailscale Serve/grants/Funnel/public/revocation canary.
-- Complete Developer ID signing, notarization, and owner acceptance under
-  PC-076.
+- Complete real Claude Code and Codex canaries.
+- Run an explicitly authorized current dependency advisory audit.
+- Complete Developer ID signing, notarization, and explicit owner release
+  acceptance.
 
 The runtime, package manager, application stack, and exact supported hosts are
 fixed in [the toolchain decision](docs/execution/toolchain-and-platform.md).
 
 ## Next action
 
-PC-075 Ubuntu 24.04 x64 validation is complete. Run PC-076 release-readiness
-evidence without extending the host matrix or claiming signing, notarization,
-real-tailnet, clean-account, manual accessibility, or owner acceptance before
-those exact gates pass.
-Complete the real Tailscale Serve/grants/Funnel/public canary, pinned Node.js
-24 clean-install, CI, broader browser/security, manual accessibility, and
-sustained-output gates before release.
+The defined implementation roadmap ends at PC-076 and is complete. Do not
+start follow-on implementation or publication from this status. A future
+release attempt begins only when the owner supplies the explicit authority and
+real evidence listed in the
+[PC-076 assessment](docs/execution/release-readiness-assessment.md); until then,
+keep using and describing Pacium as a Development snapshot.
