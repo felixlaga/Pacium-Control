@@ -41,6 +41,7 @@ const REQUIRED_SOURCE_PATHS = [
   "packaging/macos/uninstall.sh",
   "packaging/macos/verify.mjs",
   "docs/decisions/ADR-0017-supported-hosts-and-development-packages.md",
+  "docs/execution/release-readiness-assessment.md",
   "docs/execution/release-readiness-issue.md",
   "docs/execution/release-readiness-plan.md",
 ];
