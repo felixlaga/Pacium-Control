@@ -329,6 +329,33 @@ describe("session create correlation", () => {
     });
   });
 
+  it("adds only an explicit keep-alive boolean to fixed session creation", () => {
+    expect(
+      sessionCreateMessage(
+        {
+          cwd: "/work/pacium",
+          displayName: "Durable Codex",
+          launchPreset: "codex",
+          cols: 100,
+          rows: 30,
+          keepAlive: true,
+        },
+        "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      ),
+    ).toEqual({
+      type: "session.create",
+      requestId: "66bd01dc-a1c3-4341-9c3c-153027b7f098",
+      payload: {
+        cwd: "/work/pacium",
+        displayName: "Durable Codex",
+        launchPreset: "codex",
+        cols: 100,
+        rows: 30,
+        keepAlive: true,
+      },
+    });
+  });
+
   it("does not manufacture an optional display name", () => {
     expect(
       sessionCreateMessage(

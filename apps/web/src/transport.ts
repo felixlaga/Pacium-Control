@@ -85,6 +85,7 @@ export class PaciumTransport {
     launchPreset: LaunchPresetId;
     cols: number;
     rows: number;
+    keepAlive?: boolean;
   }): string {
     const requestId = crypto.randomUUID();
     this.send(sessionCreateMessage(input, requestId));
@@ -655,18 +656,20 @@ export function sessionCreateMessage(
     launchPreset: LaunchPresetId;
     cols: number;
     rows: number;
+    keepAlive?: boolean;
   },
   requestId: string,
 ): Extract<ClientMessage, { type: "session.create" }> {
-  const payload =
-    input.displayName === undefined
-      ? {
-          cwd: input.cwd,
-          launchPreset: input.launchPreset,
-          cols: input.cols,
-          rows: input.rows,
-        }
-      : input;
+  const payload = {
+    cwd: input.cwd,
+    launchPreset: input.launchPreset,
+    cols: input.cols,
+    rows: input.rows,
+    ...(input.displayName === undefined
+      ? {}
+      : { displayName: input.displayName }),
+    ...(input.keepAlive === undefined ? {} : { keepAlive: input.keepAlive }),
+  };
   return {
     type: "session.create",
     requestId,
