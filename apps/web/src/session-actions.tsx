@@ -393,8 +393,8 @@ export function RelaunchSessionDialog({
             <div>
               <dt>Restart policy</dt>
               <dd>
-                Reattach this exact target automatically · never rerun a
-                missing command
+                Reattach this exact target automatically · never rerun a missing
+                command
               </dd>
             </div>
           )}

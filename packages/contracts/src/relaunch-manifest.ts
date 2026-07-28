@@ -88,8 +88,7 @@ export const RelaunchManifestSchema = z
       });
     }
     if (
-      (manifest.runtime === "pty" &&
-        (manifest.tmuxMode ?? null) !== null) ||
+      (manifest.runtime === "pty" && (manifest.tmuxMode ?? null) !== null) ||
       (manifest.runtime === "tmux" && manifest.tmuxMode === null)
     ) {
       context.addIssue({

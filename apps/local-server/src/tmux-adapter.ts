@@ -322,13 +322,7 @@ export class TmuxAdapter {
       }
       return {
         executable: this.executable,
-        args: [
-          "-S",
-          this.socketPath,
-          "attach-session",
-          "-t",
-          target.sessionId,
-        ],
+        args: ["-S", this.socketPath, "attach-session", "-t", target.sessionId],
         cwd: input.cwd,
         target,
         mode: "keep_alive",

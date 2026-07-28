@@ -1138,8 +1138,7 @@ export const SessionSummarySchema = z
       session.runtime !== session.relaunchManifest.runtime ||
       JSON.stringify(session.tmuxTarget ?? null) !==
         JSON.stringify(session.relaunchManifest.tmuxTarget ?? null) ||
-      (session.tmuxMode ??
-        (session.runtime === "tmux" ? "attached" : null)) !==
+      (session.tmuxMode ?? (session.runtime === "tmux" ? "attached" : null)) !==
         (session.relaunchManifest.tmuxMode ??
           (session.runtime === "tmux" ? "attached" : null))
     ) {
