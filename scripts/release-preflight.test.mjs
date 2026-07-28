@@ -6,6 +6,7 @@ import {
   inspectArchivePaths,
   inspectTrackedPaths,
   isForbiddenReleasePath,
+  parseLinuxHostContract,
   validateReleaseManifest,
 } from "./release-preflight-contract.mjs";
 
@@ -79,6 +80,24 @@ describe("release preflight contract", () => {
         engines: { node: ">=24" },
       }),
     ).toThrow("package-manager pins");
+  });
+
+  it("reads the stable Ubuntu version identifier instead of display text", () => {
+    expect(
+      parseLinuxHostContract(
+        [
+          'PRETTY_NAME="Ubuntu 24.04.4 LTS"',
+          "ID=ubuntu",
+          'VERSION_ID="24.04"',
+          'VERSION="24.04.4 LTS (Noble Numbat)"',
+          "",
+        ].join("\n"),
+      ),
+    ).toEqual({ name: "Ubuntu", version: "24.04" });
+    expect(parseLinuxHostContract('ID=debian\nVERSION_ID="12"\n')).toEqual({
+      name: "Unsupported",
+      version: "12",
+    });
   });
 
   it("rejects tracked runtime, state, environment, and key material paths", () => {

@@ -92,6 +92,20 @@ export function assertReleasePackageContract(packageJson) {
   }
 }
 
+export function parseLinuxHostContract(contents) {
+  const values = new Map();
+  for (const line of contents.split("\n")) {
+    const match = /^([A-Z_]+)=(?:"([^"]*)"|([^#\s]*))$/.exec(line);
+    if (match !== null) {
+      values.set(match[1].toLowerCase(), match[2] ?? match[3] ?? "");
+    }
+  }
+  return {
+    name: values.get("id") === "ubuntu" ? "Ubuntu" : "Unsupported",
+    version: values.get("version_id") ?? "",
+  };
+}
+
 export function inspectTrackedPaths(paths) {
   assertPathCollection(paths, MAX_TRACKED_FILES, "tracked");
   const forbidden = paths.filter(isForbiddenReleasePath);

@@ -11,6 +11,7 @@ import {
   assertReleaseRuntime,
   inspectArchivePaths,
   inspectTrackedPaths,
+  parseLinuxHostContract,
   preflightError,
   validateReleaseManifest,
 } from "./release-preflight-contract.mjs";
@@ -148,24 +149,9 @@ function loadHostContract() {
     };
   }
   if (platform() === "linux") {
-    const values = parseOsRelease(readFileSync("/etc/os-release", "utf8"));
-    return {
-      name: values.get("id") === "ubuntu" ? "Ubuntu" : "Unsupported",
-      version: values.get("version") ?? "",
-    };
+    return parseLinuxHostContract(readFileSync("/etc/os-release", "utf8"));
   }
   return { name: "Unsupported", version: "" };
-}
-
-function parseOsRelease(contents) {
-  const values = new Map();
-  for (const line of contents.split("\n")) {
-    const match = /^([A-Z_]+)=(?:"([^"]*)"|([^#\s]*))$/.exec(line);
-    if (match !== null) {
-      values.set(match[1].toLowerCase(), match[2] ?? match[3] ?? "");
-    }
-  }
-  return values;
 }
 
 async function assertRequiredSourcePaths() {
