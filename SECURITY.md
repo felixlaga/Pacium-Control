@@ -84,21 +84,24 @@ public-reachability gate.
 
 ## Package lifecycle safety
 
-- The macOS development package runs without `sudo` and accepts only absolute
-  non-root install parent directories.
-- Install and upgrade recognize the exact `com.pacium.control` bundle and
-  exact owned `pacium` symlink before replacing either.
+- The macOS and Ubuntu development packages run without `sudo` and accept only
+  absolute non-root install destinations.
+- Install and upgrade recognize the exact `com.pacium.control` bundle or
+  versioned Linux application tree plus the exact owned `pacium` symlink before
+  replacing either.
 - A complete sibling stage is validated before replacement; the prior bundle
-  remains available for rollback until the command link is committed.
+  or application tree remains available for rollback until the command link is
+  committed.
 - An ephemeral mode-0600 process lease proves whether the exact installed
   package is active without broad process enumeration. It contains only a PID
   and package-entry path, is never bundled, and is removed on normal exit.
-- Uninstall refuses symlinked or foreign bundle/link targets and never owns
-  Pacium state, repositories, provider credentials, queue files, or external
-  tmux sessions.
+- Uninstall refuses symlinked or foreign application/link targets and never
+  owns Pacium state, repositories, provider credentials, queue files, or
+  external tmux sessions.
 - Package manifests and checksums contain fixed relative file metadata only.
   Node.js and optional CLIs remain external, and the artifact is explicitly
-  unsigned/unnotarized until release signing evidence exists.
+  unsigned and not release-eligible until PC-076 accepts the signing and
+  delivery posture.
 
 ## Browser terminal safety
 

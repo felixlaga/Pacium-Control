@@ -38,9 +38,30 @@ Use this checklist for security-sensitive pull requests and milestone gates.
 - [x] The development manifest and `codesign` evidence both report unsigned,
       unnotarized, and not release-eligible.
 
-Residual release gates remain the PC-075 Linux path and PC-076 clean-account,
-signing/notarization, security, accessibility, and owner review. This checklist
-does not claim those gates.
+## PC-075 Ubuntu Linux package evidence
+
+- [x] The supported claim is exactly Ubuntu 24.04 x64 with external Node.js
+      24.18.x; other distributions, versions, architectures, services, and
+      root/global installation are explicitly unsupported.
+- [x] The builder fails closed outside linux-x64/Node 24.18.x and without
+      production assets or source-built x64 ELF `pty.node`.
+- [x] The manifest, checksum, CI logs, and short-retention artifact expose only
+      fixed code/file/scalar metadata and no environment, credential, terminal,
+      repository, queue, provider, state, operator, or host content.
+- [x] User-local install/upgrade/uninstall validate exact absolute destinations,
+      recognized tree/link ownership, sibling staging/rollback, and the private
+      active-process lease without `sudo`, service installation, or broad
+      process access.
+- [x] The hosted Ubuntu gate uses read-only repository permission, immutable
+      action revisions, a frozen source-native install, and a bounded job.
+- [x] Exact-head verification proves native PTY operation, production
+      health/assets, exact-instance reuse, active-uninstall refusal,
+      foreign-target denial, idempotent removal, external-state preservation,
+      lifecycle soak bounds, and the applicable Chromium workflows.
+
+Residual release gates remain PC-076 clean-account, signing/notarization,
+real-tailnet, security, accessibility, and owner review. This checklist does
+not claim those gates.
 
 ## Identity
 
