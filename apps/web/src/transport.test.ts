@@ -22,6 +22,8 @@ import {
   sessionCreateMessage,
   relaunchSessionMessage,
   terminalInputMessage,
+  tmuxSessionAttachMessage,
+  tmuxSessionsListMessage,
 } from "./transport.js";
 
 describe("repository transport", () => {
@@ -106,6 +108,26 @@ describe("repository transport", () => {
       requestId,
       sessionId,
       runId: "03c2723f-e87a-4707-86af-d6fdb1e60f47",
+    });
+  });
+});
+
+describe("tmux transport", () => {
+  it("sends only the published target identity and terminal dimensions", () => {
+    const requestId = "66bd01dc-a1c3-4341-9c3c-153027b7f098";
+    expect(tmuxSessionsListMessage(requestId)).toEqual({
+      type: "tmux.sessions.list",
+      requestId,
+    });
+    expect(
+      tmuxSessionAttachMessage("configured", "$4", 100, 30, requestId),
+    ).toEqual({
+      type: "tmux.session.attach",
+      requestId,
+      serverId: "configured",
+      sessionId: "$4",
+      cols: 100,
+      rows: 30,
     });
   });
 });

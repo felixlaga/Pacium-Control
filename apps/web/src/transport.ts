@@ -73,6 +73,12 @@ export class PaciumTransport {
     });
   }
 
+  public listTmuxSessions(): string {
+    const requestId = crypto.randomUUID();
+    this.send(tmuxSessionsListMessage(requestId));
+    return requestId;
+  }
+
   public createSession(input: {
     cwd: string;
     displayName?: string;
@@ -96,6 +102,25 @@ export class PaciumTransport {
   public relaunch(manifestId: string, cols: number, rows: number): string {
     const requestId = crypto.randomUUID();
     this.send(relaunchSessionMessage(manifestId, cols, rows, requestId));
+    return requestId;
+  }
+
+  public attachTmux(
+    serverId: string,
+    sessionId: string,
+    cols: number,
+    rows: number,
+  ): string {
+    const requestId = crypto.randomUUID();
+    this.send(
+      tmuxSessionAttachMessage(
+        serverId,
+        sessionId,
+        cols,
+        rows,
+        requestId,
+      ),
+    );
     return requestId;
   }
 
@@ -665,6 +690,32 @@ export function relaunchSessionMessage(
     type: "session.relaunch",
     requestId,
     manifestId,
+    cols,
+    rows,
+  };
+}
+
+export function tmuxSessionsListMessage(
+  requestId: string,
+): Extract<ClientMessage, { type: "tmux.sessions.list" }> {
+  return {
+    type: "tmux.sessions.list",
+    requestId,
+  };
+}
+
+export function tmuxSessionAttachMessage(
+  serverId: string,
+  sessionId: string,
+  cols: number,
+  rows: number,
+  requestId: string,
+): Extract<ClientMessage, { type: "tmux.session.attach" }> {
+  return {
+    type: "tmux.session.attach",
+    requestId,
+    serverId,
+    sessionId,
     cols,
     rows,
   };
