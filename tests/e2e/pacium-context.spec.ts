@@ -1,5 +1,5 @@
 import { rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
 
@@ -59,7 +59,7 @@ test("supervises configured workers and explicit control context without replaci
     name: /Worker alpha worker, Live process/,
   });
   await expect(liveWorker).toContainText("Shell");
-  await expect(liveWorker).toContainText("Pacium Control");
+  await expect(liveWorker).toContainText(basename(process.cwd()));
   await expect(liveWorker).toContainText("Not inspected");
   const reserveWorker = workers.getByRole("article", {
     name: /Reserve worker worker, Configured · not started/,
