@@ -1,7 +1,5 @@
 import { spawn } from "node:child_process";
 
-const OPEN_EXECUTABLE = "/usr/bin/open";
-
 export interface BrowserChild {
   once(event: "spawn", listener: () => void): BrowserChild;
   once(event: "error", listener: () => void): BrowserChild;
@@ -17,17 +15,29 @@ export type BrowserSpawner = (
   },
 ) => BrowserChild;
 
+export interface BrowserLaunchOptions {
+  platform?: NodeJS.Platform;
+  spawnBrowser?: BrowserSpawner;
+}
+
 export async function openPaciumBrowser(
   url: string,
-  spawnBrowser: BrowserSpawner = spawn,
+  {
+    platform = process.platform,
+    spawnBrowser = spawn,
+  }: BrowserLaunchOptions = {},
 ): Promise<boolean> {
   if (!isCanonicalPaciumUrl(url)) {
+    return false;
+  }
+  const executable = browserOpenExecutable(platform);
+  if (executable === null) {
     return false;
   }
 
   return await new Promise<boolean>((resolve) => {
     try {
-      const child = spawnBrowser(OPEN_EXECUTABLE, [url], {
+      const child = spawnBrowser(executable, [url], {
         detached: true,
         stdio: "ignore",
       });
@@ -50,6 +60,18 @@ export async function openPaciumBrowser(
       resolve(false);
     }
   });
+}
+
+export function browserOpenExecutable(
+  platform: NodeJS.Platform,
+): string | null {
+  if (platform === "darwin") {
+    return "/usr/bin/open";
+  }
+  if (platform === "linux") {
+    return "/usr/bin/xdg-open";
+  }
+  return null;
 }
 
 export function isCanonicalPaciumUrl(value: string): boolean {
