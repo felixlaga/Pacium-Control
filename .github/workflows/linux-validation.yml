@@ -55,6 +55,9 @@ jobs:
       - name: Build and verify Linux package
         run: pnpm package:linux:verify
 
+      - name: Verify release source and package inventory
+        run: pnpm release:preflight --artifacts
+
       - name: Install Chromium runtime
         run: pnpm exec playwright install --with-deps chromium
 
