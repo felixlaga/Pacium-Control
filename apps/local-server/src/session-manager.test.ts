@@ -116,14 +116,16 @@ class FixtureTmuxAdapter extends TmuxAdapter {
     );
   }
 
-  public override async attachSpec(
+  public override attachSpec(
     serverId: string,
     sessionId: string,
   ): Promise<TmuxAttachSpec> {
     if (serverId !== "configured" || sessionId !== "$7") {
-      throw new Error("The selected tmux session is no longer available.");
+      return Promise.reject(
+        new Error("The selected tmux session is no longer available."),
+      );
     }
-    return {
+    return Promise.resolve({
       executable: "/opt/test/bin/tmux",
       args: [
         "-S",
@@ -139,7 +141,7 @@ class FixtureTmuxAdapter extends TmuxAdapter {
         sessionName: "Meta",
         observedAt: "2026-07-28T10:00:00.000Z",
       },
-    };
+    });
   }
 }
 

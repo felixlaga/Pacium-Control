@@ -87,7 +87,7 @@ test("attaches, reconnects, and disconnects one external tmux session", async ({
     expect(confirmation.message()).toContain(
       "the tmux server session may continue",
     );
-    confirmation.accept();
+    void confirmation.accept();
   });
   await page
     .getByRole("button", { name: "Disconnect tmux client and close" })

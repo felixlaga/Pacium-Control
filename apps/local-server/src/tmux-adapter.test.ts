@@ -102,11 +102,12 @@ describe("tmux adapter", () => {
         TERM: "xterm-256color",
       });
 
-      expect(adapter.capability()).toMatchObject({
+      const capability = adapter.capability();
+      expect(capability).toMatchObject({
         state: "ready",
         serverId: "configured",
-        version: expect.stringMatching(/^tmux /),
       });
+      expect(capability.version).toMatch(/^tmux /);
       const observation = await adapter.discover();
       expect(observation).toMatchObject({
         status: "ready",
@@ -121,10 +122,8 @@ describe("tmux adapter", () => {
         ],
       });
       const target = observation.sessions[0]!.target;
-      await expect(
-        adapter.attachSpec(target.serverId, target.sessionId),
-      ).resolves.toMatchObject({
-        executable: expect.stringMatching(/\/tmux$/),
+      const spec = await adapter.attachSpec(target.serverId, target.sessionId);
+      expect(spec).toMatchObject({
         args: ["-S", socket, "attach-session", "-t", target.sessionId],
         target: {
           serverId: target.serverId,
@@ -132,6 +131,7 @@ describe("tmux adapter", () => {
           sessionName: target.sessionName,
         },
       });
+      expect(spec.executable).toMatch(/\/tmux$/);
     },
   );
 });

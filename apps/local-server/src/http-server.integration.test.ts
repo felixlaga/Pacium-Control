@@ -83,8 +83,8 @@ class FixtureTmuxAdapter extends TmuxAdapter {
     );
   }
 
-  public override async discover(): Promise<TmuxSessionsObservation> {
-    return {
+  public override discover(): Promise<TmuxSessionsObservation> {
+    return Promise.resolve({
       status: "ready",
       serverId: "configured",
       observedAt: "2026-07-28T10:00:00.000Z",
@@ -103,7 +103,7 @@ class FixtureTmuxAdapter extends TmuxAdapter {
         },
       ],
       error: null,
-    };
+    });
   }
 
   public override async attachSpec(

@@ -199,7 +199,7 @@ export async function createTmuxAdapter(
   if (executable === null) {
     return new TmuxAdapter(socketPath, null, null, environment);
   }
-  let version: string | null = null;
+  let version: string | null;
   try {
     const result = await execFileAsync(executable, ["-V"], {
       encoding: "utf8",
@@ -213,7 +213,7 @@ export async function createTmuxAdapter(
       ? candidate
       : null;
   } catch {
-    version = null;
+    return new TmuxAdapter(socketPath, executable, null, environment);
   }
   return new TmuxAdapter(socketPath, executable, version, environment);
 }
