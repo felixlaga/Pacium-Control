@@ -19,7 +19,7 @@ export type BrowserSpawner = (
 
 export async function openPaciumBrowser(
   url: string,
-  spawnBrowser: BrowserSpawner = spawn as BrowserSpawner,
+  spawnBrowser: BrowserSpawner = spawn,
 ): Promise<boolean> {
   if (!isCanonicalPaciumUrl(url)) {
     return false;

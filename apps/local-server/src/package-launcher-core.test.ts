@@ -70,7 +70,9 @@ describe("package launcher contract", () => {
         "x-pacium-protocol": String(PROTOCOL_VERSION),
       },
     });
-    const fetchImplementation = vi.fn<typeof fetch>(async () => validResponse);
+    const fetchImplementation = vi.fn<typeof fetch>(() =>
+      Promise.resolve(validResponse),
+    );
 
     await expect(
       probePaciumServer("http://127.0.0.1:4174", fetchImplementation),
@@ -99,7 +101,9 @@ describe("package launcher contract", () => {
     }),
   ])("rejects a foreign or malformed health response", async (response) => {
     await expect(
-      probePaciumServer("http://127.0.0.1:4174", async () => response),
+      probePaciumServer("http://127.0.0.1:4174", () =>
+        Promise.resolve(response),
+      ),
     ).resolves.toBe(false);
   });
 });

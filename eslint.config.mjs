@@ -38,6 +38,7 @@ export default tseslint.config(
     files: [
       "**/*.config.{js,mjs,ts}",
       "**/scripts/*.mjs",
+      "packaging/**/*.mjs",
       "playwright.config.ts",
     ],
     extends: [tseslint.configs.disableTypeChecked],

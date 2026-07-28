@@ -24,7 +24,7 @@ describe("browser launch", () => {
         stdio: "ignore",
       },
     );
-    expect(child.unref).toHaveBeenCalledOnce();
+    expect(child.unref.mock.calls).toHaveLength(1);
   });
 
   it("reports a launch error without throwing", async () => {

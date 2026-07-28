@@ -40,6 +40,7 @@ export function acquirePackageProcessLock({
       if (!isAlreadyExistsError(error) || attempt > 0) {
         throw new Error(
           "The Pacium package process lease could not be created.",
+          { cause: error },
         );
       }
       const existing = readExistingLock(lockPath);
@@ -50,6 +51,7 @@ export function acquirePackageProcessLock({
       ) {
         throw new Error(
           "Another Pacium package process owns the local process lease.",
+          { cause: error },
         );
       }
       unlinkSync(lockPath);
