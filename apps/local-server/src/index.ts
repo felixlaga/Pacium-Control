@@ -1,4 +1,5 @@
 import { buildChildEnvironment, loadServerConfig } from "./config.js";
+import { openPaciumBrowser } from "./browser-launch.js";
 import { ClaudeObserver, detectClaudeVersion } from "./claude-observer.js";
 import { CodexObserver, detectCodexRuntime } from "./codex-observer.js";
 import { CodexRuntimeBridge } from "./codex-runtime-bridge.js";
@@ -82,9 +83,17 @@ const application = createPaciumHttpServer(
 );
 
 application.server.listen(config.port, config.host, () => {
-  process.stdout.write(
-    `Pacium Control is running at http://${config.host}:${config.port}\n`,
-  );
+  const url = `http://${config.host}:${config.port}`;
+  process.stdout.write(`Pacium Control is running at ${url}\n`);
+  if (process.env.PACIUM_OPEN_BROWSER === "1") {
+    void openPaciumBrowser(url).then((opened) => {
+      if (!opened) {
+        process.stderr.write(
+          `Pacium Control is running at ${url}, but its browser window could not be opened.\n`,
+        );
+      }
+    });
+  }
 });
 
 let shuttingDown = false;
