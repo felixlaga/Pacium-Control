@@ -95,9 +95,9 @@ describe("attention inbox state", () => {
       );
     }
     expect(state.entries).toHaveLength(200);
-    expect(
-      cursorEntry(state, "session-200").notifiedKey,
-    ).toContain("failed:process:high");
+    expect(cursorEntry(state, "session-200").notifiedKey).toContain(
+      "failed:process:high",
+    );
   });
 
   it("builds minimal notification copy without terminal details", () => {
