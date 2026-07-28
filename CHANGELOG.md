@@ -31,7 +31,7 @@ All notable changes to the Pacium Control blueprint are recorded here.
   pass. A restart fixture proves the retained manifest remains available while
   no direct PTY is claimed live.
 - `pnpm verify` passed formatting, lint, every workspace type check, 127 test
-  files and 831 tests, plus the 937.54 kB web JavaScript, 118.95 kB stylesheet,
+  files and 831 tests, plus the 937.58 kB web JavaScript, 119.17 kB stylesheet,
   and 428.72 kB local-server production bundles.
 - `pnpm test:e2e` passed all 17 Chromium workflows. PC-065 exits and removes a
   shell, opens the detached manifest, verifies retained facts and no-auto-resume
