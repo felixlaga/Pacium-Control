@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   assertMacosBuildRuntime,
+  assertReproducibleMachOMetadata,
   assertSafeManifestPath,
   octalMode,
 } from "./build-contract.mjs";
@@ -316,6 +317,15 @@ async function requireArm64MachO(path, label) {
   ) {
     throw new Error(`${label} is not one arm64 Mach-O file.`);
   }
+  assertReproducibleMachOMetadata({
+    loadCommands: execFileSync("/usr/bin/otool", ["-l", path], {
+      encoding: "utf8",
+    }),
+    symbols: execFileSync("/usr/bin/nm", ["-ap", path], {
+      encoding: "utf8",
+    }),
+    label,
+  });
 }
 
 async function readProtocolVersion() {

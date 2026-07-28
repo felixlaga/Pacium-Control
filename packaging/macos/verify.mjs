@@ -22,6 +22,7 @@ import { promisify } from "node:util";
 
 import {
   assertMacosBuildRuntime,
+  assertReproducibleMachOMetadata,
   assertSafeManifestPath,
   octalMode,
 } from "./build-contract.mjs";
@@ -572,6 +573,15 @@ async function verifyArm64MachO(path, label) {
     description.includes("Mach-O 64-bit") && description.includes("arm64"),
     `${label} is not arm64 Mach-O.`,
   );
+  assertReproducibleMachOMetadata({
+    loadCommands: execFileSync("/usr/bin/otool", ["-l", path], {
+      encoding: "utf8",
+    }),
+    symbols: execFileSync("/usr/bin/nm", ["-ap", path], {
+      encoding: "utf8",
+    }),
+    label,
+  });
 }
 
 async function listFiles(root) {
