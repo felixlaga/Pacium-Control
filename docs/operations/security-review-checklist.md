@@ -59,9 +59,37 @@ Use this checklist for security-sensitive pull requests and milestone gates.
       foreign-target denial, idempotent removal, external-state preservation,
       lifecycle soak bounds, and the applicable Chromium workflows.
 
-Residual release gates remain PC-076 clean-account, signing/notarization,
-real-tailnet, security, accessibility, and owner review. This checklist does
-not claim those gates.
+## PC-076 release-audit evidence
+
+- [x] The bounded preflight fails closed on unsupported host/runtime, dirty
+      source, forbidden tracked/archive paths, missing source contracts,
+      checksum/manifest mismatch, and unsupported distribution claims while
+      emitting only scalar status.
+- [x] A frozen exact-source macOS install passed all 296 lockfile policy
+      entries, 142 files/930 tests, production builds, lifecycle soak, package
+      lifecycle, and all 20 Chromium workflows.
+- [x] Separate source roots produced byte-identical loadable macOS
+      `pty.node`/`spawn-helper`; the package gate rejects source/debug metadata
+      while retaining the required UUID and ad-hoc signature.
+- [x] A content-suppressing tracked scan found zero recognized secret
+      signatures and zero tracked non-example environment files.
+- [x] Strict source and package inventories exclude environments,
+      credentials, transcripts, queues, provider stores, repositories, Pacium
+      state, host identity, and `.git`.
+- [x] Loopback, Host, Origin, token, paths/symlinks, terminal content,
+      queue-as-data, diagnostics redaction, process groups, reconnect ordering,
+      package ownership, and state boundaries pass in the clean suite.
+- [ ] A current registry advisory audit was not sent because that would
+      disclose the dependency inventory without destination-specific
+      authorization.
+- [ ] Developer ID signing, notarization, fresh-account Gatekeeper, real
+      Tailscale, real provider, manual accessibility/sustained-use, and owner
+      release acceptance are not evidenced.
+
+The resulting decision is `NO-GO`; the artifacts remain Development snapshots.
+See the [candidate assessment](../execution/release-readiness-assessment.md).
+The unchecked historical blueprint rows below are not implied by the active
+localhost product.
 
 ## Identity
 
