@@ -63,34 +63,34 @@ PC-076.
 
 ## Acceptance criteria
 
-- [ ] `pnpm package:macos` produces one `darwin-arm64` archive from supported
+- [x] `pnpm package:macos` produces one `darwin-arm64` archive from supported
       Node.js 24.18.x and fails closed on another OS, architecture, runtime,
       missing production build, or missing source-built PTY helper.
-- [ ] The bundle has a valid fixed `Info.plist`, executable launcher,
+- [x] The bundle has a valid fixed `Info.plist`, executable launcher,
       production server and browser assets, minimal patched `node-pty` runtime,
       install/uninstall guides, versioned manifest, and archive checksum.
-- [ ] The launcher accepts only the fixed help/version/no-open surface, ignores
+- [x] The launcher accepts only the fixed help/version/no-open surface, ignores
       Finder’s process-serial argument, validates an explicit Node binary, uses
       a home default cwd, preserves operator configuration environment, and
       starts only the existing loopback server.
-- [ ] A first launch opens only `http://127.0.0.1:<configured-port>` after
+- [x] A first launch opens only `http://127.0.0.1:<configured-port>` after
       listen; a verified existing Pacium instance is reused instead of starting
       another owner; browser-open failure does not terminate PTYs.
-- [ ] The installed production package serves its web application and loads,
+- [x] The installed production package serves its web application and loads,
       spawns, exchanges Unicode data with, resizes, and closes one real PTY
       using the packaged native helper.
-- [ ] Install and upgrade use exact validated destinations, reject unsafe
+- [x] Install and upgrade use exact validated destinations, reject unsafe
       existing paths/foreign command links, stage before replacement, roll back
       a failed move, and never modify application data or repositories.
-- [ ] Uninstall removes only the exact Pacium application and owned `pacium`
+- [x] Uninstall removes only the exact Pacium application and owned `pacium`
       link, refuses a foreign bundle/link, and preserves data, repositories,
       provider credentials, and tmux state.
-- [ ] The manifest/checksum contain no checkout, home, temp, credential,
+- [x] The manifest/checksum contain no checkout, home, temp, credential,
       environment, terminal, repository, queue, provider, or host identity.
-- [ ] Signing status is machine-checkable and honest: the development package
+- [x] Signing status is machine-checkable and honest: the development package
       is unsigned/unnotarized, while Developer ID signing plus notarization is a
       mandatory PC-076 release gate.
-- [ ] Supported-runtime full verification, package verification, and all
+- [x] Supported-runtime full verification, package verification, and all
       Chromium workflows pass.
 
 ## User experience

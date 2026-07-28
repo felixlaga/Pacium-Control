@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `4ee3e6c`
 - Target milestone: Milestone 5 — Durability, packaging, and polish
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -194,3 +194,19 @@ instance opens the browser only from the server’s listening callback.
   the accepted one-process localhost/PTy architecture.
 - Security: user-local no-sudo lifecycle, fixed executable/URL, exact owned
   targets, state preservation, and honest unsigned status.
+
+## Completion evidence
+
+- Supported Node.js 24.18.0 `pnpm verify` passed formatting, lint, all workspace
+  type checks, 140 test files and 910 tests, and the production builds.
+- `pnpm package:macos:verify` deterministically reproduced
+  `pacium-control-0.0.0-darwin-arm64.tar.gz` at 576,781 bytes with SHA-256
+  `c19403a7ff7dee64fbb63ce3f3566763552eb0e762b2d284a7327194843f7c92`
+  and 28 manifested files.
+- The isolated installed artifact passed arm64 native PTY
+  load/Unicode/resize/exit, install/upgrade, health/static assets, exact-instance
+  reuse, active-uninstall refusal, idempotent uninstall, and
+  state/repository/provider/tmux preservation.
+- All 20 Chromium workflows passed.
+- `codesign` and the version-1 manifest both report the artifact as unsigned,
+  unnotarized, and not release-eligible. PC-075 and PC-076 remain open.
