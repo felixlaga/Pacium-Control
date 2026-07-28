@@ -50,6 +50,15 @@ terminal-derived, low-confidence, and not interpreted. It never becomes agent
 status, is not sent to the server or persisted, and clears when session,
 connection, provider evidence, component, or browser boundaries change.
 
+Claude Code and Codex sessions also show one compact `Provider status`
+section. It separates ready, unavailable, unsupported, degraded, failed, and
+stale observer evidence from the direct terminal process. Provider and adapter
+versions, source/confidence/freshness, capability availability, safe diagnostic
+code/message/time, and fixed recovery guidance remain visible; diagnostic
+scalar fields and raw provider content do not. A browser-only clock expires
+ready evidence without polling the server or terminal, and fresh authenticated
+events can restore ready state.
+
 ## Claude Code observation
 
 When the Claude Code launch preset is available, Pacium records the installed

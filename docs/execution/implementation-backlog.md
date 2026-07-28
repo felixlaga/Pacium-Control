@@ -473,6 +473,21 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-064 Implement capability degradation
 
 - Unsupported version, observer failure, stale native events, terminal fallback, and user-visible diagnostics.
+- Current status: complete. Codex local capability probes now distinguish
+  missing version evidence from confirmed unsupported remote/App Server
+  surfaces. Invalid native events degrade, fatal observer transport failures
+  fail, and later fresh authenticated events restore ready state and clear
+  transient diagnostics without changing PTY truth. Missing Claude version
+  evidence stays visible while valid hooks can still become ready. Activity
+  presents provider/adapter versions, source/confidence/freshness, every bounded
+  capability, safe diagnostic code/message/time, terminal independence, and
+  fixed recovery guidance; scalar diagnostic fields are excluded. A
+  browser-only 30-second/visibility clock expires ready snapshots without
+  network or terminal polling, and PC-063 fallback explains each non-ready
+  state. Focused evidence passed 81 tests; full verification passed 125 test
+  files and 815 tests; all 16 Chromium workflows passed, including a no-prompt
+  real Claude Code PTY canary. Protocol 21 and provider, terminal, queue, Git,
+  verification, and Tailscale authority remain unchanged.
 
 ### PC-065 Implement relaunch manifests
 
