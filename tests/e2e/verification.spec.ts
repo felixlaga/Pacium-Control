@@ -65,6 +65,16 @@ test("configured checks run, reconnect, cancel, and fit the narrow inspector", a
   await expect(activityPanel).toContainText("Project verify");
   await expect(activityPanel).toContainText("Validated local evidence only");
   await expect(workspaceStatus).toContainText("Verification fixture");
+  await activityPanel
+    .getByRole("button", {
+      name: /Open Checks source for Verification passed/,
+    })
+    .click();
+  await expect(checksTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel", { name: "Checks" })).toContainText(
+    "Verification passed",
+  );
+  await activityTab.click();
 
   await activityPanel.getByRole("button", { name: "Refresh" }).click();
   await expect(
