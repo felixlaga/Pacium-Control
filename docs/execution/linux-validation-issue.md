@@ -57,32 +57,32 @@ platform and retains its complete existing gates.
 
 ## Acceptance criteria
 
-- [ ] The platform decision names only Ubuntu 24.04 x64 as supported Linux and
+- [x] The platform decision names only Ubuntu 24.04 x64 as supported Linux and
       explicitly denies broader distro/architecture claims.
-- [ ] Linux defaults use an existing absolute shell, an absolute dedicated XDG
+- [x] Linux defaults use an existing absolute shell, an absolute dedicated XDG
       state directory, and bounded XDG child-environment inheritance; macOS
       defaults are unchanged.
-- [ ] Browser-open and package-runtime contracts accept exactly
+- [x] Browser-open and package-runtime contracts accept exactly
       darwin-arm64 or linux-x64 with Node 24.18.x and select only the fixed
       platform opener/loopback URL.
-- [ ] `pnpm package:linux` fails closed outside linux-x64/Node 24.18.x or
+- [x] `pnpm package:linux` fails closed outside linux-x64/Node 24.18.x or
       without production assets/source-built `pty.node`, and emits one archive
       plus checksum with no native macOS helper.
-- [ ] The Linux archive contains only a recognized fixed application tree,
+- [x] The Linux archive contains only a recognized fixed application tree,
       exact launcher, production assets, minimal source-built `node-pty`,
       versioned manifest, installer, uninstaller, and guide.
-- [ ] Linux install/upgrade/uninstall use exact absolute user-owned
+- [x] Linux install/upgrade/uninstall use exact absolute user-owned
       destinations, no sudo, sibling staging/rollback, exact link/manifest
       ownership, active-process refusal, foreign-target denial, and preserve
       state/repositories/provider data/queues/tmux.
-- [ ] The installed Linux artifact loads and drives a real packaged PTY and
+- [x] The installed Linux artifact loads and drives a real packaged PTY and
       serves its production health endpoint and browser assets from loopback.
-- [ ] The Linux CI job uses frozen dependencies, source-built `node-pty`,
+- [x] The Linux CI job uses frozen dependencies, source-built `node-pty`,
       supported versions, least repository permission, timeouts, and produces
       scalar/package evidence without secrets or terminal content.
-- [ ] Ubuntu full verification, soak, package verification, and applicable
+- [x] Ubuntu full verification, soak, package verification, and applicable
       Chromium workflows pass on the pushed exact commit.
-- [ ] Supported macOS full verification, package verification, and all 20
+- [x] Supported macOS full verification, package verification, and all 20
       Chromium workflows remain green.
 
 ## User experience
@@ -108,8 +108,7 @@ Missing `xdg-open` leaves the server and PTYs alive and prints the fixed URL.
 - State transitions: source build -> Linux archive -> staged user-local install
   -> foreground process -> upgrade/uninstall. State is external and preserved.
 - Protocol impact: none; protocol remains 24.
-- Relevant ADRs: ADR-0013 through ADR-0016 and the PC-075 supported-platform
-  decision.
+- Relevant ADRs: ADR-0013 through ADR-0017.
 
 ## Security and privacy
 
@@ -165,3 +164,33 @@ Missing `xdg-open` leaves the server and PTYs alive and prints the fixed URL.
 
 - None. This slice intentionally chooses one hosted-runner-reproducible Ubuntu
   x64 target and keeps all other Linux variants unsupported.
+
+## Completion evidence
+
+- Accepted decision:
+  [ADR-0017](../decisions/ADR-0017-supported-hosts-and-development-packages.md).
+- Exact Linux implementation commit:
+  `b261b0f6cfbfa5378008ea3cbf249dbfe7f514c4`.
+- Warning-free hosted run: GitHub Actions run `30337769057`, Ubuntu 24.04.4
+  x64, Node.js 24.18.0, pnpm 11.17.0, frozen source-native install, read-only
+  repository permission, and immutable Node 24 action revisions.
+- Linux full gate: 141 test files and 922 tests, production build, bounded soak,
+  deterministic package verification, 18 applicable Chromium workflows with
+  two tmux-capability workflows honestly skipped, and archive/checksum upload.
+- Linux soak: 2,034 ms; 135,872,512-byte peak and retained RSS growth;
+  5,230,168-byte retained live heap; 162,368-character snapshot; zero final
+  sessions; `/dev/fd` 32 -> 32.
+- Linux package: 584,044 bytes; SHA-256
+  `b5da9fadf2db663123be8bc2a3d888d8a7d18520bb00bfbeb83b067e8fb5f7ca`;
+  27 manifested files; packaged x64 ELF PTY, install/upgrade, production
+  health/assets/reuse, active refusal, and state-preserving uninstall passed.
+- Matching Apple-silicon regression: supported Node.js 24.18.0
+  `pnpm verify` passed 141 test files and 922 tests;
+  `pnpm package:macos:verify` passed with the 577,087-byte archive, SHA-256
+  `51fe5527c272e44c5025270a3c829eed86fd35f639e4420159f712b3c2fb89dd`,
+  and 28 manifested files; all 20 Chromium workflows passed.
+- Documentation synchronized: status, backlog, milestone, host/platform,
+  deployment, security, release, risk, operations, README, and changelog.
+- Residual boundary: both packages remain development artifacts. PC-076 owns
+  clean-account, signing/notarization, real-tailnet, manual
+  accessibility/sustained-use, delivery, limitations, and owner acceptance.

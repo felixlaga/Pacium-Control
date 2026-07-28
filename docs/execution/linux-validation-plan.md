@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `29b0515c3e0070bb6a68274e731468f80ff40451`
 - Target milestone: Milestone 5 — Durability, packaging, and polish
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -184,3 +184,21 @@ as a short-retention development artifact if the complete job succeeds.
   boundary that satisfies the planned Milestone-5 review.
 - Security: no new network, command, credential, persistence, or privilege
   authority.
+
+## Verification
+
+- Exact hosted implementation commit:
+  `b261b0f6cfbfa5378008ea3cbf249dbfe7f514c4`.
+- GitHub Actions run `30337769057` passed Ubuntu 24.04.4 x64 frozen
+  source-native install, 141 test files/922 tests, production build, bounded
+  lifecycle soak, deterministic Linux package verification, 18 applicable
+  Chromium workflows with two optional-tmux workflows skipped, and
+  short-retention artifact upload.
+- The Linux archive is 584,044 bytes with 27 files and SHA-256
+  `b5da9fadf2db663123be8bc2a3d888d8a7d18520bb00bfbeb83b067e8fb5f7ca`.
+- The matching Apple-silicon gate passed 141 test files/922 tests, the
+  577,087-byte/28-file macOS archive with SHA-256
+  `51fe5527c272e44c5025270a3c829eed86fd35f639e4420159f712b3c2fb89dd`,
+  and all 20 Chromium workflows.
+- PC-075 is complete. PC-076 remains the sole roadmap task and no release claim
+  is made here.
