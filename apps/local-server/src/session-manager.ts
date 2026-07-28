@@ -38,6 +38,7 @@ import {
 } from "./repository-context.js";
 import { initialProviderObservation } from "./provider-observation.js";
 import type { RelaunchManifestStore } from "./relaunch-manifest-store.js";
+import type { TmuxAdapter, TmuxAttachSpec } from "./tmux-adapter.js";
 import {
   verificationPresetsForRepository,
   type VerificationCatalog,
@@ -79,6 +80,7 @@ export interface CreateSessionInput {
   cols: number;
   rows: number;
   predecessorSessionId?: string;
+  tmux?: TmuxAttachSpec;
 }
 
 export interface SessionSnapshot {
@@ -171,6 +173,7 @@ export class SessionManager {
     private readonly codexObserver?: CodexObserver,
     private readonly relaunchManifests?: RelaunchManifestStore,
     private readonly environmentKeys: readonly string[] = [],
+    private readonly tmuxAdapter?: TmuxAdapter,
   ) {
     this.unsubscribeVerification = verificationRunner?.onUpdate((event) => {
       const session = this.sessions.get(event.ownerId);
@@ -269,6 +272,16 @@ export class SessionManager {
         "The retained relaunch manifest no longer exists.",
       );
     }
+    const tmuxTarget = manifest.tmuxTarget ?? null;
+    if (manifest.runtime === "tmux" && tmuxTarget !== null) {
+      return this.attachTmux(
+        tmuxTarget.serverId,
+        tmuxTarget.sessionId,
+        cols,
+        rows,
+        manifest.sessionId,
+      );
+    }
     return this.create({
       displayName: manifest.displayName,
       launchPreset: manifest.launchPreset,
@@ -279,14 +292,75 @@ export class SessionManager {
     });
   }
 
+  public async discoverTmux() {
+    if (this.tmuxAdapter === undefined) {
+      throw new SessionError(
+        "TMUX_UNCONFIGURED",
+        "No optional tmux socket is configured.",
+      );
+    }
+    return this.tmuxAdapter.discover();
+  }
+
+  public tmuxCapability() {
+    return (
+      this.tmuxAdapter?.capability() ?? {
+        state: "unconfigured" as const,
+        serverId: null,
+        executable: null,
+        version: null,
+        detail: "No optional tmux socket is configured.",
+      }
+    );
+  }
+
+  public async attachTmux(
+    serverId: string,
+    sessionId: string,
+    cols: number,
+    rows: number,
+    predecessorSessionId?: string,
+  ): Promise<SessionSummary> {
+    if (this.tmuxAdapter === undefined) {
+      throw new SessionError(
+        "TMUX_UNCONFIGURED",
+        "No optional tmux socket is configured.",
+      );
+    }
+    let spec: TmuxAttachSpec;
+    try {
+      spec = await this.tmuxAdapter.attachSpec(serverId, sessionId);
+    } catch (error) {
+      throw new SessionError(
+        "TMUX_TARGET_UNAVAILABLE",
+        error instanceof Error
+          ? error.message
+          : "The selected tmux target is unavailable.",
+        true,
+      );
+    }
+    return this.create({
+      displayName: spec.target.sessionName,
+      launchPreset: "shell",
+      cwd: spec.cwd,
+      cols,
+      rows,
+      ...(predecessorSessionId === undefined ? {} : { predecessorSessionId }),
+      tmux: spec,
+    });
+  }
+
   public async create(input: CreateSessionInput): Promise<SessionSummary> {
     const cwd = await this.validateCwd(input.cwd);
     const preset = this.requireAvailablePreset(input.launchPreset);
+    const tmux = input.tmux;
     const id = randomUUID();
     const createdAt = new Date().toISOString();
     const repository = await this.inspectRepository(cwd, createdAt);
     const displayName =
-      input.displayName?.trim() ||
+      (tmux === undefined
+        ? input.displayName?.trim()
+        : tmux.target.sessionName) ||
       (preset.id === "shell"
         ? basename(cwd) || preset.label
         : `${preset.label} — ${basename(cwd) || "Terminal"}`);
@@ -299,7 +373,11 @@ export class SessionManager {
     const serializer = new SerializeAddon();
     terminal.loadAddon(serializer);
     let claudePreparation: ReturnType<ClaudeObserver["prepare"]> | undefined;
-    if (preset.id === "claude" && this.claudeObserver !== undefined) {
+    if (
+      tmux === undefined &&
+      preset.id === "claude" &&
+      this.claudeObserver !== undefined
+    ) {
       try {
         claudePreparation = this.claudeObserver.prepare(id, createdAt);
       } catch {
@@ -307,7 +385,11 @@ export class SessionManager {
       }
     }
     let codexPreparation: ReturnType<CodexObserver["prepare"]> | undefined;
-    if (preset.id === "codex" && this.codexObserver !== undefined) {
+    if (
+      tmux === undefined &&
+      preset.id === "codex" &&
+      this.codexObserver !== undefined
+    ) {
       try {
         codexPreparation = this.codexObserver.prepare(id, createdAt);
       } catch {
@@ -322,10 +404,10 @@ export class SessionManager {
       predecessorSessionId: input.predecessorSessionId ?? null,
       displayName,
       launchPreset: preset.id,
-      provider: preset.id === "shell" ? null : preset.id,
+      provider: tmux === undefined && preset.id !== "shell" ? preset.id : null,
       command: {
-        executable: preset.executable,
-        args: [...preset.args],
+        executable: tmux?.executable ?? preset.executable,
+        args: [...(tmux?.args ?? preset.args)],
       },
       cwd,
       repository:
@@ -336,7 +418,8 @@ export class SessionManager {
             }
           : null,
       environmentKeys: [...new Set(this.environmentKeys)].slice(0, 32),
-      runtime: "pty",
+      runtime: tmux === undefined ? "pty" : "tmux",
+      tmuxTarget: tmux?.target ?? null,
       resumeReference: null,
       createdAt,
       updatedAt: createdAt,
@@ -345,8 +428,11 @@ export class SessionManager {
     let pty: PtyProcess;
     try {
       pty = this.ptyFactory.create({
-        executable: preset.executable,
-        args: [...preset.args, ...(providerPreparation?.args ?? [])],
+        executable: tmux?.executable ?? preset.executable,
+        args: [
+          ...(tmux?.args ?? preset.args),
+          ...(providerPreparation?.args ?? []),
+        ],
         cwd,
         cols: input.cols,
         rows: input.rows,
@@ -392,19 +478,32 @@ export class SessionManager {
         epoch: 1,
         displayName,
         cwd,
-        shell: preset.executable,
+        shell: tmux?.executable ?? preset.executable,
         launchPreset: preset.id,
-        commandLabel: preset.label,
-        agentClassification: {
-          ...preset.classification,
-          observedAt: createdAt,
-        },
+        commandLabel:
+          tmux === undefined
+            ? preset.label
+            : `tmux · ${tmux.target.sessionName}`,
+        agentClassification:
+          tmux === undefined
+            ? {
+                ...preset.classification,
+                observedAt: createdAt,
+              }
+            : {
+                type: "unknown",
+                label: "tmux session",
+                source: "process_observed",
+                confidence: "confirmed",
+                observedAt: createdAt,
+              },
         providerObservation:
           providerPreparation?.observation ??
           initialProviderObservation(preset.id, createdAt),
         relaunchManifest,
         repository,
-        runtime: "pty",
+        runtime: tmux === undefined ? "pty" : "tmux",
+        tmuxTarget: tmux?.target ?? null,
         processState: "live",
         pid: pty.pid,
         cols: input.cols,

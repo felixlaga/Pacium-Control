@@ -16,6 +16,7 @@ import type { GitHistoryInspector } from "./git-history.js";
 import type { RepositoryInspector } from "./repository-context.js";
 import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
 import { SessionError, SessionManager } from "./session-manager.js";
+import { TmuxAdapter, type TmuxAttachSpec } from "./tmux-adapter.js";
 import type { VerificationCatalog } from "./verification-config.js";
 import { VerificationRunner } from "./verification-runner.js";
 
@@ -85,6 +86,7 @@ function createManager(
   codexObserver?: CodexObserver,
   relaunchManifests?: RelaunchManifestStore,
   environmentKeys: readonly string[] = [],
+  tmuxAdapter?: TmuxAdapter,
 ): SessionManager {
   return new SessionManager(
     factory,
@@ -100,7 +102,45 @@ function createManager(
     codexObserver,
     relaunchManifests,
     environmentKeys,
+    tmuxAdapter,
   );
+}
+
+class FixtureTmuxAdapter extends TmuxAdapter {
+  public constructor() {
+    super(
+      "/private/tmp/pacium-test.sock",
+      "/opt/test/bin/tmux",
+      "tmux 3.7b",
+      {},
+    );
+  }
+
+  public override async attachSpec(
+    serverId: string,
+    sessionId: string,
+  ): Promise<TmuxAttachSpec> {
+    if (serverId !== "configured" || sessionId !== "$7") {
+      throw new Error("The selected tmux session is no longer available.");
+    }
+    return {
+      executable: "/opt/test/bin/tmux",
+      args: [
+        "-S",
+        "/private/tmp/pacium-test.sock",
+        "attach-session",
+        "-t",
+        "$7",
+      ],
+      cwd: process.cwd(),
+      target: {
+        serverId: "configured",
+        sessionId: "$7",
+        sessionName: "Meta",
+        observedAt: "2026-07-28T10:00:00.000Z",
+      },
+    };
+  }
 }
 
 function repositoryObservation(
@@ -168,6 +208,76 @@ function emptyHistory(root: string | null, observedAt?: string) {
 }
 
 describe("SessionManager", () => {
+  it("attaches one revalidated tmux target through the existing PTY lifecycle", async () => {
+    const factory = new FakePtyFactory();
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      undefined,
+      [],
+      new FixtureTmuxAdapter(),
+    );
+
+    await expect(
+      manager.attachTmux("configured", "$8", 100, 30),
+    ).rejects.toMatchObject({
+      code: "TMUX_TARGET_UNAVAILABLE",
+      retryable: true,
+    });
+    expect(factory.createCalls).toHaveLength(0);
+
+    const session = await manager.attachTmux("configured", "$7", 100, 30);
+    expect(session).toMatchObject({
+      displayName: "Meta",
+      runtime: "tmux",
+      commandLabel: "tmux · Meta",
+      providerObservation: null,
+      tmuxTarget: {
+        serverId: "configured",
+        sessionId: "$7",
+        sessionName: "Meta",
+      },
+      relaunchManifest: {
+        runtime: "tmux",
+        tmuxTarget: {
+          serverId: "configured",
+          sessionId: "$7",
+        },
+      },
+    });
+    expect(factory.createCalls).toEqual([
+      {
+        executable: "/opt/test/bin/tmux",
+        args: [
+          "-S",
+          "/private/tmp/pacium-test.sock",
+          "attach-session",
+          "-t",
+          "$7",
+        ],
+        cwd: process.cwd(),
+        cols: 100,
+        rows: 30,
+      },
+    ]);
+
+    manager.input(session.id, "pwd\r");
+    manager.resize(session.id, 110, 34);
+    expect(factory.processes[0]?.writes).toEqual(["pwd\r"]);
+    expect(factory.processes[0]?.resizes).toEqual([{ cols: 110, rows: 34 }]);
+    manager.shutdown();
+    expect(factory.processes[0]?.signals).toEqual(["SIGHUP"]);
+  });
+
   it("reports exact live sessions and fixed launch presets without mutation", async () => {
     const factory = new FakePtyFactory();
     const manager = createManager(factory);
