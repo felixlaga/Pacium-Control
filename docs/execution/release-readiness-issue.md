@@ -71,31 +71,31 @@ failed implementation task.
 
 ## Acceptance criteria
 
-- [ ] The assessment identifies one immutable candidate commit and separates
+- [x] The assessment identifies one immutable candidate commit and separates
       `pass`, `fail`, `blocked`, `not applicable`, and `not run`.
-- [ ] A bounded preflight fails closed on the wrong runtime/host, dirty source,
+- [x] A bounded preflight fails closed on the wrong runtime/host, dirty source,
       forbidden tracked/runtime artifacts, missing manifests/checksums, or
       unsupported package claims and emits no sensitive content.
-- [ ] An isolated exact-source macOS archive completes a frozen install and the
+- [x] An isolated exact-source macOS archive completes a frozen install and the
       supported full verify, soak, package, and Chromium gates without using
       working-tree build output.
-- [ ] Exact Ubuntu 24.04 x64 full verify, soak, package, Chromium, and artifact
+- [x] Exact Ubuntu 24.04 x64 full verify, soak, package, Chromium, and artifact
       evidence is green for the candidate source.
-- [ ] Package manifests/checksums and independent inventory checks show only
+- [x] Package manifests/checksums and independent inventory checks show only
       recognized code/assets/native runtime and exclude secrets, environments,
       transcripts, repositories, queue/provider/state content, and host
       identity.
-- [ ] Loopback, Origin, token, path, terminal-content, queue-data, package
+- [x] Loopback, Origin, token, path, terminal-content, queue-data, package
       lifecycle, and diagnostics-redaction security evidence passes.
-- [ ] Automated keyboard, narrow-layout, zoom, forced-colors, reduced-motion,
+- [x] Automated keyboard, narrow-layout, zoom, forced-colors, reduced-motion,
       terminal-focus, reconnect, tmux, Pacium, and performance/soak evidence
       passes with exact counts/budgets.
-- [ ] Signing/notarization, clean-account, real-tailnet, real-provider, manual
+- [x] Signing/notarization, clean-account, real-tailnet, real-provider, manual
       screen-reader/visual/sustained-use, and owner acceptance are supported
       only by actual evidence or recorded as blockers.
-- [ ] The decision matrix states one honest release class, exact limitations,
+- [x] The decision matrix states one honest release class, exact limitations,
       rollback triggers, preservation boundaries, and next authority required.
-- [ ] All source-of-truth documentation agrees, the task branch is clean, the
+- [x] All source-of-truth documentation agrees, the task branch is clean, the
       final exact head is green, and integration into `dev` is fast-forward
       only.
 
@@ -188,3 +188,32 @@ the working local product.”
 
 - None for implementation. External authority rows are evaluated from current
   evidence and may legitimately make the final decision `NO-GO`.
+
+## Completion evidence
+
+- Assessed candidate: `030da051966296cf7ab20d08b9e14469d8287aba`.
+  Final task-branch and fast-forward integration head:
+  `2dfa16dd5fcb51489185fbae3235c9d239e6bec2`.
+- Exact-head local preflight passed on Apple-silicon macOS with 560 tracked
+  files and 21 source contracts.
+- The exact-source frozen install completed the full 142-file, 930-test
+  verification suite, all 20 Chromium workflows, and the lifecycle soak with
+  zero final sessions and file descriptors returning from 18 to 18.
+- The macOS development archive was 573,683 bytes with SHA-256
+  `923fe2f41533eee7c8591999002d783212e679545e959aca6ceba8d96415075c`,
+  28 manifest files, and 47 archive entries.
+- Linux validation run `30345044665`, job `90229181991`, passed at exact head
+  `2dfa16dd5fcb51489185fbae3235c9d239e6bec2` in 3 minutes 36 seconds,
+  including frozen install, full verify, soak, package, preflight, Chromium,
+  and artifact upload.
+- The detailed Linux candidate run completed 142 test files with 931 passes
+  and one platform skip, 18 Chromium passes and two tmux capability skips, and
+  produced a 584,044-byte archive with SHA-256
+  `b5da9fadf2db663123be8bc2a3d888d8a7d18520bb00bfbeb83b067e8fb5f7ca`.
+- Local `dev` was fast-forwarded from
+  `07bba5b58254f1c58815cccb625b92c5df1e261a` to the final task head.
+  The closure commit and final `dev` workflow record the integration itself.
+- Decision: `NO-GO`; release class remains Development snapshot. Developer ID
+  signing/notarization, a fresh macOS account, a real Tailscale Serve exercise,
+  real provider canaries, manual accessibility/sustained-use review, and
+  explicit owner release acceptance remain external blockers.
