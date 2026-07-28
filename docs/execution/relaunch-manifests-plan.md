@@ -7,7 +7,7 @@
 - Worktree: `/Users/felix/Documents/GitHub/Pacium Control`
 - Base commit: `120222ade51718aba8e0c10e566c4b8bd2333fe3`
 - Target milestone: Milestone 4 — Native agent enrichment
-- Status: In progress
+- Status: Complete
 
 ## Objective
 
@@ -162,3 +162,33 @@ one confirmation dialog with retained facts and exact consequences.
 - Architecture: conforms to direct-PTY authority and ADR-0015 minimal state.
 - Security: server-owned launch resolution and key-name-only environment
   metadata; no automatic resume.
+
+## Result
+
+Protocol 22 now carries one strict server-authored manifest with every accepted
+session and exposes only a bounded manifest list plus an identity-and-dimensions
+relaunch command. The private `relaunch-manifests.json` catalog validates
+ownership, permissions, UTF-8, schema, ordering, uniqueness, and size before
+use; writes use private temporary files, replacement, file sync, and directory
+sync. Missing state starts empty, while corrupt, unsupported, public, or
+symlinked state remains untouched and fails visibly.
+
+Create persists fixed preset command metadata, canonical cwd and repository
+reference, key names only, provider/runtime classification, and exact lineage
+before exposing the PTY as a session. Observer evidence may add one bounded
+matching native resume identifier, but relaunch always creates a fresh process.
+Browser-supplied executable, arguments, cwd, environment, provider, lineage,
+and resume fields are impossible in the strict request.
+
+The workspace now lists detached current recovery attempts separately from live
+sessions. Ended-session and recovery actions share one accessible confirmation
+preview with explicit fresh-process/no-auto-resume copy, Escape and focus
+restoration, disconnected behavior, and successor selection. Predecessors with
+a recorded successor recede without deleting their durable evidence.
+
+Focused contract, store, manager, restart integration, semantic-render,
+transport, and browser tests passed. Full `pnpm verify` passed 127 test files
+and 831 tests plus production builds; all 17 Chromium workflows passed.
+Verification used Node.js 26.4.0 rather than supported Node.js 24.18.x. PC-070
+through PC-076, real Tailscale canary evidence, packaging, and release readiness
+remain outside this completed slice.

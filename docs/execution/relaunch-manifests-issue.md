@@ -45,28 +45,28 @@ accepting executable or environment values from the browser.
 
 ## Acceptance criteria
 
-- [ ] Each successful session has one strict manifest with immutable session ID,
+- [x] Each successful session has one strict manifest with immutable session ID,
       preset command, cwd, repository reference, provider/runtime
       classification, environment key names, predecessor ID, and optional
       provider resume reference.
-- [ ] No manifest contains an environment value, provider token, observer
+- [x] No manifest contains an environment value, provider token, observer
       command, prompt, terminal content, or complete environment.
-- [ ] A valid private manifest catalog survives local-server restart; invalid,
+- [x] A valid private manifest catalog survives local-server restart; invalid,
       public, symlinked, or unsupported state fails visibly without being
       overwritten.
-- [ ] A relaunch request identifies only a stored manifest and dimensions; the
+- [x] A relaunch request identifies only a stored manifest and dimensions; the
       server revalidates the cwd and current preset before launching.
-- [ ] Relaunch creates a new immutable session ID and manifest linked to the
+- [x] Relaunch creates a new immutable session ID and manifest linked to the
       exact predecessor; the source manifest and ended session are unchanged.
-- [ ] Missing, stale, unavailable-preset, invalid-cwd, and persistence failures
+- [x] Missing, stale, unavailable-preset, invalid-cwd, and persistence failures
       return bounded typed errors without launching a PTY.
-- [ ] The UI previews provider, command, cwd, repository, environment key names,
+- [x] The UI previews provider, command, cwd, repository, environment key names,
       resume-reference availability, and the fresh-process consequence.
-- [ ] Recoverable manifests remain available after browser or local-server
+- [x] Recoverable manifests remain available after browser or local-server
       restart and are never presented as running terminals.
-- [ ] The manifest catalog is bounded deterministically and atomic writes use
+- [x] The manifest catalog is bounded deterministically and atomic writes use
       private permissions.
-- [ ] Focus, Escape, confirmation, empty, loading, and failure behavior are
+- [x] Focus, Escape, confirmation, empty, loading, and failure behavior are
       accessible and do not remount live terminals.
 
 ## User experience
