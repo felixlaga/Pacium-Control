@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 
 import { defineConfig } from "@playwright/test";
 
@@ -12,6 +12,9 @@ const verificationConfigPath = join(verificationDirectory, "verification.json");
 const paciumStateDirectory =
   process.env.PACIUM_E2E_STATE_DIRECTORY ??
   mkdtempSync(join(tmpdir(), "pacium-playwright-state-"));
+const providerFixtureDirectory = mkdtempSync(
+  join(tmpdir(), "pacium-playwright-provider-"),
+);
 const queueFixturePath = join(paciumStateDirectory, "NEEDS-FELIX");
 const objectiveFixturePath = join(paciumStateDirectory, "OBJECTIVE");
 const planFixturePath = join(paciumStateDirectory, "PLAN");
@@ -52,8 +55,23 @@ process.env.PACIUM_E2E_STATE_DIRECTORY = paciumStateDirectory;
 process.env.PACIUM_E2E_QUEUE_PATH = queueFixturePath;
 process.env.PACIUM_E2E_OBJECTIVE_PATH = objectiveFixturePath;
 process.env.PACIUM_E2E_PLAN_PATH = planFixturePath;
+process.env.PACIUM_E2E_PROVIDER_DIRECTORY = providerFixtureDirectory;
 process.env.PACIUM_VERIFICATION_CONFIG = verificationConfigPath;
 process.env.PACIUM_DATA_DIR = paciumStateDirectory;
+writeFileSync(
+  join(providerFixtureDirectory, "claude"),
+  [
+    "#!/bin/sh",
+    'if [ "$1" = "--version" ]; then',
+    "  printf '1.0.0-fixture\\n'",
+    "  exit 0",
+    "fi",
+    'exec "${SHELL:-/bin/sh}" -l',
+    "",
+  ].join("\n"),
+  { mode: 0o700 },
+);
+process.env.PATH = `${providerFixtureDirectory}${delimiter}${process.env.PATH ?? ""}`;
 if (tmuxExecutable !== undefined) {
   const tmuxDirectory = mkdtempSync(join(tmpdir(), "pacium-playwright-tmux-"));
   const tmuxSocket = join(tmuxDirectory, "server.sock");
