@@ -341,7 +341,7 @@ export function RelaunchSessionDialog({
             <dt>Provider resume</dt>
             <dd>
               {manifest.resumeReference === null
-                ? "No native resume identifier observed"
+                ? "No native resume identifier observed · provider state is not resumed automatically"
                 : `${manifest.resumeReference.provider} identifier retained · not resumed automatically`}
             </dd>
           </div>

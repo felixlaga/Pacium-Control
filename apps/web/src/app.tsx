@@ -1638,8 +1638,17 @@ export function App() {
     relaunchManifests.find(({ id }) => id === relaunchManifestId) ?? null;
   const recoveryManifests = useMemo(() => {
     const currentSessionIds = new Set(sessions.map(({ id }) => id));
+    const succeededSessionIds = new Set(
+      relaunchManifests.flatMap(({ predecessorSessionId }) =>
+        predecessorSessionId === null ? [] : [predecessorSessionId],
+      ),
+    );
     return relaunchManifests
-      .filter(({ sessionId }) => !currentSessionIds.has(sessionId))
+      .filter(
+        ({ sessionId }) =>
+          !currentSessionIds.has(sessionId) &&
+          !succeededSessionIds.has(sessionId),
+      )
       .slice(0, 8);
   }, [relaunchManifests, sessions]);
   const renderedSessionIds = useMemo(() => {
