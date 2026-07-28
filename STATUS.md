@@ -27,14 +27,20 @@ PC-074 adds the first user-local Apple-silicon application archive, exact
 `pacium` command, deterministic manifest/checksum, safe upgrade/uninstall
 lifecycle, and installed production/native-PTY verification. The artifact is
 explicitly unsigned and unnotarized.
+PC-075 adds one separate user-local Ubuntu 24.04 x64 archive, exact XDG
+defaults, deterministic manifest/checksum, safe package lifecycle, source-built
+x64 native-PTY verification, and pinned hosted Linux verification. The Linux
+artifact is explicitly unsigned, not distro-native, and not a broader Linux
+compatibility claim.
 
 Pacium Control now has an executable React application, loopback local server,
 direct-PTY session manager, typed WebSocket protocol, and automated terminal,
 Git, queue, and Pacium-context tests. This proves the bounded local
 compatibility workflow described below; it does not prove provider management,
 manual real-provider Claude/Codex canaries, a real deployed
-tailnet/grants/public boundary, durable direct PTYs, Linux support, signing,
-notarization, or release readiness.
+tailnet/grants/public boundary, durable direct PTYs, broader Linux
+distribution/architecture support, signing, notarization, or release
+readiness.
 
 ## Product direction
 
@@ -110,6 +116,11 @@ The secondary product is **Pacium mode**:
   relative-path content manifest, checksum, staged upgrade/rollback, active
   process lease, and exact owned uninstall. Node.js 24.18.x remains external;
   package operations preserve application state and external workspaces.
+- A separate unsigned Ubuntu 24.04 x64 development archive with production
+  browser/server assets, minimal source-built x64 ELF `node-pty`, exact
+  user-local `pacium` link, strict manifest/checksum, no-sudo XDG install,
+  staged upgrade/rollback, active-process refusal, and exact owned uninstall.
+  It is not distro-native and makes no claim for another Linux target.
 - A token-protected, read-only host directory browser with canonical paths,
   direct absolute-path navigation, repository markers, filtering,
   hidden-folder control, breadcrumbs, failure-safe browser-local recent
@@ -310,8 +321,8 @@ The secondary product is **Pacium mode**:
 
 ## What is not present
 
-- No Developer ID-signed, notarized, or owner-accepted release artifact, and no
-  supported Linux path.
+- No Developer ID-signed, notarized, publicly delivered, or owner-accepted
+  release artifact. No supported Linux target beyond Ubuntu 24.04 x64.
 - No durable direct-PTY process restoration after local-server restart.
 - No completed manual screen-reader, visual contrast, or full terminal-lifecycle browser review.
 - No general browser editor for workspace identity, repositories, workers,
@@ -332,9 +343,9 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
-- Supported Node.js 24.18.0 `pnpm verify`: formatting, lint, type checking, 140
-  test files and 910 tests, plus the 967.23 kB web JavaScript, 128.54 kB
-  stylesheet, and 1,460.40 kB split local-server production build passed.
+- Supported Node.js 24.18.0 `pnpm verify`: formatting, lint, type checking, 141
+  test files and 922 tests, plus the 967.23 kB web JavaScript, 128.54 kB
+  stylesheet, and the split local-server production build passed.
 - `pnpm test:e2e`: twenty Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%
   zoom, forced colors, reduced motion, deterministic
@@ -379,6 +390,21 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
   closed the PTY, installed/upgraded, served exact production health/assets,
   reused a verified running instance, refused active uninstall, uninstalled
   idempotently, and preserved state/repository/provider/tmux sentinels.
+- PC-075’s pinned Ubuntu 24.04.4 x64 workflow used Node.js 24.18.0 and pnpm
+  11.17.0 with a frozen source-native install. It passed 141 test files and 922
+  tests, the full production build, an x64 real-PTY lifecycle soak, Linux
+  package verification, and all applicable Chromium workflows. The soak
+  completed in 2,034 ms with 135,872,512-byte peak/retained RSS growth,
+  5,230,168-byte retained live heap, a 162,368-character snapshot, zero final
+  sessions, and `/dev/fd` 32 -> 32.
+- The Linux verifier deterministically rebuilt
+  `pacium-control-0.0.0-linux-x64.tar.gz` at 584,044 bytes with SHA-256
+  `b5da9fadf2db663123be8bc2a3d888d8a7d18520bb00bfbeb83b067e8fb5f7ca`
+  and 27 manifested files. It loaded and drove the packaged x64 ELF PTY,
+  installed/upgraded, served exact production health/assets, reused the exact
+  running instance, refused active uninstall, uninstalled idempotently, and
+  preserved external state. The artifact reports unsigned and not
+  distro-native.
 - PC-063 focused evidence passed 39 activity-model, semantic-render, and
   terminal-excerpt tests. Its Chromium workflow exercised deterministic compact
   cards, all four source destinations, explicit terminal capture/refresh/hide,
@@ -488,17 +514,18 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 Evidence boundaries:
 
 - The ordinary interactive shell still exposes Node.js 26.4.0, but PC-072
-  through PC-074 verification used the approved Node.js 24.18.0 runtime
-  explicitly. A fresh supported account remains unverified.
+  through PC-075 verification used the approved Node.js 24.18.0 runtime
+  explicitly. A fresh supported macOS account remains unverified; hosted
+  Ubuntu evidence is exact to the pinned runner, not another Linux target.
 - The repository Playwright suite ran in headless Chromium after its browser
   binary was installed and verified the PC-028, PC-034, PC-035, PC-036, PC-037,
   and PC-038 workflows. The connected in-app browser backend remained
   unavailable, so manual visual, screen-reader, and full type/refresh/close
   terminal review are still open.
 - The default `git` wrapper remains blocked by the unaccepted Xcode license. The repository's direct Xcode Git binary works, so clean diff, branch, merge, and remote evidence are available without changing that license state.
-- `node-pty` is compiled from the pinned patched sources on this checkout. The
-  package builder requires the resulting arm64 native module and executable
-  helper and copies only their runtime files.
+- `node-pty` is compiled from pinned sources on each supported target. The
+  package builders require the matching arm64 or x64 native module and copy
+  only its recognized runtime files.
 - Snapshot serialization currently relies on xterm headless proposed buffer APIs and must be reevaluated on terminal dependency upgrades.
 - The current web bundle is 929.58 kB before gzip and emits Vite's chunk-size
   warning; code splitting is a later optimization, not a functional blocker.
@@ -528,17 +555,18 @@ Evidence boundaries:
   supported macOS account with the Xcode license accepted.
 - Complete browser, accessibility, terminal-escape, and sustained-output testing.
 - Complete the real Tailscale Serve/grants/Funnel/public/revocation canary.
-- Decide and verify the supported Linux boundary under PC-075.
 - Complete Developer ID signing, notarization, and owner acceptance under
   PC-076.
 
-The initial runtime, package manager, application stack, and macOS-first platform are fixed in [the toolchain decision](docs/execution/toolchain-and-platform.md).
+The runtime, package manager, application stack, and exact supported hosts are
+fixed in [the toolchain decision](docs/execution/toolchain-and-platform.md).
 
 ## Next action
 
-PC-074 macOS development packaging is complete. Start PC-075 supported Linux
-validation without claiming macOS signing/notarization or final release
-readiness.
+PC-075 Ubuntu 24.04 x64 validation is complete. Run PC-076 release-readiness
+evidence without extending the host matrix or claiming signing, notarization,
+real-tailnet, clean-account, manual accessibility, or owner acceptance before
+those exact gates pass.
 Complete the real Tailscale Serve/grants/Funnel/public canary, pinned Node.js
 24 clean-install, CI, broader browser/security, manual accessibility, and
 sustained-output gates before release.
