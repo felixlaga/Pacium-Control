@@ -1,4 +1,4 @@
-import type { SessionSummary } from "@pacium/contracts";
+import type { RelaunchManifest, SessionSummary } from "@pacium/contracts";
 import {
   forwardRef,
   useEffect,
@@ -265,6 +265,108 @@ export function RenameSessionDialog({
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+interface RelaunchSessionDialogProps {
+  connected: boolean;
+  manifest: RelaunchManifest;
+  onCancel: () => void;
+  onConfirm: () => void;
+}
+
+export function RelaunchSessionDialog({
+  connected,
+  manifest,
+  onCancel,
+  onConfirm,
+}: RelaunchSessionDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const provider = manifest.provider ?? "Shell";
+  const command = [manifest.command.executable, ...manifest.command.args].join(
+    " ",
+  );
+  return (
+    <div
+      aria-labelledby="relaunch-session-title"
+      aria-modal="true"
+      className="dialog-backdrop"
+      onKeyDown={(event) =>
+        handleModalKeyDown(event, dialogRef.current, onCancel)
+      }
+      ref={dialogRef}
+      role="dialog"
+    >
+      <div className="dialog-card relaunch-session-card">
+        <div className="dialog-heading">
+          <div>
+            <span className="eyebrow">Retained launch manifest</span>
+            <h2 id="relaunch-session-title">Relaunch {manifest.displayName}</h2>
+          </div>
+          <button aria-label="Cancel relaunch" onClick={onCancel} type="button">
+            ×
+          </button>
+        </div>
+        <p className="dialog-note">
+          Pacium will start a fresh PTY with a new immutable session ID. The
+          previous process is not adopted or changed.
+        </p>
+        <dl className="relaunch-manifest-facts">
+          <div>
+            <dt>Provider</dt>
+            <dd>{provider}</dd>
+          </div>
+          <div>
+            <dt>Command</dt>
+            <dd>{command}</dd>
+          </div>
+          <div>
+            <dt>Working directory</dt>
+            <dd>{manifest.cwd}</dd>
+          </div>
+          <div>
+            <dt>Repository at launch</dt>
+            <dd>{manifest.repository?.root ?? "No repository recorded"}</dd>
+          </div>
+          <div>
+            <dt>Environment</dt>
+            <dd>
+              {manifest.environmentKeys.length === 0
+                ? "No inherited keys recorded"
+                : `${manifest.environmentKeys.join(", ")} · key names only`}
+            </dd>
+          </div>
+          <div>
+            <dt>Provider resume</dt>
+            <dd>
+              {manifest.resumeReference === null
+                ? "No native resume identifier observed"
+                : `${manifest.resumeReference.provider} identifier retained · not resumed automatically`}
+            </dd>
+          </div>
+        </dl>
+        <div className="dialog-actions">
+          <button onClick={onCancel} type="button">
+            Cancel
+          </button>
+          <button
+            autoFocus
+            className="primary-button"
+            disabled={!connected}
+            onClick={onConfirm}
+            type="button"
+          >
+            Start fresh process
+          </button>
+        </div>
+        {!connected && (
+          <p className="dialog-note" role="status">
+            Reconnect to the local Pacium server before relaunching. Existing
+            terminals are unchanged.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

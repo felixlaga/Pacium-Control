@@ -2,7 +2,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { SessionSummary } from "@pacium/contracts";
 import { describe, expect, it } from "vitest";
 
-import { RenameSessionDialog, SessionActionsMenu } from "./session-actions.js";
+import {
+  RelaunchSessionDialog,
+  RenameSessionDialog,
+  SessionActionsMenu,
+} from "./session-actions.js";
 
 const session: SessionSummary = {
   id: "53cfec56-181c-4e9c-b187-8f323780c175",
@@ -20,6 +24,27 @@ const session: SessionSummary = {
     observedAt: "2026-07-27T10:00:00.000Z",
   },
   providerObservation: null,
+  relaunchManifest: {
+    schemaVersion: 1,
+    id: "d1825955-65c5-4344-9830-d9f158b05c16",
+    sessionId: "53cfec56-181c-4e9c-b187-8f323780c175",
+    predecessorSessionId: null,
+    displayName: "Meta",
+    launchPreset: "codex",
+    provider: "codex",
+    command: { executable: "/opt/bin/codex", args: [] },
+    cwd: "/work/pacium",
+    repository: { root: "/work/pacium", name: "pacium" },
+    environmentKeys: ["HOME", "PATH"],
+    runtime: "pty",
+    resumeReference: {
+      provider: "codex",
+      id: "thread-1",
+      observedAt: "2026-07-27T10:01:00.000Z",
+    },
+    createdAt: "2026-07-27T10:00:00.000Z",
+    updatedAt: "2026-07-27T10:01:00.000Z",
+  },
   repository: {
     status: "ready",
     root: "/work/pacium",
@@ -112,5 +137,23 @@ describe("session action surfaces", () => {
     expect(markup).toContain('role="dialog"');
     expect(markup).toContain('aria-modal="true"');
     expect(markup).toContain('aria-labelledby="rename-session-title"');
+  });
+
+  it("previews only retained launch facts and fresh-process consequences", () => {
+    const markup = renderToStaticMarkup(
+      <RelaunchSessionDialog
+        connected
+        manifest={session.relaunchManifest!}
+        onCancel={() => {}}
+        onConfirm={() => {}}
+      />,
+    );
+    expect(markup).toContain("fresh PTY with a new immutable session ID");
+    expect(markup).toContain("/opt/bin/codex");
+    expect(markup).toContain("/work/pacium");
+    expect(markup).toContain("HOME, PATH · key names only");
+    expect(markup).toContain("not resumed automatically");
+    expect(markup).not.toContain("thread-1");
+    expect(markup).toContain("Start fresh process");
   });
 });

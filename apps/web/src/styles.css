@@ -937,6 +937,31 @@ kbd {
   box-shadow: inset 0 0 0 1px #ffffff08;
 }
 
+.recovery-heading {
+  margin-top: 16px;
+}
+
+.recovery-list {
+  display: grid;
+  gap: 2px;
+}
+
+.recovery-item {
+  min-height: 44px;
+}
+
+.recovery-icon {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--amber);
+  font-size: 10px;
+}
+
 .session-copy {
   display: flex;
   min-width: 0;
@@ -5550,6 +5575,43 @@ kbd {
 
 .rename-session-card {
   width: min(390px, calc(100vw - 32px));
+}
+
+.relaunch-session-card {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.relaunch-manifest-facts {
+  display: grid;
+  gap: 1px;
+  margin: 16px 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--border);
+}
+
+.relaunch-manifest-facts > div {
+  display: grid;
+  grid-template-columns: minmax(112px, 0.36fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 9px 10px;
+  background: var(--panel-raised);
+}
+
+.relaunch-manifest-facts dt {
+  color: var(--text-faint);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.relaunch-manifest-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 9px;
+  line-height: 1.45;
 }
 
 .command-palette-backdrop {
