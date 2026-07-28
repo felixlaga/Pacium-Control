@@ -94,7 +94,7 @@ export const DiagnosticsSessionSchema = z
       (session.runtime === "tmux") !== (session.tmuxMode !== null) ||
       (session.processState === "exited") !==
         (session.exitCode !== null && session.exitSignal !== null) ||
-      (session.launchPreset === "shell") !== (session.provider === null) ||
+      (session.launchPreset === "shell" && session.provider !== null) ||
       (session.provider !== null &&
         session.provider.id !== session.launchPreset)
     ) {

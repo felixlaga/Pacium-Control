@@ -120,6 +120,12 @@ describe("diagnostics contract", () => {
     expect(
       DiagnosticsSnapshotSchema.safeParse({
         ...snapshot(),
+        sessions: [{ ...snapshot().sessions[0], provider: null }],
+      }).success,
+    ).toBe(true);
+    expect(
+      DiagnosticsSnapshotSchema.safeParse({
+        ...snapshot(),
         accessToken: "secret",
       }).success,
     ).toBe(false);
