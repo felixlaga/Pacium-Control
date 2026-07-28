@@ -41,7 +41,7 @@ All notable changes to the Pacium Control blueprint are recorded here.
 - Focused contract/projection, protected HTTP, transport, state, semantic,
   palette, redaction, and download checks passed.
 - Supported Node.js 24.18.0 `pnpm verify` passed formatting, lint, every
-  workspace type check, 136 test files and 880 tests, plus 967.16 kB web
+  workspace type check, 136 test files and 880 tests, plus 967.23 kB web
   JavaScript, 128.54 kB CSS, and 478.21 kB local-server production bundles.
 - All 20 Chromium workflows passed. The diagnostics workflow parsed the actual
   download and preserved a live PTY through Back, Escape, direct routing,

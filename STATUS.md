@@ -321,7 +321,7 @@ Verified on 2026-07-28 in the current macOS Apple-silicon checkout:
 - `pnpm typecheck`: passed across all six workspace projects.
 - `pnpm lint`: passed.
 - `pnpm verify`: formatting, lint, type checking, 136 test files and 880 tests,
-  plus the 967.16 kB web JavaScript, 128.54 kB stylesheet, and 478.21 kB
+  plus the 967.23 kB web JavaScript, 128.54 kB stylesheet, and 478.21 kB
   local-server production builds passed.
 - `pnpm test:e2e`: twenty Chromium workflows passed for skip navigation, panel
   shortcuts and drawers, nested modal focus return, 320 CSS px layout, 200%

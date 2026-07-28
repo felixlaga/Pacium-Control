@@ -190,7 +190,7 @@ Completed on 2026-07-28.
   reload, retained last-good evidence after a failed refresh, and covered 200%
   zoom, forced colors, reduced motion, and explicit fixture cleanup.
 - Supported Node.js 24.18.0 `pnpm verify` passed 136 test files and 880 tests;
-  production bundles were 967.16 kB web JavaScript, 128.54 kB CSS, and
+  production bundles were 967.23 kB web JavaScript, 128.54 kB CSS, and
   478.21 kB local-server JavaScript. All 20 Chromium workflows passed.
 - WebSocket protocol remains 24. No database, persisted diagnostic state,
   server export, telemetry, provider probe, filesystem read, terminal input,
