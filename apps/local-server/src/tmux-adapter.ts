@@ -35,6 +35,11 @@ const FORMAT = [
 const LAUNCH_FORMAT = ["#{session_id}", "#{session_name}"].join(
   FIELD_SEPARATOR,
 );
+const CLIENT_FORMAT = [
+  "#{client_pid}",
+  "#{client_session}",
+  "#{client_tty}",
+].join(FIELD_SEPARATOR);
 const PACIUM_SESSION_NAME =
   /^pacium-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -226,6 +231,54 @@ export class TmuxAdapter {
     };
   }
 
+  public async detachClient(
+    target: TmuxTarget,
+    clientPid: number,
+  ): Promise<void> {
+    if (
+      this.capability().state !== "ready" ||
+      this.socketPath === null ||
+      this.executable === null
+    ) {
+      throw new Error("The tmux client cannot be detached safely.");
+    }
+    const parsedTarget = TmuxTargetSchema.parse(target);
+    if (
+      parsedTarget.serverId !== SERVER_ID ||
+      !Number.isSafeInteger(clientPid) ||
+      clientPid <= 0
+    ) {
+      throw new Error("The tmux client identity is invalid.");
+    }
+    const listed = await this.execute(
+      this.executable,
+      ["-S", this.socketPath, "list-clients", "-F", CLIENT_FORMAT],
+      {
+        encoding: "utf8",
+        env: { ...this.environment },
+        timeout: DISCOVERY_TIMEOUT_MS,
+        maxBuffer: MAX_LAUNCH_BYTES,
+        windowsHide: true,
+      },
+    );
+    const clientTty = parseTmuxClient(
+      listed.stdout,
+      clientPid,
+      parsedTarget.sessionName,
+    );
+    await this.execute(
+      this.executable,
+      ["-S", this.socketPath, "detach-client", "-t", clientTty],
+      {
+        encoding: "utf8",
+        env: { ...this.environment },
+        timeout: DISCOVERY_TIMEOUT_MS,
+        maxBuffer: MAX_LAUNCH_BYTES,
+        windowsHide: true,
+      },
+    );
+  }
+
   public async launchSpec(input: TmuxLaunchInput): Promise<TmuxAttachSpec> {
     if (
       this.capability().state !== "ready" ||
@@ -316,6 +369,38 @@ export class TmuxAdapter {
       };
     }
   }
+}
+
+export function parseTmuxClient(
+  output: string,
+  clientPid: number,
+  sessionName: string,
+): string {
+  if (Buffer.byteLength(output) > MAX_LAUNCH_BYTES) {
+    throw new Error("tmux client output exceeded its fixed bound.");
+  }
+  const matches = output
+    .split("\n")
+    .filter((line) => line.length > 0)
+    .map((line) => line.split(FIELD_SEPARATOR))
+    .filter(
+      (fields) =>
+        fields.length === 3 &&
+        fields[0] === String(clientPid) &&
+        fields[1] === sessionName,
+    );
+  if (matches.length !== 1) {
+    throw new Error("The exact Pacium tmux client was not found.");
+  }
+  const clientTty = matches[0]?.[2] ?? "";
+  if (
+    clientTty.length === 0 ||
+    clientTty.length > 256 ||
+    !/^\/dev\/[A-Za-z0-9._/-]+$/.test(clientTty)
+  ) {
+    throw new Error("The tmux client terminal identity is invalid.");
+  }
+  return clientTty;
 }
 
 export async function createTmuxAdapter(

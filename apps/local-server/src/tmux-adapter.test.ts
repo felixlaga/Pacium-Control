@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   TmuxAdapter,
   createTmuxAdapter,
+  parseTmuxClient,
   parseTmuxLaunch,
   parseTmuxSessions,
   resolveSafeTmuxSocketLocation,
@@ -172,6 +173,66 @@ describe("tmux adapter", () => {
         args: [],
       }),
     ).rejects.toThrow("invalid");
+  });
+
+  it("detaches only the exact published tmux client identity", async () => {
+    const calls: string[][] = [];
+    const adapter = new TmuxAdapter(
+      "/private/tmp/pacium-test.sock",
+      "/opt/test/bin/tmux",
+      "tmux 3.7b",
+      {},
+      (_executable, args) => {
+        calls.push([...args]);
+        return Promise.resolve({
+          stdout:
+            args[2] === "list-clients"
+              ? "4242__PACIUM_TMUX_FIELD__pacium-00000000-0000-4000-8000-000000000071__PACIUM_TMUX_FIELD__/dev/ttys007\n4243__PACIUM_TMUX_FIELD__other__PACIUM_TMUX_FIELD__/dev/ttys008\n"
+              : "",
+          stderr: "",
+        });
+      },
+    );
+    await adapter.detachClient(
+      {
+        serverId: "configured",
+        sessionId: "$7",
+        sessionName: "pacium-00000000-0000-4000-8000-000000000071",
+        observedAt: "2026-07-28T10:00:00.000Z",
+      },
+      4242,
+    );
+
+    expect(calls).toEqual([
+      [
+        "-S",
+        "/private/tmp/pacium-test.sock",
+        "list-clients",
+        "-F",
+        "#{client_pid}__PACIUM_TMUX_FIELD__#{client_session}__PACIUM_TMUX_FIELD__#{client_tty}",
+      ],
+      [
+        "-S",
+        "/private/tmp/pacium-test.sock",
+        "detach-client",
+        "-t",
+        "/dev/ttys007",
+      ],
+    ]);
+    expect(() =>
+      parseTmuxClient(
+        "4242__PACIUM_TMUX_FIELD__other__PACIUM_TMUX_FIELD__/dev/ttys007\n",
+        4242,
+        "pacium-00000000-0000-4000-8000-000000000071",
+      ),
+    ).toThrow("exact Pacium tmux client");
+    expect(() =>
+      parseTmuxClient(
+        "4242__PACIUM_TMUX_FIELD__pacium-00000000-0000-4000-8000-000000000071__PACIUM_TMUX_FIELD__/private/tmp/forged\n",
+        4242,
+        "pacium-00000000-0000-4000-8000-000000000071",
+      ),
+    ).toThrow("terminal identity");
   });
 
   it("rejects malformed, duplicate, and control-bearing output", () => {
