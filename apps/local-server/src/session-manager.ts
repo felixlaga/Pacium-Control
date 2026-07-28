@@ -15,7 +15,9 @@ import {
   type GitDiffObservation,
   type GitHistoryObservation,
   type LaunchPresetId,
+  RELAUNCH_MANIFEST_SCHEMA_VERSION,
   type RepositoryObservation,
+  type RelaunchManifest,
   type SessionSummary,
   VerificationObservationSchema,
   type VerificationObservation,
@@ -35,6 +37,7 @@ import {
   type RepositoryInspector,
 } from "./repository-context.js";
 import { initialProviderObservation } from "./provider-observation.js";
+import type { RelaunchManifestStore } from "./relaunch-manifest-store.js";
 import {
   verificationPresetsForRepository,
   type VerificationCatalog,
@@ -75,6 +78,7 @@ export interface CreateSessionInput {
   cwd: string;
   cols: number;
   rows: number;
+  predecessorSessionId?: string;
 }
 
 export interface SessionSnapshot {
@@ -165,6 +169,8 @@ export class SessionManager {
     private readonly verificationRunner?: VerificationRunner,
     private readonly claudeObserver?: ClaudeObserver,
     private readonly codexObserver?: CodexObserver,
+    private readonly relaunchManifests?: RelaunchManifestStore,
+    private readonly environmentKeys: readonly string[] = [],
   ) {
     this.unsubscribeVerification = verificationRunner?.onUpdate((event) => {
       const session = this.sessions.get(event.ownerId);
@@ -192,6 +198,7 @@ export class SessionManager {
           providerObservation: observation,
         };
         this.emitSession({ type: "updated", session: { ...session.summary } });
+        void this.retainResumeReference(session, observation);
       },
     );
     this.unsubscribeCodexObserver = codexObserver?.onUpdate(
@@ -205,6 +212,7 @@ export class SessionManager {
           providerObservation: observation,
         };
         this.emitSession({ type: "updated", session: { ...session.summary } });
+        void this.retainResumeReference(session, observation);
       },
     );
   }
@@ -221,6 +229,42 @@ export class SessionManager {
 
   public hasLaunchPreset(launchPreset: LaunchPresetId): boolean {
     return this.launchPresets.some(({ id }) => id === launchPreset);
+  }
+
+  public listRelaunchManifests(): RelaunchManifest[] {
+    if (this.relaunchManifests !== undefined) {
+      return this.relaunchManifests.list();
+    }
+    return [...this.sessions.values()]
+      .map(({ summary }) => structuredClone(summary.relaunchManifest))
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  }
+
+  public async relaunch(
+    manifestId: string,
+    cols: number,
+    rows: number,
+  ): Promise<SessionSummary> {
+    const manifest =
+      this.relaunchManifests?.get(manifestId) ??
+      [...this.sessions.values()]
+        .map(({ summary }) => summary.relaunchManifest)
+        .find(({ id }) => id === manifestId) ??
+      null;
+    if (manifest === null) {
+      throw new SessionError(
+        "RELAUNCH_MANIFEST_NOT_FOUND",
+        "The retained relaunch manifest no longer exists.",
+      );
+    }
+    return this.create({
+      displayName: manifest.displayName,
+      launchPreset: manifest.launchPreset,
+      cwd: manifest.cwd,
+      cols,
+      rows,
+      predecessorSessionId: manifest.sessionId,
+    });
   }
 
   public async create(input: CreateSessionInput): Promise<SessionSummary> {
@@ -259,6 +303,32 @@ export class SessionManager {
       }
     }
     const providerPreparation = claudePreparation ?? codexPreparation;
+    const relaunchManifest: RelaunchManifest = {
+      schemaVersion: RELAUNCH_MANIFEST_SCHEMA_VERSION,
+      id: randomUUID(),
+      sessionId: id,
+      predecessorSessionId: input.predecessorSessionId ?? null,
+      displayName,
+      launchPreset: preset.id,
+      provider: preset.id === "shell" ? null : preset.id,
+      command: {
+        executable: preset.executable,
+        args: [...preset.args],
+      },
+      cwd,
+      repository:
+        repository.status === "ready" && repository.root !== null
+          ? {
+              root: repository.root,
+              name: repository.name ?? basename(repository.root),
+            }
+          : null,
+      environmentKeys: [...new Set(this.environmentKeys)].slice(0, 32),
+      runtime: "pty",
+      resumeReference: null,
+      createdAt,
+      updatedAt: createdAt,
+    };
 
     let pty: PtyProcess;
     try {
@@ -284,6 +354,25 @@ export class SessionManager {
         true,
       );
     }
+    try {
+      await this.relaunchManifests?.upsert(relaunchManifest);
+    } catch (error) {
+      try {
+        pty.kill("SIGTERM");
+      } catch {
+        // The failed launch remains unregistered even if its child already exited.
+      }
+      this.claudeObserver?.release(id);
+      this.codexObserver?.release(id);
+      terminal.dispose();
+      throw new SessionError(
+        "RELAUNCH_MANIFEST_WRITE_FAILED",
+        error instanceof Error
+          ? error.message
+          : "The relaunch manifest could not be stored.",
+        true,
+      );
+    }
 
     const session: ManagedSession = {
       summary: {
@@ -301,6 +390,7 @@ export class SessionManager {
         providerObservation:
           providerPreparation?.observation ??
           initialProviderObservation(preset.id, createdAt),
+        relaunchManifest,
         repository,
         runtime: "pty",
         processState: "live",
@@ -627,6 +717,51 @@ export class SessionManager {
     for (const listener of this.dataListeners) {
       listener(event);
     }
+  }
+
+  private async retainResumeReference(
+    session: ManagedSession,
+    observation: NonNullable<SessionSummary["providerObservation"]>,
+  ): Promise<void> {
+    const reference = [...observation.activities]
+      .reverse()
+      .map(({ extension, observedAt }) => {
+        const id =
+          extension.provider === "claude"
+            ? extension.providerSessionId
+            : extension.threadId;
+        return id === null
+          ? null
+          : {
+              provider: extension.provider,
+              id,
+              observedAt,
+            };
+      })
+      .find((candidate) => candidate !== null);
+    if (
+      reference === undefined ||
+      (session.summary.relaunchManifest.resumeReference?.provider ===
+        reference.provider &&
+        session.summary.relaunchManifest.resumeReference.id === reference.id)
+    ) {
+      return;
+    }
+    const manifest: RelaunchManifest = {
+      ...session.summary.relaunchManifest,
+      resumeReference: reference,
+      updatedAt: reference.observedAt,
+    };
+    try {
+      await this.relaunchManifests?.upsert(manifest);
+    } catch {
+      return;
+    }
+    if (!this.sessions.has(session.summary.id)) {
+      return;
+    }
+    session.summary = { ...session.summary, relaunchManifest: manifest };
+    this.emitSession({ type: "updated", session: { ...session.summary } });
   }
 
   private handleExit(

@@ -1,3 +1,7 @@
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it, vi } from "vitest";
 import { FakePtyFactory } from "@pacium/test-utils";
 import type { SessionSummary } from "@pacium/contracts";
@@ -10,6 +14,7 @@ import type { GitChangesInspector } from "./git-changes.js";
 import type { GitDiffInspector } from "./git-diff.js";
 import type { GitHistoryInspector } from "./git-history.js";
 import type { RepositoryInspector } from "./repository-context.js";
+import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
 import { SessionError, SessionManager } from "./session-manager.js";
 import type { VerificationCatalog } from "./verification-config.js";
 import { VerificationRunner } from "./verification-runner.js";
@@ -78,6 +83,8 @@ function createManager(
   claudeObserver?: ClaudeObserver,
   launchPresets: readonly LaunchPresetDefinition[] = testPresets,
   codexObserver?: CodexObserver,
+  relaunchManifests?: RelaunchManifestStore,
+  environmentKeys: readonly string[] = [],
 ): SessionManager {
   return new SessionManager(
     factory,
@@ -91,6 +98,8 @@ function createManager(
     verificationRunner,
     claudeObserver,
     codexObserver,
+    relaunchManifests,
+    environmentKeys,
   );
 }
 
@@ -219,8 +228,81 @@ describe("SessionManager", () => {
         observedAt: session.createdAt,
       },
       providerObservation: null,
+      relaunchManifest: {
+        schemaVersion: 1,
+        sessionId: session.id,
+        predecessorSessionId: null,
+        launchPreset: "shell",
+        provider: null,
+        command: {
+          executable: "/bin/zsh",
+          args: ["-l"],
+        },
+        cwd: process.cwd(),
+        environmentKeys: [],
+        runtime: "pty",
+        resumeReference: null,
+        createdAt: session.createdAt,
+        updatedAt: session.createdAt,
+      },
     });
 
+    manager.shutdown();
+  });
+
+  it("persists a secret-free manifest and relaunches an exact successor", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pacium-session-manifest-"));
+    const store = new RelaunchManifestStore(join(root, "data"));
+    await store.initialize();
+    const factory = new FakePtyFactory();
+    const manager = createManager(
+      factory,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      testPresets,
+      undefined,
+      store,
+      ["HOME", "PATH", "PACIUM_TEST_SECRET"],
+    );
+    const source = await manager.create({
+      cwd: process.cwd(),
+      displayName: "Meta",
+      launchPreset: "codex",
+      cols: 90,
+      rows: 28,
+    });
+    const retained = manager.listRelaunchManifests()[0];
+    expect(retained).toMatchObject({
+      sessionId: source.id,
+      predecessorSessionId: null,
+      displayName: "Meta",
+      launchPreset: "codex",
+      provider: "codex",
+      command: { executable: "/opt/test/bin/codex", args: [] },
+      cwd: process.cwd(),
+      environmentKeys: ["HOME", "PATH", "PACIUM_TEST_SECRET"],
+      resumeReference: null,
+    });
+
+    const successor = await manager.relaunch(retained!.id, 100, 30);
+    expect(successor.id).not.toBe(source.id);
+    expect(successor.relaunchManifest.predecessorSessionId).toBe(source.id);
+    expect(factory.createCalls).toHaveLength(2);
+    expect(factory.createCalls[1]).toMatchObject({
+      executable: "/opt/test/bin/codex",
+      cwd: process.cwd(),
+      cols: 100,
+      rows: 30,
+    });
+    expect(JSON.stringify(manager.listRelaunchManifests())).not.toContain(
+      "secret-value",
+    );
     manager.shutdown();
   });
 

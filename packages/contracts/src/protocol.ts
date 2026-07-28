@@ -1117,8 +1117,7 @@ export const SessionSummarySchema = z
     if (
       session.relaunchManifest.sessionId !== session.id ||
       session.relaunchManifest.launchPreset !== session.launchPreset ||
-      session.relaunchManifest.cwd !== session.cwd ||
-      session.relaunchManifest.displayName !== session.displayName
+      session.relaunchManifest.cwd !== session.cwd
     ) {
       context.addIssue({
         code: "custom",
