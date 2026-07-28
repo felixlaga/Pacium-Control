@@ -50,8 +50,9 @@ monitoring or long-term field evidence.
 - [ ] At least 8 MiB of terminal output produces a snapshot within the existing
       protocol bound, and 100 reconnect snapshot reads do not create sessions
       or replay input.
-- [ ] Peak RSS grows by no more than 256 MiB and post-cleanup retained RSS grows
-      by no more than 96 MiB in the isolated supported-runtime process.
+- [ ] Peak RSS grows by no more than 256 MiB, post-cleanup retained RSS grows
+      by no more than 192 MiB, and retained live heap grows by no more than
+      32 MiB in the isolated supported-runtime process.
 - [ ] A real-PTY cleanup canary returns file-descriptor count to within four of
       baseline when `/dev/fd` or `/proc/self/fd` is available.
 - [ ] Two thousand split operations never exceed four panes or produce
@@ -123,3 +124,8 @@ values, paths, prompts, and provider content are excluded.
 ## Open questions
 
 - None. These are development-machine baselines, not field reliability claims.
+
+The retained RSS ceiling was calibrated after repeated Node 24.18 runs retained
+about 144 MiB of allocator pages after GC despite releasing the terminal
+models. The separate 32 MiB live-heap ceiling distinguishes retained
+application objects from reusable V8/macOS allocator pages.

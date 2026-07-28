@@ -100,8 +100,14 @@ cursors far beyond ordinary use while asserting existing four-pane and
 - Browser: complete existing Chromium suite.
 - Security: scalar-only result schema; no terminal/environment/path output.
 - Performance: 20 idle sessions, 100 create/close, 8 MiB output, 100 snapshots,
-  2,000 split operations, 5,000 attention updates, 256 MiB peak and 96 MiB
-  retained RSS budgets, FD delta at most four.
+  2,000 split operations, 5,000 attention updates, 256 MiB peak RSS, 192 MiB
+  retained RSS, 32 MiB retained live-heap budgets, and FD delta at most four.
+
+The retained RSS ceiling is calibrated to repeated supported Node 24.18 runs:
+V8 and the macOS allocator retain about 144 MiB of reusable pages after the
+terminal objects have been collected. A separate 32 MiB live-heap ceiling keeps
+object retention strict instead of treating allocator high-water behavior as a
+session leak.
 
 ## Documentation changes
 
