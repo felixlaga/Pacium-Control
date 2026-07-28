@@ -14,8 +14,9 @@ refresh is complete. The bounded provider observation contract is complete;
 the narrow Pacium-launched Claude Code and Codex native observers are complete.
 Clean activity cards with an explicit browser-local terminal fallback are
 complete. Explicit provider compatibility, health, freshness, capability, and
-diagnostic degradation is complete. Relaunch manifests remain the final
-native-enrichment slice.
+diagnostic degradation is complete. Durable secret-free relaunch manifests and
+explicit linked-successor recovery complete the planned native-enrichment
+slice.
 
 Pacium Control now has an executable React application, loopback local server,
 direct-PTY session manager, typed WebSocket protocol, and automated terminal,
@@ -58,11 +59,17 @@ The secondary product is **Pacium mode**:
   canonical `*.ts.net` HTTPS Origin, bounded exact operator-login allowlist,
   canonical local-Origin isolation, exact remote Host/Origin/login checks,
   Funnel denial, and the unchanged ephemeral token for protected transport.
-- Protocol-21 per-socket Local or Tailscale/login evidence, plus one strict
+- Protocol-22 per-socket Local or Tailscale/login evidence, plus one strict
   nullable provider-observation snapshot per session, and a compact accessible
   connection badge that clears stale identity on disconnect.
 - Bounded xterm headless snapshots that let a new browser transport attach to a still-live PTY.
 - A fixed server-owned Shell, Codex, and Claude Code launch catalog with honest executable availability.
+- A bounded private version-1 relaunch-manifest catalog that survives
+  local-server restart with fixed preset command metadata, canonical cwd and
+  repository reference, environment key names only, exact successor lineage,
+  and optional native resume-ID evidence. Detached manifests are separate from
+  live sessions; explicit relaunch starts a fresh PTY and never resumes a
+  provider automatically.
 - A token-protected, read-only host directory browser with canonical paths,
   direct absolute-path navigation, repository markers, filtering,
   hidden-folder control, breadcrumbs, failure-safe browser-local recent
@@ -446,9 +453,8 @@ The initial runtime, package manager, application stack, and macOS-first platfor
 
 ## Next action
 
-PC-064 is complete. PC-065 relaunch manifests are the final planned
-native-enrichment slice before durability and packaging.
-Complete the real Tailscale
+PC-065 and Milestone 4 are complete. Start PC-070 optional tmux discovery and
+explicit attachment, followed by PC-071 keep-alive. Complete the real Tailscale
 Serve/grants/Funnel/public canary, pinned Node.js 24 clean-install, CI, broader
 browser/security, manual accessibility, and sustained-output gates before
 release.

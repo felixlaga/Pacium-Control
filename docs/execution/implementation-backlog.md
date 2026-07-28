@@ -492,6 +492,22 @@ Expand each item with [the issue template](../templates/issue.md) before impleme
 ### PC-065 Implement relaunch manifests
 
 - Provider, command, cwd, repository, environment allowlist, and optional resume identifier without secrets.
+- Current status: complete. Protocol 22 adds strict version-1 server-authored
+  relaunch manifests plus bounded list and identity-only relaunch messages.
+  Pacium stores at most 100 newest manifests in one private, validated,
+  atomic-replacement JSON document. Each record contains only fixed preset
+  command metadata, canonical cwd and repository-at-launch reference,
+  environment key names, provider/runtime classification, exact predecessor,
+  and an optional matching native resume identifier. It excludes environment
+  values, tokens, observer arguments, prompts, terminal bytes, and transcripts.
+  Direct PTYs still end with the local server; detached current manifests appear
+  separately from live sessions and open one explicit fresh-process preview.
+  Relaunch revalidates the stored cwd/current preset and creates a new immutable
+  session and linked successor without automatic provider resume. Focused
+  contract/store/manager/restart/transport/component evidence passed; full
+  verification passed 127 test files and 831 tests; all 17 Chromium workflows
+  passed. Protocol 22 changes no terminal, Git, queue, verification, provider,
+  or Tailscale authority.
 
 ## Epic 6 — Durability and release
 
