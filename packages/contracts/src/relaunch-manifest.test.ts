@@ -61,6 +61,34 @@ describe("relaunch manifest contract", () => {
     ).toBe(false);
   });
 
+  it("distinguishes keep-alive targets from manual attachments", () => {
+    const target = {
+      serverId: "configured",
+      sessionId: "$4",
+      sessionName: "pacium-fixture",
+      observedAt: "2026-07-28T10:00:00.000Z",
+    };
+    expect(
+      RelaunchManifestSchema.safeParse(
+        manifest({
+          runtime: "tmux",
+          tmuxTarget: target,
+          tmuxMode: "keep_alive",
+        }),
+      ).success,
+    ).toBe(true);
+    expect(
+      RelaunchManifestSchema.safeParse(
+        manifest({ runtime: "pty", tmuxMode: "keep_alive" }),
+      ).success,
+    ).toBe(false);
+    expect(
+      RelaunchManifestSchema.safeParse(
+        manifest({ runtime: "tmux", tmuxTarget: target, tmuxMode: null }),
+      ).success,
+    ).toBe(false);
+  });
+
   it("rejects duplicate or unsafe environment key names", () => {
     expect(
       RelaunchManifestSchema.safeParse(

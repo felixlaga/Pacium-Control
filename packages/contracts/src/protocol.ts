@@ -36,7 +36,7 @@ import {
   QueueResolutionResultSchema,
 } from "./queue-reconciliation.js";
 
-export const PROTOCOL_VERSION = 23 as const;
+export const PROTOCOL_VERSION = 24 as const;
 export const MAX_APPLICATION_MESSAGE_BYTES = 128 * 1024;
 export const MAX_TERMINAL_FRAME_BYTES = 256 * 1024;
 export const MAX_TERMINAL_INPUT_CHARS = 64 * 1024;
@@ -1100,6 +1100,7 @@ export const SessionSummarySchema = z
     repository: RepositoryObservationSchema,
     runtime: z.enum(["pty", "tmux"]),
     tmuxTarget: TmuxTargetSchema.nullable().optional(),
+    tmuxMode: z.enum(["attached", "keep_alive"]).nullable().optional(),
     processState: ProcessStateSchema,
     pid: z.number().int().positive().nullable(),
     cols: z.number().int().min(2).max(500),
@@ -1136,7 +1137,11 @@ export const SessionSummarySchema = z
         ((session.tmuxTarget ?? null) !== null) ||
       session.runtime !== session.relaunchManifest.runtime ||
       JSON.stringify(session.tmuxTarget ?? null) !==
-        JSON.stringify(session.relaunchManifest.tmuxTarget ?? null)
+        JSON.stringify(session.relaunchManifest.tmuxTarget ?? null) ||
+      (session.tmuxMode ??
+        (session.runtime === "tmux" ? "attached" : null)) !==
+        (session.relaunchManifest.tmuxMode ??
+          (session.runtime === "tmux" ? "attached" : null))
     ) {
       context.addIssue({
         code: "custom",
@@ -1176,6 +1181,7 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
         cwd: z.string().trim().min(1).max(4096),
         cols: z.number().int().min(2).max(500),
         rows: z.number().int().min(1).max(300),
+        keepAlive: z.boolean().optional(),
       })
       .strict(),
   }),

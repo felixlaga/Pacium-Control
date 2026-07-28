@@ -47,8 +47,8 @@ describe("terminal binary frames", () => {
 });
 
 describe("client protocol", () => {
-  it("advances the wire contract for optional tmux attachment", () => {
-    expect(PROTOCOL_VERSION).toBe(23);
+  it("advances the wire contract for tmux keep-alive", () => {
+    expect(PROTOCOL_VERSION).toBe(24);
   });
 
   it("accepts only a manifest identity and dimensions for relaunch", () => {
@@ -84,7 +84,11 @@ describe("client protocol", () => {
     expect(
       ClientMessageSchema.safeParse({
         ...baseMessage,
-        payload: { ...baseMessage.payload, launchPreset: "codex" },
+        payload: {
+          ...baseMessage.payload,
+          launchPreset: "codex",
+          keepAlive: true,
+        },
       }).success,
     ).toBe(true);
     expect(
@@ -95,6 +99,18 @@ describe("client protocol", () => {
           launchPreset: "/bin/zsh -lc dangerous",
           command: "/bin/zsh",
           args: ["-lc", "dangerous"],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      ClientMessageSchema.safeParse({
+        ...baseMessage,
+        payload: {
+          ...baseMessage.payload,
+          launchPreset: "codex",
+          keepAlive: true,
+          tmuxName: "forged",
+          socket: "/tmp/forged.sock",
         },
       }).success,
     ).toBe(false);

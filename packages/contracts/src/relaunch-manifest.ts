@@ -59,6 +59,7 @@ export const RelaunchManifestSchema = z
       .max(MAX_RELAUNCH_ENVIRONMENT_KEYS),
     runtime: z.enum(["pty", "tmux"]),
     tmuxTarget: TmuxTargetSchema.nullable().optional(),
+    tmuxMode: z.enum(["attached", "keep_alive"]).nullable().optional(),
     resumeReference: RelaunchResumeReferenceSchema.nullable(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
@@ -84,6 +85,17 @@ export const RelaunchManifestSchema = z
         code: "custom",
         message: "Only a tmux manifest contains a tmux target.",
         path: ["tmuxTarget"],
+      });
+    }
+    if (
+      (manifest.runtime === "pty" &&
+        (manifest.tmuxMode ?? null) !== null) ||
+      (manifest.runtime === "tmux" && manifest.tmuxMode === null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Only a tmux manifest contains a tmux attachment mode.",
+        path: ["tmuxMode"],
       });
     }
     if (
