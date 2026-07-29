@@ -10,6 +10,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from "react";
 
+import { SplitDownIcon, SplitRightIcon } from "./icons.js";
 import {
   MAX_SPLIT_PANES,
   listPanes,
@@ -259,7 +260,7 @@ function TerminalPane(
                 title="Split right"
                 type="button"
               >
-                ▥
+                <SplitRightIcon size={13} />
               </button>
               <button
                 aria-label={`Split ${session.displayName} down`}
@@ -268,7 +269,7 @@ function TerminalPane(
                 title="Split down"
                 type="button"
               >
-                ▤
+                <SplitDownIcon size={13} />
               </button>
               <button
                 aria-label={`${maximized ? "Restore" : "Maximize"} ${
