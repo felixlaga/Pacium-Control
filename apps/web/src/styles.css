@@ -27,7 +27,7 @@
   --red: #e46f78;
   --radius: 8px;
   --sidebar-width: 248px;
-  --inspector-width: 286px;
+  --inspector-width: 304px;
 }
 
 html[data-theme="dark"] {
@@ -78,6 +78,7 @@ textarea {
 
 button {
   border: 0;
+  background: transparent;
 }
 
 button:focus-visible,
@@ -1144,21 +1145,31 @@ kbd {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 5px;
+  gap: 3px;
 }
 
 .header-actions button,
 .notice button,
 .dialog-actions button,
 .dialog-heading button {
-  height: 30px;
-  padding: 0 9px;
+  height: 28px;
+  padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 6px;
   color: var(--text-muted);
   background: var(--panel);
   cursor: pointer;
   font-size: 11px;
+  font-weight: 500;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.header-actions button {
+  border-color: transparent;
+  background: transparent;
 }
 
 .header-actions button:hover:not(:disabled),
@@ -1167,16 +1178,28 @@ kbd {
   border-color: var(--border-strong);
 }
 
+.header-actions button:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--panel-soft);
+}
+
 .header-actions button:disabled {
   cursor: default;
   opacity: 0.42;
 }
 
-.panel-toggle {
+.panel-toggle,
+#settings-trigger {
   display: grid;
-  width: 30px;
+  width: 28px;
   padding: 0 !important;
+  color: var(--text-faint);
   place-items: center;
+}
+
+.panel-toggle:hover:not(:disabled),
+#settings-trigger:hover:not(:disabled) {
+  color: var(--text);
 }
 
 #command-palette-trigger {
@@ -1940,13 +1963,20 @@ kbd {
 }
 
 .inspector-tabs button {
-  min-height: 27px;
+  overflow: hidden;
+  min-height: 26px;
+  padding: 0 2px;
   border-radius: 5px;
   color: var(--text-faint);
   background: transparent;
   cursor: pointer;
   font-size: 10px;
-  font-weight: 550;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
 }
 
 .inspector-tabs button:hover {
@@ -2953,10 +2983,34 @@ kbd {
   margin: 0;
 }
 
-.inspector-section-heading button {
-  min-height: 26px;
-  padding: 4px 7px;
-  font-size: 9px;
+.inspector-section-heading button,
+.attention-cursor-header button,
+.tmux-capability-row button {
+  min-height: 24px;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 10px;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.inspector-section-heading button:hover:not(:disabled),
+.attention-cursor-header button:hover:not(:disabled),
+.tmux-capability-row button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.inspector-section-heading button:disabled,
+.attention-cursor-header button:disabled,
+.tmux-capability-row button:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .repository-section {
@@ -4841,12 +4895,6 @@ kbd {
   font-size: 9px;
 }
 
-.attention-cursor-header button {
-  min-height: 26px;
-  padding: 4px 7px;
-  font-size: 9px;
-}
-
 .dialog-backdrop {
   position: fixed;
   z-index: 20;
@@ -5144,12 +5192,12 @@ kbd {
 .tmux-capability-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
+  align-items: center;
   gap: 9px;
   margin-bottom: 15px;
-  padding: 10px;
+  padding: 9px 10px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 6px;
   background: var(--panel-raised);
 }
 
@@ -5170,7 +5218,7 @@ kbd {
 
 .tmux-capability-row strong {
   color: var(--text);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 550;
 }
 
@@ -5178,12 +5226,6 @@ kbd {
   color: var(--text-faint);
   font-size: 9px;
   line-height: 1.4;
-}
-
-.tmux-capability-row button {
-  min-height: 27px;
-  padding: 4px 8px;
-  font-size: 9px;
 }
 
 .tmux-session-list {
@@ -5210,22 +5252,26 @@ kbd {
   display: flex;
   min-width: 0;
   margin: 0;
-  padding: 10px;
+  padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 6px;
   flex-direction: row;
   align-items: center;
-  gap: 9px;
-  background: #11121480;
+  gap: 10px;
+  background: transparent;
   cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
 }
 
 .dialog-card .tmux-session-option:hover {
   border-color: var(--border-strong);
+  background: var(--panel-soft);
 }
 
 .dialog-card .tmux-session-option.is-selected {
-  border-color: #8b7cf688;
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
   background: var(--accent-soft);
 }
 
@@ -5235,16 +5281,18 @@ kbd {
 }
 
 .dialog-card .tmux-session-option input {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 14px;
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  margin: 0;
+  accent-color: var(--accent);
 }
 
 .tmux-session-option > span {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .tmux-session-option strong,
@@ -5256,8 +5304,15 @@ kbd {
 
 .tmux-session-option strong {
   color: var(--text);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 550;
+  letter-spacing: -0.01em;
+}
+
+.tmux-session-option small {
+  color: var(--text-faint);
+  font-family: "SFMono-Regular", "SF Mono", monospace;
+  font-size: 9px;
 }
 
 .tmux-empty-state,
@@ -6367,11 +6422,11 @@ kbd {
 .host-setup-panel {
   display: grid;
   min-width: 0;
-  padding: 9px;
+  padding: 12px;
   border: 1px solid var(--border);
   border-radius: 7px;
   background: var(--panel);
-  gap: 8px;
+  gap: 10px;
 }
 
 .host-setup-panel.status-configured {
@@ -6397,20 +6452,35 @@ kbd {
 
 .host-setup-title strong,
 .host-setup-choice > span {
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 560;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: -0.01em;
 }
 
 .host-setup-title span,
-.host-setup-identity,
 .host-setup-consent span,
 .host-setup-error,
 .host-setup-panel > span {
   overflow-wrap: anywhere;
   color: var(--text-faint);
-  font-size: 8px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.host-setup-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  justify-self: start;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: var(--panel-raised);
+  font-size: 10px;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .host-setup-choice {
@@ -6438,17 +6508,27 @@ kbd {
 .host-setup-actions a,
 .host-setup-consent a {
   display: inline-flex;
-  min-height: 30px;
+  min-height: 28px;
   align-items: center;
   justify-content: center;
   padding: 0 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text-muted);
-  background: var(--panel-raised);
+  background: transparent;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 10.5px;
+  font-weight: 500;
   text-decoration: none;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.host-setup-title button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--border-strong);
 }
 
 .host-setup-actions {
@@ -6474,10 +6554,20 @@ kbd {
 }
 
 .host-setup-consent {
-  align-items: flex-start;
-  padding: 7px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--amber) 28%, var(--border));
   border-radius: 6px;
-  background: color-mix(in srgb, var(--amber) 8%, var(--panel-raised));
+  background: color-mix(in srgb, var(--amber) 7%, transparent);
+}
+
+.host-setup-consent span {
+  color: var(--text-muted);
+}
+
+.host-setup-consent a {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .preference-field {

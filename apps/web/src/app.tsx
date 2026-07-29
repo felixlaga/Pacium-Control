@@ -34,6 +34,13 @@ import type {
 
 import { ConnectionBadge } from "./connection-badge.js";
 import {
+  PanelLeftIcon,
+  PanelRightIcon,
+  SettingsIcon,
+  SplitDownIcon,
+  SplitRightIcon,
+} from "./icons.js";
+import {
   PaciumTransport,
   type ConnectionState,
   type TransportEvent,
@@ -3422,7 +3429,7 @@ export function App() {
               title="Toggle sessions (Cmd/Ctrl B)"
               type="button"
             >
-              <span aria-hidden="true">▌</span>
+              <PanelLeftIcon />
             </button>
             <button
               aria-controls="session-inspector"
@@ -3434,7 +3441,7 @@ export function App() {
               title="Toggle inspector (Cmd/Ctrl Shift B)"
               type="button"
             >
-              <span aria-hidden="true">▐</span>
+              <PanelRightIcon />
             </button>
             <ConnectionBadge access={connectionAccess} state={connection} />
             <button
@@ -3464,7 +3471,7 @@ export function App() {
               title="Workspace settings (Cmd/Ctrl ,)"
               type="button"
             >
-              <span aria-hidden="true">⚙</span>
+              <SettingsIcon />
             </button>
             <button
               disabled={selectedSession?.processState !== "live"}
@@ -3647,7 +3654,7 @@ export function App() {
                   title="Split right (Cmd/Ctrl \\)"
                   type="button"
                 >
-                  <span aria-hidden="true">▥</span>
+                  <SplitRightIcon />
                   <span className="visually-hidden">Split right</span>
                 </button>
                 <button
@@ -3656,7 +3663,7 @@ export function App() {
                   title="Split down (Cmd/Ctrl Shift \\)"
                   type="button"
                 >
-                  <span aria-hidden="true">▤</span>
+                  <SplitDownIcon />
                   <span className="visually-hidden">Split down</span>
                 </button>
               </div>

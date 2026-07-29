@@ -300,7 +300,7 @@ function commandIcon(command: PaletteCommand): string {
     case "new-terminal":
       return "+";
     case "split-pane":
-      return command.action.direction === "horizontal" ? "▥" : "▤";
+      return command.action.direction === "horizontal" ? "◫" : "⊟";
     case "focus-pane":
       return command.action.direction === -1 ? "←" : "→";
     case "toggle-maximize":
@@ -312,9 +312,9 @@ function commandIcon(command: PaletteCommand): string {
     case "open-diagnostics":
       return "◇";
     case "toggle-sidebar":
-      return "▌";
+      return "⇤";
     case "toggle-inspector":
-      return "▐";
+      return "⇥";
     case "toggle-workspace-mode":
       return "◐";
     case "select-session":
