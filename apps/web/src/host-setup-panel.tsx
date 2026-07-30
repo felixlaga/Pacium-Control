@@ -75,7 +75,11 @@ export function HostSetupPanel({ local, load, apply }: HostSetupPanelProps) {
     return (
       <div className="host-setup-panel status-unavailable">
         <strong>Host setup</strong>
-        <span>Open Pacium on localhost to change host access.</span>
+        <span>
+          Open Pacium on localhost to change host access. To reach tmux sessions
+          on another machine, run Pacium on that machine and enable remote
+          access there.
+        </span>
       </div>
     );
   }
@@ -128,6 +132,33 @@ export function HostSetupPanel({ local, load, apply }: HostSetupPanelProps) {
             Tailscale · {snapshot.tailscale.login}
           </span>
         )}
+
+      {snapshot?.tailscale.state === "signed_out" && (
+        <div className="host-setup-help">
+          <span>
+            This host is not signed in to Tailscale. Run the command below in a
+            terminal on this machine, follow the sign-in link it prints, then
+            refresh.
+          </span>
+          <code>tailscale login</code>
+        </div>
+      )}
+
+      {snapshot?.tailscale.state === "not_installed" && (
+        <div className="host-setup-help">
+          <span>
+            Tailscale is not installed on this host. Install it from{" "}
+            <a
+              href="https://tailscale.com/download"
+              rel="noreferrer"
+              target="_blank"
+            >
+              tailscale.com/download
+            </a>
+            , sign in, then refresh.
+          </span>
+        </div>
+      )}
 
       {approvalUrl !== null && (
         <div className="host-setup-consent" role="status">

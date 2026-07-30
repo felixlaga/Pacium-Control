@@ -101,15 +101,15 @@ export function PaciumQueueInspector({
               commands are not interpreted.
             </p>
           </section>
-          <QueueMeaning
-            requestingSessionLabel={requestingSessionLabel}
-            state={state}
-          />
           <PaciumQueueDecisionPanel
             onDeliver={onDeliver}
             onRecordApproval={onRecordApproval}
             onRecordQuestion={onRecordQuestion}
             onResolve={onResolve}
+            state={state}
+          />
+          <QueueMeaning
+            requestingSessionLabel={requestingSessionLabel}
             state={state}
           />
         </>
