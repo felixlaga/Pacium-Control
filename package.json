@@ -8,7 +8,7 @@
     "node": ">=24.18.0 <25"
   },
   "scripts": {
-    "dev": "pnpm --parallel --stream --filter @pacium/web --filter @pacium/local-server dev",
+    "dev": "sh -c 'checks=\"$HOME/.config/pacium/pacium-checks.json\"; [ -n \"$PACIUM_VERIFICATION_CONFIG\" ] || { [ -f \"$checks\" ] && export PACIUM_VERIFICATION_CONFIG=\"$checks\"; }; exec pnpm --parallel --stream --filter @pacium/web --filter @pacium/local-server dev'",
     "build": "pnpm -r --if-present build",
     "package:linux": "pnpm build && node packaging/linux/build.mjs",
     "package:linux:verify": "pnpm package:linux && node packaging/linux/verify.mjs",
