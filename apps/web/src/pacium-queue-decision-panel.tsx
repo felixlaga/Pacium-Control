@@ -167,6 +167,7 @@ export function PaciumQueueDecisionPanel({
             setNote={setNote}
           />
           <button
+            className="primary"
             disabled={
               submitting ||
               blocked ||

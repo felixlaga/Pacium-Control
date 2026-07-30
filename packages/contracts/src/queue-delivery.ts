@@ -123,7 +123,7 @@ export const QUEUE_DELIVERY_ERROR_MESSAGES = {
   DELIVERY_TARGET_UNAVAILABLE:
     "The configured delivery target is unavailable. No other target was used.",
   DELIVERY_TARGET_OCCUPIED:
-    "The configured answer file already exists. Pacium did not overwrite it.",
+    "The answer file already exists, likely from a previous answer the agent has not consumed yet. Remove or consume it, then deliver again.",
   DELIVERY_STATE_UNAVAILABLE:
     "Delivery state is unavailable. No delivery was attempted.",
   DELIVERY_STATE_FULL:

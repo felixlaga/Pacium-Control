@@ -130,6 +130,7 @@ import {
   interruptQueueResolution,
   interruptQueueDecision,
   interruptQueueDelivery,
+  queueItemSelection,
   reconcileQueueItemInspection,
   reconcileQueueItemInspectionConfig,
   type PaciumQueueInspectionState,
@@ -1807,6 +1808,19 @@ export function App() {
       }),
     [connection, paciumConfig, paciumQueue],
   );
+  const firstQueueSelection = useMemo(() => {
+    for (const { source, observation } of paciumQueueProjection.sources) {
+      const selection = queueItemSelection(
+        source,
+        observation,
+        paciumQueueProjection.workspaceRevision,
+      );
+      if (selection !== null) {
+        return selection;
+      }
+    }
+    return null;
+  }, [paciumQueueProjection]);
   const visiblePaciumObservation = visiblePaciumConfig(paciumConfig);
   const readyPaciumWorkspace =
     visiblePaciumObservation?.status === "ready"
@@ -3443,6 +3457,30 @@ export function App() {
             >
               <PanelRightIcon />
             </button>
+            {paciumQueueProjection.itemCount > 0 && (
+              <button
+                aria-label={`${paciumQueueProjection.itemCount} queue ${
+                  paciumQueueProjection.itemCount === 1
+                    ? "item needs"
+                    : "items need"
+                } Felix; open the first one`}
+                className="queue-attention-trigger"
+                id="queue-attention-trigger"
+                onClick={() => {
+                  changeWorkspaceMode("pacium");
+                  if (firstQueueSelection !== null) {
+                    openPaciumQueueItem(firstQueueSelection);
+                  }
+                }}
+                title="Open the current queue item"
+                type="button"
+              >
+                Needs Felix
+                <span className="queue-attention-count">
+                  {paciumQueueProjection.itemCount}
+                </span>
+              </button>
+            )}
             <ConnectionBadge access={connectionAccess} state={connection} />
             <button
               aria-label="Open diagnostics"
