@@ -80,7 +80,21 @@ export const TerminalSurface = forwardRef<
         }
         terminal.reset();
         terminal.resize(snapshot.cols, snapshot.rows);
-        terminal.write(snapshot.data);
+        // Refit after the snapshot renders: the snapshot carries the PTY's
+        // recorded dimensions, which can exceed this container. Fitting fires
+        // terminal.onResize, so the host resizes the PTY to match the screen.
+        terminal.write(snapshot.data, () => {
+          requestAnimationFrame(() => {
+            const container = containerRef.current;
+            if (
+              container !== null &&
+              container.clientWidth > 0 &&
+              container.clientHeight > 0
+            ) {
+              fitAddonRef.current?.fit();
+            }
+          });
+        });
       },
       blur() {
         terminalRef.current?.blur();
