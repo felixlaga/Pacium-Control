@@ -352,3 +352,50 @@ describe("tmux adapter", () => {
     },
   );
 });
+
+describe("tmux adapter late discovery", () => {
+  it.skipIf(tmuxExecutable === undefined)(
+    "adopts a tmux server that started after the adapter was created",
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), "pacium-tmux-late-"));
+      const socket = join(root, "server.sock");
+      sockets.push(socket);
+      await execFileAsync(tmuxExecutable!, [
+        "-S",
+        socket,
+        "new-session",
+        "-d",
+        "-s",
+        "pacium-late-fixture",
+        "-c",
+        process.cwd(),
+      ]);
+      const environment = {
+        PATH: process.env.PATH ?? "",
+        HOME: process.env.HOME ?? "",
+        TERM: "xterm-256color",
+      };
+      const adapter = new TmuxAdapter(
+        null,
+        null,
+        null,
+        environment,
+        (executable, args, options) =>
+          args[0] === "display-message"
+            ? Promise.resolve({ stdout: `${socket}\n`, stderr: "" })
+            : execFileAsync(executable, [...args], options),
+      );
+      expect(adapter.capability()).toMatchObject({ state: "unconfigured" });
+
+      const observation = await adapter.discover();
+      expect(observation).toMatchObject({
+        status: "ready",
+        sessions: [{ target: { sessionName: "pacium-late-fixture" } }],
+      });
+      expect(adapter.capability()).toMatchObject({
+        state: "ready",
+        serverId: "configured",
+      });
+    },
+  );
+});

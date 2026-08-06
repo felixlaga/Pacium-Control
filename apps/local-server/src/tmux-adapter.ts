@@ -80,12 +80,41 @@ export interface TmuxLaunchInput {
 
 export class TmuxAdapter {
   public constructor(
-    private readonly socketPath: string | null,
-    private readonly executable: string | null,
-    private readonly version: string | null,
+    private socketPath: string | null,
+    private executable: string | null,
+    private version: string | null,
     private readonly environment: Readonly<Record<string, string>>,
     private readonly execute: TmuxCommandExecutor = executeTmux,
   ) {}
+
+  /**
+   * A tmux server that starts after Pacium boots is still attachable: while
+   * no socket is configured, every discovery re-probes the default socket and
+   * adopts it once a tmux server is running.
+   */
+  private async adoptDefaultSocket(): Promise<boolean> {
+    if (this.socketPath !== null) {
+      return true;
+    }
+    const socketPath = await discoverDefaultTmuxSocket(
+      this.environment,
+      this.execute,
+    );
+    if (socketPath === null) {
+      return false;
+    }
+    try {
+      this.socketPath = await resolveSafeTmuxSocketLocation(socketPath);
+    } catch {
+      return false;
+    }
+    this.executable = findExecutable("tmux", this.environment.PATH);
+    this.version =
+      this.executable === null
+        ? null
+        : await detectTmuxVersion(this.executable, this.environment);
+    return true;
+  }
 
   public capability(): TmuxCapability {
     if (this.socketPath === null) {
@@ -117,6 +146,7 @@ export class TmuxAdapter {
 
   public async discover(): Promise<TmuxSessionsObservation> {
     const observedAt = new Date().toISOString();
+    await this.adoptDefaultSocket();
     const capability = this.capability();
     if (capability.state === "unconfigured") {
       return errorObservation(
@@ -124,7 +154,7 @@ export class TmuxAdapter {
         null,
         observedAt,
         "not_configured",
-        capability.detail,
+        "No tmux server is running on this host yet. Start tmux, then refresh.",
       );
     }
     if (
@@ -410,7 +440,14 @@ export async function createTmuxAdapter(
   if (executable === null) {
     return new TmuxAdapter(safeSocketPath, null, null, environment);
   }
-  let version: string | null;
+  const version = await detectTmuxVersion(executable, environment);
+  return new TmuxAdapter(safeSocketPath, executable, version, environment);
+}
+
+async function detectTmuxVersion(
+  executable: string,
+  environment: Readonly<Record<string, string>>,
+): Promise<string | null> {
   try {
     const result = await execFileAsync(executable, ["-V"], {
       encoding: "utf8",
@@ -420,13 +457,12 @@ export async function createTmuxAdapter(
       windowsHide: true,
     });
     const candidate = result.stdout.trim();
-    version = /^tmux [0-9][0-9A-Za-z._-]{0,39}$/.test(candidate)
+    return /^tmux [0-9][0-9A-Za-z._-]{0,39}$/.test(candidate)
       ? candidate
       : null;
   } catch {
-    return new TmuxAdapter(safeSocketPath, executable, null, environment);
+    return null;
   }
-  return new TmuxAdapter(safeSocketPath, executable, version, environment);
 }
 
 export async function discoverDefaultTmuxSocket(

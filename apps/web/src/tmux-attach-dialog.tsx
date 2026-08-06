@@ -33,6 +33,16 @@ export function TmuxAttachDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const sessions = observation?.sessions ?? [];
+  // The server adopts a late-started tmux socket during discovery, so a ready
+  // observation is fresher truth than the boot-time capability snapshot.
+  const effectiveState =
+    observation?.status === "ready" || observation?.status === "empty"
+      ? "ready"
+      : capability.state;
+  const effectiveDetail =
+    effectiveState === "ready" && capability.state !== "ready"
+      ? "A running tmux server was discovered on this host."
+      : capability.detail;
   const selected =
     sessions.find(({ target }) => target.sessionId === selectedId)?.target ??
     null;
@@ -81,16 +91,16 @@ export function TmuxAttachDialog({
         </p>
 
         <div className="tmux-capability-row">
-          <span className={`status-dot is-${capability.state}`} />
+          <span className={`status-dot is-${effectiveState}`} />
           <div>
             <strong>
-              {capability.state === "ready"
-                ? capability.version
-                : capability.state === "unavailable"
+              {effectiveState === "ready"
+                ? (capability.version ?? "tmux ready")
+                : effectiveState === "unavailable"
                   ? "tmux unavailable"
                   : "tmux not configured"}
             </strong>
-            <small>{capability.detail}</small>
+            <small>{effectiveDetail}</small>
           </div>
           <button
             disabled={!connected || loading || attaching}

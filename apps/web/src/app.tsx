@@ -1338,16 +1338,14 @@ export function App() {
             ))}
           </nav>
           <div className="rail-footer">
-            {tmuxCapability.state === "ready" && (
-              <button
-                className="rail-footer-button"
-                id="attach-tmux-trigger"
-                onClick={openTmuxDialog}
-                type="button"
-              >
-                Attach tmux
-              </button>
-            )}
+            <button
+              className="rail-footer-button"
+              id="attach-tmux-trigger"
+              onClick={openTmuxDialog}
+              type="button"
+            >
+              Attach tmux
+            </button>
             <button
               className="rail-footer-button"
               onClick={() => setSettingsOpen(true)}
