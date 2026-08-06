@@ -14,3 +14,4 @@ export * from "./queue-item-inspection.js";
 export * from "./queue-item-reconciliation.js";
 export * from "./queue-observation.js";
 export * from "./queue-reconciliation.js";
+export * from "./repo-docs.js";
