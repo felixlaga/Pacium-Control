@@ -3276,8 +3276,10 @@ html[data-theme="light"] .directory-row.is-selected {
    ============================================================ */
 
 .shell {
+  --rail-width: 264px;
+  --files-width: 344px;
   display: grid;
-  grid-template-columns: 264px minmax(360px, 1fr) 344px;
+  grid-template-columns: var(--rail-width) minmax(360px, 1fr) var(--files-width);
   grid-template-rows: minmax(0, 1fr);
   width: 100%;
   height: 100%;
@@ -3285,20 +3287,65 @@ html[data-theme="light"] .directory-row.is-selected {
 }
 
 .shell.is-rail-closed {
-  grid-template-columns: minmax(360px, 1fr) 344px;
+  grid-template-columns: minmax(360px, 1fr) var(--files-width);
 }
 
 .shell.is-files-closed {
-  grid-template-columns: 264px minmax(360px, 1fr);
+  grid-template-columns: var(--rail-width) minmax(360px, 1fr);
 }
 
 .shell.is-rail-closed.is-files-closed {
   grid-template-columns: minmax(360px, 1fr);
 }
 
+.panel-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  z-index: 6;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.panel-resizer.is-end-edge {
+  right: -4px;
+}
+
+.panel-resizer.is-start-edge {
+  left: -4px;
+}
+
+.panel-resizer:hover,
+.panel-resizer:focus-visible {
+  background: linear-gradient(
+    to right,
+    transparent 2px,
+    var(--accent) 3px,
+    var(--accent) 4px,
+    transparent 5px
+  );
+}
+
+body.is-panel-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.is-panel-resizing .panel-resizer {
+  background: linear-gradient(
+    to right,
+    transparent 2px,
+    var(--accent) 3px,
+    var(--accent) 4px,
+    transparent 5px
+  );
+}
+
 /* ---------- rail ---------- */
 
 .rail {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -3740,6 +3787,7 @@ html[data-theme="light"] .directory-row.is-selected {
 /* ---------- files panel ---------- */
 
 .files {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -3832,11 +3880,5 @@ html[data-theme="light"] .directory-row.is-selected {
 @media (prefers-reduced-motion: reduce) {
   .status-dot.state-working {
     animation: none;
-  }
-}
-
-@media (max-width: 1080px) {
-  .shell:not(.is-files-closed):not(.is-rail-closed) {
-    grid-template-columns: 220px minmax(320px, 1fr) 300px;
   }
 }

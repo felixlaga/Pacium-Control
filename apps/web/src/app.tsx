@@ -116,6 +116,20 @@ import {
   isPaciumOrgRepository,
   type RepoRoleAssignment,
 } from "./repo-role-model.js";
+import {
+  DEFAULT_FILES_WIDTH,
+  DEFAULT_RAIL_WIDTH,
+  MAX_FILES_WIDTH,
+  MAX_RAIL_WIDTH,
+  MIN_FILES_WIDTH,
+  MIN_RAIL_WIDTH,
+  PANEL_RESIZE_STEP,
+  clampFilesWidth,
+  clampRailWidth,
+  loadPanelWidths,
+  savePanelWidths,
+  type PanelWidths,
+} from "./panel-size-model.js";
 
 interface TerminalSync {
   sessionId: string;
@@ -253,6 +267,11 @@ export function App() {
   const [filesOpen, setFilesOpen] = useState(
     () => window.localStorage.getItem(FILES_OPEN_STORAGE_KEY) !== "closed",
   );
+  const [panelWidths, setPanelWidths] = useState<PanelWidths>(() =>
+    loadPanelWidths(window.localStorage),
+  );
+  const panelWidthsRef = useRef(panelWidths);
+  panelWidthsRef.current = panelWidths;
   const [filesTab, setFilesTab] = useState<FilesTab>("files");
   const [gitTab, setGitTab] = useState<GitTab>("changes");
   const [providerFreshnessNow, setProviderFreshnessNow] = useState(() =>
@@ -1160,6 +1179,72 @@ export function App() {
     [connection],
   );
 
+  const commitPanelWidths = useCallback(() => {
+    savePanelWidths(window.localStorage, panelWidthsRef.current);
+  }, []);
+
+  const resizeRail = useCallback((clientX: number) => {
+    setPanelWidths((current) => ({
+      ...current,
+      rail: clampRailWidth(clientX),
+    }));
+  }, []);
+
+  const resizeFiles = useCallback((clientX: number) => {
+    setPanelWidths((current) => ({
+      ...current,
+      files: clampFilesWidth(window.innerWidth - clientX),
+    }));
+  }, []);
+
+  const stepRail = useCallback(
+    (direction: -1 | 1) => {
+      setPanelWidths((current) => ({
+        ...current,
+        rail: clampRailWidth(current.rail + direction * PANEL_RESIZE_STEP),
+      }));
+      window.requestAnimationFrame(commitPanelWidths);
+    },
+    [commitPanelWidths],
+  );
+
+  const stepFiles = useCallback(
+    (direction: -1 | 1) => {
+      setPanelWidths((current) => ({
+        ...current,
+        files: clampFilesWidth(current.files + direction * PANEL_RESIZE_STEP),
+      }));
+      window.requestAnimationFrame(commitPanelWidths);
+    },
+    [commitPanelWidths],
+  );
+
+  const resetRail = useCallback(() => {
+    setPanelWidths((current) => ({ ...current, rail: DEFAULT_RAIL_WIDTH }));
+    window.requestAnimationFrame(commitPanelWidths);
+  }, [commitPanelWidths]);
+
+  const resetFiles = useCallback(() => {
+    setPanelWidths((current) => ({ ...current, files: DEFAULT_FILES_WIDTH }));
+    window.requestAnimationFrame(commitPanelWidths);
+  }, [commitPanelWidths]);
+
+  const cycleTheme = useCallback(() => {
+    setPreferences((current) => {
+      const next: WorkspacePreferences = {
+        ...current,
+        theme:
+          current.theme === "dark"
+            ? "light"
+            : current.theme === "light"
+              ? "system"
+              : "dark",
+      };
+      savePreferences(window.localStorage, next);
+      return next;
+    });
+  }, []);
+
   const closeCreateDialog = useCallback(() => {
     setCreateOpen(false);
     window.requestAnimationFrame(() => {
@@ -1290,6 +1375,12 @@ export function App() {
       className={`shell ${railOpen ? "" : "is-rail-closed"} ${
         filesOpen ? "" : "is-files-closed"
       }`}
+      style={
+        {
+          "--rail-width": `${panelWidths.rail}px`,
+          "--files-width": `${panelWidths.files}px`,
+        } as React.CSSProperties
+      }
     >
       <a className="skip-link" href="#shell-terminal">
         Skip to terminal
@@ -1348,6 +1439,19 @@ export function App() {
             </button>
             <button
               className="rail-footer-button"
+              onClick={cycleTheme}
+              title="Switch between dark, light, and system theme"
+              type="button"
+            >
+              Theme:{" "}
+              {preferences.theme === "system"
+                ? `System (${effectiveTheme})`
+                : preferences.theme === "dark"
+                  ? "Dark"
+                  : "Light"}
+            </button>
+            <button
+              className="rail-footer-button"
               onClick={() => setSettingsOpen(true)}
               type="button"
             >
@@ -1361,6 +1465,17 @@ export function App() {
               Diagnostics
             </button>
           </div>
+          <PanelResizer
+            ariaLabel="Resize sidebar"
+            edge="end"
+            max={MAX_RAIL_WIDTH}
+            min={MIN_RAIL_WIDTH}
+            onCommit={commitPanelWidths}
+            onPointerResize={resizeRail}
+            onReset={resetRail}
+            onStep={stepRail}
+            value={panelWidths.rail}
+          />
         </aside>
       )}
       <main className="stage">
@@ -1527,6 +1642,17 @@ export function App() {
       </main>
       {filesOpen && (
         <aside aria-label="Repository files and git" className="files">
+          <PanelResizer
+            ariaLabel="Resize files panel"
+            edge="start"
+            max={MAX_FILES_WIDTH}
+            min={MIN_FILES_WIDTH}
+            onCommit={commitPanelWidths}
+            onPointerResize={resizeFiles}
+            onReset={resetFiles}
+            onStep={stepFiles}
+            value={panelWidths.files}
+          />
           <div className="files-tabs" role="tablist">
             <button
               aria-selected={filesTab === "files"}
@@ -2078,6 +2204,76 @@ function statusLine(
   return `${attentionStateLabel(attention.state)} · ${attentionSourceLabel(
     attention.source,
   )} · ${timeAgo(attention.observedAt)}`;
+}
+
+function PanelResizer({
+  ariaLabel,
+  edge,
+  max,
+  min,
+  onCommit,
+  onPointerResize,
+  onReset,
+  onStep,
+  value,
+}: {
+  ariaLabel: string;
+  edge: "start" | "end";
+  max: number;
+  min: number;
+  onCommit: () => void;
+  onPointerResize: (clientX: number) => void;
+  onReset: () => void;
+  onStep: (direction: -1 | 1) => void;
+  value: number;
+}) {
+  const draggingRef = useRef(false);
+  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) {
+      return;
+    }
+    draggingRef.current = false;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    document.body.classList.remove("is-panel-resizing");
+    onCommit();
+  };
+  return (
+    <div
+      aria-label={ariaLabel}
+      aria-orientation="vertical"
+      aria-valuemax={max}
+      aria-valuemin={min}
+      aria-valuenow={Math.round(value)}
+      className={`panel-resizer is-${edge}-edge`}
+      onDoubleClick={onReset}
+      onKeyDown={(event) => {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+          return;
+        }
+        event.preventDefault();
+        const grow = edge === "end" ? "ArrowRight" : "ArrowLeft";
+        onStep(event.key === grow ? 1 : -1);
+      }}
+      onPointerCancel={endDrag}
+      onPointerDown={(event) => {
+        if (event.button !== 0) {
+          return;
+        }
+        draggingRef.current = true;
+        event.currentTarget.setPointerCapture(event.pointerId);
+        document.body.classList.add("is-panel-resizing");
+      }}
+      onPointerMove={(event) => {
+        if (draggingRef.current) {
+          onPointerResize(event.clientX);
+        }
+      }}
+      onPointerUp={endDrag}
+      role="separator"
+      tabIndex={0}
+      title="Drag to resize · double-click to reset"
+    />
+  );
 }
 
 function TerminateSessionDialog({
