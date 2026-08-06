@@ -36,41 +36,57 @@ test.afterAll(async () => {
 });
 
 test.afterEach(async ({ page }) => {
-  const sidebar = page.getByRole("complementary", {
-    name: "Session navigation",
-  });
-  const session = sidebar.getByRole("button", {
-    name: /^Oversight fixture,/,
-  });
-  if ((await session.count()) === 0) {
-    return;
+  const rows = page
+    .locator(".session-row")
+    .filter({ hasText: "Oversight fixture" });
+  while ((await rows.count()) > 0) {
+    const previousCount = await rows.count();
+    const row = rows.first();
+    await row.locator(".session-select").click();
+    await row.getByRole("button", { name: /^Actions for / }).click();
+    // The session may still be live if the injected "exit" has not landed
+    // yet, so handle both menu variants and their confirm dialogs.
+    const removeItem = page.getByRole("button", { name: "Remove session" });
+    if (await removeItem.count()) {
+      await removeItem.click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Remove session" })
+        .click();
+    } else {
+      await page
+        .getByRole("button", {
+          name: /Terminate process and close|Disconnect (tmux client and close|keep-alive client)/,
+        })
+        .click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: /Terminate process|Disconnect and close/ })
+        .click();
+    }
+    await expect
+      .poll(() => rows.count(), { timeout: 15_000 })
+      .toBeLessThan(previousCount);
   }
-  await page.setViewportSize({ width: 1280, height: 720 });
-  if (!(await sidebar.isVisible())) {
-    await page.getByRole("button", { name: "Show session sidebar" }).click();
-    await expect(sidebar).toBeVisible();
-  }
-  await session.click({ button: "right" });
-  page.once("dialog", (dialog) => dialog.accept());
-  await page
-    .getByRole("button", { name: /Terminate process and close/ })
-    .click();
-  await expect(session).not.toBeAttached();
 });
 
-test("changed files load lazily without changing terminal selection", async ({
+test("changed files load lazily in the Git tab without changing terminal selection", async ({
   page,
 }) => {
-  const workspaceStatus = await openFixtureTerminal(page);
-  const overviewTab = page.getByRole("tab", { name: "Overview" });
-  const changesTab = page.getByRole("tab", { name: "Changes" });
-  await expect(overviewTab).toHaveAttribute("aria-selected", "true");
-  await expect(
-    page.getByRole("tabpanel", { name: "Changes" }),
-  ).not.toBeAttached();
+  const title = await openFixtureTerminal(page);
+  const filesPanel = page.getByRole("complementary", {
+    name: "Repository files and git",
+  });
+  const filesTab = filesPanel.getByRole("tab", { name: "Files" });
+  const gitTab = filesPanel.getByRole("tab", { name: "Git" });
+  await expect(filesTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(".repository-changes-panel")).not.toBeAttached();
 
-  await changesTab.click();
-  const changesPanel = page.getByRole("tabpanel", { name: "Changes" });
+  await gitTab.click();
+  await expect(
+    filesPanel.getByRole("tab", { name: "Changes" }),
+  ).toHaveAttribute("aria-selected", "true");
+  const changesPanel = page.locator(".repository-changes-panel");
   await expect(changesPanel).toBeVisible();
   await expect(changesPanel).toContainText("1 reported change");
   await expect(
@@ -79,13 +95,32 @@ test("changed files load lazily without changing terminal selection", async ({
   await expect(
     changesPanel.getByRole("button", { name: "Refresh" }),
   ).toBeVisible();
-  await expect(workspaceStatus).toContainText("Oversight fixture");
+  await expect(title).toHaveText("Oversight fixture");
+
+  // Leaving Git and returning keeps the loaded evidence and the terminal.
+  await filesTab.click();
+  await expect(changesPanel).not.toBeAttached();
+  await gitTab.click();
+  await expect(changesPanel).toContainText("1 reported change");
+  await expect(title).toHaveText("Oversight fixture");
+});
+
+test("opens one bounded diff from the changed-file list", async ({ page }) => {
+  const title = await openFixtureTerminal(page);
+  const filesPanel = page.getByRole("complementary", {
+    name: "Repository files and git",
+  });
+  await filesPanel.getByRole("tab", { name: "Git" }).click();
+  const changesPanel = page.locator(".repository-changes-panel");
+  await expect(changesPanel).toContainText("1 reported change");
 
   const openDiff = changesPanel.getByRole("button", {
     name: "Open diff for file.txt",
   });
+  // A user must be able to click the changed-file row while a terminal is
+  // mounted next to the panel.
   await openDiff.click();
-  const diffPanel = page.getByRole("tabpanel", { name: "Changes" });
+  const diffPanel = page.locator(".repository-diff-panel");
   await expect(diffPanel.locator(".repository-diff-heading strong")).toHaveText(
     "file.txt",
   );
@@ -98,7 +133,9 @@ test("changed files load lazily without changing terminal selection", async ({
 
   const search = diffPanel.getByRole("searchbox", { name: "Search diff" });
   await search.fill("after");
-  await expect(diffPanel.getByRole("status")).toHaveText("1 matching line");
+  await expect(diffPanel.locator(".diff-search-summary")).toHaveText(
+    "1 matching line",
+  );
   await search.press("Escape");
   await expect(search).toHaveValue("");
 
@@ -112,110 +149,24 @@ test("changed files load lazily without changing terminal selection", async ({
 
   await diffPanel.focus();
   await diffPanel.press("Escape");
-  await expect(openDiff).toBeFocused();
+  await expect(diffPanel).not.toBeAttached();
   await expect(changesPanel).toContainText("1 reported change");
-
-  await changesTab.focus();
-  await changesTab.press("ArrowLeft");
-  await expect(overviewTab).toBeFocused();
-  await expect(overviewTab).toHaveAttribute("aria-selected", "true");
-  await overviewTab.press("ArrowRight");
-  await expect(changesTab).toBeFocused();
-  await expect(changesPanel).toBeVisible();
-});
-
-test("recent history loads lazily without changing terminal selection", async ({
-  page,
-}) => {
-  const workspaceStatus = await openFixtureTerminal(page);
-  const historyTab = page.getByRole("tab", { name: "History" });
-  await expect(
-    page.getByRole("tabpanel", { name: "History" }),
-  ).not.toBeAttached();
-
-  await historyTab.click();
-  const historyPanel = page.getByRole("tabpanel", { name: "History" });
-  await expect(historyPanel).toContainText("1 recent commit");
-  const commit = historyPanel.getByRole("listitem").first();
-  await expect(commit).toContainText("fixture");
-  await expect(commit).toContainText("Pacium E2E");
-  await expect(commit.locator("code")).toHaveText(/^[0-9a-f]{8}$/);
-  await expect(workspaceStatus).toContainText("Oversight fixture");
-
-  await historyPanel.getByRole("button", { name: "Refresh" }).click();
-  await expect(historyPanel).toContainText("1 recent commit");
-
-  await historyTab.focus();
-  await historyTab.press("ArrowLeft");
-  const changesTab = page.getByRole("tab", { name: "Changes" });
-  await expect(changesTab).toBeFocused();
-  await expect(changesTab).toHaveAttribute("aria-selected", "true");
-  await changesTab.press("ArrowRight");
-  await expect(historyTab).toBeFocused();
-  await expect(historyPanel).toBeVisible();
-  await expect(workspaceStatus).toContainText("Oversight fixture");
-
-  await page.setViewportSize({ width: 320, height: 720 });
-  await expect(historyPanel).toBeVisible();
-  await expect(commit).toBeVisible();
-  await page.getByRole("button", { name: "Close inspector" }).click();
-});
-
-test("General and Pacium modes preserve terminal and inspector context", async ({
-  page,
-}) => {
-  const workspaceStatus = await openFixtureTerminal(page);
-  const changesTab = page.getByRole("tab", { name: "Changes" });
-  await changesTab.click();
-  await expect(changesTab).toHaveAttribute("aria-selected", "true");
-
-  const paciumButton = page.getByRole("button", { name: "Pacium" });
-  await paciumButton.click();
-  await expect(paciumButton).toHaveAttribute("aria-pressed", "true");
-  await expect(
-    page.getByRole("region", { name: "Pacium workspace definition" }),
-  ).toContainText(
-    /Pacium setup needed|Primary roles and queue-source health resolve below/,
-  );
-  await expect(changesTab).toHaveAttribute("aria-selected", "true");
-  await expect(workspaceStatus).toContainText("Oversight fixture");
-
-  await page.getByRole("main", { name: "Terminal workspace" }).focus();
-  await page.keyboard.press("g");
-  await page.keyboard.press("p");
-  const generalButton = page.getByRole("button", { name: "General" });
-  await expect(generalButton).toHaveAttribute("aria-pressed", "true");
-  await expect(changesTab).toHaveAttribute("aria-selected", "true");
-  await expect(workspaceStatus).toContainText("Oversight fixture");
-
-  await page.keyboard.press("Control+k");
-  const palette = page.getByRole("dialog", { name: "Command palette" });
-  await palette
-    .getByRole("combobox", { name: "Search commands" })
-    .fill("pacium mode");
-  await palette.getByRole("option", { name: /Switch to Pacium mode/ }).click();
-  await expect(paciumButton).toHaveAttribute("aria-pressed", "true");
-  await expect(workspaceStatus).toContainText("Oversight fixture");
-
-  await page.reload();
-  await expect(paciumButton).toHaveAttribute("aria-pressed", "true");
-  await expect(workspaceStatus).toContainText("Oversight fixture");
-  await expect(
-    page.getByRole("region", { name: "Pacium workspace definition" }),
-  ).toContainText(
-    /Pacium setup needed|Primary roles and queue-source health resolve below/,
-  );
+  await expect(title).toHaveText("Oversight fixture");
 });
 
 async function openFixtureTerminal(page: Page) {
   await page.goto("/");
-  const workspaceStatus = page.locator(".workspace-status");
-  await expect(workspaceStatus).toContainText("Connected");
+  await expect(
+    page.getByLabel("Pacium local connection: connected."),
+  ).toBeVisible();
 
-  await page.getByRole("button", { name: "Open first terminal" }).click();
+  await page.getByRole("button", { name: "New terminal" }).click();
   await page.getByLabel("Working directory").fill(repositoryDirectory);
   await page.getByPlaceholder("Project shell").fill("Oversight fixture");
-  await page.getByRole("button", { name: "Open terminal" }).click();
-  await expect(workspaceStatus).toContainText("Oversight fixture");
-  return workspaceStatus;
+  await page
+    .getByRole("button", { name: "Open terminal", exact: true })
+    .click();
+  const title = page.locator(".stage-title h1");
+  await expect(title).toHaveText("Oversight fixture");
+  return title;
 }

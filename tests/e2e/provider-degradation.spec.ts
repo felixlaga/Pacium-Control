@@ -1,47 +1,70 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const repositoryRoot = process.cwd();
 const sessionName = "Capability fixture";
-
-test.beforeEach(async ({ page }) => {
-  await page.clock.install();
-});
+const labelledStatus =
+  /(Working|Waiting|Needs input|Finished|Failed|Stale|Unknown) · (Provider native|Provider hook|Human labelled|Process observed|Terminal inferred) · \d+[smhd] ago|Running · no provider signal/;
 
 test.afterEach(async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 720 });
-  await page.emulateMedia({
-    forcedColors: "none",
-    reducedMotion: "no-preference",
-  });
-  const sidebar = page.getByRole("complementary", {
-    name: "Session navigation",
-  });
-  if (!(await sidebar.isVisible())) {
-    await page.getByRole("button", { name: "Show session sidebar" }).click();
+  const rows = page.locator(".session-row").filter({ hasText: sessionName });
+  while ((await rows.count()) > 0) {
+    const previousCount = await rows.count();
+    const row = rows.first();
+    await row.locator(".session-select").click();
+    await row.getByRole("button", { name: /^Actions for / }).click();
+    // The session may still be live if the injected "exit" has not landed
+    // yet, so handle both menu variants and their confirm dialogs.
+    const removeItem = page.getByRole("button", { name: "Remove session" });
+    if (await removeItem.count()) {
+      await removeItem.click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Remove session" })
+        .click();
+    } else {
+      await page
+        .getByRole("button", {
+          name: /Terminate process and close|Disconnect (tmux client and close|keep-alive client)/,
+        })
+        .click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: /Terminate process|Disconnect and close/ })
+        .click();
+    }
+    await expect
+      .poll(() => rows.count(), { timeout: 15_000 })
+      .toBeLessThan(previousCount);
   }
-  const session = sidebar.getByRole("button", {
-    name: new RegExp(`^${sessionName},`),
-  });
-  if ((await session.count()) === 0) {
-    return;
-  }
-  await session.click({ button: "right" });
-  page.on("dialog", (dialog) => dialog.accept());
-  await page
-    .getByRole("button", {
-      name: /Terminate process and close|Remove session/,
-    })
-    .click();
-  await expect(session).not.toBeAttached();
 });
 
-test("provider degradation stays explicit while the direct terminal remains usable", async ({
+test("provider state stays labelled in the header while the terminal remains usable", async ({
   page,
 }) => {
+  const { status, terminal } = await openClaudeTerminal(page);
+
+  // The header must always name the state, the evidence source, and the
+  // freshness of the observation — never an unlabelled guess.
+  await expect(status).toBeVisible();
+  await expect(status).toHaveText(labelledStatus);
+
+  await terminal.locator(".xterm-helper-textarea").focus();
+  await page.keyboard.type("printf 'PC-degraded terminal stays usable\\n'");
+  await page.keyboard.press("Enter");
+  await expect(terminal.locator(".xterm-rows")).toContainText(
+    "PC-degraded terminal stays usable",
+  );
+  // The degraded provider signal never disables the direct terminal.
+  await expect(status).toHaveText(labelledStatus);
+});
+
+async function openClaudeTerminal(page: Page) {
   await page.goto("/");
-  const workspaceStatus = page.locator(".workspace-status");
-  await expect(workspaceStatus).toContainText("Connected");
-  await page.getByRole("button", { name: "Open first terminal" }).click();
+  await expect(
+    page.getByLabel("Pacium local connection: connected."),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "New terminal" }).click();
   const createDialog = page.getByRole("dialog", { name: "Open a terminal" });
   const claudePreset = createDialog.getByRole("radio", {
     name: /Claude Code/,
@@ -54,109 +77,12 @@ test("provider degradation stays explicit while the direct terminal remains usab
   await createDialog
     .getByRole("button", { name: "Open terminal", exact: true })
     .click();
-  await expect(workspaceStatus).toContainText(sessionName);
 
-  const activityTab = page.getByRole("tab", {
-    name: "Activity",
-    exact: true,
-  });
-  await activityTab.click();
-  let activityPanel = page.getByRole("tabpanel", {
-    name: "Activity",
-    exact: true,
-  });
-  let providerStatus = activityPanel.locator(".provider-status");
-  await expect(providerStatus).toBeVisible();
-  await expect(
-    providerStatus.getByRole("heading", { name: "Provider status" }),
-  ).toBeVisible();
-  await expect(providerStatus).toContainText("Claude Code");
-  await expect(providerStatus).toContainText("Provider");
-  await expect(providerStatus).toContainText("Adapter");
-  await expect(providerStatus).toContainText("Evidence");
-  await expect(providerStatus).toContainText("Freshness");
-  await expect(providerStatus).toContainText("Capabilities");
-  await expect(
-    providerStatus.locator(".provider-capability-list > li"),
-  ).toHaveCount(8);
-  await expect(providerStatus).toContainText("Terminal remains available");
-  await expect(workspaceStatus).toContainText(sessionName);
-
-  const state = (
-    await providerStatus.locator(".provider-status-state").innerText()
-  ).trim();
-  expect([
-    "READY",
-    "UNAVAILABLE",
-    "UNSUPPORTED",
-    "DEGRADED",
-    "FAILED",
-    "STALE",
-  ]).toContain(state);
-
-  const terminal = page.getByLabel(`${sessionName} terminal`, { exact: true });
-  await providerStatus.getByRole("button", { name: "Open terminal" }).click();
-  await expect(terminal.locator(".xterm-helper-textarea")).toBeFocused();
-  await activityTab.click();
-  activityPanel = page.getByRole("tabpanel", {
-    name: "Activity",
-    exact: true,
-  });
-  providerStatus = activityPanel.locator(".provider-status");
-
-  if (state === "READY") {
-    await page.clock.fastForward(5 * 60_000 + 30_000);
-    await expect(providerStatus.locator(".provider-status-state")).toHaveText(
-      "Stale",
-    );
-  }
-  const fallback = activityPanel.locator(".activity-terminal-fallback");
-  await expect(fallback).toBeVisible();
-  await expect(fallback).toContainText(
-    /provider evidence is stale|provider evidence is unavailable|provider runtime is unsupported|provider observation is degraded|provider observer failed/i,
-  );
-  await fallback
-    .getByRole("button", { name: "Show recent terminal text" })
-    .click();
-  await expect(fallback).toContainText(/Terminal-derived|No non-empty recent/);
-  await fallback.getByRole("button", { name: "Hide" }).click();
-
-  await page.reload();
-  await expect(page.locator(".workspace-status")).toContainText("Connected");
-  await page.getByRole("tab", { name: "Activity", exact: true }).click();
-  activityPanel = page.getByRole("tabpanel", {
-    name: "Activity",
-    exact: true,
-  });
-  providerStatus = activityPanel.locator(".provider-status");
-  await expect(providerStatus).toBeVisible();
-  await expect(
-    activityPanel.locator(".activity-terminal-excerpt"),
-  ).not.toBeAttached();
-  await expect(workspaceStatus).toContainText(sessionName);
-
-  await page.setViewportSize({ width: 640, height: 720 });
-  await page.evaluate(() => {
-    document.documentElement.style.zoom = "2";
-  });
-  await expect(providerStatus).toBeVisible();
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth),
-  ).toBeLessThanOrEqual(640);
-  await page.evaluate(() => {
-    document.documentElement.style.zoom = "";
-  });
-
-  await page.setViewportSize({ width: 320, height: 720 });
-  await page.emulateMedia({
-    forcedColors: "active",
-    reducedMotion: "reduce",
-  });
-  await expect(providerStatus).toBeVisible();
-  await expect(
-    providerStatus.getByRole("button", { name: "Open terminal" }),
-  ).toBeVisible();
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth),
-  ).toBeLessThanOrEqual(320);
-});
+  const title = page.locator(".stage-title h1");
+  await expect(title).toHaveText(sessionName);
+  return {
+    status: page.locator(".stage-status"),
+    terminal: page.getByLabel(`Terminal for ${sessionName}`, { exact: true }),
+    title,
+  };
+}

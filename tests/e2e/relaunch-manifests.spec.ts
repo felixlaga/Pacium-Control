@@ -5,61 +5,70 @@ test.afterEach(async ({ page }) => {
   if ((await openDialog.count()) > 0) {
     await page.keyboard.press("Escape");
   }
-  const sidebar = page.getByRole("complementary", {
-    name: "Session navigation",
-  });
-  const sessions = sidebar
-    .locator(".session-item")
+  const rows = page
+    .locator(".session-row")
     .filter({ hasText: "Recovery fixture" });
-  while ((await sessions.count()) > 0) {
-    const previousCount = await sessions.count();
-    await sessions.first().click({ button: "right" });
-    page.once("dialog", (dialog) => dialog.accept());
-    await page
-      .getByRole("button", {
-        name: /Terminate process and close|Remove session/,
-      })
-      .click();
+  while ((await rows.count()) > 0) {
+    const previousCount = await rows.count();
+    const row = rows.first();
+    await row.locator(".session-select").click();
+    await row.getByRole("button", { name: /^Actions for / }).click();
+    // The session may still be live if the injected "exit" has not landed
+    // yet, so handle both menu variants and their confirm dialogs.
+    const removeItem = page.getByRole("button", { name: "Remove session" });
+    if (await removeItem.count()) {
+      await removeItem.click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Remove session" })
+        .click();
+    } else {
+      await page
+        .getByRole("button", {
+          name: /Terminate process and close|Disconnect (tmux client and close|keep-alive client)/,
+        })
+        .click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: /Terminate process|Disconnect and close/ })
+        .click();
+    }
     await expect
-      .poll(() => sessions.count(), { timeout: 10_000 })
+      .poll(() => rows.count(), { timeout: 15_000 })
       .toBeLessThan(previousCount);
   }
 });
 
-test("previews a detached manifest and relaunches a fresh successor", async ({
+test("previews the retained manifest of an exited session and relaunches a fresh successor", async ({
   page,
 }) => {
   await page.goto("/");
-  const workspaceStatus = page.locator(".workspace-status");
-  await expect(workspaceStatus).toContainText("Connected");
+  await expect(
+    page.getByLabel("Pacium local connection: connected."),
+  ).toBeVisible();
 
-  await page.getByRole("button", { name: "Open first terminal" }).click();
+  await page.getByRole("button", { name: "New terminal" }).click();
   await page.getByPlaceholder("Project shell").fill("Recovery fixture");
   await page
     .getByRole("button", { name: "Open terminal", exact: true })
     .click();
-  await expect(workspaceStatus).toContainText("Recovery fixture");
+  const title = page.locator(".stage-title h1");
+  await expect(title).toHaveText("Recovery fixture");
 
-  const terminal = page.getByRole("main", { name: "Terminal workspace" });
+  const terminal = page.getByLabel("Terminal for Recovery fixture", {
+    exact: true,
+  });
   await terminal.locator(".xterm-helper-textarea").focus();
   await page.keyboard.type("exit");
   await page.keyboard.press("Enter");
+  await expect(page.locator(".stage-status")).toContainText("Exited");
 
-  await page.getByRole("button", { name: "Actions", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Actions for Recovery fixture" })
+    .click();
   const actions = page.getByRole("dialog", { name: "Recovery fixture" });
-  await expect(actions).toContainText("Shell · exited");
-  await expect(actions).toContainText("Remove this ended session record");
-  page.once("dialog", (dialog) => dialog.accept());
-  await actions.getByRole("button", { name: "Remove session" }).click();
-
-  const sidebar = page.getByRole("complementary", {
-    name: "Session navigation",
-  });
-  const recovery = sidebar
-    .locator(".recovery-item")
-    .filter({ hasText: "Recovery fixture" });
-  await expect(recovery).toBeVisible();
-  await recovery.click();
+  await expect(actions).toContainText("exited");
+  await actions.getByRole("button", { name: "Relaunch ended session" }).click();
 
   const preview = page.getByRole("dialog", {
     name: "Relaunch Recovery fixture",
@@ -71,11 +80,26 @@ test("previews a detached manifest and relaunches a fresh successor", async ({
   await expect(preview).toContainText("not resumed automatically");
   await page.keyboard.press("Escape");
   await expect(preview).toBeHidden();
-  await expect(recovery).toBeFocused();
 
-  await recovery.click();
+  await page
+    .getByRole("button", { name: "Actions for Recovery fixture" })
+    .first()
+    .click();
+  await actions.getByRole("button", { name: "Relaunch ended session" }).click();
   await preview.getByRole("button", { name: "Start fresh process" }).click();
-  await expect(workspaceStatus).toContainText("Recovery fixture");
-  await expect(recovery).toHaveCount(0);
-  await expect(terminal.locator(".xterm-helper-textarea")).toBeVisible();
+  await expect(preview).toBeHidden();
+
+  // The successor is a fresh live session; the ended record is preserved.
+  await expect(title).toHaveText("Recovery fixture");
+  await expect(page.locator(".stage-status")).not.toContainText("Exited");
+  const composer = page.getByPlaceholder("Send to Recovery fixture");
+  await expect(composer).toBeEnabled();
+  await composer.fill("printf 'PC-076 relaunched\\n'");
+  await composer.press("Enter");
+  await expect(terminal.locator(".xterm-rows")).toContainText(
+    "PC-076 relaunched",
+  );
+  await expect(
+    page.locator(".session-row").filter({ hasText: "Recovery fixture" }),
+  ).toHaveCount(2);
 });

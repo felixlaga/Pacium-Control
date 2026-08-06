@@ -12,7 +12,7 @@ test("configures remote Meta from local settings without command fields", async 
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Open workspace settings" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
 
   const dialog = page.getByRole("dialog", { name: "Workspace settings" });
   const setup = dialog.getByText("Remote Meta").locator("..").locator("..");
@@ -33,10 +33,6 @@ test("configures remote Meta from local settings without command fields", async 
   await expect(setup).not.toContainText("ssh root@");
 
   await dialog.getByRole("button", { name: "Cancel settings" }).click();
-  const shell = page.locator(".app-shell");
-  await expect(shell).toHaveAttribute("data-meta-focus", "true");
-  await expect(shell).toHaveClass(/is-sidebar-collapsed/);
-  await expect(
-    page.getByRole("main", { name: "Terminal workspace" }),
-  ).toContainText("pacium-e2e");
+  await expect(dialog).toBeHidden();
+  await expect(page.locator("main.stage")).toContainText("pacium-e2e");
 });

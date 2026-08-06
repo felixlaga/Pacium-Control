@@ -12,14 +12,11 @@ test("opens the configured Meta tmux session once in terminal-first view", async
 }) => {
   await page.goto("/");
 
-  const shell = page.locator(".app-shell");
-  await expect(shell).toHaveAttribute("data-meta-focus", "true");
-  await expect(shell).toHaveClass(/is-sidebar-collapsed/);
-  await expect(shell).toHaveClass(/is-inspector-collapsed/);
-  await expect(shell).toHaveAttribute("data-workspace-mode", "pacium");
-  await expect(page.locator(".pacium-prompt-composer")).toHaveCount(0);
+  await expect(page.locator(".shell")).toBeVisible();
+  const title = page.locator(".stage-title h1");
+  await expect(title).toHaveText(/pacium-e2e|· Meta$/);
 
-  const terminal = page.getByRole("main", { name: "Terminal workspace" });
+  const terminal = page.getByLabel("Terminal for pacium-e2e", { exact: true });
   const input = terminal.locator(".xterm-helper-textarea");
   await expect(input).toBeFocused();
   await page.keyboard.type("printf 'PC-079 Meta focused\\n'");
@@ -29,13 +26,12 @@ test("opens the configured Meta tmux session once in terminal-first view", async
   );
 
   await page.reload();
-  await expect(shell).toHaveAttribute("data-meta-focus", "true");
+  await expect(title).toHaveText(/pacium-e2e|· Meta$/);
   await expect(input).toBeFocused();
   await expect(terminal.locator(".xterm-rows")).toContainText(
     "PC-079 Meta focused",
   );
-  await page.getByRole("button", { name: "Show session sidebar" }).click();
   await expect(
-    page.locator(".session-item").filter({ hasText: "pacium-e2e" }),
+    page.locator(".session-row, .role-row").filter({ hasText: "pacium-e2e" }),
   ).toHaveCount(1);
 });

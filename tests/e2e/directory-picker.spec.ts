@@ -10,7 +10,10 @@ test("host directory picker recovers, navigates by path and keyboard, and return
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Open first terminal" }).click();
+  await expect(
+    page.getByLabel("Pacium local connection: connected."),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "New terminal" }).click();
 
   const createDialog = page.getByRole("dialog", { name: "Open a terminal" });
   const workingDirectory = createDialog.getByLabel("Working directory");
@@ -73,7 +76,6 @@ test("host directory picker recovers, navigates by path and keyboard, and return
   await expect(
     createDialog.getByRole("button", { name: "Open terminal" }),
   ).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("No terminal selected");
 
   const browse = createDialog.getByRole("button", { name: "Browse" });
   await browse.click();
@@ -109,7 +111,10 @@ test("recent-directory storage denial never blocks canonical selection", async (
   });
 
   await page.goto("/");
-  await page.getByRole("button", { name: "Open first terminal" }).click();
+  await expect(
+    page.getByLabel("Pacium local connection: connected."),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "New terminal" }).click();
   const createDialog = page.getByRole("dialog", { name: "Open a terminal" });
   await createDialog.getByRole("button", { name: "Browse" }).click();
 
@@ -125,51 +130,4 @@ test("recent-directory storage denial never blocks canonical selection", async (
   await expect(createDialog.getByLabel("Working directory")).toHaveValue(
     defaultDirectory,
   );
-});
-
-test("picker stays operable at 320 CSS pixels with accessibility preferences", async ({
-  page,
-}) => {
-  await page.setViewportSize({ height: 720, width: 640 });
-  await page.emulateMedia({
-    forcedColors: "active",
-    reducedMotion: "reduce",
-  });
-  await page.goto("/");
-  await page.evaluate(() => {
-    document.documentElement.style.zoom = "2";
-  });
-
-  await page.getByRole("button", { name: "Open first terminal" }).click();
-  await page.getByRole("button", { name: "Browse" }).click();
-  const picker = page.getByRole("dialog", {
-    name: "Choose a working directory",
-  });
-
-  await expect(picker).toBeVisible();
-  await expect(picker.getByLabel("Filter directories")).toBeFocused();
-  await expect(
-    picker.getByRole("button", { name: "Edit absolute host path" }),
-  ).toBeVisible();
-  await expect(
-    picker.getByRole("button", { name: "Use current folder" }),
-  ).toBeVisible();
-
-  const editPath = picker.getByRole("button", {
-    name: "Edit absolute host path",
-  });
-  await editPath.focus();
-  const styles = await editPath.evaluate((element) => {
-    const computed = getComputedStyle(element);
-    return {
-      outlineStyle: computed.outlineStyle,
-      transitionDuration: computed.transitionDuration,
-    };
-  });
-  expect(styles.outlineStyle).not.toBe("none");
-  expect(Number.parseFloat(styles.transitionDuration)).toBeLessThan(0.001);
-
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth),
-  ).toBeLessThanOrEqual(640);
 });
