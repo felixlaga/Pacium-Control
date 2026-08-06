@@ -51,6 +51,10 @@ export class PaciumTransport {
 
   public constructor(private readonly emit: (event: TransportEvent) => void) {}
 
+  public get apiAccessToken(): string | null {
+    return this.accessToken;
+  }
+
   public start(): void {
     this.stopped = false;
     void this.connect();
@@ -367,6 +371,12 @@ export class PaciumTransport {
       if (bootstrap.protocolVersion !== PROTOCOL_VERSION) {
         throw new Error("Browser and local server protocol versions differ");
       }
+      // stop() may have run while the bootstrap request was in flight; a
+      // stopped transport must never open a socket or emit "connected", or a
+      // superseded instance drives the app's state with a dead socket.
+      if (this.stopped) {
+        return;
+      }
       this.accessToken = bootstrap.accessToken;
 
       const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -379,6 +389,10 @@ export class PaciumTransport {
       this.socket = socket;
 
       socket.addEventListener("open", () => {
+        if (this.stopped || this.socket !== socket) {
+          socket.close(1000, "Pacium transport superseded");
+          return;
+        }
         this.retryAttempt = 0;
         this.emit({ type: "connection", state: "connected" });
         this.listSessions();
@@ -387,6 +401,9 @@ export class PaciumTransport {
         this.requestQueueObservation();
       });
       socket.addEventListener("message", (event) => {
+        if (this.stopped || this.socket !== socket) {
+          return;
+        }
         const data: unknown = event.data;
         if (
           typeof data === "string" ||
