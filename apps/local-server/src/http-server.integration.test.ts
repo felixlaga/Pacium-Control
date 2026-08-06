@@ -22,6 +22,7 @@ import {
   HostSetupApplyResultSchema,
   HostSetupSnapshotSchema,
   PROTOCOL_VERSION,
+  RepoDocsResponseSchema,
   ServerMessageSchema,
   type PaciumWorkspace,
   type ServerMessage,
@@ -42,6 +43,7 @@ import {
 } from "./http-server.js";
 import { createPaciumConfigStore } from "./pacium-config-service.js";
 import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
+import { RepoDocsService } from "./repo-docs-service.js";
 import { SessionManager } from "./session-manager.js";
 import {
   TmuxAdapter,
@@ -3116,6 +3118,70 @@ describe("localhost HTTP and WebSocket boundary", () => {
     expect(deniedOrigin.status).toBe(403);
   });
 
+  it("serves repository queue docs only for allowed roots with the local token", async () => {
+    const repoRoot = await mkdtemp(join(tmpdir(), "pacium-repo-docs-http-"));
+    temporaryDirectories.push(repoRoot);
+    await writeFile(join(repoRoot, "BACKLOG.md"), "- queue item\n", {
+      mode: 0o600,
+    });
+    const repoDocs = new RepoDocsService({
+      listAllowedRoots: () => Promise.resolve([repoRoot]),
+    });
+    const setup = await startTestServer(
+      new FakePtyFactory(),
+      undefined,
+      undefined,
+      undefined,
+      null,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      repoDocs,
+    );
+    application = setup.application;
+    manager = setup.manager;
+    const httpUrl = setup.url.replace("ws://", "http://");
+    const allowedOrigin = [...setup.config.allowedOrigins][0] ?? "";
+    const headers = {
+      authorization: `Bearer ${setup.config.accessToken}`,
+      origin: allowedOrigin,
+    };
+
+    const allowed = await fetch(
+      `${httpUrl}/api/pacium/repo-docs?root=${encodeURIComponent(repoRoot)}`,
+      { headers },
+    );
+    expect(allowed.status).toBe(200);
+    expect(RepoDocsResponseSchema.parse(await allowed.json())).toMatchObject({
+      root: await realpath(repoRoot),
+      docs: [
+        {
+          kind: "backlog",
+          fileName: "BACKLOG.md",
+          status: "stable",
+          content: "- queue item\n",
+        },
+      ],
+    });
+
+    const unknownRoot = await fetch(
+      `${httpUrl}/api/pacium/repo-docs?root=${encodeURIComponent(tmpdir())}`,
+      { headers },
+    );
+    expect(unknownRoot.status).toBe(400);
+    expect(await unknownRoot.json()).toMatchObject({
+      code: "INVALID_REPO_ROOT",
+    });
+
+    const deniedToken = await fetch(
+      `${httpUrl}/api/pacium/repo-docs?root=${encodeURIComponent(repoRoot)}`,
+      { headers: { ...headers, authorization: "Bearer wrong-token" } },
+    );
+    expect(deniedToken.status).toBe(403);
+  });
+
   it("serves bounded diagnostics through the local protected-read boundary", async () => {
     const setup = await startTestServer(new FakePtyFactory());
     application = setup.application;
@@ -3545,6 +3611,7 @@ async function startTestServer(
   codexRuntimeBridge?: CodexRuntimeBridge,
   tmuxAdapter?: TmuxAdapter,
   hostSetup?: Parameters<typeof createPaciumHttpServer>[6],
+  repoDocs?: Parameters<typeof createPaciumHttpServer>[7],
 ): Promise<{
   application: PaciumHttpServer;
   manager: SessionManager;
@@ -3727,6 +3794,7 @@ async function startTestServer(
     claudeObserver,
     codexRuntimeBridge,
     hostSetup,
+    repoDocs,
   );
   application.server.listen(0, config.host);
   await once(application.server, "listening");

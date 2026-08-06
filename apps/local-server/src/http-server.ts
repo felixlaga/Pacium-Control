@@ -11,10 +11,12 @@ import { fileURLToPath } from "node:url";
 
 import {
   HostSetupApplyRequestSchema,
+  MAX_REPO_DOC_PATH_CHARS,
   PROTOCOL_VERSION,
   type HostSetupApplyResult,
   type HostSetupApplyRequest,
   type HostSetupSnapshot,
+  type RepoDocsResponse,
 } from "@pacium/contracts";
 
 import type { ClaudeObserver } from "./claude-observer.js";
@@ -35,6 +37,9 @@ interface HostSetupApi {
   inspect(): Promise<HostSetupSnapshot>;
   apply(input: HostSetupApplyRequest): Promise<HostSetupApplyResult>;
 }
+interface RepoDocsApi {
+  inspect(root: string): Promise<RepoDocsResponse | null>;
+}
 import { WebSocketHub } from "./ws-hub.js";
 
 export interface PaciumHttpServer {
@@ -50,6 +55,7 @@ export function createPaciumHttpServer(
   claudeObserver?: ClaudeObserver,
   codexRuntimeBridge?: CodexRuntimeBridge,
   hostSetup?: HostSetupApi,
+  repoDocs?: RepoDocsApi,
 ): PaciumHttpServer {
   const webRoot = fileURLToPath(new URL("../../web/dist/", import.meta.url));
   const hub = new WebSocketHub(config, sessions, paciumConfig, queueObserver);
@@ -63,6 +69,7 @@ export function createPaciumHttpServer(
       queueObserver,
       claudeObserver,
       hostSetup,
+      repoDocs,
     );
   });
 
@@ -124,6 +131,7 @@ async function routeRequest(
   queueObserver: QueueObserver,
   claudeObserver: ClaudeObserver | undefined,
   hostSetup: HostSetupApi | undefined,
+  repoDocs: RepoDocsApi | undefined,
 ): Promise<void> {
   applySecurityHeaders(response, config);
 
@@ -208,6 +216,51 @@ async function routeRequest(
           error: "Pacium could not inspect that host directory.",
         });
       }
+    }
+    return;
+  }
+
+  if (pathname === "/api/pacium/repo-docs") {
+    const access = authorizeProtectedApi(request, config);
+    if (access === null || repoDocs === undefined) {
+      sendJson(response, 403, { error: "Forbidden" });
+      return;
+    }
+    if (!isAllowedProtectedReadMethod(request.method, access)) {
+      sendJson(response, 405, { error: "Method not allowed" });
+      return;
+    }
+    if (request.method === "POST" && !hasEmptyRequestBody(request)) {
+      sendJson(response, 400, { error: "Request body is not allowed" });
+      return;
+    }
+    const root = requestUrl.searchParams.get("root");
+    if (
+      root === null ||
+      root.length === 0 ||
+      root.length > MAX_REPO_DOC_PATH_CHARS
+    ) {
+      sendJson(response, 400, {
+        code: "INVALID_REPO_ROOT",
+        error: "Choose an allowed absolute repository root on the Pacium host.",
+      });
+      return;
+    }
+    try {
+      const docs = await repoDocs.inspect(root);
+      if (docs === null) {
+        sendJson(response, 400, {
+          code: "INVALID_REPO_ROOT",
+          error:
+            "Choose an allowed absolute repository root on the Pacium host.",
+        });
+        return;
+      }
+      sendJson(response, 200, docs, request.method === "HEAD");
+    } catch {
+      sendJson(response, 500, {
+        error: "Pacium could not inspect that repository's queue documents.",
+      });
     }
     return;
   }

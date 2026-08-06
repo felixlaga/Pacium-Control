@@ -11,6 +11,7 @@ import { createPaciumConfigStore } from "./pacium-config-service.js";
 import { NodePtyFactory } from "./pty-adapter.js";
 import { QueueObserver } from "./queue-observer.js";
 import { RelaunchManifestStore } from "./relaunch-manifest-store.js";
+import { RepoDocsService } from "./repo-docs-service.js";
 import { SessionManager } from "./session-manager.js";
 import {
   createTmuxAdapter,
@@ -93,6 +94,23 @@ const hostSetup = new HostSetupService(
 );
 const queueObserver = new QueueObserver();
 await queueObserver.syncConfig(await paciumConfig.inspect());
+const repoDocs = new RepoDocsService({
+  async listAllowedRoots() {
+    const roots = new Set<string>();
+    const observation = await paciumConfig.inspect();
+    if (observation.status === "ready" && observation.workspace !== null) {
+      for (const repository of observation.workspace.repositories) {
+        roots.add(repository.root);
+      }
+    }
+    for (const session of sessions.list()) {
+      if (session.repository.root !== null) {
+        roots.add(session.repository.root);
+      }
+    }
+    return [...roots];
+  },
+});
 const application = createPaciumHttpServer(
   config,
   sessions,
@@ -101,6 +119,7 @@ const application = createPaciumHttpServer(
   claudeObserver,
   codexRuntimeBridge,
   hostSetup,
+  repoDocs,
 );
 
 application.server.listen(config.port, config.host, () => {
