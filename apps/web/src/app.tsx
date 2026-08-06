@@ -5,8 +5,10 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import {
+  TerminalSurface,
   type TerminalDisplayPreferences,
   type TerminalSurfaceHandle,
 } from "@pacium/terminal-ui";
@@ -17,75 +19,33 @@ import type {
   LaunchPresetCapability,
   LaunchPresetId,
   MetaSessionCapability,
-  PaciumBinding,
-  PaciumRoleId,
-  QueueApprovalDecisionPayload,
-  QueueDeliveryResult,
-  QueueQuestionAnswerPayload,
-  QueueResolutionRequest,
+  QueueSourcesObservation,
   RelaunchManifest,
   ServerMessage,
   SessionSummary,
   TerminalDataFrame,
   TmuxCapability,
   TmuxSessionsObservation,
-  TmuxTarget,
 } from "@pacium/contracts";
 
 import { ConnectionBadge } from "./connection-badge.js";
-import {
-  PanelLeftIcon,
-  PanelRightIcon,
-  SettingsIcon,
-  SplitDownIcon,
-  SplitRightIcon,
-} from "./icons.js";
 import {
   PaciumTransport,
   type ConnectionState,
   type TransportEvent,
 } from "./transport.js";
-import { CommandPalette, type CommandPaletteView } from "./command-palette.js";
-import {
-  buildPaletteCatalog,
-  type PaletteCommand,
-} from "./command-palette-model.js";
 import { DirectoryPicker } from "./directory-picker.js";
 import { DiagnosticsDialog } from "./diagnostics.js";
 import { isDiagnosticsRoute } from "./diagnostics-model.js";
 import { handleModalKeyDown } from "./modal-focus.js";
 import { initialMetaSessionId } from "./meta-session-focus-model.js";
-import { AgentClassificationCard } from "./agent-classification.js";
 import { TmuxAttachDialog } from "./tmux-attach-dialog.js";
-import { sessionAccessibleName } from "./agent-classification-model.js";
-import { AttentionEvidenceCard } from "./attention.js";
 import {
-  AttentionCursorHeader,
-  UnreadAttentionMarker,
-} from "./attention-inbox.js";
-import {
-  acknowledgeAttention,
-  buildAttentionNotificationContent,
-  cursorEntry,
-  isAttentionUnread,
-  loadAttentionInbox,
-  markAttentionNotified,
-  saveAttentionInbox,
-  setSessionMuted,
-  shouldDeliverAttentionNotification,
-  type AttentionInboxState,
-} from "./attention-inbox-model.js";
-import {
+  attentionSourceLabel,
   attentionStateLabel,
   deriveSessionAttention,
+  type AttentionResult,
 } from "./attention-model.js";
-import {
-  loadPanelView,
-  savePanelView,
-  toggleInspector,
-  toggleSidebar,
-  workspaceStatusText,
-} from "./panel-model.js";
 import {
   IDLE_PACIUM_CONFIG,
   acceptPaciumConfigResponse,
@@ -94,64 +54,6 @@ import {
   visiblePaciumConfig,
   type PaciumConfigViewState,
 } from "./pacium-config-model.js";
-import { PaciumContextInspector } from "./pacium-context-inspector.js";
-import {
-  acceptPaciumContextResponse,
-  beginPaciumContextInspection,
-  clearPaciumContext,
-  initialPaciumContextState,
-  reconcilePaciumContextConfig,
-  rejectPaciumContextResponse,
-  type PaciumContextViewState,
-} from "./pacium-context-model.js";
-import { buildPaciumModeSummary } from "./pacium-mode-summary-model.js";
-import { PaciumModeSummaryCard } from "./pacium-mode-summary.js";
-import {
-  IDLE_PACIUM_QUEUE,
-  acceptPaciumQueueResponse,
-  acceptPaciumQueueUpdate,
-  beginPaciumQueueRequest,
-  buildPaciumQueueProjection,
-  interruptPaciumQueueRequest,
-  type PaciumQueueViewState,
-} from "./pacium-queue-model.js";
-import {
-  CLOSED_QUEUE_INSPECTION,
-  acceptQueueDecision,
-  acceptQueueDelivery,
-  acceptQueueItemInspection,
-  acceptQueueResolution,
-  beginQueueDecision,
-  beginQueueDelivery,
-  beginQueueItemInspection,
-  beginQueueResolution,
-  closeQueueItemInspection,
-  interruptQueueItemInspection,
-  interruptQueueResolution,
-  interruptQueueDecision,
-  interruptQueueDelivery,
-  queueItemSelection,
-  reconcileQueueItemInspection,
-  reconcileQueueItemInspectionConfig,
-  type PaciumQueueInspectionState,
-  type QueueItemSelection,
-} from "./pacium-queue-inspection-model.js";
-import { PaciumQueueInspector } from "./pacium-queue-inspector.js";
-import { PaciumQueueSources } from "./pacium-queue-sources.js";
-import { PaciumRoleBindingDialog } from "./pacium-role-binding.js";
-import {
-  buildPaciumRoleBindingOptions,
-  createMinimalPaciumWorkspace,
-  replacePaciumRoleBinding,
-} from "./pacium-role-binding-model.js";
-import { PaciumRoleGroup } from "./pacium-role-card.js";
-import {
-  buildPaciumRoleModels,
-  roleLabel,
-  type PendingPaciumRoleLaunch,
-} from "./pacium-role-model.js";
-import { PaciumWorkers } from "./pacium-workers.js";
-import { buildPaciumWorkersProjection } from "./pacium-worker-model.js";
 import {
   TERMINAL_FONT_STACKS,
   loadPreferences,
@@ -161,11 +63,7 @@ import {
   type WorkspacePreferences,
 } from "./preferences-model.js";
 import { PreferencesDialog } from "./preferences.js";
-import {
-  InspectorTabs,
-  RepositoryChangesPanel,
-  type InspectorTab,
-} from "./repository-changes.js";
+import { RepositoryChangesPanel } from "./repository-changes.js";
 import {
   IDLE_REPOSITORY_CHANGES,
   acceptRepositoryChangesResponse,
@@ -182,14 +80,6 @@ import {
   repositoryDiffKey,
   type RepositoryDiffViewState,
 } from "./repository-diff-model.js";
-import { RepositoryHistoryPanel } from "./repository-history.js";
-import {
-  IDLE_REPOSITORY_HISTORY,
-  acceptRepositoryHistoryResponse,
-  beginRepositoryHistoryRequest,
-  interruptRepositoryHistoryRequest,
-  type RepositoryHistoryViewState,
-} from "./repository-history-model.js";
 import { RepositoryVerificationPanel } from "./repository-verification.js";
 import {
   acceptVerificationResponse,
@@ -200,63 +90,32 @@ import {
   rejectVerificationRequest,
   type RepositoryVerificationViewState,
 } from "./repository-verification-model.js";
-import {
-  buildRecentActivity,
-  type ActivityFactTarget,
-} from "./recent-activity-model.js";
-import { RecentActivityPanel } from "./recent-activity.js";
 import { startProviderFreshnessClock } from "./provider-freshness-clock.js";
-import { RepositoryContextCard } from "./repository-context.js";
 import {
   RelaunchSessionDialog,
   RenameSessionDialog,
   SessionActionsMenu,
 } from "./session-actions.js";
 import { duplicateSessionInput } from "./session-actions-model.js";
-import { SplitWorkspace } from "./split-workspace.js";
+import { groupSessions, type SessionGroup } from "./session-model.js";
+import { RepoDocsPanel } from "./repo-docs-panel.js";
 import {
-  adjacentTerminalTabId,
-  closeTerminalTab,
-  groupSessions,
-  moveTerminalTab,
-  moveTerminalTabByOffset,
-  openTerminalTab,
-  parseStoredTerminalTabs,
-  reconcileTerminalTabs,
-  resolveWorkspaceShortcut,
-  serializeTerminalTabs,
-  toggleTerminalTabPin,
-  type TerminalTab,
-} from "./session-model.js";
+  buildHarnessLoginCommand,
+  isValidHarnessTarget,
+  loadHarnessTarget,
+  saveHarnessTarget,
+} from "./harness-model.js";
 import {
-  IDLE_WORKSPACE_MODE_CHORD,
-  advanceWorkspaceModeChord,
-} from "./workspace-mode-shortcut.js";
+  INITIAL_TAILSCALE_URL_SCAN,
+  scanForTailscaleLoginUrl,
+  type TailscaleUrlScan,
+} from "./tailscale-login-model.js";
+import { HarnessLoginButton, TailscaleLoginBanner } from "./harness-login.js";
 import {
-  loadWorkspaceMode,
-  saveWorkspaceMode,
-  type WorkspaceMode,
-} from "./workspace-mode.js";
-import {
-  MAX_SPLIT_PANES,
-  assignSessionToPane,
-  clearSessionFromLayout,
-  closePane,
-  createSplitLayout,
-  focusPane,
-  focusPaneByOffset,
-  getFocusedPane,
-  listPanes,
-  parseStoredSplitLayout,
-  reconcileSplitLayout,
-  serializeSplitLayout,
-  setSplitRatio,
-  showSessionInFocusedPane,
-  splitFocusedPane,
-  toggleMaximizedPane,
-  type SplitDirection,
-  type SplitLayoutState,
-} from "./split-layout-model.js";
+  assignRepoRoles,
+  isPaciumOrgRepository,
+  type RepoRoleAssignment,
+} from "./repo-role-model.js";
 
 interface TerminalSync {
   sessionId: string;
@@ -265,6 +124,11 @@ interface TerminalSync {
   sequence: number;
   snapshotApplied: boolean;
   pending: TerminalDataFrame[];
+}
+
+interface HarnessLaunch {
+  requestId: string;
+  command: string;
 }
 
 const INITIAL_LAUNCH_PRESETS: LaunchPresetCapability[] = [
@@ -302,42 +166,35 @@ const INITIAL_META_SESSION_CAPABILITY: MetaSessionCapability = {
   detail: "Waiting for the local server.",
 };
 
-const TERMINAL_TABS_STORAGE_KEY = "pacium.terminalTabs";
-const SPLIT_LAYOUT_STORAGE_KEY = "pacium.splitLayout";
+// Injected input is delivered as text first and Enter afterwards: agent TUIs
+// (Claude Code, Codex) treat text and Enter arriving in one chunk as a paste
+// and leave it sitting in the input box without submitting.
+const COMPOSER_ENTER_DELAY_MS = 150;
+// A freshly spawned shell needs a moment before injected input survives
+// profile startup and line-editor initialisation.
+const HARNESS_COMMAND_DELAY_MS = 600;
+
+const SELECTED_SESSION_STORAGE_KEY = "pacium.selectedSession";
+const RAIL_OPEN_STORAGE_KEY = "pacium.railOpen";
+const FILES_OPEN_STORAGE_KEY = "pacium.filesOpen";
+
+type FilesTab = "files" | "git";
+type GitTab = "changes" | "checks";
 
 export function App() {
   const terminalRefs = useRef(new Map<string, TerminalSurfaceHandle>());
-  const selectedIdRef = useRef<string | null>(null);
-  const tabsRef = useRef<TerminalTab[]>([]);
   const syncRefs = useRef(new Map<string, TerminalSync>());
-  const layoutRef = useRef<SplitLayoutState>(
-    createSplitLayout(`pane-${crypto.randomUUID()}`),
-  );
-  const actionInvokerRef = useRef<HTMLElement | null>(null);
-  const createInvokerRef = useRef<HTMLElement | null>(null);
-  const tmuxInvokerRef = useRef<HTMLElement | null>(null);
+  const selectedIdRef = useRef<string | null>(null);
+  const transportRef = useRef<PaciumTransport | null>(null);
   const tmuxListRequestRef = useRef<string | null>(null);
   const tmuxAttachRequestRef = useRef<string | null>(null);
   const metaFocusAppliedRef = useRef(false);
-  const paletteInvokerRef = useRef<HTMLElement | null>(null);
-  const panelViewRef = useRef<ReturnType<typeof loadPanelView> | null>(null);
-  const renameInvokerRef = useRef<HTMLElement | null>(null);
-  const relaunchInvokerRef = useRef<HTMLElement | null>(null);
-  const roleEditorInvokerRef = useRef<HTMLElement | null>(null);
-  const queueInspectorInvokerRef = useRef<HTMLElement | null>(null);
-  const contextInspectorInvokerRef = useRef<HTMLElement | null>(null);
-  const settingsInvokerRef = useRef<HTMLElement | null>(null);
-  const diagnosticsInvokerRef = useRef<HTMLElement | null>(null);
-  const diagnosticsHistoryEntryRef = useRef(false);
-  const diagnosticsOpenRef = useRef(
-    isDiagnosticsRoute(window.location.pathname),
-  );
-  const transportRef = useRef<PaciumTransport | null>(null);
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() =>
-    loadWorkspaceMode(window.localStorage),
-  );
-  const workspaceModeRef = useRef(workspaceMode);
-  const workspaceModeChordRef = useRef(IDLE_WORKSPACE_MODE_CHORD);
+  const harnessLaunchRef = useRef<HarnessLaunch | null>(null);
+  const tailscaleScansRef = useRef(new Map<string, TailscaleUrlScan>());
+  const dismissedTailscaleUrlRef = useRef<string | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const surfaceRef = useRef<TerminalSurfaceHandle | null>(null);
+
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [connectionAccess, setConnectionAccess] =
     useState<ConnectionAccess | null>(null);
@@ -346,25 +203,12 @@ export function App() {
   const [relaunchManifests, setRelaunchManifests] = useState<
     RelaunchManifest[]
   >([]);
-  const [relaunchManifestListReady, setRelaunchManifestListReady] =
-    useState(false);
-  const [providerFreshnessNow, setProviderFreshnessNow] = useState(() =>
-    new Date().toISOString(),
-  );
   const [selectedId, setSelectedId] = useState<string | null>(() =>
-    window.localStorage.getItem("pacium.selectedSession"),
+    window.localStorage.getItem(SELECTED_SESSION_STORAGE_KEY),
   );
-  const [tabs, setTabs] = useState<TerminalTab[]>(() =>
-    parseStoredTerminalTabs(
-      window.localStorage.getItem(TERMINAL_TABS_STORAGE_KEY),
-    ),
+  const restoredSelectionRef = useRef<string | null>(
+    window.localStorage.getItem(SELECTED_SESSION_STORAGE_KEY),
   );
-  const [layout, setLayout] = useState<SplitLayoutState>(() => {
-    const restored = parseStoredSplitLayout(
-      window.localStorage.getItem(SPLIT_LAYOUT_STORAGE_KEY),
-    );
-    return restored ?? createSplitLayout(`pane-${crypto.randomUUID()}`);
-  });
   const [defaultCwd, setDefaultCwd] = useState("");
   const [launchPresets, setLaunchPresets] = useState(INITIAL_LAUNCH_PRESETS);
   const [tmuxCapability, setTmuxCapability] = useState(INITIAL_TMUX_CAPABILITY);
@@ -378,27 +222,24 @@ export function App() {
   const [tmuxError, setTmuxError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [capturedPaneId, setCapturedPaneId] = useState<string | null>(null);
-  const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(() =>
+    isDiagnosticsRoute(window.location.pathname),
+  );
   const [actionSessionId, setActionSessionId] = useState<string | null>(null);
   const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
+  const [terminateSessionId, setTerminateSessionId] = useState<string | null>(
+    null,
+  );
   const [relaunchManifestId, setRelaunchManifestId] = useState<string | null>(
     null,
-  );
-  const [paletteView, setPaletteView] = useState<CommandPaletteView | null>(
-    null,
-  );
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [diagnosticsOpen, setDiagnosticsOpen] = useState(
-    diagnosticsOpenRef.current,
   );
   const [preferences, setPreferences] = useState<WorkspacePreferences>(() =>
     loadPreferences(window.localStorage),
   );
-  const [attentionInbox, setAttentionInbox] = useState<AttentionInboxState>(
-    () => loadAttentionInbox(window.localStorage),
+  const [systemPrefersDark, setSystemPrefersDark] = useState(
+    () => window.matchMedia("(prefers-color-scheme: dark)").matches,
   );
-  const attentionInboxRef = useRef(attentionInbox);
   const [notificationPermission, setNotificationPermission] = useState<
     NotificationPermission | "unsupported"
   >(() =>
@@ -406,16 +247,25 @@ export function App() {
       ? "unsupported"
       : Notification.permission,
   );
-  const [pageVisibility, setPageVisibility] = useState<DocumentVisibilityState>(
-    () => document.visibilityState,
+  const [railOpen, setRailOpen] = useState(
+    () => window.localStorage.getItem(RAIL_OPEN_STORAGE_KEY) !== "closed",
   );
-  const [systemPrefersDark, setSystemPrefersDark] = useState(
-    () => window.matchMedia("(prefers-color-scheme: dark)").matches,
+  const [filesOpen, setFilesOpen] = useState(
+    () => window.localStorage.getItem(FILES_OPEN_STORAGE_KEY) !== "closed",
   );
-  const [panelView, setPanelView] = useState(() =>
-    loadPanelView(window.localStorage, window.innerWidth),
+  const [filesTab, setFilesTab] = useState<FilesTab>("files");
+  const [gitTab, setGitTab] = useState<GitTab>("changes");
+  const [providerFreshnessNow, setProviderFreshnessNow] = useState(() =>
+    new Date().toISOString(),
   );
-  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("overview");
+  const [captured, setCaptured] = useState(false);
+  const [composerText, setComposerText] = useState("");
+  const [surfaceTick, setSurfaceTick] = useState(0);
+  const [harnessTarget, setHarnessTarget] = useState(() =>
+    loadHarnessTarget(window.localStorage),
+  );
+  const [tailscaleUrl, setTailscaleUrl] = useState<string | null>(null);
+  const [apiToken, setApiToken] = useState<string | null>(null);
   const [repositoryChangesBySession, setRepositoryChangesBySession] = useState(
     new Map<string, RepositoryChangesViewState>(),
   );
@@ -427,56 +277,20 @@ export function App() {
   const [selectedDiffPathBySession, setSelectedDiffPathBySession] = useState(
     new Map<string, string>(),
   );
-  const [repositoryHistoryBySession, setRepositoryHistoryBySession] = useState(
-    new Map<string, RepositoryHistoryViewState>(),
-  );
-  const repositoryHistoryRef = useRef(repositoryHistoryBySession);
   const [repositoryVerificationBySession, setRepositoryVerificationBySession] =
     useState(new Map<string, RepositoryVerificationViewState>());
   const repositoryVerificationRef = useRef(repositoryVerificationBySession);
   const [paciumConfig, setPaciumConfig] =
     useState<PaciumConfigViewState>(IDLE_PACIUM_CONFIG);
   const paciumConfigRef = useRef(paciumConfig);
-  const [paciumQueue, setPaciumQueue] =
-    useState<PaciumQueueViewState>(IDLE_PACIUM_QUEUE);
-  const paciumQueueRef = useRef(paciumQueue);
-  const [paciumQueueInspection, setPaciumQueueInspection] =
-    useState<PaciumQueueInspectionState>(CLOSED_QUEUE_INSPECTION);
-  const paciumQueueInspectionRef = useRef(paciumQueueInspection);
-  const [paciumContext, setPaciumContext] = useState<PaciumContextViewState>(
-    initialPaciumContextState,
-  );
-  const paciumContextRef = useRef(paciumContext);
-  const [paciumContextOpen, setPaciumContextOpen] = useState(false);
-  const paciumContextOpenRef = useRef(paciumContextOpen);
-  const [editingPaciumRole, setEditingPaciumRole] =
-    useState<PaciumRoleId | null>(null);
-  const roleSaveRequestRef = useRef<{
-    role: PaciumRoleId;
-    requestId: string;
-  } | null>(null);
-  const [pendingPaciumRoleLaunch, setPendingPaciumRoleLaunch] =
-    useState<PendingPaciumRoleLaunch | null>(null);
-  const pendingPaciumRoleLaunchRef = useRef<PendingPaciumRoleLaunch | null>(
-    null,
-  );
+  const [queueObservation, setQueueObservation] =
+    useState<QueueSourcesObservation | null>(null);
 
-  panelViewRef.current = panelView;
   selectedIdRef.current = selectedId;
-  tabsRef.current = tabs;
-  layoutRef.current = layout;
-  attentionInboxRef.current = attentionInbox;
   repositoryChangesRef.current = repositoryChangesBySession;
   repositoryDiffRef.current = repositoryDiffByKey;
-  repositoryHistoryRef.current = repositoryHistoryBySession;
   repositoryVerificationRef.current = repositoryVerificationBySession;
   paciumConfigRef.current = paciumConfig;
-  paciumQueueRef.current = paciumQueue;
-  paciumQueueInspectionRef.current = paciumQueueInspection;
-  paciumContextRef.current = paciumContext;
-  paciumContextOpenRef.current = paciumContextOpen;
-  pendingPaciumRoleLaunchRef.current = pendingPaciumRoleLaunch;
-  workspaceModeRef.current = workspaceMode;
 
   const effectiveTheme = resolveEffectiveTheme(
     preferences.theme,
@@ -493,707 +307,328 @@ export function App() {
     [effectiveTheme, preferences],
   );
 
-  const onTransportEvent = useCallback((event: TransportEvent) => {
-    if (event.type === "connection") {
-      setConnection(event.state);
-      if (event.state !== "connected") {
-        setConnectionAccess(null);
-        if (
-          tmuxListRequestRef.current !== null ||
-          tmuxAttachRequestRef.current !== null
-        ) {
-          tmuxListRequestRef.current = null;
+  const scanFrameForTailscaleUrl = useCallback((frame: TerminalDataFrame) => {
+    const scans = tailscaleScansRef.current;
+    if (!scans.has(frame.sessionId) && scans.size >= 16) {
+      scans.clear();
+    }
+    const scan = scans.get(frame.sessionId) ?? INITIAL_TAILSCALE_URL_SCAN;
+    const result = scanForTailscaleLoginUrl(scan, frame.data);
+    scans.set(frame.sessionId, result.scan);
+    if (
+      result.url !== null &&
+      result.url !== dismissedTailscaleUrlRef.current
+    ) {
+      setTailscaleUrl(result.url);
+    }
+  }, []);
+
+  const onTransportEvent = useCallback(
+    (event: TransportEvent) => {
+      if (event.type === "connection") {
+        setConnection(event.state);
+        if (event.state === "connected") {
+          setApiToken(transportRef.current?.apiAccessToken ?? null);
+        }
+        if (event.state !== "connected") {
+          setConnectionAccess(null);
+          if (
+            tmuxListRequestRef.current !== null ||
+            tmuxAttachRequestRef.current !== null
+          ) {
+            tmuxListRequestRef.current = null;
+            tmuxAttachRequestRef.current = null;
+            setTmuxLoading(false);
+            setTmuxAttaching(false);
+            setTmuxError(
+              "The tmux request outcome is unknown after disconnect. Refresh the list before another attachment.",
+            );
+          }
+          if (harnessLaunchRef.current !== null) {
+            harnessLaunchRef.current = null;
+            setNotice(
+              "The harness login terminal outcome is unknown after disconnect. Check the session list before retrying.",
+            );
+          }
+          const interruptedPaciumConfig = interruptPaciumConfigRequest(
+            paciumConfigRef.current,
+          );
+          if (interruptedPaciumConfig !== paciumConfigRef.current) {
+            paciumConfigRef.current = interruptedPaciumConfig;
+            setPaciumConfig(interruptedPaciumConfig);
+          }
+          let changed = false;
+          const next = new Map(repositoryChangesRef.current);
+          for (const [sessionId, state] of next) {
+            const interrupted = interruptRepositoryChangesRequest(state);
+            if (interrupted !== state) {
+              next.set(sessionId, interrupted);
+              changed = true;
+            }
+          }
+          if (changed) {
+            repositoryChangesRef.current = next;
+            setRepositoryChangesBySession(next);
+          }
+          let diffChanged = false;
+          const nextDiffs = new Map(repositoryDiffRef.current);
+          for (const [key, state] of nextDiffs) {
+            const interrupted = interruptRepositoryDiffRequest(state);
+            if (interrupted !== state) {
+              nextDiffs.set(key, interrupted);
+              diffChanged = true;
+            }
+          }
+          if (diffChanged) {
+            repositoryDiffRef.current = nextDiffs;
+            setRepositoryDiffByKey(nextDiffs);
+          }
+          if (repositoryVerificationRef.current.size > 0) {
+            const reset = new Map<string, RepositoryVerificationViewState>();
+            repositoryVerificationRef.current = reset;
+            setRepositoryVerificationBySession(reset);
+          }
+        }
+        return;
+      }
+      if (event.type === "transport.error") {
+        setNotice(event.message);
+        return;
+      }
+      if (event.type === "terminal.data") {
+        scanFrameForTailscaleUrl(event.frame);
+        applyTerminalFrame(event.frame, syncRefs, terminalRefs);
+        return;
+      }
+      if (event.type === "pacium.config.requested") {
+        const next = beginPaciumConfigRequest(
+          paciumConfigRef.current,
+          event.requestId,
+          event.intent,
+        );
+        paciumConfigRef.current = next;
+        setPaciumConfig(next);
+        return;
+      }
+      if (event.type === "pacium.queue.requested") {
+        return;
+      }
+      if (event.message.type === "server.welcome") {
+        setConnectionAccess(event.message.connection);
+        setMetaSessionCapability(event.message.capabilities.metaSession);
+        setTmuxCapability(event.message.capabilities.tmux);
+      }
+      if (event.message.type === "session.list") {
+        setMetaSessionCapability(event.message.metaSession);
+      }
+      if (
+        event.message.type === "tmux.sessions" &&
+        event.message.requestId === tmuxListRequestRef.current
+      ) {
+        tmuxListRequestRef.current = null;
+        setTmuxLoading(false);
+        setTmuxError(null);
+        setTmuxObservation(event.message.observation);
+        return;
+      }
+      if (event.message.type === "session.created") {
+        if (event.message.requestId === tmuxAttachRequestRef.current) {
           tmuxAttachRequestRef.current = null;
+          setTmuxAttaching(false);
+          setTmuxOpen(false);
+          setTmuxError(null);
+          setNotice(
+            `${event.message.session.displayName} attached through tmux. Closing this client will not kill the tmux server session.`,
+          );
+        }
+        const harnessLaunch = harnessLaunchRef.current;
+        if (
+          harnessLaunch !== null &&
+          event.message.requestId === harnessLaunch.requestId
+        ) {
+          harnessLaunchRef.current = null;
+          const harnessSessionId = event.message.session.id;
+          window.setTimeout(() => {
+            transportRef.current?.input(
+              harnessSessionId,
+              harnessLaunch.command,
+            );
+            window.setTimeout(() => {
+              transportRef.current?.input(harnessSessionId, "\r");
+            }, COMPOSER_ENTER_DELAY_MS);
+          }, HARNESS_COMMAND_DELAY_MS);
+        }
+      }
+      if (event.message.type === "pacium.config") {
+        const accepted = acceptPaciumConfigResponse(
+          paciumConfigRef.current,
+          event.message.requestId,
+          event.message.observation,
+        );
+        if (accepted !== paciumConfigRef.current) {
+          paciumConfigRef.current = accepted;
+          setPaciumConfig(accepted);
+        }
+        return;
+      }
+      if (
+        event.message.type === "pacium.queue.sources" ||
+        event.message.type === "pacium.queue.sources.updated"
+      ) {
+        setQueueObservation(event.message.observation);
+        return;
+      }
+      if (
+        event.message.type === "pacium.queue.item" ||
+        event.message.type === "pacium.queue.decision" ||
+        event.message.type === "pacium.queue.delivery" ||
+        event.message.type === "pacium.queue.resolution" ||
+        event.message.type === "pacium.context"
+      ) {
+        return;
+      }
+      if (event.message.type === "repository.changes") {
+        const current =
+          repositoryChangesRef.current.get(event.message.sessionId) ??
+          IDLE_REPOSITORY_CHANGES;
+        const accepted = acceptRepositoryChangesResponse(
+          current,
+          event.message.requestId,
+          event.message.observation,
+        );
+        if (accepted !== current) {
+          const next = new Map(repositoryChangesRef.current);
+          next.set(event.message.sessionId, accepted);
+          repositoryChangesRef.current = next;
+          setRepositoryChangesBySession(next);
+        }
+        return;
+      }
+      if (event.message.type === "repository.diff") {
+        const key = repositoryDiffKey(
+          event.message.sessionId,
+          event.message.observation.path,
+        );
+        const current =
+          repositoryDiffRef.current.get(key) ?? IDLE_REPOSITORY_DIFF;
+        const accepted = acceptRepositoryDiffResponse(
+          current,
+          event.message.requestId,
+          event.message.sessionId,
+          event.message.observation,
+        );
+        if (accepted !== current) {
+          const next = new Map(repositoryDiffRef.current);
+          next.set(key, accepted);
+          repositoryDiffRef.current = next;
+          setRepositoryDiffByKey(next);
+        }
+        return;
+      }
+      if (event.message.type === "repository.history") {
+        return;
+      }
+      if (event.message.type === "repository.verification") {
+        const current =
+          repositoryVerificationRef.current.get(event.message.sessionId) ??
+          IDLE_REPOSITORY_VERIFICATION;
+        const accepted = acceptVerificationResponse(
+          current,
+          event.message.requestId,
+          event.message.sessionId,
+          event.message.observation,
+        );
+        if (accepted !== current) {
+          const next = new Map(repositoryVerificationRef.current);
+          next.set(event.message.sessionId, accepted);
+          repositoryVerificationRef.current = next;
+          setRepositoryVerificationBySession(next);
+        }
+        return;
+      }
+      if (event.message.type === "repository.verification.updated") {
+        const current =
+          repositoryVerificationRef.current.get(event.message.sessionId) ??
+          IDLE_REPOSITORY_VERIFICATION;
+        const accepted = acceptVerificationUpdate(
+          current,
+          event.message.sessionId,
+          event.message.observation,
+        );
+        if (accepted !== current) {
+          const next = new Map(repositoryVerificationRef.current);
+          next.set(event.message.sessionId, accepted);
+          repositoryVerificationRef.current = next;
+          setRepositoryVerificationBySession(next);
+        }
+        return;
+      }
+      if (
+        event.message.type === "error" &&
+        event.message.requestId !== undefined
+      ) {
+        if (event.message.requestId === tmuxListRequestRef.current) {
+          tmuxListRequestRef.current = null;
           setTmuxLoading(false);
+          setTmuxError(event.message.message);
+          return;
+        }
+        if (event.message.requestId === tmuxAttachRequestRef.current) {
+          tmuxAttachRequestRef.current = null;
           setTmuxAttaching(false);
           setTmuxError(
-            "The tmux request outcome is unknown after disconnect. Refresh the list before another attachment.",
+            `${event.message.message} No attachment was retried automatically.`,
           );
+          return;
         }
-        const pendingRoleLaunch = pendingPaciumRoleLaunchRef.current;
-        if (pendingRoleLaunch !== null) {
-          pendingPaciumRoleLaunchRef.current = null;
-          setPendingPaciumRoleLaunch(null);
+        if (event.message.requestId === harnessLaunchRef.current?.requestId) {
+          harnessLaunchRef.current = null;
           setNotice(
-            pendingRoleLaunch.stage === "launching"
-              ? `${roleLabel(pendingRoleLaunch.role)} launch outcome is unknown after disconnect. Inspect the refreshed terminal list before retrying.`
-              : `The new terminal remains available, but ${roleLabel(pendingRoleLaunch.role)} binding outcome is unknown after disconnect. Fresh configuration will be read before another action.`,
+            `The harness login terminal was not started. ${event.message.message}`,
           );
-        }
-        if (roleSaveRequestRef.current !== null) {
-          roleSaveRequestRef.current = null;
-          setNotice(
-            "Role assignment outcome is unknown after disconnect. The editor remains open and fresh configuration will be read before another save.",
-          );
+          return;
         }
         const interruptedPaciumConfig = interruptPaciumConfigRequest(
           paciumConfigRef.current,
+          event.message.requestId,
         );
         if (interruptedPaciumConfig !== paciumConfigRef.current) {
           paciumConfigRef.current = interruptedPaciumConfig;
           setPaciumConfig(interruptedPaciumConfig);
         }
         let changed = false;
-        const next = new Map(repositoryChangesRef.current);
+        const next = new Map(repositoryVerificationRef.current);
         for (const [sessionId, state] of next) {
-          const interrupted = interruptRepositoryChangesRequest(state);
-          if (interrupted !== state) {
-            next.set(sessionId, interrupted);
+          const rejected = rejectVerificationRequest(
+            state,
+            event.message.requestId,
+          );
+          if (rejected !== state) {
+            next.set(sessionId, rejected);
             changed = true;
           }
         }
         if (changed) {
-          repositoryChangesRef.current = next;
-          setRepositoryChangesBySession(next);
-        }
-        let diffChanged = false;
-        const nextDiffs = new Map(repositoryDiffRef.current);
-        for (const [key, state] of nextDiffs) {
-          const interrupted = interruptRepositoryDiffRequest(state);
-          if (interrupted !== state) {
-            nextDiffs.set(key, interrupted);
-            diffChanged = true;
-          }
-        }
-        if (diffChanged) {
-          repositoryDiffRef.current = nextDiffs;
-          setRepositoryDiffByKey(nextDiffs);
-        }
-        let historyChanged = false;
-        const nextHistory = new Map(repositoryHistoryRef.current);
-        for (const [sessionId, state] of nextHistory) {
-          const interrupted = interruptRepositoryHistoryRequest(state);
-          if (interrupted !== state) {
-            nextHistory.set(sessionId, interrupted);
-            historyChanged = true;
-          }
-        }
-        if (historyChanged) {
-          repositoryHistoryRef.current = nextHistory;
-          setRepositoryHistoryBySession(nextHistory);
-        }
-        if (repositoryVerificationRef.current.size > 0) {
-          const reset = new Map<string, RepositoryVerificationViewState>();
-          repositoryVerificationRef.current = reset;
-          setRepositoryVerificationBySession(reset);
-        }
-        const interruptedQueue = interruptPaciumQueueRequest(
-          paciumQueueRef.current,
-        );
-        if (interruptedQueue !== paciumQueueRef.current) {
-          paciumQueueRef.current = interruptedQueue;
-          setPaciumQueue(interruptedQueue);
-        }
-        if (paciumQueueInspectionRef.current.selection !== null) {
-          if (paciumQueueInspectionRef.current.decisionRequestId !== null) {
-            setNotice(
-              "Decision outcome is unknown after disconnect. Reopen the exact item to inspect durable state before another deliberate attempt.",
-            );
-          }
-          const closed = closeQueueItemInspection();
-          paciumQueueInspectionRef.current = closed;
-          setPaciumQueueInspection(closed);
-          queueInspectorInvokerRef.current = null;
-        }
-        if (paciumContextOpenRef.current) {
-          const cleared = clearPaciumContext();
-          paciumContextRef.current = cleared;
-          setPaciumContext(cleared);
-          paciumContextOpenRef.current = false;
-          setPaciumContextOpen(false);
-          contextInspectorInvokerRef.current = null;
+          repositoryVerificationRef.current = next;
+          setRepositoryVerificationBySession(next);
         }
       }
-      return;
-    }
-    if (event.type === "transport.error") {
-      setNotice(event.message);
-      return;
-    }
-    if (event.type === "terminal.data") {
-      applyTerminalFrame(event.frame, syncRefs, terminalRefs);
-      return;
-    }
-    if (event.type === "pacium.config.requested") {
-      const next = beginPaciumConfigRequest(
-        paciumConfigRef.current,
-        event.requestId,
-        event.intent,
+      applyServerMessage(
+        event.message,
+        selectedIdRef,
+        syncRefs,
+        terminalRefs,
+        setSessions,
+        setSessionListReady,
+        setRelaunchManifests,
+        setSelectedId,
+        setDefaultCwd,
+        setLaunchPresets,
+        setNotice,
       );
-      paciumConfigRef.current = next;
-      setPaciumConfig(next);
-      return;
-    }
-    if (event.type === "pacium.queue.requested") {
-      const next = beginPaciumQueueRequest(
-        paciumQueueRef.current,
-        event.requestId,
-      );
-      paciumQueueRef.current = next;
-      setPaciumQueue(next);
-      return;
-    }
-    if (event.message.type === "server.welcome") {
-      setConnectionAccess(event.message.connection);
-      setMetaSessionCapability(event.message.capabilities.metaSession);
-      setTmuxCapability(event.message.capabilities.tmux);
-    }
-    if (event.message.type === "session.list") {
-      setMetaSessionCapability(event.message.metaSession);
-    }
-    if (
-      event.message.type === "tmux.sessions" &&
-      event.message.requestId === tmuxListRequestRef.current
-    ) {
-      tmuxListRequestRef.current = null;
-      setTmuxLoading(false);
-      setTmuxError(null);
-      setTmuxObservation(event.message.observation);
-      return;
-    }
-    if (
-      event.message.type === "session.created" &&
-      event.message.requestId === tmuxAttachRequestRef.current
-    ) {
-      tmuxAttachRequestRef.current = null;
-      setTmuxAttaching(false);
-      setTmuxOpen(false);
-      setTmuxError(null);
-      setNotice(
-        `${event.message.session.displayName} attached through tmux. Closing this client will not kill the tmux server session.`,
-      );
-      restoreControlFocus(tmuxInvokerRef, "attach-tmux-trigger");
-    }
-    if (event.message.type === "command.result") {
-      return;
-    }
-    if (event.message.type === "pacium.context") {
-      const accepted = acceptPaciumContextResponse(
-        paciumContextRef.current,
-        event.message.requestId,
-        event.message.observation,
-        paciumConfigRef.current,
-      );
-      if (accepted !== paciumContextRef.current) {
-        paciumContextRef.current = accepted;
-        setPaciumContext(accepted);
-      }
-      return;
-    }
-    if (event.message.type === "pacium.queue.sources") {
-      const accepted = acceptPaciumQueueResponse(
-        paciumQueueRef.current,
-        event.message.requestId,
-        event.message.observation,
-      );
-      if (accepted !== paciumQueueRef.current) {
-        paciumQueueRef.current = accepted;
-        setPaciumQueue(accepted);
-        const reconciled = reconcileQueueItemInspection(
-          paciumQueueInspectionRef.current,
-          event.message.observation,
-        );
-        if (reconciled !== paciumQueueInspectionRef.current) {
-          paciumQueueInspectionRef.current = reconciled;
-          setPaciumQueueInspection(reconciled);
-        }
-      }
-      return;
-    }
-    if (event.message.type === "pacium.queue.sources.updated") {
-      const accepted = acceptPaciumQueueUpdate(
-        paciumQueueRef.current,
-        event.message.observation,
-      );
-      if (accepted !== paciumQueueRef.current) {
-        paciumQueueRef.current = accepted;
-        setPaciumQueue(accepted);
-        const reconciled = reconcileQueueItemInspection(
-          paciumQueueInspectionRef.current,
-          event.message.observation,
-        );
-        if (reconciled !== paciumQueueInspectionRef.current) {
-          paciumQueueInspectionRef.current = reconciled;
-          setPaciumQueueInspection(reconciled);
-        }
-      }
-      return;
-    }
-    if (event.message.type === "pacium.queue.item") {
-      const accepted = acceptQueueItemInspection(
-        paciumQueueInspectionRef.current,
-        event.message.requestId,
-        event.message.inspection,
-        event.message.decisionState,
-        event.message.deliveryState,
-        event.message.reconciliation,
-      );
-      if (accepted !== paciumQueueInspectionRef.current) {
-        paciumQueueInspectionRef.current = accepted;
-        setPaciumQueueInspection(accepted);
-      }
-      return;
-    }
-    if (event.message.type === "pacium.queue.decision") {
-      const accepted = acceptQueueDecision(
-        paciumQueueInspectionRef.current,
-        event.message.requestId,
-        event.message.result,
-      );
-      if (accepted !== paciumQueueInspectionRef.current) {
-        let next = accepted;
-        if (
-          (event.message.result.status === "recorded" ||
-            event.message.result.status === "existing") &&
-          accepted.selection !== null &&
-          transportRef.current !== null
-        ) {
-          const inspectionRequestId =
-            transportRef.current.requestQueueItemInspection(
-              accepted.selection.identity,
-            );
-          next = beginQueueItemInspection(
-            accepted.selection,
-            inspectionRequestId,
-          );
-        }
-        paciumQueueInspectionRef.current = next;
-        setPaciumQueueInspection(next);
-        setNotice(
-          event.message.result.status === "recorded"
-            ? "Immutable local decision recorded. Checking its accepted delivery method; nothing is sent automatically."
-            : event.message.result.status === "existing"
-              ? "The existing immutable decision was recovered. Checking its accepted delivery method; nothing is sent automatically."
-              : `${event.message.result.error?.message ?? "The decision was not recorded."} Pacium did not retry or deliver anything.`,
-        );
-      }
-      return;
-    }
-    if (event.message.type === "pacium.queue.delivery") {
-      const accepted = acceptQueueDelivery(
-        paciumQueueInspectionRef.current,
-        event.message.requestId,
-        event.message.result,
-      );
-      if (accepted !== paciumQueueInspectionRef.current) {
-        let next = accepted;
-        if (
-          event.message.result.state.delivery !== null &&
-          accepted.selection !== null &&
-          transportRef.current !== null
-        ) {
-          const inspectionRequestId =
-            transportRef.current.requestQueueItemInspection(
-              accepted.selection.identity,
-            );
-          next = beginQueueItemInspection(
-            accepted.selection,
-            inspectionRequestId,
-          );
-        }
-        paciumQueueInspectionRef.current = next;
-        setPaciumQueueInspection(next);
-        setNotice(queueDeliveryNotice(event.message.result));
-      }
-      return;
-    }
-    if (event.message.type === "pacium.queue.resolution") {
-      const accepted = acceptQueueResolution(
-        paciumQueueInspectionRef.current,
-        event.message.requestId,
-        event.message.result,
-      );
-      if (accepted !== paciumQueueInspectionRef.current) {
-        let next = accepted;
-        if (
-          (event.message.result.status === "recorded" ||
-            event.message.result.status === "existing") &&
-          accepted.selection !== null &&
-          transportRef.current !== null
-        ) {
-          const inspectionRequestId =
-            transportRef.current.requestQueueItemInspection(
-              accepted.selection.identity,
-            );
-          next = beginQueueItemInspection(
-            accepted.selection,
-            inspectionRequestId,
-          );
-        }
-        paciumQueueInspectionRef.current = next;
-        setPaciumQueueInspection(next);
-        setNotice(
-          event.message.result.status === "recorded"
-            ? "Human-labelled lifecycle evidence recorded. Rechecking the exact item and target."
-            : event.message.result.status === "existing"
-              ? "The existing lifecycle evidence was recovered. Rechecking the exact item and target."
-              : (event.message.result.error?.message ??
-                "The lifecycle label was not recorded."),
-        );
-      }
-      return;
-    }
-    if (event.message.type === "pacium.config") {
-      const accepted = acceptPaciumConfigResponse(
-        paciumConfigRef.current,
-        event.message.requestId,
-        event.message.observation,
-      );
-      if (accepted !== paciumConfigRef.current) {
-        paciumConfigRef.current = accepted;
-        setPaciumConfig(accepted);
-        const reconciled = reconcileQueueItemInspectionConfig(
-          paciumQueueInspectionRef.current,
-          event.message.observation,
-        );
-        if (reconciled !== paciumQueueInspectionRef.current) {
-          paciumQueueInspectionRef.current = reconciled;
-          setPaciumQueueInspection(reconciled);
-        }
-        const reconciledContext = reconcilePaciumContextConfig(
-          paciumContextRef.current,
-          accepted,
-        );
-        if (reconciledContext !== paciumContextRef.current) {
-          paciumContextRef.current = reconciledContext;
-          setPaciumContext(reconciledContext);
-          if (paciumContextOpenRef.current) {
-            paciumContextOpenRef.current = false;
-            setPaciumContextOpen(false);
-            contextInspectorInvokerRef.current = null;
-            setNotice(
-              "Control context closed because the accepted Pacium definition changed. Terminals and source files are unchanged.",
-            );
-          }
-        }
-      }
-      const savedRole = roleSaveRequestRef.current;
-      if (savedRole?.requestId === event.message.requestId) {
-        roleSaveRequestRef.current = null;
-        if (event.message.observation.status === "ready") {
-          setEditingPaciumRole(null);
-          setNotice(`${roleLabel(savedRole.role)} binding saved.`);
-          window.requestAnimationFrame(() => {
-            roleEditorInvokerRef.current?.focus();
-          });
-        } else {
-          setNotice(
-            `${roleLabel(savedRole.role)} binding was not accepted. The editor remains open and terminals are unchanged.`,
-          );
-        }
-      }
-      const pendingRoleLaunch = pendingPaciumRoleLaunchRef.current;
-      const acceptedRoleBinding =
-        pendingRoleLaunch?.stage === "binding" &&
-        event.message.observation.status === "ready"
-          ? event.message.observation.workspace?.roles[pendingRoleLaunch.role]
-          : null;
-      const matchingBindingResponse =
-        pendingRoleLaunch?.stage === "binding" &&
-        pendingRoleLaunch.requestId === event.message.requestId;
-      if (
-        matchingBindingResponse &&
-        acceptedRoleBinding?.type === "session" &&
-        acceptedRoleBinding.sessionId === pendingRoleLaunch.sessionId
-      ) {
-        pendingPaciumRoleLaunchRef.current = null;
-        setPendingPaciumRoleLaunch(null);
-        setNotice(
-          `${roleLabel(pendingRoleLaunch.role)} is bound to the new terminal.`,
-        );
-      } else if (matchingBindingResponse) {
-        pendingPaciumRoleLaunchRef.current = null;
-        setPendingPaciumRoleLaunch(null);
-        setNotice(
-          `The new terminal is running, but ${roleLabel(pendingRoleLaunch.role)} was not bound. Refresh configuration and assign it explicitly.`,
-        );
-      }
-      return;
-    }
-    if (event.message.type === "session.created") {
-      const pendingRoleLaunch = pendingPaciumRoleLaunchRef.current;
-      if (
-        pendingRoleLaunch?.stage === "launching" &&
-        pendingRoleLaunch.requestId === event.message.requestId
-      ) {
-        const observation = visiblePaciumConfig(paciumConfigRef.current);
-        const transport = transportRef.current;
-        if (
-          observation?.status === "ready" &&
-          observation.revision === pendingRoleLaunch.sourceRevision &&
-          observation.workspace !== null &&
-          transport !== null
-        ) {
-          const requestId = transport.replacePaciumConfig(
-            observation.revision,
-            replacePaciumRoleBinding(
-              observation.workspace,
-              pendingRoleLaunch.role,
-              {
-                type: "session",
-                sessionId: event.message.session.id,
-              },
-            ),
-          );
-          const bindingLaunch: PendingPaciumRoleLaunch = {
-            ...pendingRoleLaunch,
-            requestId,
-            stage: "binding",
-            sessionId: event.message.session.id,
-          };
-          pendingPaciumRoleLaunchRef.current = bindingLaunch;
-          setPendingPaciumRoleLaunch(bindingLaunch);
-        } else {
-          pendingPaciumRoleLaunchRef.current = null;
-          setPendingPaciumRoleLaunch(null);
-          setNotice(
-            `${roleLabel(pendingRoleLaunch.role)} terminal started, but the workspace definition changed before it could be bound. The terminal remains available; refresh and bind it explicitly.`,
-          );
-        }
-      }
-    }
-    if (event.message.type === "repository.changes") {
-      const current =
-        repositoryChangesRef.current.get(event.message.sessionId) ??
-        IDLE_REPOSITORY_CHANGES;
-      const accepted = acceptRepositoryChangesResponse(
-        current,
-        event.message.requestId,
-        event.message.observation,
-      );
-      if (accepted !== current) {
-        const next = new Map(repositoryChangesRef.current);
-        next.set(event.message.sessionId, accepted);
-        repositoryChangesRef.current = next;
-        setRepositoryChangesBySession(next);
-      }
-      return;
-    }
-    if (event.message.type === "repository.diff") {
-      const key = repositoryDiffKey(
-        event.message.sessionId,
-        event.message.observation.path,
-      );
-      const current =
-        repositoryDiffRef.current.get(key) ?? IDLE_REPOSITORY_DIFF;
-      const accepted = acceptRepositoryDiffResponse(
-        current,
-        event.message.requestId,
-        event.message.sessionId,
-        event.message.observation,
-      );
-      if (accepted !== current) {
-        const next = new Map(repositoryDiffRef.current);
-        next.set(key, accepted);
-        repositoryDiffRef.current = next;
-        setRepositoryDiffByKey(next);
-      }
-      return;
-    }
-    if (event.message.type === "repository.history") {
-      const current =
-        repositoryHistoryRef.current.get(event.message.sessionId) ??
-        IDLE_REPOSITORY_HISTORY;
-      const accepted = acceptRepositoryHistoryResponse(
-        current,
-        event.message.requestId,
-        event.message.sessionId,
-        event.message.observation,
-      );
-      if (accepted !== current) {
-        const next = new Map(repositoryHistoryRef.current);
-        next.set(event.message.sessionId, accepted);
-        repositoryHistoryRef.current = next;
-        setRepositoryHistoryBySession(next);
-      }
-      return;
-    }
-    if (event.message.type === "repository.verification") {
-      const current =
-        repositoryVerificationRef.current.get(event.message.sessionId) ??
-        IDLE_REPOSITORY_VERIFICATION;
-      const accepted = acceptVerificationResponse(
-        current,
-        event.message.requestId,
-        event.message.sessionId,
-        event.message.observation,
-      );
-      if (accepted !== current) {
-        const next = new Map(repositoryVerificationRef.current);
-        next.set(event.message.sessionId, accepted);
-        repositoryVerificationRef.current = next;
-        setRepositoryVerificationBySession(next);
-      }
-      return;
-    }
-    if (event.message.type === "repository.verification.updated") {
-      const current =
-        repositoryVerificationRef.current.get(event.message.sessionId) ??
-        IDLE_REPOSITORY_VERIFICATION;
-      const accepted = acceptVerificationUpdate(
-        current,
-        event.message.sessionId,
-        event.message.observation,
-      );
-      if (accepted !== current) {
-        const next = new Map(repositoryVerificationRef.current);
-        next.set(event.message.sessionId, accepted);
-        repositoryVerificationRef.current = next;
-        setRepositoryVerificationBySession(next);
-      }
-      return;
-    }
-    if (
-      event.message.type === "error" &&
-      event.message.requestId !== undefined
-    ) {
-      if (event.message.requestId === tmuxListRequestRef.current) {
-        tmuxListRequestRef.current = null;
-        setTmuxLoading(false);
-        setTmuxError(event.message.message);
-        return;
-      }
-      if (event.message.requestId === tmuxAttachRequestRef.current) {
-        tmuxAttachRequestRef.current = null;
-        setTmuxAttaching(false);
-        setTmuxError(
-          `${event.message.message} No attachment was retried automatically.`,
-        );
-        return;
-      }
-      const rejectedContext = rejectPaciumContextResponse(
-        paciumContextRef.current,
-        event.message.requestId,
-        `Control context could not be inspected. ${event.message.message}`,
-      );
-      if (rejectedContext !== paciumContextRef.current) {
-        paciumContextRef.current = rejectedContext;
-        setPaciumContext(rejectedContext);
-        setNotice(
-          "Control context inspection failed. Terminals and configured files remain unchanged.",
-        );
-        return;
-      }
-      const interruptedQueue = interruptPaciumQueueRequest(
-        paciumQueueRef.current,
-        event.message.requestId,
-      );
-      if (interruptedQueue !== paciumQueueRef.current) {
-        paciumQueueRef.current = interruptedQueue;
-        setPaciumQueue(interruptedQueue);
-        setNotice(
-          `Queue source refresh failed. ${event.message.message} Terminals and source files are unchanged.`,
-        );
-        return;
-      }
-      const interruptedDelivery = interruptQueueDelivery(
-        paciumQueueInspectionRef.current,
-        event.message.requestId,
-        `Delivery outcome is not confirmed. ${event.message.message}`,
-      );
-      if (interruptedDelivery !== paciumQueueInspectionRef.current) {
-        paciumQueueInspectionRef.current = interruptedDelivery;
-        setPaciumQueueInspection(interruptedDelivery);
-        setNotice(
-          "Delivery outcome is not confirmed. Pacium did not retry; reopen the exact item to inspect durable state.",
-        );
-        return;
-      }
-      const interruptedResolution = interruptQueueResolution(
-        paciumQueueInspectionRef.current,
-        event.message.requestId,
-        `Lifecycle outcome is not confirmed. ${event.message.message}`,
-      );
-      if (interruptedResolution !== paciumQueueInspectionRef.current) {
-        paciumQueueInspectionRef.current = interruptedResolution;
-        setPaciumQueueInspection(interruptedResolution);
-        setNotice(
-          "Lifecycle outcome is not confirmed. Reopen the exact item before another deliberate action.",
-        );
-        return;
-      }
-      const interruptedDecision = interruptQueueDecision(
-        paciumQueueInspectionRef.current,
-        event.message.requestId,
-        `Decision was not recorded. ${event.message.message} Pacium did not retry or deliver anything.`,
-      );
-      if (interruptedDecision !== paciumQueueInspectionRef.current) {
-        paciumQueueInspectionRef.current = interruptedDecision;
-        setPaciumQueueInspection(interruptedDecision);
-        return;
-      }
-      const interruptedQueueInspection = interruptQueueItemInspection(
-        paciumQueueInspectionRef.current,
-        event.message.requestId,
-        `Queue item inspection failed. ${event.message.message} The source file and terminals were not changed.`,
-      );
-      if (interruptedQueueInspection !== paciumQueueInspectionRef.current) {
-        paciumQueueInspectionRef.current = interruptedQueueInspection;
-        setPaciumQueueInspection(interruptedQueueInspection);
-        return;
-      }
-      const interruptedPaciumConfig = interruptPaciumConfigRequest(
-        paciumConfigRef.current,
-        event.message.requestId,
-      );
-      if (interruptedPaciumConfig !== paciumConfigRef.current) {
-        paciumConfigRef.current = interruptedPaciumConfig;
-        setPaciumConfig(interruptedPaciumConfig);
-      }
-      const pendingRoleLaunch = pendingPaciumRoleLaunchRef.current;
-      if (pendingRoleLaunch?.requestId === event.message.requestId) {
-        pendingPaciumRoleLaunchRef.current = null;
-        setPendingPaciumRoleLaunch(null);
-        setNotice(
-          pendingRoleLaunch.stage === "launching"
-            ? `${roleLabel(pendingRoleLaunch.role)} terminal was not started. ${event.message.message}`
-            : `The new terminal is running, but ${roleLabel(pendingRoleLaunch.role)} was not bound. ${event.message.message}`,
-        );
-        return;
-      }
-      const savedRole = roleSaveRequestRef.current;
-      if (savedRole?.requestId === event.message.requestId) {
-        roleSaveRequestRef.current = null;
-        setNotice(
-          `${roleLabel(savedRole.role)} binding was not changed. ${event.message.message}`,
-        );
-        return;
-      }
-      let changed = false;
-      const next = new Map(repositoryVerificationRef.current);
-      for (const [sessionId, state] of next) {
-        const rejected = rejectVerificationRequest(
-          state,
-          event.message.requestId,
-        );
-        if (rejected !== state) {
-          next.set(sessionId, rejected);
-          changed = true;
-        }
-      }
-      if (changed) {
-        repositoryVerificationRef.current = next;
-        setRepositoryVerificationBySession(next);
-      }
-    }
-    applyServerMessage(
-      event.message,
-      selectedIdRef,
-      syncRefs,
-      terminalRefs,
-      setSessions,
-      setSessionListReady,
-      setRelaunchManifests,
-      setRelaunchManifestListReady,
-      setSelectedId,
-      tabsRef,
-      setTabs,
-      setLayout,
-      setDefaultCwd,
-      setLaunchPresets,
-      setNotice,
-    );
-  }, []);
+    },
+    [scanFrameForTailscaleUrl],
+  );
 
   const requestRepositoryChanges = useCallback(
     (sessionId: string) => {
@@ -1239,31 +674,6 @@ export function App() {
       next.set(key, nextState);
       repositoryDiffRef.current = next;
       setRepositoryDiffByKey(next);
-    },
-    [connection],
-  );
-
-  const requestRepositoryHistory = useCallback(
-    (sessionId: string) => {
-      const transport = transportRef.current;
-      if (connection !== "connected" || transport === null) {
-        setNotice(
-          "Commit history needs a live Pacium connection. The terminal process is unaffected.",
-        );
-        return;
-      }
-      const requestId = transport.requestRepositoryHistory(sessionId);
-      const current =
-        repositoryHistoryRef.current.get(sessionId) ?? IDLE_REPOSITORY_HISTORY;
-      const nextState = beginRepositoryHistoryRequest(
-        current,
-        sessionId,
-        requestId,
-      );
-      const next = new Map(repositoryHistoryRef.current);
-      next.set(sessionId, nextState);
-      repositoryHistoryRef.current = next;
-      setRepositoryHistoryBySession(next);
     },
     [connection],
   );
@@ -1403,47 +813,31 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const update = () => {
-      setPageVisibility(document.visibilityState);
-      if (typeof Notification !== "undefined") {
-        setNotificationPermission(Notification.permission);
-      }
-    };
-    document.addEventListener("visibilitychange", update);
-    return () => document.removeEventListener("visibilitychange", update);
-  }, []);
-
-  useEffect(() => {
     document.documentElement.dataset.theme = effectiveTheme;
     document.documentElement.dataset.density = preferences.density;
   }, [effectiveTheme, preferences.density]);
 
   useEffect(() => {
-    window.localStorage.setItem(
-      TERMINAL_TABS_STORAGE_KEY,
-      serializeTerminalTabs(tabs),
-    );
-  }, [tabs]);
-
-  useEffect(() => {
-    window.localStorage.setItem(
-      SPLIT_LAYOUT_STORAGE_KEY,
-      serializeSplitLayout(layout),
-    );
-  }, [layout]);
-
-  useEffect(() => {
-    if (!sessionListReady) {
+    if (selectedId === null) {
+      window.localStorage.removeItem(SELECTED_SESSION_STORAGE_KEY);
       return;
     }
-    const reconciled = reconcileTerminalTabs(tabs, sessions, selectedId);
-    if (!sameTerminalTabs(tabs, reconciled.tabs)) {
-      setTabs(reconciled.tabs);
-    }
-    if (selectedId !== reconciled.selectedId) {
-      setSelectedId(reconciled.selectedId);
-    }
-  }, [selectedId, sessionListReady, sessions, tabs]);
+    window.localStorage.setItem(SELECTED_SESSION_STORAGE_KEY, selectedId);
+  }, [selectedId]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      RAIL_OPEN_STORAGE_KEY,
+      railOpen ? "open" : "closed",
+    );
+  }, [railOpen]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      FILES_OPEN_STORAGE_KEY,
+      filesOpen ? "open" : "closed",
+    );
+  }, [filesOpen]);
 
   useEffect(() => {
     if (!sessionListReady) {
@@ -1458,65 +852,156 @@ export function App() {
       return;
     }
     metaFocusAppliedRef.current = true;
-    workspaceModeRef.current = "pacium";
-    setWorkspaceMode("pacium");
-    saveWorkspaceMode(window.localStorage, "pacium");
-    setPanelView({
-      version: 1,
-      sidebarOpen: false,
-      inspectorOpen: false,
-    });
-    setTabs((current) => openTerminalTab(current, sessionId));
+    // A selection restored from the previous visit wins over Meta auto-focus;
+    // stealing it on reload would detach the terminal the operator was using.
+    const restored = restoredSelectionRef.current;
+    if (restored !== null && sessions.some(({ id }) => id === restored)) {
+      return;
+    }
     setSelectedId(sessionId);
   }, [metaSessionCapability, sessionListReady, sessions]);
 
+  // The terminal surface remounts per selection (keyed below); attach exactly
+  // once per (connection, session, mounted surface) combination.
   useEffect(() => {
+    if (connection !== "connected") {
+      syncRefs.current.clear();
+      return;
+    }
     if (selectedId === null) {
       return;
     }
-    document.getElementById(`terminal-tab-${selectedId}`)?.scrollIntoView({
-      block: "nearest",
-      inline: "nearest",
+    const surface = surfaceRef.current;
+    if (surface === null) {
+      return;
+    }
+    for (const sessionId of syncRefs.current.keys()) {
+      if (sessionId !== selectedId) {
+        syncRefs.current.delete(sessionId);
+      }
+    }
+    terminalRefs.current.clear();
+    terminalRefs.current.set(selectedId, surface);
+    const existing = syncRefs.current.get(selectedId);
+    if (existing?.surface === surface) {
+      return;
+    }
+    syncRefs.current.set(selectedId, {
+      sessionId: selectedId,
+      surface,
+      epoch: undefined,
+      sequence: 0,
+      snapshotApplied: false,
+      pending: [],
     });
-  }, [selectedId, tabs]);
+    surface.clear();
+    transportRef.current?.attach(selectedId);
+  }, [connection, selectedId, surfaceTick]);
 
+  // Escape chord: leave terminal capture without touching the process.
   useEffect(() => {
-    if (selectedId === null) {
-      window.localStorage.removeItem("pacium.selectedSession");
-      return;
-    }
-    window.localStorage.setItem("pacium.selectedSession", selectedId);
-  }, [selectedId]);
-
-  useEffect(() => {
-    if (!sessionListReady) {
-      return;
-    }
-    const validSessionIds = new Set(sessions.map(({ id }) => id));
-    const reconciled = reconcileSplitLayout(layoutRef.current, validSessionIds);
-    setLayout(reconciled);
-  }, [sessionListReady, sessions]);
-
-  useEffect(() => {
-    if (
-      !sessionListReady ||
-      selectedId === null ||
-      !sessions.some(({ id }) => id === selectedId)
-    ) {
-      return;
-    }
-    const next = showSessionInFocusedPane(layoutRef.current, selectedId);
-    if (
-      serializeSplitLayout(next) !== serializeSplitLayout(layoutRef.current)
-    ) {
-      setLayout(next);
-    }
-  }, [selectedId, sessionListReady, sessions]);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey && event.key === ".") {
+        event.preventDefault();
+        surfaceRef.current?.blur();
+        composerRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const selectedSession = useMemo(
     () => sessions.find((session) => session.id === selectedId) ?? null,
     [selectedId, sessions],
   );
+  const sessionGroups = useMemo(() => groupSessions(sessions), [sessions]);
+  const configWorkspace = visiblePaciumConfig(paciumConfig)?.workspace ?? null;
+  const configBindings = useMemo(() => {
+    const roles = configWorkspace?.roles;
+    return {
+      meta: roles?.meta?.type === "session" ? roles.meta.sessionId : null,
+      orchestrator:
+        roles?.orchestrator?.type === "session"
+          ? roles.orchestrator.sessionId
+          : null,
+    };
+  }, [configWorkspace]);
+  const roleAssignments = useMemo(() => {
+    const assignments = new Map<string, RepoRoleAssignment>();
+    for (const group of sessionGroups) {
+      if (group.kind !== "repository") {
+        continue;
+      }
+      const root = group.sessions[0]?.repository.root ?? null;
+      if (root === null || !isPaciumOrgRepository(root)) {
+        continue;
+      }
+      assignments.set(
+        group.key,
+        assignRepoRoles(group.sessions, configBindings),
+      );
+    }
+    return assignments;
+  }, [configBindings, sessionGroups]);
+  const attentionBySession = useMemo(() => {
+    const map = new Map<string, AttentionResult>();
+    for (const session of sessions) {
+      map.set(
+        session.id,
+        deriveSessionAttention(session, providerFreshnessNow),
+      );
+    }
+    return map;
+  }, [providerFreshnessNow, sessions]);
+  const queueAttentionRoots = useMemo(() => {
+    const roots = new Set<string>();
+    if (queueObservation === null || configWorkspace === null) {
+      return roots;
+    }
+    const pathsBySource = new Map(
+      configWorkspace.queueSources.map((source) => [source.id, source.path]),
+    );
+    for (const source of queueObservation.sources) {
+      if (source.classification?.status !== "candidate") {
+        continue;
+      }
+      const path = pathsBySource.get(source.sourceId);
+      if (path === undefined) {
+        continue;
+      }
+      for (const repository of configWorkspace.repositories) {
+        if (path.startsWith(`${repository.root}/`)) {
+          roots.add(repository.root);
+        }
+      }
+    }
+    return roots;
+  }, [configWorkspace, queueObservation]);
+
+  const selectedRepositoryRoot =
+    selectedSession?.repository.status === "ready"
+      ? selectedSession.repository.root
+      : null;
+  const selectedRepositoryName =
+    selectedSession?.repository.status === "ready"
+      ? selectedSession.repository.name
+      : null;
+  const selectedRole = useMemo(() => {
+    if (selectedSession === null) {
+      return null;
+    }
+    for (const assignment of roleAssignments.values()) {
+      if (assignment.meta?.id === selectedSession.id) {
+        return "meta" as const;
+      }
+      if (assignment.orchestrator?.id === selectedSession.id) {
+        return "orchestrator" as const;
+      }
+    }
+    return null;
+  }, [roleAssignments, selectedSession]);
+
   const selectedRepositoryChanges =
     selectedId === null
       ? IDLE_REPOSITORY_CHANGES
@@ -1531,10 +1016,6 @@ export function App() {
       : (repositoryDiffByKey.get(
           repositoryDiffKey(selectedId, selectedDiffPath),
         ) ?? IDLE_REPOSITORY_DIFF);
-  const selectedRepositoryHistory =
-    selectedId === null
-      ? IDLE_REPOSITORY_HISTORY
-      : (repositoryHistoryBySession.get(selectedId) ?? IDLE_REPOSITORY_HISTORY);
   const selectedRepositoryVerification =
     selectedId === null
       ? IDLE_REPOSITORY_VERIFICATION
@@ -1543,7 +1024,9 @@ export function App() {
 
   useEffect(() => {
     if (
-      inspectorTab !== "changes" ||
+      !filesOpen ||
+      filesTab !== "git" ||
+      gitTab !== "changes" ||
       selectedId === null ||
       connection !== "connected" ||
       selectedRepositoryChanges.status !== "idle"
@@ -1553,7 +1036,9 @@ export function App() {
     requestRepositoryChanges(selectedId);
   }, [
     connection,
-    inspectorTab,
+    filesOpen,
+    filesTab,
+    gitTab,
     requestRepositoryChanges,
     selectedId,
     selectedRepositoryChanges.status,
@@ -1561,7 +1046,9 @@ export function App() {
 
   useEffect(() => {
     if (
-      inspectorTab !== "changes" ||
+      !filesOpen ||
+      filesTab !== "git" ||
+      gitTab !== "changes" ||
       selectedId === null ||
       selectedDiffPath === null ||
       connection !== "connected" ||
@@ -1572,7 +1059,9 @@ export function App() {
     requestRepositoryDiff(selectedId, selectedDiffPath);
   }, [
     connection,
-    inspectorTab,
+    filesOpen,
+    filesTab,
+    gitTab,
     requestRepositoryDiff,
     selectedDiffPath,
     selectedId,
@@ -1581,25 +1070,9 @@ export function App() {
 
   useEffect(() => {
     if (
-      inspectorTab !== "history" ||
-      selectedId === null ||
-      connection !== "connected" ||
-      selectedRepositoryHistory.status !== "idle"
-    ) {
-      return;
-    }
-    requestRepositoryHistory(selectedId);
-  }, [
-    connection,
-    inspectorTab,
-    requestRepositoryHistory,
-    selectedId,
-    selectedRepositoryHistory.status,
-  ]);
-
-  useEffect(() => {
-    if (
-      inspectorTab !== "checks" ||
+      !filesOpen ||
+      filesTab !== "git" ||
+      gitTab !== "checks" ||
       selectedId === null ||
       connection !== "connected" ||
       selectedRepositoryVerification.status !== "idle"
@@ -1609,38 +1082,11 @@ export function App() {
     requestRepositoryVerification(selectedId);
   }, [
     connection,
-    inspectorTab,
+    filesOpen,
+    filesTab,
+    gitTab,
     requestRepositoryVerification,
     selectedId,
-    selectedRepositoryVerification.status,
-  ]);
-
-  useEffect(() => {
-    if (
-      inspectorTab !== "activity" ||
-      selectedId === null ||
-      connection !== "connected"
-    ) {
-      return;
-    }
-    if (selectedRepositoryChanges.status === "idle") {
-      requestRepositoryChanges(selectedId);
-    }
-    if (selectedRepositoryHistory.status === "idle") {
-      requestRepositoryHistory(selectedId);
-    }
-    if (selectedRepositoryVerification.status === "idle") {
-      requestRepositoryVerification(selectedId);
-    }
-  }, [
-    connection,
-    inspectorTab,
-    requestRepositoryChanges,
-    requestRepositoryHistory,
-    requestRepositoryVerification,
-    selectedId,
-    selectedRepositoryChanges.status,
-    selectedRepositoryHistory.status,
     selectedRepositoryVerification.status,
   ]);
 
@@ -1680,2340 +1126,520 @@ export function App() {
     nextDiffs.delete(repositoryDiffKey(closedSessionId, closedPath));
     repositoryDiffRef.current = nextDiffs;
     setRepositoryDiffByKey(nextDiffs);
-    window.requestAnimationFrame(() => {
-      const rows = document.querySelectorAll<HTMLButtonElement>(
-        ".changed-file-button",
-      );
-      for (const row of rows) {
-        if (row.dataset.diffPath === closedPath) {
-          row.focus();
-          break;
-        }
-      }
-    });
   }, [selectedDiffPath, selectedId]);
 
-  const actionSession =
-    sessions.find(({ id }) => id === actionSessionId) ?? null;
-  const renameSession =
-    sessions.find(({ id }) => id === renameSessionId) ?? null;
-  const relaunchManifest =
-    relaunchManifests.find(({ id }) => id === relaunchManifestId) ?? null;
-  const recoveryManifests = useMemo(() => {
-    const currentSessionIds = new Set(sessions.map(({ id }) => id));
-    const succeededSessionIds = new Set(
-      relaunchManifests.flatMap(({ predecessorSessionId }) =>
-        predecessorSessionId === null ? [] : [predecessorSessionId],
-      ),
-    );
-    return relaunchManifests
-      .filter(
-        ({ sessionId }) =>
-          !currentSessionIds.has(sessionId) &&
-          !succeededSessionIds.has(sessionId),
-      )
-      .slice(0, 8);
-  }, [relaunchManifests, sessions]);
-  const renderedSessionIds = useMemo(() => {
-    const panes = listPanes(layout.root);
-    if (layout.maximizedPaneId !== null) {
-      const maximized = panes.find(
-        (pane) => pane.id === layout.maximizedPaneId,
-      );
-      return maximized?.sessionId === null || maximized === undefined
-        ? []
-        : [maximized.sessionId];
-    }
-    return panes.flatMap((pane) =>
-      pane.sessionId === null ? [] : [pane.sessionId],
-    );
-  }, [layout]);
-  const paletteCommands = useMemo(
-    () =>
-      buildPaletteCatalog({
-        focusedPaneId: getFocusedPane(layout)?.id ?? null,
-        maximizedPaneId: layout.maximizedPaneId,
-        paneCount: listPanes(layout.root).length,
-        selectedSessionId: selectedId,
-        sessions,
-        sidebarOpen: panelView.sidebarOpen,
-        inspectorOpen: panelView.inspectorOpen,
-        workspaceMode,
-      }),
-    [layout, panelView, selectedId, sessions, workspaceMode],
+  const handleSurfaceRef = useCallback(
+    (handle: TerminalSurfaceHandle | null) => {
+      surfaceRef.current = handle;
+      if (handle !== null) {
+        setSurfaceTick((tick) => tick + 1);
+      }
+    },
+    [],
   );
 
-  useEffect(() => {
-    if (connection !== "connected") {
-      syncRefs.current.clear();
-      return;
-    }
-    const rendered = new Set(renderedSessionIds);
-    for (const sessionId of syncRefs.current.keys()) {
-      if (!rendered.has(sessionId)) {
-        syncRefs.current.delete(sessionId);
-      }
-    }
-    for (const sessionId of renderedSessionIds) {
-      const surface = terminalRefs.current.get(sessionId);
-      if (surface === undefined) {
-        continue;
-      }
-      const existing = syncRefs.current.get(sessionId);
-      if (existing?.surface === surface) {
-        continue;
-      }
-      syncRefs.current.set(sessionId, {
-        sessionId,
-        surface,
-        epoch: undefined,
-        sequence: 0,
-        snapshotApplied: false,
-        pending: [],
-      });
-      surface.clear();
-      transportRef.current?.attach(sessionId);
-    }
-  }, [connection, renderedSessionIds]);
-  const sessionGroups = useMemo(() => groupSessions(sessions), [sessions]);
-  const paciumModeSummary = useMemo(
-    () => buildPaciumModeSummary(paciumConfig, connection),
-    [connection, paciumConfig],
-  );
-  const paciumRoleModels = useMemo(
-    () =>
-      buildPaciumRoleModels({
-        config: paciumConfig,
-        connection,
-        sessions,
-        launchPresets,
-        defaultCwd,
-        pendingLaunch: pendingPaciumRoleLaunch,
-      }),
-    [
-      connection,
-      defaultCwd,
-      launchPresets,
-      paciumConfig,
-      pendingPaciumRoleLaunch,
-      sessions,
-    ],
-  );
-  const paciumQueueProjection = useMemo(
-    () =>
-      buildPaciumQueueProjection({
-        config: paciumConfig,
-        queue: paciumQueue,
-        connection,
-      }),
-    [connection, paciumConfig, paciumQueue],
-  );
-  const firstQueueSelection = useMemo(() => {
-    for (const { source, observation } of paciumQueueProjection.sources) {
-      const selection = queueItemSelection(
-        source,
-        observation,
-        paciumQueueProjection.workspaceRevision,
-      );
-      if (selection !== null) {
-        return selection;
-      }
-    }
-    return null;
-  }, [paciumQueueProjection]);
-  const visiblePaciumObservation = visiblePaciumConfig(paciumConfig);
-  const readyPaciumWorkspace =
-    visiblePaciumObservation?.status === "ready"
-      ? visiblePaciumObservation.workspace
-      : null;
-  const queueRequestingSessionLabel = useMemo(() => {
-    const selection = paciumQueueInspection.selection;
-    if (
-      selection === null ||
-      selection.requestingRole === "unknown" ||
-      readyPaciumWorkspace === null
-    ) {
-      return null;
-    }
-    const binding = readyPaciumWorkspace.roles[selection.requestingRole];
-    if (binding?.type !== "session") {
-      return null;
-    }
-    const session = sessions.find(({ id }) => id === binding.sessionId);
-    if (
-      session === undefined ||
-      (session.processState !== "live" && session.processState !== "creating")
-    ) {
-      return null;
-    }
-    return `${roleLabel(selection.requestingRole)} · ${session.displayName}`;
-  }, [paciumQueueInspection.selection, readyPaciumWorkspace, sessions]);
-  const editingPaciumRoleBinding =
-    editingPaciumRole === null
-      ? null
-      : (readyPaciumWorkspace?.roles[editingPaciumRole] ?? null);
-  const paciumRoleBindingOptions = useMemo(
-    () =>
-      editingPaciumRole === null
-        ? null
-        : buildPaciumRoleBindingOptions({
-            role: editingPaciumRole,
-            workspace: readyPaciumWorkspace,
-            sessions,
-            launchPresets,
-          }),
-    [editingPaciumRole, launchPresets, readyPaciumWorkspace, sessions],
-  );
-  const attentionBySession = useMemo(() => {
-    return new Map(
-      sessions.map((session) => [
-        session.id,
-        deriveSessionAttention(session, providerFreshnessNow),
-      ]),
-    );
-  }, [providerFreshnessNow, sessions]);
-  const paciumWorkers = useMemo(
-    () =>
-      buildPaciumWorkersProjection({
-        config: paciumConfig,
-        connection,
-        sessions,
-        launchPresets,
-        attentionBySession,
-        selectedChanges:
-          selectedSession === null
-            ? null
-            : {
-                sessionId: selectedSession.id,
-                state: selectedRepositoryChanges,
-              },
-      }),
-    [
-      attentionBySession,
-      connection,
-      launchPresets,
-      paciumConfig,
-      selectedRepositoryChanges,
-      selectedSession,
-      sessions,
-    ],
-  );
-  const selectedAttention =
-    selectedSession === null
-      ? null
-      : (attentionBySession.get(selectedSession.id) ?? null);
-  const selectedRecentActivity =
-    selectedSession === null || selectedAttention === null
-      ? null
-      : buildRecentActivity({
-          session: selectedSession,
-          attention: selectedAttention,
-          now: providerFreshnessNow,
-          changes: selectedRepositoryChanges,
-          history: selectedRepositoryHistory,
-          verification: selectedRepositoryVerification,
-        });
-  const selectedAttentionCursor =
-    selectedSession === null
-      ? null
-      : cursorEntry(attentionInbox, selectedSession.id);
-  const selectedAttentionUnread =
-    selectedSession !== null &&
-    selectedAttention !== null &&
-    isAttentionUnread(attentionInbox, selectedSession.id, selectedAttention);
-  const persistAttentionInbox = useCallback((next: AttentionInboxState) => {
-    attentionInboxRef.current = next;
-    setAttentionInbox(next);
-    if (!saveAttentionInbox(window.localStorage, next)) {
-      setNotice(
-        "Attention state is active, but this browser could not save it for refresh.",
-      );
-    }
+  const handleSelect = useCallback((sessionId: string) => {
+    setSelectedId(sessionId);
   }, []);
 
-  useEffect(() => {
-    if (
-      selectedId === null ||
-      selectedAttention === null ||
-      pageVisibility !== "visible" ||
-      !isAttentionUnread(
-        attentionInboxRef.current,
-        selectedId,
-        selectedAttention,
-      )
-    ) {
-      return;
-    }
-    persistAttentionInbox(
-      acknowledgeAttention(
-        attentionInboxRef.current,
-        selectedId,
-        selectedAttention,
-      ),
-    );
-  }, [pageVisibility, persistAttentionInbox, selectedAttention, selectedId]);
-
-  useEffect(() => {
-    if (typeof Notification === "undefined") {
-      return;
-    }
-    let nextInbox = attentionInboxRef.current;
-    let delivered = false;
-    for (const session of sessions) {
-      const attention = attentionBySession.get(session.id);
-      if (
-        attention === undefined ||
-        !shouldDeliverAttentionNotification({
-          attention,
-          entry: cursorEntry(nextInbox, session.id),
-          permission: notificationPermission,
-          preference: preferences.notifications,
-          visibility: pageVisibility,
-        })
-      ) {
-        continue;
+  const handleCreate = useCallback(
+    (input: {
+      cwd: string;
+      displayName?: string;
+      launchPreset: LaunchPresetId;
+      keepAlive?: boolean;
+    }) => {
+      const transport = transportRef.current;
+      if (connection !== "connected" || transport === null) {
+        setNotice("Pacium is disconnected, so no terminal was started.");
+        return;
       }
-      const content = buildAttentionNotificationContent(session.id, attention);
-      if (content === null) {
-        continue;
-      }
-      try {
-        const notification = new Notification(content.title, {
-          body: content.body,
-          silent: true,
-          tag: content.tag,
-        });
-        notification.onclick = () => {
-          window.focus();
-          selectSession(session.id);
-          notification.close();
-        };
-        nextInbox = markAttentionNotified(nextInbox, session.id, attention);
-        delivered = true;
-      } catch {
-        setNotice(
-          "The browser could not show an attention alert. The event remains unread inside Pacium.",
-        );
-      }
-    }
-    if (delivered) {
-      persistAttentionInbox(nextInbox);
-    }
-  }, [
-    attentionBySession,
-    notificationPermission,
-    pageVisibility,
-    persistAttentionInbox,
-    preferences.notifications,
-    sessions,
-  ]);
-
-  const tabSessions = useMemo(
-    () =>
-      tabs.flatMap((tab) => {
-        const session = sessions.find(({ id }) => id === tab.sessionId);
-        return session === undefined ? [] : [{ tab, session }];
-      }),
-    [sessions, tabs],
-  );
-  const sessionShortcutNumbers = useMemo(
-    () =>
-      new Map(
-        tabs.map((tab, index) => [tab.sessionId, index < 9 ? index + 1 : null]),
-      ),
-    [tabs],
+      transport.createSession({ ...input, cols: 120, rows: 32 });
+      setCreateOpen(false);
+    },
+    [connection],
   );
 
-  const selectSession = (sessionId: string) => {
-    setNotice(null);
-    setTabs((current) => openTerminalTab(current, sessionId));
-    setLayout(showSessionInFocusedPane(layoutRef.current, sessionId));
-    setSelectedId(sessionId);
-  };
-
-  const toggleSelectedSessionMuted = () => {
-    if (selectedSession === null || selectedAttentionCursor === null) {
-      return;
-    }
-    const muted = !selectedAttentionCursor.muted;
-    persistAttentionInbox(
-      setSessionMuted(attentionInboxRef.current, selectedSession.id, muted),
-    );
-    setNotice(
-      muted
-        ? `${selectedSession.displayName} browser alerts muted. Attention still appears in Pacium.`
-        : `${selectedSession.displayName} browser alerts unmuted.`,
-    );
-  };
-
-  const selectPane = (paneId: string) => {
-    const next = focusPane(layoutRef.current, paneId);
-    setLayout(next);
-    setSelectedId(getFocusedPane(next)?.sessionId ?? null);
-    setCapturedPaneId(null);
-  };
-
-  const assignSession = (paneId: string, sessionId: string) => {
-    setTabs((current) => openTerminalTab(current, sessionId));
-    const next = assignSessionToPane(layoutRef.current, paneId, sessionId);
-    setLayout(next);
-    setSelectedId(sessionId);
-  };
-
-  const splitPane = (direction: SplitDirection) => {
-    const next = splitFocusedPane(
-      layoutRef.current,
-      direction,
-      `split-${crypto.randomUUID()}`,
-      `pane-${crypto.randomUUID()}`,
-    );
-    if (next === layoutRef.current) {
-      setNotice(`Pacium keeps split layouts to ${MAX_SPLIT_PANES} panes.`);
-      return;
-    }
-    setLayout(next);
-    setSelectedId(null);
-    setCapturedPaneId(null);
-  };
-
-  const closePaneView = (paneId: string) => {
-    const pane = listPanes(layoutRef.current.root).find(
-      (candidate) => candidate.id === paneId,
-    );
-    const session = sessions.find(({ id }) => id === pane?.sessionId);
-    const next = closePane(layoutRef.current, paneId);
-    setLayout(next);
-    setSelectedId(getFocusedPane(next)?.sessionId ?? null);
-    setCapturedPaneId(null);
-    if (session !== undefined) {
-      setNotice(
-        session.runtime === "tmux"
-          ? `${session.displayName} pane closed. Its tmux client, server session, and tab are still available.`
-          : `${session.displayName} pane closed. Its process and tab are still available.`,
-      );
-    }
-  };
-
-  const focusAdjacentPane = (direction: -1 | 1) => {
-    const next = focusPaneByOffset(layoutRef.current, direction);
-    setLayout(next);
-    setSelectedId(getFocusedPane(next)?.sessionId ?? null);
-    setCapturedPaneId(null);
-  };
-
-  const closeViewTab = (sessionId: string) => {
-    const session = sessions.find(({ id }) => id === sessionId);
-    const next = closeTerminalTab(
-      tabsRef.current,
-      sessionId,
-      selectedIdRef.current,
-    );
-    setTabs(next.tabs);
-    setLayout(clearSessionFromLayout(layoutRef.current, sessionId));
-    setSelectedId(next.selectedId);
-    setNotice(
-      session?.runtime === "tmux"
-        ? `${session.displayName} tab closed. Its tmux client and server session are still running.`
-        : `${
-            session?.displayName ?? "Terminal"
-          } tab closed. Its process is still running in the sidebar.`,
-    );
-  };
-
-  const createSession = (input: {
-    cwd: string;
-    displayName?: string;
-    launchPreset: LaunchPresetId;
-    keepAlive?: boolean;
-  }) => {
-    transportRef.current?.createSession({
-      ...input,
-      cols: 100,
-      rows: 30,
-    });
-    closeCreateDialog();
-  };
-
-  const openPaciumRoleEditor = (role: PaciumRoleId) => {
-    if (pendingPaciumRoleLaunchRef.current !== null) {
-      setNotice(
-        "Finish the current role launch before changing another binding.",
-      );
-      return;
-    }
-    roleEditorInvokerRef.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
-    setCapturedPaneId(null);
-    setEditingPaciumRole(role);
-  };
-
-  const closePaciumRoleEditor = () => {
-    if (roleSaveRequestRef.current !== null) {
-      return;
-    }
-    setEditingPaciumRole(null);
-    window.requestAnimationFrame(() => {
-      roleEditorInvokerRef.current?.focus();
-    });
-  };
-
-  const savePaciumRoleBinding = (
-    role: PaciumRoleId,
-    binding: PaciumBinding,
-  ) => {
-    const transport = transportRef.current;
-    const observation = visiblePaciumConfig(paciumConfigRef.current);
-    if (
-      connection !== "connected" ||
-      transport === null ||
-      roleSaveRequestRef.current !== null
-    ) {
-      setNotice(
-        "Reconnect and accept fresh Pacium configuration before saving a role. Terminals are unchanged.",
-      );
-      return;
-    }
-
-    let expectedRevision: number;
-    let workspace;
-    if (observation?.status === "unconfigured") {
-      expectedRevision = 0;
-      workspace = createMinimalPaciumWorkspace(role, binding);
-    } else if (
-      observation?.status === "ready" &&
-      observation.revision !== null &&
-      observation.workspace !== null
-    ) {
-      expectedRevision = observation.revision;
-      workspace = replacePaciumRoleBinding(
-        observation.workspace,
-        role,
-        binding,
-      );
-    } else {
-      setNotice(
-        "Role assignment needs a valid current Pacium definition. Retry configuration first.",
-      );
-      return;
-    }
-
-    const requestId = transport.replacePaciumConfig(
-      expectedRevision,
-      workspace,
-    );
-    roleSaveRequestRef.current = { role, requestId };
-    setNotice(`Saving ${roleLabel(role)} binding…`);
-  };
-
-  const launchPaciumRole = (role: PaciumRoleId) => {
-    const transport = transportRef.current;
-    const model = paciumRoleModels.find((candidate) => candidate.role === role);
-    const observation = visiblePaciumConfig(paciumConfigRef.current);
-    if (
-      transport === null ||
-      connection !== "connected" ||
-      pendingPaciumRoleLaunchRef.current !== null ||
-      model?.canLaunch !== true ||
-      model.launchPreset === null ||
-      model.launchCwd === null ||
-      observation?.status !== "ready" ||
-      observation.revision === null
-    ) {
-      setNotice(
-        `${roleLabel(role)} cannot launch until its fixed preset, working directory, connection, and current config are ready.`,
-      );
-      return;
-    }
-    const requestId = transport.createSession({
-      cwd: model.launchCwd,
-      displayName: roleLabel(role),
-      launchPreset: model.launchPreset,
-      cols: 100,
-      rows: 30,
-    });
-    const pending: PendingPaciumRoleLaunch = {
-      role,
-      requestId,
-      sourceRevision: observation.revision,
-      stage: "launching",
-    };
-    pendingPaciumRoleLaunchRef.current = pending;
-    setPendingPaciumRoleLaunch(pending);
-    setNotice(`Starting ${roleLabel(role)} from its fixed preset…`);
-  };
-
-  const refreshPaciumQueue = () => {
-    const transport = transportRef.current;
-    if (
-      connection !== "connected" ||
-      transport === null ||
-      paciumQueueRef.current.requestId !== null
-    ) {
-      setNotice(
-        "Queue source evidence needs a live Pacium connection. Terminals and source files are unchanged.",
-      );
-      return;
-    }
-    transport.requestQueueObservation();
-  };
-
-  const openCreateDialog = () => {
-    createInvokerRef.current = activeControl("new-terminal-trigger");
-    setCapturedPaneId(null);
-    setCreateOpen(true);
-  };
-
-  const closeCreateDialog = () => {
+  const closeCreateDialog = useCallback(() => {
     setCreateOpen(false);
-    restoreControlFocus(createInvokerRef, "new-terminal-trigger");
-  };
+    window.requestAnimationFrame(() => {
+      document.getElementById("new-terminal-trigger")?.focus();
+    });
+  }, []);
 
-  const refreshTmuxSessions = () => {
+  const handleComposerSend = useCallback(() => {
     const transport = transportRef.current;
+    const text = composerText.replace(/\r\n/g, "\n").replace(/\n$/, "");
     if (
-      connection !== "connected" ||
+      text.trim().length === 0 ||
       transport === null ||
-      tmuxListRequestRef.current !== null ||
-      tmuxAttachRequestRef.current !== null
+      connection !== "connected" ||
+      selectedId === null
     ) {
-      setTmuxError(
-        "A live Pacium connection is required to inspect tmux sessions.",
-      );
+      return;
+    }
+    const sessionId = selectedId;
+    transport.input(sessionId, composerTextPayload(text));
+    // Agent TUIs treat text and Enter arriving in one chunk as a paste and
+    // never submit; a separate Enter keystroke after a beat submits reliably.
+    window.setTimeout(() => {
+      transportRef.current?.input(sessionId, "\r");
+    }, COMPOSER_ENTER_DELAY_MS);
+    setComposerText("");
+    composerRef.current?.focus();
+  }, [composerText, connection, selectedId]);
+
+  const handleComposerSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      handleComposerSend();
+    },
+    [handleComposerSend],
+  );
+
+  const handleComposerKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        handleComposerSend();
+      }
+    },
+    [handleComposerSend],
+  );
+
+  const handleHarnessConnect = useCallback(
+    (target: string) => {
+      if (!isValidHarnessTarget(target)) {
+        return;
+      }
+      saveHarnessTarget(window.localStorage, target);
+      setHarnessTarget(target);
+      const transport = transportRef.current;
+      if (connection !== "connected" || transport === null) {
+        setNotice(
+          "Pacium is disconnected, so the harness login terminal was not started.",
+        );
+        return;
+      }
+      dismissedTailscaleUrlRef.current = null;
+      const command = buildHarnessLoginCommand(target);
+      const requestId = transport.createSession({
+        cwd: defaultCwd || "/",
+        launchPreset: "shell",
+        displayName: `Harness · ${target}`,
+        cols: 120,
+        rows: 32,
+      });
+      harnessLaunchRef.current = { requestId, command };
+    },
+    [connection, defaultCwd],
+  );
+
+  const handleTailscaleDismiss = useCallback(() => {
+    dismissedTailscaleUrlRef.current = tailscaleUrl;
+    setTailscaleUrl(null);
+  }, [tailscaleUrl]);
+
+  const openTmuxDialog = useCallback(() => {
+    setTmuxOpen(true);
+    setTmuxError(null);
+    const transport = transportRef.current;
+    if (connection !== "connected" || transport === null) {
+      setTmuxError("Pacium is disconnected. tmux sessions cannot be listed.");
+      return;
+    }
+    setTmuxLoading(true);
+    tmuxListRequestRef.current = transport.listTmuxSessions();
+  }, [connection]);
+
+  const refreshTmuxSessions = useCallback(() => {
+    const transport = transportRef.current;
+    if (connection !== "connected" || transport === null) {
+      setTmuxError("Pacium is disconnected. tmux sessions cannot be listed.");
       return;
     }
     setTmuxError(null);
     setTmuxLoading(true);
     tmuxListRequestRef.current = transport.listTmuxSessions();
-  };
+  }, [connection]);
 
-  const openTmuxDialog = () => {
-    tmuxInvokerRef.current = activeControl("attach-tmux-trigger");
-    setCapturedPaneId(null);
-    setTmuxOpen(true);
-    setTmuxObservation(null);
-    refreshTmuxSessions();
-  };
+  const actionSession =
+    sessions.find(({ id }) => id === actionSessionId) ?? null;
+  const renameSession =
+    sessions.find(({ id }) => id === renameSessionId) ?? null;
+  const terminateSession =
+    sessions.find(({ id }) => id === terminateSessionId) ?? null;
+  const relaunchManifest =
+    relaunchManifests.find(({ id }) => id === relaunchManifestId) ?? null;
 
-  const closeTmuxDialog = () => {
-    if (tmuxAttaching) {
-      return;
-    }
-    setTmuxOpen(false);
-    setTmuxError(null);
-    restoreControlFocus(tmuxInvokerRef, "attach-tmux-trigger");
-  };
-
-  const attachTmuxSession = (target: TmuxTarget) => {
-    const transport = transportRef.current;
-    if (
-      connection !== "connected" ||
-      transport === null ||
-      tmuxAttachRequestRef.current !== null
-    ) {
-      setTmuxError(
-        "A live Pacium connection is required to attach this tmux target.",
-      );
-      return;
-    }
-    setTmuxError(null);
-    setTmuxAttaching(true);
-    tmuxAttachRequestRef.current = transport.attachTmux(
-      target.serverId,
-      target.sessionId,
-      100,
-      30,
-    );
-  };
-
-  const openSessionActions = (sessionId: string) => {
-    actionInvokerRef.current = activeControl("session-actions-trigger");
-    setCapturedPaneId(null);
-    setActionSessionId(sessionId);
-  };
-
-  const closeSessionActions = () => {
-    setActionSessionId(null);
-    restoreControlFocus(actionInvokerRef, "session-actions-trigger");
-  };
-
-  const loadDirectories = useCallback(
-    (path?: string): Promise<DirectoryListing> => {
-      const transport = transportRef.current;
-      if (transport === null) {
-        return Promise.reject(
-          new Error("Pacium is still connecting to the host."),
-        );
-      }
-      return transport.listDirectories(path);
-    },
-    [],
-  );
-
-  const terminateSession = (session: SessionSummary) => {
-    const isLive =
-      session.processState === "live" || session.processState === "closing";
-    const consequence = isLive
-      ? session.runtime === "tmux"
-        ? session.tmuxMode === "keep_alive"
-          ? `Disconnect the keep-alive client for “${session.displayName}”? The managed tmux target will continue and remains eligible for automatic reattachment on the next Pacium server start.`
-          : `Disconnect the tmux client for “${session.displayName}”? Pacium will close only its attachment; the tmux server session may continue.`
-        : `Terminate “${session.displayName}”? Pacium will send SIGTERM and force termination if it does not exit.`
-      : `Remove the ended session “${session.displayName}” from Pacium?`;
-    if (!window.confirm(consequence)) {
-      return;
-    }
-    transportRef.current?.closeSession(session.id, isLive);
-    closeSessionActions();
-  };
-
-  const copySessionDirectory = async (session: SessionSummary) => {
-    try {
-      if (navigator.clipboard === undefined) {
-        throw new Error("Clipboard access is unavailable.");
-      }
-      await navigator.clipboard.writeText(session.cwd);
-      setNotice(`Copied ${session.cwd}`);
-    } catch {
-      setNotice(
-        `Pacium could not access the clipboard. The path is ${session.cwd}`,
-      );
-    }
-    closeSessionActions();
-  };
-
-  const duplicateSession = (session: SessionSummary) => {
-    transportRef.current?.createSession(duplicateSessionInput(session));
-    setNotice(
-      `Starting a duplicate of ${session.displayName}. The original process is unchanged.`,
-    );
-    closeSessionActions();
-  };
-
-  const openRelaunchManifest = (
-    manifest: RelaunchManifest,
-    invoker?: HTMLElement | null,
-  ) => {
-    relaunchInvokerRef.current =
-      invoker ??
-      actionInvokerRef.current ??
-      (document.activeElement as HTMLElement);
-    setRelaunchManifestId(manifest.id);
-    setActionSessionId(null);
-  };
-
-  const relaunchSession = (session: SessionSummary) => {
-    if (session.relaunchManifest === undefined) {
-      setNotice(
-        "This ended session has no valid retained launch manifest. Existing processes are unchanged.",
-      );
-      closeSessionActions();
-      return;
-    }
-    openRelaunchManifest(session.relaunchManifest, actionInvokerRef.current);
-  };
-
-  const closeRelaunchDialog = () => {
-    setRelaunchManifestId(null);
-    restoreControlFocus(relaunchInvokerRef, "session-actions-trigger");
-  };
-
-  const confirmRelaunch = (manifest: RelaunchManifest) => {
-    const source = sessions.find(({ id }) => id === manifest.sessionId);
-    transportRef.current?.relaunch(
-      manifest.id,
-      source?.cols ?? 100,
-      source?.rows ?? 30,
-    );
-    setNotice(
-      `Starting a fresh ${manifest.displayName} process from its retained server manifest. Provider resume evidence is not applied automatically.`,
-    );
-    closeRelaunchDialog();
-  };
-
-  const interruptSession = (session: SessionSummary) => {
-    transportRef.current?.interrupt(session.id);
-    setNotice(
-      `Sent SIGINT to ${session.displayName}. The process may continue running.`,
-    );
-    closeSessionActions();
-  };
-
-  const beginRenameSession = (session: SessionSummary) => {
-    renameInvokerRef.current =
-      actionSessionId !== null
-        ? actionInvokerRef.current
-        : paletteView !== null
-          ? paletteInvokerRef.current
-          : activeControl("session-actions-trigger");
-    setRenameSessionId(session.id);
-    setActionSessionId(null);
-  };
-
-  const closeRenameDialog = () => {
-    setRenameSessionId(null);
-    restoreControlFocus(renameInvokerRef, "session-actions-trigger");
-  };
-
-  const revealSessionRepository = (session: SessionSummary) => {
-    transportRef.current?.revealRepository(session.id);
-    setNotice(
-      `Asked the Pacium host to reveal ${session.repository.name ?? "the repository"}.`,
-    );
-    closeSessionActions();
-  };
-
-  const refreshSelectedRepository = () => {
-    if (selectedSession === null) {
-      return;
-    }
-    transportRef.current?.refreshRepository(selectedSession.id);
-    setNotice(
-      `Refreshing Git evidence for ${selectedSession.displayName}. Its terminal is unchanged.`,
-    );
-  };
-
-  const openPalette = (view: CommandPaletteView) => {
-    paletteInvokerRef.current = activeControl("command-palette-trigger");
-    setCapturedPaneId(null);
-    setPaletteView(view);
-  };
-
-  const closePalette = (restoreFocus = true) => {
-    setPaletteView(null);
-    if (!restoreFocus) {
-      return;
-    }
-    restoreControlFocus(paletteInvokerRef, "command-palette-trigger");
-  };
-
-  const openSettings = () => {
-    settingsInvokerRef.current = activeControl("settings-trigger");
-    setCapturedPaneId(null);
-    setSettingsOpen(true);
-  };
-
-  const closeSettings = () => {
-    setSettingsOpen(false);
-    restoreControlFocus(settingsInvokerRef, "settings-trigger");
-  };
-
-  const openDiagnostics = () => {
-    diagnosticsInvokerRef.current =
-      paletteView !== null
-        ? paletteInvokerRef.current
-        : activeControl("diagnostics-trigger");
-    setCapturedPaneId(null);
-    if (!isDiagnosticsRoute(window.location.pathname)) {
-      diagnosticsHistoryEntryRef.current = true;
-      window.history.pushState(
-        { paciumRoute: "diagnostics" },
-        "",
-        "/diagnostics",
-      );
-    }
-    diagnosticsOpenRef.current = true;
-    setDiagnosticsOpen(true);
-  };
-
-  const closeDiagnostics = () => {
-    if (
-      isDiagnosticsRoute(window.location.pathname) &&
-      diagnosticsHistoryEntryRef.current
-    ) {
-      window.history.back();
-      return;
-    }
-    if (isDiagnosticsRoute(window.location.pathname)) {
-      window.history.replaceState({ paciumRoute: "workspace" }, "", "/");
-    }
-    diagnosticsHistoryEntryRef.current = false;
-    diagnosticsOpenRef.current = false;
-    setDiagnosticsOpen(false);
-    restoreControlFocus(diagnosticsInvokerRef, "diagnostics-trigger");
-  };
-
-  const loadDiagnostics = useCallback(() => {
-    const transport = transportRef.current;
-    return transport === null
-      ? Promise.reject(
-          new Error(
-            "Pacium is still connecting. Running terminals are unchanged.",
-          ),
-        )
-      : transport.getDiagnostics();
-  }, []);
-
-  const loadHostSetup = useCallback(() => {
-    const transport = transportRef.current;
-    return transport === null
-      ? Promise.reject(new Error("Pacium is still connecting."))
-      : transport.getHostSetup();
-  }, []);
-
-  const applyHostSetup = useCallback(async (tmuxSessionId: string) => {
-    const transport = transportRef.current;
-    if (transport === null) {
-      throw new Error("Pacium is still connecting.");
-    }
-    const result = await transport.applyHostSetup(tmuxSessionId);
-    if (result.outcome === "configured") {
-      transport.listSessions();
-    }
-    return result;
-  }, []);
-
-  useEffect(() => {
-    const handlePopState = () => {
-      const open = isDiagnosticsRoute(window.location.pathname);
-      const wasOpen = diagnosticsOpenRef.current;
-      diagnosticsOpenRef.current = open;
-      setDiagnosticsOpen(open);
-      if (!open && wasOpen) {
-        diagnosticsHistoryEntryRef.current = false;
-        restoreControlFocus(diagnosticsInvokerRef, "diagnostics-trigger");
-      }
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, []);
-
-  const applyPreferences = (next: WorkspacePreferences) => {
-    setPreferences(next);
-    setSettingsOpen(false);
-    restoreControlFocus(settingsInvokerRef, "settings-trigger");
-    if (savePreferences(window.localStorage, next)) {
-      setNotice("Workspace settings applied and saved in this browser.");
-      return;
-    }
-    setNotice(
-      "Workspace settings are active, but this browser could not save them for refresh.",
-    );
-  };
-
-  const requestNotificationPermission = async () => {
-    if (typeof Notification === "undefined") {
-      setNotificationPermission("unsupported");
-      setNotice("This browser does not support local notifications.");
-      return;
-    }
-    try {
-      const permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
-      setNotice(
-        permission === "granted"
-          ? "Browser alerts allowed. Delivery still follows your notification setting."
-          : "Browser alerts were not allowed. Pacium will keep attention inside the app.",
-      );
-    } catch {
-      setNotice(
-        "The browser could not request notification permission. Pacium will keep attention inside the app.",
-      );
-    }
-  };
-
-  const setPanelVisibility = (next: typeof panelView) => {
-    panelViewRef.current = next;
-    setPanelView(next);
-    if (!savePanelView(window.localStorage, next)) {
-      setNotice(
-        "Panel visibility changed, but this browser could not save it for refresh.",
-      );
-    }
-  };
-
-  const toggleSidebarPanel = () => {
-    setPanelVisibility(toggleSidebar(panelViewRef.current ?? panelView));
-  };
-
-  const closePaciumContextInspector = () => {
-    const cleared = clearPaciumContext();
-    paciumContextRef.current = cleared;
-    setPaciumContext(cleared);
-    paciumContextOpenRef.current = false;
-    setPaciumContextOpen(false);
-    const invoker = contextInspectorInvokerRef.current;
-    contextInspectorInvokerRef.current = null;
-    window.requestAnimationFrame(() => {
-      if (invoker?.isConnected) {
-        invoker.focus();
-        return;
-      }
-      document.getElementById("pacium-context-trigger")?.focus();
-    });
-  };
-
-  const inspectPaciumContext = () => {
-    const transport = transportRef.current;
-    const observation = visiblePaciumConfig(paciumConfigRef.current);
-    if (
-      connection !== "connected" ||
-      transport === null ||
-      observation?.status !== "ready" ||
-      observation.workspace === null ||
-      observation.revision === null
-    ) {
-      setNotice(
-        "Control context needs a live connection and accepted Pacium definition. Terminals and files are unchanged.",
-      );
-      return;
-    }
-    const requestId = transport.requestPaciumContext();
-    const loading = beginPaciumContextInspection(
-      paciumContextRef.current,
-      requestId,
-      paciumConfigRef.current,
-    );
-    paciumContextRef.current = loading;
-    setPaciumContext(loading);
-  };
-
-  const openPaciumContextInspector = () => {
-    const transport = transportRef.current;
-    const observation = visiblePaciumConfig(paciumConfigRef.current);
-    if (
-      connection !== "connected" ||
-      transport === null ||
-      observation?.status !== "ready" ||
-      observation.workspace === null ||
-      observation.revision === null
-    ) {
-      setNotice(
-        "Control context needs a live connection and accepted Pacium definition. Terminals and files are unchanged.",
-      );
-      return;
-    }
-    contextInspectorInvokerRef.current = activeControl(
-      "pacium-context-trigger",
-    );
-    if (paciumQueueInspectionRef.current.selection !== null) {
-      const closed = closeQueueItemInspection();
-      paciumQueueInspectionRef.current = closed;
-      setPaciumQueueInspection(closed);
-      queueInspectorInvokerRef.current = null;
-    }
-    paciumContextOpenRef.current = true;
-    setPaciumContextOpen(true);
-    setCapturedPaneId(null);
-    if (!panelViewRef.current?.inspectorOpen) {
-      setPanelVisibility({
-        ...(panelViewRef.current ?? panelView),
-        inspectorOpen: true,
-      });
-    }
-    inspectPaciumContext();
-    setNotice(
-      "Reading accepted objective, plan, and immutable decision evidence. Terminal selection is unchanged.",
-    );
-  };
-
-  const toggleInspectorPanel = () => {
-    if (
-      panelViewRef.current?.inspectorOpen === true &&
-      paciumQueueInspectionRef.current.selection !== null
-    ) {
-      const closed = closeQueueItemInspection();
-      paciumQueueInspectionRef.current = closed;
-      setPaciumQueueInspection(closed);
-      queueInspectorInvokerRef.current = null;
-    }
-    if (
-      panelViewRef.current?.inspectorOpen === true &&
-      paciumContextOpenRef.current
-    ) {
-      const cleared = clearPaciumContext();
-      paciumContextRef.current = cleared;
-      setPaciumContext(cleared);
-      paciumContextOpenRef.current = false;
-      setPaciumContextOpen(false);
-      contextInspectorInvokerRef.current = null;
-    }
-    setPanelVisibility(toggleInspector(panelViewRef.current ?? panelView));
-  };
-
-  const openPaciumQueueItem = (selection: QueueItemSelection) => {
-    const transport = transportRef.current;
-    if (connection !== "connected" || transport === null) {
-      setNotice(
-        "Queue item inspection needs a live Pacium connection. The terminal and source file are unchanged.",
-      );
-      return;
-    }
-    queueInspectorInvokerRef.current = activeControl(
-      `queue-item-${selection.identity.sourceId}`,
-    );
-    if (paciumContextOpenRef.current) {
-      const cleared = clearPaciumContext();
-      paciumContextRef.current = cleared;
-      setPaciumContext(cleared);
-      paciumContextOpenRef.current = false;
-      setPaciumContextOpen(false);
-      contextInspectorInvokerRef.current = null;
-    }
-    setCapturedPaneId(null);
-    const requestId = transport.requestQueueItemInspection(selection.identity);
-    const loading = beginQueueItemInspection(selection, requestId);
-    paciumQueueInspectionRef.current = loading;
-    setPaciumQueueInspection(loading);
-    if (!panelViewRef.current?.inspectorOpen) {
-      setPanelVisibility({
-        ...(panelViewRef.current ?? panelView),
-        inspectorOpen: true,
-      });
-    }
-    setNotice(
-      `Opening the read-only ${selection.type} from ${selection.sourceLabel}. Terminal selection is unchanged.`,
-    );
-  };
-
-  const recordQueueQuestionAnswer = (payload: QueueQuestionAnswerPayload) => {
-    const transport = transportRef.current;
-    const current = paciumQueueInspectionRef.current;
-    if (
-      connection !== "connected" ||
-      transport === null ||
-      current.selection?.type !== "question" ||
-      current.status !== "ready" ||
-      current.decisionState?.status !== "open"
-    ) {
-      setNotice(
-        "This exact question is not ready for a decision. Nothing was recorded or delivered.",
-      );
-      return;
-    }
-    const requestId = transport.recordQueueQuestionAnswer(
-      current.selection.identity,
-      payload,
-    );
-    const submitting = beginQueueDecision(current, requestId);
-    paciumQueueInspectionRef.current = submitting;
-    setPaciumQueueInspection(submitting);
-    setNotice(
-      "Recording the immutable local answer. No prompt, file delivery, or terminal input is being sent.",
-    );
-  };
-
-  const recordQueueApprovalDecision = (
-    payload: QueueApprovalDecisionPayload,
-  ) => {
-    const transport = transportRef.current;
-    const current = paciumQueueInspectionRef.current;
-    if (
-      connection !== "connected" ||
-      transport === null ||
-      current.selection?.type !== "approval" ||
-      current.status !== "ready" ||
-      current.decisionState?.status !== "open"
-    ) {
-      setNotice(
-        "This exact approval request is not ready for a decision. Nothing was recorded, delivered, or executed.",
-      );
-      return;
-    }
-    const requestId = transport.recordQueueApprovalDecision(
-      current.selection.identity,
-      payload,
-    );
-    const submitting = beginQueueDecision(current, requestId);
-    paciumQueueInspectionRef.current = submitting;
-    setPaciumQueueInspection(submitting);
-    setNotice(
-      `Recording the immutable local ${payload.outcome === "approved" ? "approval" : "denial"}. No prompt, file delivery, terminal input, or action is being sent.`,
-    );
-  };
-
-  const deliverQueueDecision = () => {
-    const transport = transportRef.current;
-    const current = paciumQueueInspectionRef.current;
-    const deliveryState = current.deliveryState;
-    if (
-      connection !== "connected" ||
-      transport === null ||
-      current.status !== "ready" ||
-      current.decisionState?.status !== "decided" ||
-      deliveryState === null ||
-      (deliveryState.status !== "ready" &&
-        deliveryState.status !== "ready_retry")
-    ) {
-      setNotice(
-        "This exact immutable decision is not ready for delivery. No target or terminal was changed.",
-      );
-      return;
-    }
-    const decision = current.decisionState.decision;
-    const requestId = transport.deliverQueueDecision(
-      decision.decisionId,
-      decision.decisionHash,
-    );
-    const submitting = beginQueueDelivery(current, requestId);
-    paciumQueueInspectionRef.current = submitting;
-    setPaciumQueueInspection(submitting);
-    setNotice(
-      deliveryState.status === "ready_retry"
-        ? "Sending the sole human-unlocked retry to the revalidated exact target. The first attempt remains immutable."
-        : deliveryState.target.type === "answer_file"
-          ? "Publishing the immutable decision to the one accepted answer-file target. Existing files are never overwritten."
-          : `Sending one comment-prefixed decision line to the accepted ${roleLabel(deliveryState.target.role)} session. Terminal acceptance will not confirm agent handling.`,
-    );
-  };
-
-  const resolveQueueDecision = (request: QueueResolutionRequest) => {
-    const transport = transportRef.current;
-    const current = paciumQueueInspectionRef.current;
-    const decision =
-      current.decisionState?.status === "decided"
-        ? current.decisionState.decision
-        : null;
-    if (
-      connection !== "connected" ||
-      transport === null ||
-      current.status !== "ready" ||
-      current.reconciliation === null ||
-      decision === null ||
-      request.decisionId !== decision.decisionId ||
-      request.decisionHash !== decision.decisionHash
-    ) {
-      setNotice(
-        "This exact decision is not ready for a lifecycle label. External state was not changed.",
-      );
-      return;
-    }
-    const requestId = transport.resolveQueueDecision(request);
-    const submitting = beginQueueResolution(current, requestId, request);
-    paciumQueueInspectionRef.current = submitting;
-    setPaciumQueueInspection(submitting);
-    setNotice(
-      request.action === "confirmed_not_delivered"
-        ? "Recording human confirmation only. This does not send the retry."
-        : "Recording one human-labelled lifecycle record. No queue text or requested action is executed.",
-    );
-  };
-
-  const closePaciumQueueInspector = () => {
-    const sourceId =
-      paciumQueueInspectionRef.current.selection?.identity.sourceId ?? null;
-    const closed = closeQueueItemInspection();
-    paciumQueueInspectionRef.current = closed;
-    setPaciumQueueInspection(closed);
-    const invoker = queueInspectorInvokerRef.current;
-    queueInspectorInvokerRef.current = null;
-    window.requestAnimationFrame(() => {
-      if (invoker?.isConnected) {
-        invoker.focus();
-        return;
-      }
-      if (sourceId !== null) {
-        document.getElementById(`queue-item-${sourceId}`)?.focus();
-      }
-    });
-  };
-
-  const changeWorkspaceMode = useCallback((next: WorkspaceMode) => {
-    if (workspaceModeRef.current === next) {
-      return;
-    }
-    workspaceModeRef.current = next;
-    setWorkspaceMode(next);
-    if (next === "general") {
-      const closed = closeQueueItemInspection();
-      paciumQueueInspectionRef.current = closed;
-      setPaciumQueueInspection(closed);
-      queueInspectorInvokerRef.current = null;
-      const clearedContext = clearPaciumContext();
-      paciumContextRef.current = clearedContext;
-      setPaciumContext(clearedContext);
-      paciumContextOpenRef.current = false;
-      setPaciumContextOpen(false);
-      contextInspectorInvokerRef.current = null;
-    }
-    const saved = saveWorkspaceMode(window.localStorage, next);
-    setNotice(
-      saved
-        ? `${next === "pacium" ? "Pacium" : "General"} mode active. Terminal selection and layout are unchanged.`
-        : `${next === "pacium" ? "Pacium" : "General"} mode is active for this page, but this browser could not save it for refresh.`,
-    );
-  }, []);
-
-  const toggleWorkspaceMode = useCallback(() => {
-    changeWorkspaceMode(
-      workspaceModeRef.current === "pacium" ? "general" : "pacium",
-    );
-  }, [changeWorkspaceMode]);
-
-  const executePaletteCommand = (command: PaletteCommand) => {
-    if (!command.enabled) {
-      return;
-    }
-    if (command.action.type === "show-shortcuts") {
-      setPaletteView("shortcuts");
-      return;
-    }
-
-    closePalette(false);
-    switch (command.action.type) {
-      case "new-terminal":
-        openCreateDialog();
-        return;
-      case "open-settings":
-        openSettings();
-        return;
-      case "open-diagnostics":
-        openDiagnostics();
-        return;
-      case "toggle-sidebar":
-        toggleSidebarPanel();
-        return;
-      case "toggle-inspector":
-        toggleInspectorPanel();
-        return;
-      case "toggle-workspace-mode":
-        toggleWorkspaceMode();
-        return;
-      case "split-pane":
-        splitPane(command.action.direction);
-        return;
-      case "focus-pane":
-        focusAdjacentPane(command.action.direction);
-        return;
-      case "toggle-maximize": {
-        const next = toggleMaximizedPane(
-          layoutRef.current,
-          command.action.paneId,
-        );
-        setLayout(next);
-        setSelectedId(getFocusedPane(next)?.sessionId ?? null);
-        return;
-      }
-      case "select-session":
-        selectSession(command.action.sessionId);
-        return;
-      case "rename-session":
-      case "duplicate-session":
-      case "relaunch-session":
-      case "copy-session-directory":
-      case "reveal-session-repository":
-      case "close-session-view":
-      case "interrupt-session":
-      case "review-session-termination": {
-        const sessionId = command.action.sessionId;
-        const session = sessions.find(({ id }) => id === sessionId);
-        if (session === undefined) {
-          setNotice("That session is no longer available. Reopen the palette.");
-          return;
-        }
-        switch (command.action.type) {
-          case "rename-session":
-            beginRenameSession(session);
-            return;
-          case "duplicate-session":
-            duplicateSession(session);
-            return;
-          case "relaunch-session":
-            relaunchSession(session);
-            return;
-          case "copy-session-directory":
-            void copySessionDirectory(session);
-            return;
-          case "reveal-session-repository":
-            revealSessionRepository(session);
-            return;
-          case "close-session-view":
-            closeViewTab(session.id);
-            return;
-          case "interrupt-session":
-            interruptSession(session);
-            return;
-          case "review-session-termination":
-            terminateSession(session);
-            return;
-        }
-      }
-    }
-  };
-
-  const modalOpen =
-    createOpen ||
-    actionSession !== null ||
-    renameSession !== null ||
-    relaunchManifest !== null ||
-    editingPaciumRole !== null ||
-    paletteView !== null ||
-    settingsOpen ||
-    diagnosticsOpen;
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const editable = isEditableTarget(event.target);
-      const modeChord = advanceWorkspaceModeChord(
-        workspaceModeChordRef.current,
-        {
-          code: event.code,
-          now: performance.now(),
-          blocked:
-            editable || modalOpen || capturedPaneId !== null || event.repeat,
-          metaKey: event.metaKey,
-          ctrlKey: event.ctrlKey,
-          shiftKey: event.shiftKey,
-          altKey: event.altKey,
-        },
-      );
-      workspaceModeChordRef.current = modeChord.state;
-      if (modeChord.handled) {
-        event.preventDefault();
-        if (modeChord.toggle) {
-          toggleWorkspaceMode();
-        }
-        return;
-      }
-
-      const shortcut = resolveWorkspaceShortcut({
-        code: event.code,
-        metaKey: event.metaKey,
-        ctrlKey: event.ctrlKey,
-        shiftKey: event.shiftKey,
-        altKey: event.altKey,
-        editable,
-        dialogOpen: modalOpen,
-        terminalCaptured: capturedPaneId !== null,
-      });
-      if (shortcut === null) {
-        return;
-      }
-
-      event.preventDefault();
-      switch (shortcut.type) {
-        case "exit-terminal-capture": {
-          const capturedPane = listPanes(layoutRef.current.root).find(
-            (pane) => pane.id === capturedPaneId,
-          );
-          if (capturedPane !== undefined && capturedPane.sessionId !== null) {
-            terminalRefs.current.get(capturedPane.sessionId)?.blur();
-          }
-          setCapturedPaneId(null);
-          return;
-        }
-        case "open-command-palette":
-          openPalette("commands");
-          return;
-        case "open-shortcut-reference":
-          openPalette("shortcuts");
-          return;
-        case "open-settings":
-          openSettings();
-          return;
-        case "toggle-sidebar":
-          toggleSidebarPanel();
-          return;
-        case "toggle-inspector":
-          toggleInspectorPanel();
-          return;
-        case "new-terminal":
-          openCreateDialog();
-          return;
-        case "previous-session":
-        case "next-session": {
-          const sessionId = adjacentTerminalTabId(
-            tabs,
-            selectedIdRef.current,
-            shortcut.type === "previous-session" ? -1 : 1,
-          );
-          if (sessionId !== null) {
-            selectSession(sessionId);
-          }
-          return;
-        }
-        case "select-session": {
-          const tab = tabs[shortcut.index];
-          if (tab !== undefined) {
-            selectSession(tab.sessionId);
-          }
-          return;
-        }
-        case "split-horizontal":
-          splitPane("horizontal");
-          return;
-        case "split-vertical":
-          splitPane("vertical");
-          return;
-        case "previous-pane":
-          focusAdjacentPane(-1);
-          return;
-        case "next-pane":
-          focusAdjacentPane(1);
-          return;
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [capturedPaneId, modalOpen, tabs, toggleWorkspaceMode]);
+  const selectedAttention =
+    selectedSession === null
+      ? null
+      : (attentionBySession.get(selectedSession.id) ?? null);
+  const liveSelected =
+    selectedSession !== null && selectedSession.processState === "live";
+  const composerPlaceholder =
+    selectedRole === "meta"
+      ? "Message Meta — Enter sends, Shift+Enter for a new line"
+      : selectedSession === null
+        ? "Select a session to talk to it"
+        : `Send to ${selectedSession.displayName}`;
 
   return (
     <div
-      className={`app-shell ${
-        panelView.sidebarOpen ? "" : "is-sidebar-collapsed"
-      } ${panelView.inspectorOpen ? "" : "is-inspector-collapsed"}`}
-      data-workspace-mode={workspaceMode}
-      data-meta-focus={
-        metaSessionCapability.state === "ready" ? "true" : undefined
-      }
+      className={`shell ${railOpen ? "" : "is-rail-closed"} ${
+        filesOpen ? "" : "is-files-closed"
+      }`}
     >
-      <a className="skip-link" href="#primary-workspace">
-        Skip to terminal workspace
+      <a className="skip-link" href="#shell-terminal">
+        Skip to terminal
       </a>
-      <button
-        aria-label="Close open side panel"
-        className="panel-drawer-scrim"
-        onClick={() =>
-          setPanelVisibility({
-            ...panelView,
-            sidebarOpen: false,
-            inspectorOpen: false,
-          })
-        }
-        type="button"
-      />
-      <aside
-        aria-label="Session navigation"
-        className="sidebar"
-        id="session-sidebar"
-      >
-        <header className="brand-row">
-          <div className="brand-mark" aria-hidden="true">
-            P
-          </div>
-          <div>
-            <strong>Pacium</strong>
-            <span>Control</span>
-          </div>
-          <button
-            aria-label="Close session sidebar"
-            className="sidebar-close"
-            onClick={toggleSidebarPanel}
-            type="button"
-          >
-            ×
-          </button>
-        </header>
-
-        <button
-          className="new-terminal-button"
-          id="new-terminal-trigger"
-          onClick={openCreateDialog}
-          title="New terminal (Cmd/Ctrl Shift T)"
-          type="button"
-        >
-          <span aria-hidden="true">＋</span>
-          New terminal
-        </button>
-        {tmuxCapability.state !== "unconfigured" && (
-          <button
-            className="attach-tmux-button"
-            disabled={tmuxOpen}
-            id="attach-tmux-trigger"
-            onClick={openTmuxDialog}
-            type="button"
-          >
-            <span aria-hidden="true">⌁</span>
-            Attach tmux
-            <small>{tmuxCapability.state}</small>
-          </button>
-        )}
-
-        <nav aria-label="Terminal sessions" className="session-navigation">
-          {workspaceMode === "pacium" &&
-            metaSessionCapability.state !== "ready" && (
-              <>
-                {metaSessionCapability.state === "unavailable" && (
-                  <p className="meta-session-unavailable">
-                    {metaSessionCapability.detail}
-                  </p>
-                )}
-                <PaciumModeSummaryCard
-                  onOpenContext={openPaciumContextInspector}
-                  onRetry={() => transportRef.current?.requestPaciumConfig()}
-                  summary={paciumModeSummary}
-                />
-                <PaciumRoleGroup
-                  onConfigure={openPaciumRoleEditor}
-                  onLaunch={launchPaciumRole}
-                  onOpen={selectSession}
-                  onRetry={() => transportRef.current?.requestPaciumConfig()}
-                  roles={paciumRoleModels}
-                />
-                <PaciumWorkers
-                  onOpen={selectSession}
-                  projection={paciumWorkers}
-                />
-                <PaciumQueueSources
-                  onOpenItem={openPaciumQueueItem}
-                  onRefresh={refreshPaciumQueue}
-                  projection={paciumQueueProjection}
-                />
-              </>
-            )}
-          <div className="section-heading">
-            <span>
-              {workspaceMode === "pacium" ? "Pacium sessions" : "Terminals"}
-            </span>
-            <span>{sessions.length}</span>
-          </div>
-          {sessions.length === 0 ? (
-            <p className="sidebar-empty">
-              Your running shells will stay here when the browser refreshes.
-            </p>
-          ) : (
-            <div className="session-groups">
-              {sessionGroups.map((group) => (
-                <section className="session-group" key={group.key}>
-                  <div className="session-group-heading">
-                    <span>{group.label}</span>
-                    <span>{group.sessions.length}</span>
-                  </div>
-                  <ul className="session-list">
-                    {group.sessions.map((session) => {
-                      const attention =
-                        attentionBySession.get(session.id) ?? null;
-                      const unread =
-                        attention !== null &&
-                        isAttentionUnread(
-                          attentionInbox,
-                          session.id,
-                          attention,
-                        );
-                      return (
-                        <li key={session.id}>
-                          <button
-                            aria-label={`${sessionAccessibleName(session)}, attention ${attentionStateLabel(
-                              attention?.state ?? "unknown",
-                            )}${unread ? ", unread attention" : ""}`}
-                            aria-current={
-                              session.id === selectedId ? "page" : undefined
-                            }
-                            className="session-item"
-                            onClick={() => selectSession(session.id)}
-                            onContextMenu={(event) => {
-                              event.preventDefault();
-                              openSessionActions(session.id);
-                            }}
-                            title={`${session.commandLabel} in ${session.cwd}${
-                              sessionShortcutNumbers.get(session.id) == null
-                                ? ""
-                                : ` · Cmd/Ctrl ${sessionShortcutNumbers.get(
-                                    session.id,
-                                  )}`
-                            }`}
-                            type="button"
-                          >
-                            <StatusDot state={session.processState} />
-                            <span className="session-copy">
-                              <span className="session-name-row">
-                                <strong>{session.displayName}</strong>
-                                <UnreadAttentionMarker unread={unread} />
-                              </span>
-                              <span className="session-row-meta">
-                                <span className="preset-label">
-                                  {session.commandLabel}
-                                </span>
-                                <span
-                                  className={`attention-label attention-${
-                                    attention?.state ?? "unknown"
-                                  }`}
-                                >
-                                  {attentionStateLabel(
-                                    attention?.state ?? "unknown",
-                                  )}
-                                </span>
-                                <span>{compactPath(session.cwd)}</span>
-                              </span>
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          )}
-          <div className="section-heading recovery-heading">
-            <span>Recovery</span>
-            <span>{recoveryManifests.length}</span>
-          </div>
-          {!relaunchManifestListReady ? (
-            <p className="sidebar-empty">Reading retained launch manifests…</p>
-          ) : recoveryManifests.length === 0 ? (
-            <p className="sidebar-empty">
-              No detached process manifests need recovery.
-            </p>
-          ) : (
-            <ul className="session-list recovery-list">
-              {recoveryManifests.map((manifest) => (
-                <li key={manifest.id}>
-                  <button
-                    aria-label={`Preview recovery for ${manifest.displayName}`}
-                    className="recovery-item"
-                    onClick={(event) =>
-                      openRelaunchManifest(manifest, event.currentTarget)
-                    }
-                    title={`Preview retained ${manifest.launchPreset} manifest in ${manifest.cwd}`}
-                    type="button"
-                  >
-                    <span aria-hidden="true" className="recovery-icon">
-                      ↻
-                    </span>
-                    <span className="session-copy">
-                      <strong>{manifest.displayName}</strong>
-                      <span className="session-row-meta">
-                        <span className="preset-label">
-                          {manifest.tmuxMode === "keep_alive"
-                            ? "tmux keep-alive · command not rerun"
-                            : manifest.launchPreset}
-                        </span>
-                        <span>{compactPath(manifest.cwd)}</span>
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="workspace-mode-switch">
-            <span id="workspace-mode-label">Workspace mode</span>
-            <div
-              aria-labelledby="workspace-mode-label"
-              className="workspace-mode-options"
-              role="group"
+      {railOpen && (
+        <aside aria-label="Repositories and sessions" className="rail">
+          <div className="rail-brand">
+            <span className="rail-brand-name">Pacium</span>
+            <button
+              aria-label="New terminal"
+              className="rail-new-button"
+              id="new-terminal-trigger"
+              onClick={() => setCreateOpen(true)}
+              title="New terminal"
+              type="button"
             >
-              {(["general", "pacium"] as const).map((mode) => (
-                <button
-                  aria-pressed={workspaceMode === mode}
-                  key={mode}
-                  onClick={() => changeWorkspaceMode(mode)}
-                  type="button"
-                >
-                  {mode === "general" ? "General" : "Pacium"}
-                </button>
-              ))}
-            </div>
-            <small>
-              {workspaceMode === "pacium"
-                ? "Focused oversight · terminals unchanged"
-                : "All terminal sessions"}
-            </small>
+              +
+            </button>
           </div>
-        </div>
-      </aside>
-
-      <main
-        aria-label="Terminal workspace"
-        className="workspace"
-        id="primary-workspace"
-        tabIndex={-1}
-      >
-        <header className="workspace-header">
-          <div className="workspace-title">
-            <StatusDot state={selectedSession?.processState ?? "idle"} />
-            <div>
-              <h1>{selectedSession?.displayName ?? "Terminal workspace"}</h1>
-              <p>
-                {selectedSession?.cwd ??
-                  "Create a terminal to begin a local agent session."}
+          <nav aria-label="Sessions by repository" className="rail-groups">
+            {sessionGroups.length === 0 && (
+              <p className="rail-empty">
+                No sessions yet. Open a terminal to get started.
               </p>
-            </div>
-          </div>
-          <div className="header-actions">
-            <button
-              aria-controls="session-sidebar"
-              aria-expanded={panelView.sidebarOpen}
-              aria-keyshortcuts="Meta+B Control+B"
-              aria-label={`${
-                panelView.sidebarOpen ? "Hide" : "Show"
-              } session sidebar`}
-              className="panel-toggle"
-              onClick={toggleSidebarPanel}
-              title="Toggle sessions (Cmd/Ctrl B)"
-              type="button"
-            >
-              <PanelLeftIcon />
-            </button>
-            <button
-              aria-controls="session-inspector"
-              aria-expanded={panelView.inspectorOpen}
-              aria-keyshortcuts="Meta+Shift+B Control+Shift+B"
-              aria-label={`${panelView.inspectorOpen ? "Hide" : "Show"} inspector`}
-              className="panel-toggle"
-              onClick={toggleInspectorPanel}
-              title="Toggle inspector (Cmd/Ctrl Shift B)"
-              type="button"
-            >
-              <PanelRightIcon />
-            </button>
-            {paciumQueueProjection.itemCount > 0 && (
+            )}
+            {sessionGroups.map((group) => (
+              <RepoGroup
+                assignment={
+                  group.kind === "repository"
+                    ? (roleAssignments.get(group.key) ?? null)
+                    : null
+                }
+                attentionBySession={attentionBySession}
+                group={group}
+                key={group.key}
+                onOpenActions={setActionSessionId}
+                onSelect={handleSelect}
+                queueAttention={
+                  group.kind === "repository" &&
+                  queueAttentionRoots.has(
+                    group.sessions[0]?.repository.root ?? "",
+                  )
+                }
+                selectedId={selectedId}
+              />
+            ))}
+          </nav>
+          <div className="rail-footer">
+            {tmuxCapability.state === "ready" && (
               <button
-                aria-label={`${paciumQueueProjection.itemCount} queue ${
-                  paciumQueueProjection.itemCount === 1
-                    ? "item needs"
-                    : "items need"
-                } Felix; open the first one`}
-                className="queue-attention-trigger"
-                id="queue-attention-trigger"
-                onClick={() => {
-                  changeWorkspaceMode("pacium");
-                  if (firstQueueSelection !== null) {
-                    openPaciumQueueItem(firstQueueSelection);
-                  }
-                }}
-                title="Open the current queue item"
+                className="rail-footer-button"
+                id="attach-tmux-trigger"
+                onClick={openTmuxDialog}
                 type="button"
               >
-                Needs Felix
-                <span className="queue-attention-count">
-                  {paciumQueueProjection.itemCount}
-                </span>
+                Attach tmux
               </button>
             )}
-            <ConnectionBadge access={connectionAccess} state={connection} />
             <button
-              aria-label="Open diagnostics"
-              id="diagnostics-trigger"
-              onClick={openDiagnostics}
-              title="Diagnostics and redacted support export"
+              className="rail-footer-button"
+              onClick={() => setSettingsOpen(true)}
+              type="button"
+            >
+              Settings
+            </button>
+            <button
+              className="rail-footer-button"
+              onClick={() => setDiagnosticsOpen(true)}
               type="button"
             >
               Diagnostics
             </button>
+          </div>
+        </aside>
+      )}
+      <main className="stage">
+        <header className="stage-header">
+          <button
+            aria-expanded={railOpen}
+            aria-label={railOpen ? "Hide sidebar" : "Show sidebar"}
+            className="stage-toggle"
+            onClick={() => setRailOpen((open) => !open)}
+            type="button"
+          >
+            ☰
+          </button>
+          <div className="stage-title">
+            <h1>
+              {selectedSession === null
+                ? "Pacium"
+                : sessionTitle(selectedSession, selectedRole)}
+            </h1>
+            {selectedSession !== null && selectedAttention !== null && (
+              <span
+                className={`stage-status attention-${selectedAttention.state}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`status-dot state-${statusDotState(
+                    selectedSession,
+                    selectedAttention,
+                  )}`}
+                />
+                {statusLine(selectedSession, selectedAttention)}
+              </span>
+            )}
+          </div>
+          <div className="stage-actions">
+            <ConnectionBadge access={connectionAccess} state={connection} />
+            <HarnessLoginButton
+              disabled={connection !== "connected"}
+              onConnect={handleHarnessConnect}
+              onTargetChange={setHarnessTarget}
+              target={harnessTarget}
+            />
             <button
-              aria-keyshortcuts="Meta+K Control+K"
-              id="command-palette-trigger"
-              onClick={() => openPalette("commands")}
-              title="Command palette (Cmd/Ctrl K)"
+              aria-expanded={filesOpen}
+              aria-label={filesOpen ? "Hide files panel" : "Show files panel"}
+              className="stage-toggle"
+              onClick={() => setFilesOpen((open) => !open)}
               type="button"
             >
-              Commands
-              <kbd>⌘K</kbd>
-            </button>
-            <button
-              aria-keyshortcuts="Meta+, Control+,"
-              aria-label="Open workspace settings"
-              id="settings-trigger"
-              onClick={openSettings}
-              title="Workspace settings (Cmd/Ctrl ,)"
-              type="button"
-            >
-              <SettingsIcon />
-            </button>
-            <button
-              disabled={selectedSession?.processState !== "live"}
-              id="interrupt-trigger"
-              onClick={() => {
-                if (selectedSession !== null) {
-                  transportRef.current?.interrupt(selectedSession.id);
-                }
-              }}
-              title="Send SIGINT"
-              type="button"
-            >
-              Interrupt
-            </button>
-            <button
-              disabled={selectedSession === null}
-              id="session-actions-trigger"
-              onClick={() => {
-                if (selectedSession !== null) {
-                  openSessionActions(selectedSession.id);
-                }
-              }}
-              title="Session actions"
-              type="button"
-            >
-              Actions
+              ☷
             </button>
           </div>
         </header>
-
+        {tailscaleUrl !== null && (
+          <TailscaleLoginBanner
+            onDismiss={handleTailscaleDismiss}
+            url={tailscaleUrl}
+          />
+        )}
         {notice !== null && (
-          <div className="notice" role="status">
+          <div className="notice-bar" role="status">
             <span>{notice}</span>
-            <button onClick={() => setNotice(null)} type="button">
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {tabSessions.length > 0 && (
-          <div className="terminal-tabs-shell">
-            <div className="terminal-tabs-row">
-              <div
-                aria-label="Open terminal tabs"
-                className="terminal-tab-list"
-                role="tablist"
-              >
-                {tabSessions.map(({ tab, session }) => (
-                  <div
-                    className={`terminal-tab ${
-                      session.id === selectedId ? "is-active" : ""
-                    } ${tab.pinned ? "is-pinned" : ""} ${
-                      draggedTabId === session.id ? "is-dragging" : ""
-                    }`}
-                    draggable
-                    key={session.id}
-                    onDragEnd={() => setDraggedTabId(null)}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDragStart={(event) => {
-                      setDraggedTabId(session.id);
-                      event.dataTransfer.effectAllowed = "move";
-                      event.dataTransfer.setData("text/plain", session.id);
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      const sourceId =
-                        draggedTabId ||
-                        event.dataTransfer.getData("text/plain");
-                      if (sourceId.length > 0) {
-                        setTabs((current) =>
-                          moveTerminalTab(current, sourceId, session.id),
-                        );
-                      }
-                      setDraggedTabId(null);
-                    }}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      openSessionActions(session.id);
-                    }}
-                  >
-                    <button
-                      aria-controls="active-terminal-panel"
-                      aria-selected={session.id === selectedId}
-                      className="terminal-tab-select"
-                      id={`terminal-tab-${session.id}`}
-                      onClick={() => selectSession(session.id)}
-                      onKeyDown={(event) => {
-                        if (
-                          !event.altKey &&
-                          !event.ctrlKey &&
-                          !event.metaKey &&
-                          !event.shiftKey &&
-                          (event.code === "ArrowLeft" ||
-                            event.code === "ArrowRight" ||
-                            event.code === "Home" ||
-                            event.code === "End")
-                        ) {
-                          event.preventDefault();
-                          const nextId =
-                            event.code === "Home"
-                              ? tabsRef.current[0]?.sessionId
-                              : event.code === "End"
-                                ? tabsRef.current.at(-1)?.sessionId
-                                : adjacentTerminalTabId(
-                                    tabsRef.current,
-                                    session.id,
-                                    event.code === "ArrowLeft" ? -1 : 1,
-                                  );
-                          if (nextId !== undefined && nextId !== null) {
-                            selectSession(nextId);
-                            window.requestAnimationFrame(() => {
-                              document
-                                .getElementById(`terminal-tab-${nextId}`)
-                                ?.focus();
-                            });
-                          }
-                          return;
-                        }
-                        if (
-                          event.altKey &&
-                          event.shiftKey &&
-                          (event.code === "ArrowLeft" ||
-                            event.code === "ArrowRight")
-                        ) {
-                          event.preventDefault();
-                          setTabs((current) =>
-                            moveTerminalTabByOffset(
-                              current,
-                              session.id,
-                              event.code === "ArrowLeft" ? -1 : 1,
-                            ),
-                          );
-                        }
-                      }}
-                      role="tab"
-                      tabIndex={session.id === selectedId ? 0 : -1}
-                      title={`${session.displayName} · Alt Shift Left/Right reorders inside ${
-                        tab.pinned ? "pinned" : "regular"
-                      } tabs`}
-                      type="button"
-                    >
-                      <StatusDot state={session.processState} />
-                      <span className="terminal-tab-copy">
-                        <strong>{session.displayName}</strong>
-                        <small>{session.commandLabel}</small>
-                      </span>
-                    </button>
-                    <button
-                      aria-label={`${tab.pinned ? "Unpin" : "Pin"} ${
-                        session.displayName
-                      } tab`}
-                      aria-pressed={tab.pinned}
-                      className="terminal-tab-action"
-                      onClick={() =>
-                        setTabs((current) =>
-                          toggleTerminalTabPin(current, session.id),
-                        )
-                      }
-                      title={tab.pinned ? "Unpin tab" : "Pin tab"}
-                      type="button"
-                    >
-                      <span aria-hidden="true">{tab.pinned ? "◆" : "◇"}</span>
-                    </button>
-                    <button
-                      aria-label={`Close ${session.displayName} tab; terminal keeps running`}
-                      className="terminal-tab-action close-tab-action"
-                      onClick={() => closeViewTab(session.id)}
-                      title="Close tab · terminal keeps running"
-                      type="button"
-                    >
-                      <span aria-hidden="true">×</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="split-toolbar" aria-label="Split layout actions">
-                <button
-                  disabled={listPanes(layout.root).length >= MAX_SPLIT_PANES}
-                  onClick={() => splitPane("horizontal")}
-                  title="Split right (Cmd/Ctrl \\)"
-                  type="button"
-                >
-                  <SplitRightIcon />
-                  <span className="visually-hidden">Split right</span>
-                </button>
-                <button
-                  disabled={listPanes(layout.root).length >= MAX_SPLIT_PANES}
-                  onClick={() => splitPane("vertical")}
-                  title="Split down (Cmd/Ctrl Shift \\)"
-                  type="button"
-                >
-                  <SplitDownIcon />
-                  <span className="visually-hidden">Split down</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <section
-          aria-label={
-            selectedSession === null ? "Terminal split workspace" : undefined
-          }
-          aria-labelledby={
-            selectedSession === null
-              ? undefined
-              : `terminal-tab-${selectedSession.id}`
-          }
-          className="terminal-panel split-workspace"
-          id="active-terminal-panel"
-          role="tabpanel"
-        >
-          {sessions.length === 0 ? (
-            <EmptyWorkspace
-              onCreate={openCreateDialog}
-              onOpenRunning={undefined}
-              runningSessionCount={0}
-            />
-          ) : (
-            <SplitWorkspace
-              capturedPaneId={capturedPaneId}
-              layout={layout}
-              onAssignSession={assignSession}
-              onCaptureChange={(paneId, captured) => {
-                if (captured) {
-                  const next = focusPane(layoutRef.current, paneId);
-                  setLayout(next);
-                  setSelectedId(getFocusedPane(next)?.sessionId ?? null);
-                  setCapturedPaneId(paneId);
-                  return;
-                }
-                setCapturedPaneId((current) =>
-                  current === paneId ? null : current,
-                );
-              }}
-              onClosePane={closePaneView}
-              onFocusPane={selectPane}
-              onInput={(sessionId, data) =>
-                transportRef.current?.input(sessionId, data)
-              }
-              onOpenActions={openSessionActions}
-              onResize={(sessionId, cols, rows) =>
-                transportRef.current?.resize(sessionId, cols, rows)
-              }
-              onSetRatio={(splitId, ratio) =>
-                setLayout(setSplitRatio(layoutRef.current, splitId, ratio))
-              }
-              onSplit={(paneId, direction) => {
-                const focused = focusPane(layoutRef.current, paneId);
-                const next = splitFocusedPane(
-                  focused,
-                  direction,
-                  `split-${crypto.randomUUID()}`,
-                  `pane-${crypto.randomUUID()}`,
-                );
-                if (next === focused) {
-                  setNotice(
-                    `Pacium keeps split layouts to ${MAX_SPLIT_PANES} panes.`,
-                  );
-                  return;
-                }
-                setLayout(next);
-                setSelectedId(null);
-                setCapturedPaneId(null);
-              }}
-              onToggleMaximize={(paneId) => {
-                const next = toggleMaximizedPane(layoutRef.current, paneId);
-                setLayout(next);
-                setSelectedId(getFocusedPane(next)?.sessionId ?? null);
-              }}
-              sessions={sessions}
-              terminalPreferences={terminalPreferences}
-              terminalRefs={terminalRefs}
-            />
-          )}
-        </section>
-        <WorkspaceStatus
-          connection={connection}
-          selectedSessionName={selectedSession?.displayName ?? null}
-          terminalCaptured={capturedPaneId !== null}
-        />
-      </main>
-
-      <aside
-        aria-label={
-          paciumQueueInspection.selection !== null
-            ? "Queue item inspector"
-            : paciumContextOpen
-              ? "Control context inspector"
-              : "Session inspector"
-        }
-        className="inspector"
-        id="session-inspector"
-      >
-        <header>
-          <span>
-            {paciumQueueInspection.selection !== null
-              ? "Queue"
-              : paciumContextOpen
-                ? "Context"
-                : "Session"}
-          </span>
-          <span>
-            <span className="panel-label">
-              {paciumQueueInspection.selection !== null
-                ? "Item"
-                : paciumContextOpen
-                  ? "Control"
-                  : "Details"}
-            </span>
             <button
-              aria-label="Close inspector"
-              className="inspector-close"
-              onClick={toggleInspectorPanel}
+              aria-label="Dismiss notice"
+              onClick={() => setNotice(null)}
               type="button"
             >
               ×
             </button>
-          </span>
-        </header>
-        {paciumQueueInspection.selection !== null ? (
-          <PaciumQueueInspector
-            onBack={closePaciumQueueInspector}
-            onDeliver={deliverQueueDecision}
-            onRecordApproval={recordQueueApprovalDecision}
-            onRecordQuestion={recordQueueQuestionAnswer}
-            onResolve={resolveQueueDecision}
-            requestingSessionLabel={queueRequestingSessionLabel}
-            state={paciumQueueInspection}
-          />
-        ) : paciumContextOpen ? (
-          <PaciumContextInspector
-            onBack={closePaciumContextInspector}
-            onRefresh={inspectPaciumContext}
-            state={paciumContext}
-          />
-        ) : (
-          <>
-            <InspectorTabs active={inspectorTab} onChange={setInspectorTab} />
-            {inspectorTab === "overview" ? (
-              <div
-                aria-labelledby="inspector-overview-tab"
-                id="inspector-overview-panel"
-                role="tabpanel"
-                tabIndex={0}
-              >
-                {selectedSession === null ? (
-                  <p className="inspector-empty">
-                    Runtime details and agent context appear here.
-                  </p>
-                ) : (
-                  <dl className="metadata">
-                    <Metadata label="State">
-                      <span className="state-value">
-                        <StatusDot state={selectedSession.processState} />
-                        {selectedSession.processState}
-                      </span>
-                    </Metadata>
-                    <Metadata label="Runtime">Direct PTY</Metadata>
-                    <Metadata label="Preset">
-                      {selectedSession.commandLabel}
-                    </Metadata>
-                    <Metadata label="Command">{selectedSession.shell}</Metadata>
-                    <Metadata label="Process">
-                      {selectedSession.pid ?? "Exited"}
-                    </Metadata>
-                    <Metadata label="Started">
-                      {formatTime(selectedSession.createdAt)}
-                    </Metadata>
-                    {selectedSession.exitedAt !== null && (
-                      <Metadata label="Exited">
-                        {formatTime(selectedSession.exitedAt)}
-                      </Metadata>
-                    )}
-                  </dl>
-                )}
-                <section className="inspector-section repository-section">
-                  <div className="inspector-section-heading">
-                    <h2>Repository</h2>
-                    {selectedSession !== null && (
-                      <button
-                        disabled={connection !== "connected"}
-                        onClick={refreshSelectedRepository}
-                        title="Refresh branch, HEAD, and worktree evidence"
-                        type="button"
-                      >
-                        Refresh
-                      </button>
-                    )}
-                  </div>
-                  {selectedSession !== null && (
-                    <RepositoryContextCard
-                      repository={selectedSession.repository}
-                    />
-                  )}
-                </section>
-                <section className="inspector-section">
-                  <h2>Agent evidence</h2>
-                  {selectedSession !== null && (
-                    <AgentClassificationCard
-                      classification={selectedSession.agentClassification}
-                    />
-                  )}
-                </section>
-                <section className="inspector-section attention-section">
-                  {selectedAttention !== null &&
-                    selectedAttentionCursor !== null && (
-                      <>
-                        <AttentionCursorHeader
-                          muted={selectedAttentionCursor.muted}
-                          onToggleMuted={toggleSelectedSessionMuted}
-                          unread={selectedAttentionUnread}
-                        />
-                        <AttentionEvidenceCard attention={selectedAttention} />
-                      </>
-                    )}
-                </section>
+          </div>
+        )}
+        <section className="stage-terminal" id="shell-terminal">
+          {selectedSession === null ? (
+            <div className="stage-empty">
+              <div className="stage-empty-glyph" aria-hidden="true">
+                &gt;_
               </div>
-            ) : inspectorTab === "changes" ? (
-              selectedDiffPath === null ? (
-                <RepositoryChangesPanel
-                  onOpenDiff={openSelectedRepositoryDiff}
-                  onRefresh={() => {
-                    if (selectedId !== null) {
-                      requestRepositoryChanges(selectedId);
-                    }
-                  }}
-                  repository={selectedSession?.repository ?? null}
-                  state={selectedRepositoryChanges}
-                />
+              <h2>
+                {sessions.length > 0
+                  ? "Pick a session from the sidebar"
+                  : "Your workspace is ready"}
+              </h2>
+              <p>
+                {sessions.length > 0
+                  ? "Sessions keep running while unselected. Selecting one reconnects to its live screen."
+                  : "Open a terminal for a repository. Refreshing the browser reconnects to the same process."}
+              </p>
+              <button
+                className="primary-button"
+                onClick={() => setCreateOpen(true)}
+                type="button"
+              >
+                Open a terminal
+              </button>
+            </div>
+          ) : (
+            <TerminalSurface
+              ariaLabel={`Terminal for ${selectedSession.displayName}`}
+              key={`${selectedSession.id}:${selectedSession.epoch}`}
+              onCaptureChange={setCaptured}
+              onInput={(data) => {
+                if (connection === "connected" && selectedId !== null) {
+                  transportRef.current?.input(selectedId, data);
+                }
+              }}
+              onResize={(cols, rows) => {
+                if (connection === "connected" && selectedId !== null) {
+                  transportRef.current?.resize(selectedId, cols, rows);
+                }
+              }}
+              preferences={terminalPreferences}
+              ref={handleSurfaceRef}
+            />
+          )}
+        </section>
+        {selectedSession !== null && (
+          <form
+            className={`composer ${selectedRole === "meta" ? "is-meta" : ""}`}
+            onSubmit={handleComposerSubmit}
+          >
+            <textarea
+              aria-label={composerPlaceholder}
+              disabled={!liveSelected || connection !== "connected"}
+              onChange={(event) => setComposerText(event.target.value)}
+              onKeyDown={handleComposerKeyDown}
+              placeholder={
+                liveSelected
+                  ? composerPlaceholder
+                  : "This session has ended. Relaunch it from its row menu."
+              }
+              ref={composerRef}
+              rows={composerText.includes("\n") ? 3 : 1}
+              value={composerText}
+            />
+            <button
+              className="composer-send"
+              disabled={
+                !liveSelected ||
+                connection !== "connected" ||
+                composerText.trim().length === 0
+              }
+              type="submit"
+            >
+              Send
+            </button>
+          </form>
+        )}
+        <footer className="stage-footer" role="status">
+          <span>
+            {connection === "connected"
+              ? captured
+                ? "Terminal captures keys · Ctrl+Shift+. returns to the app"
+                : "Click the terminal to type into it directly"
+              : connection === "reconnecting"
+                ? "Reconnecting to Pacium — terminals keep running"
+                : connection === "connecting"
+                  ? "Connecting to Pacium…"
+                  : "Disconnected — terminals keep running on the host"}
+          </span>
+          {selectedSession !== null && (
+            <span className="stage-footer-path">{selectedSession.cwd}</span>
+          )}
+        </footer>
+      </main>
+      {filesOpen && (
+        <aside aria-label="Repository files and git" className="files">
+          <div className="files-tabs" role="tablist">
+            <button
+              aria-selected={filesTab === "files"}
+              className={filesTab === "files" ? "is-active" : ""}
+              onClick={() => setFilesTab("files")}
+              role="tab"
+              type="button"
+            >
+              Files
+            </button>
+            <button
+              aria-selected={filesTab === "git"}
+              className={filesTab === "git" ? "is-active" : ""}
+              onClick={() => setFilesTab("git")}
+              role="tab"
+              type="button"
+            >
+              Git
+            </button>
+          </div>
+          <div className="files-body">
+            {filesTab === "files" ? (
+              selectedRepositoryRoot === null ? (
+                <p className="files-hint">
+                  {selectedSession === null
+                    ? "Select a session to see its repository files."
+                    : "This session is not inside a git repository, so there are no agent files to show."}
+                </p>
               ) : (
-                <RepositoryDiffPanel
-                  key={repositoryDiffKey(selectedId!, selectedDiffPath)}
-                  onBack={closeSelectedRepositoryDiff}
-                  onRefresh={() => {
-                    if (selectedId !== null) {
-                      requestRepositoryDiff(selectedId, selectedDiffPath);
-                    }
-                  }}
-                  state={selectedRepositoryDiff}
+                <RepoDocsPanel
+                  accessToken={apiToken}
+                  key={selectedRepositoryRoot}
+                  repositoryName={selectedRepositoryName ?? ""}
+                  root={selectedRepositoryRoot}
                 />
               )
-            ) : inspectorTab === "history" ? (
-              <RepositoryHistoryPanel
-                onRefresh={() => {
-                  if (selectedId !== null) {
-                    requestRepositoryHistory(selectedId);
-                  }
-                }}
-                repository={selectedSession?.repository ?? null}
-                state={selectedRepositoryHistory}
-              />
-            ) : inspectorTab === "checks" ? (
-              <RepositoryVerificationPanel
-                onCancel={(runId) => {
-                  if (selectedId !== null) {
-                    cancelRepositoryVerification(selectedId, runId);
-                  }
-                }}
-                onRefresh={() => {
-                  if (selectedId !== null) {
-                    requestRepositoryVerification(selectedId);
-                  }
-                }}
-                onRun={(presetId) => {
-                  if (selectedId !== null) {
-                    runRepositoryVerification(selectedId, presetId);
-                  }
-                }}
-                repository={selectedSession?.repository ?? null}
-                state={selectedRepositoryVerification}
-              />
+            ) : selectedSession === null ? (
+              <p className="files-hint">
+                Select a session to inspect its repository.
+              </p>
             ) : (
-              <RecentActivityPanel
-                activity={selectedRecentActivity}
-                connectionBoundary={connection}
-                onOpenSource={(target: ActivityFactTarget) => {
-                  if (target === "terminal") {
-                    if (selectedId !== null) {
-                      terminalRefs.current.get(selectedId)?.focus();
-                    }
-                    return;
-                  }
-                  setInspectorTab(target);
-                }}
-                onReadTerminalExcerpt={() =>
-                  selectedId === null
-                    ? null
-                    : (terminalRefs.current.get(selectedId)?.readRecentText() ??
-                      null)
-                }
-                onRefresh={() => {
-                  if (selectedId !== null) {
-                    requestRepositoryChanges(selectedId);
-                    requestRepositoryHistory(selectedId);
-                    requestRepositoryVerification(selectedId);
-                  }
-                }}
-              />
+              <div className="git-panel">
+                <div className="git-subtabs" role="tablist">
+                  <button
+                    aria-selected={gitTab === "changes"}
+                    className={gitTab === "changes" ? "is-active" : ""}
+                    onClick={() => setGitTab("changes")}
+                    role="tab"
+                    type="button"
+                  >
+                    Changes
+                  </button>
+                  <button
+                    aria-selected={gitTab === "checks"}
+                    className={gitTab === "checks" ? "is-active" : ""}
+                    onClick={() => setGitTab("checks")}
+                    role="tab"
+                    type="button"
+                  >
+                    Checks
+                  </button>
+                </div>
+                {gitTab === "changes" ? (
+                  selectedDiffPath !== null ? (
+                    <RepositoryDiffPanel
+                      onBack={closeSelectedRepositoryDiff}
+                      onRefresh={() => {
+                        if (selectedId !== null && selectedDiffPath !== null) {
+                          requestRepositoryDiff(selectedId, selectedDiffPath);
+                        }
+                      }}
+                      state={selectedRepositoryDiff}
+                    />
+                  ) : (
+                    <RepositoryChangesPanel
+                      onOpenDiff={openSelectedRepositoryDiff}
+                      onRefresh={() => {
+                        if (selectedId !== null) {
+                          requestRepositoryChanges(selectedId);
+                        }
+                      }}
+                      repository={selectedSession.repository}
+                      state={selectedRepositoryChanges}
+                    />
+                  )
+                ) : (
+                  <RepositoryVerificationPanel
+                    onCancel={(runId) => {
+                      if (selectedId !== null) {
+                        cancelRepositoryVerification(selectedId, runId);
+                      }
+                    }}
+                    onRefresh={() => {
+                      if (selectedId !== null) {
+                        requestRepositoryVerification(selectedId);
+                      }
+                    }}
+                    onRun={(presetId) => {
+                      if (selectedId !== null) {
+                        runRepositoryVerification(selectedId, presetId);
+                      }
+                    }}
+                    repository={selectedSession.repository}
+                    state={selectedRepositoryVerification}
+                  />
+                )}
+              </div>
             )}
-          </>
-        )}
-      </aside>
-
+          </div>
+        </aside>
+      )}
       {createOpen && (
         <CreateTerminalDialog
           defaultCwd={defaultCwd}
@@ -4022,9 +1648,13 @@ export function App() {
             launchPresets,
           )}
           launchPresets={launchPresets}
-          loadDirectories={loadDirectories}
+          loadDirectories={(path) =>
+            transportRef.current === null
+              ? Promise.reject(new Error("Pacium is disconnected."))
+              : transportRef.current.listDirectories(path)
+          }
           onCancel={closeCreateDialog}
-          onCreate={createSession}
+          onCreate={handleCreate}
           tmuxCapability={tmuxCapability}
         />
       )}
@@ -4036,39 +1666,53 @@ export function App() {
           error={tmuxError}
           loading={tmuxLoading}
           observation={tmuxObservation}
-          onAttach={attachTmuxSession}
-          onCancel={closeTmuxDialog}
+          onAttach={(target) => {
+            const transport = transportRef.current;
+            if (connection !== "connected" || transport === null) {
+              setTmuxError(
+                "Pacium is disconnected. No attachment was requested.",
+              );
+              return;
+            }
+            setTmuxAttaching(true);
+            tmuxAttachRequestRef.current = transport.attachTmux(
+              target.serverId,
+              target.sessionId,
+              120,
+              32,
+            );
+          }}
+          onCancel={() => setTmuxOpen(false)}
           onRefresh={refreshTmuxSessions}
-        />
-      )}
-      {editingPaciumRole !== null && paciumRoleBindingOptions !== null && (
-        <PaciumRoleBindingDialog
-          binding={editingPaciumRoleBinding}
-          connected={connection === "connected"}
-          key={editingPaciumRole}
-          onCancel={closePaciumRoleEditor}
-          onSave={(binding) =>
-            savePaciumRoleBinding(editingPaciumRole, binding)
-          }
-          options={paciumRoleBindingOptions}
-          role={editingPaciumRole}
-          saving={
-            roleSaveRequestRef.current?.role === editingPaciumRole &&
-            paciumConfig.status === "replacing"
-          }
         />
       )}
       {settingsOpen && (
         <PreferencesDialog
-          applyHostSetup={applyHostSetup}
+          applyHostSetup={(tmuxSessionId) =>
+            transportRef.current === null
+              ? Promise.reject(new Error("Pacium is disconnected."))
+              : transportRef.current.applyHostSetup(tmuxSessionId)
+          }
           hostSetupLocal={connectionAccess?.kind === "local"}
           launchPresets={launchPresets}
-          loadHostSetup={loadHostSetup}
+          loadHostSetup={() =>
+            transportRef.current === null
+              ? Promise.reject(new Error("Pacium is disconnected."))
+              : transportRef.current.getHostSetup()
+          }
           notificationPermission={notificationPermission}
-          onApply={applyPreferences}
-          onCancel={closeSettings}
+          onApply={(next) => {
+            setPreferences(next);
+            savePreferences(window.localStorage, next);
+            setSettingsOpen(false);
+          }}
+          onCancel={() => setSettingsOpen(false)}
           onRequestNotificationPermission={() => {
-            void requestNotificationPermission();
+            if (typeof Notification !== "undefined") {
+              void Notification.requestPermission().then((permission) => {
+                setNotificationPermission(permission);
+              });
+            }
           }}
           preferences={preferences}
         />
@@ -4076,59 +1720,463 @@ export function App() {
       {diagnosticsOpen && (
         <DiagnosticsDialog
           connection={connection}
-          load={loadDiagnostics}
-          onClose={closeDiagnostics}
-        />
-      )}
-      {paletteView !== null && (
-        <CommandPalette
-          commands={paletteCommands}
-          onClose={() => closePalette()}
-          onExecute={executePaletteCommand}
-          onViewChange={setPaletteView}
-          view={paletteView}
+          load={() =>
+            transportRef.current === null
+              ? Promise.reject(new Error("Pacium is disconnected."))
+              : transportRef.current.getDiagnostics()
+          }
+          onClose={() => setDiagnosticsOpen(false)}
         />
       )}
       {actionSession !== null && (
         <SessionActionsMenu
-          onClose={closeSessionActions}
+          onClose={() => setActionSessionId(null)}
           onCloseView={() => {
-            closeViewTab(actionSession.id);
-            closeSessionActions();
+            setActionSessionId(null);
+            if (selectedId === actionSession.id) {
+              setSelectedId(null);
+            }
           }}
           onCopyDirectory={() => {
-            void copySessionDirectory(actionSession);
+            void navigator.clipboard?.writeText(actionSession.cwd);
+            setActionSessionId(null);
           }}
-          onDuplicate={() => duplicateSession(actionSession)}
-          onInterrupt={() => interruptSession(actionSession)}
-          onRelaunch={() => relaunchSession(actionSession)}
-          onRename={() => beginRenameSession(actionSession)}
-          onRevealRepository={() => revealSessionRepository(actionSession)}
-          onTerminate={() => terminateSession(actionSession)}
+          onDuplicate={() => {
+            setActionSessionId(null);
+            const transport = transportRef.current;
+            if (connection !== "connected" || transport === null) {
+              setNotice("Pacium is disconnected, so no terminal was started.");
+              return;
+            }
+            transport.createSession({
+              ...duplicateSessionInput(actionSession),
+              cols: 120,
+              rows: 32,
+            });
+          }}
+          onInterrupt={() => {
+            transportRef.current?.interrupt(actionSession.id);
+            setActionSessionId(null);
+          }}
+          onRelaunch={() => {
+            setActionSessionId(null);
+            const manifest = relaunchManifests.find(
+              ({ sessionId }) => sessionId === actionSession.id,
+            );
+            if (manifest === undefined) {
+              setNotice(
+                "No relaunch manifest exists for this session yet, so nothing was restarted.",
+              );
+              return;
+            }
+            setRelaunchManifestId(manifest.id);
+          }}
+          onRename={() => {
+            setActionSessionId(null);
+            setRenameSessionId(actionSession.id);
+          }}
+          onRevealRepository={() => {
+            transportRef.current?.revealRepository(actionSession.id);
+            setActionSessionId(null);
+          }}
+          onTerminate={() => {
+            setActionSessionId(null);
+            setTerminateSessionId(actionSession.id);
+          }}
           session={actionSession}
+        />
+      )}
+      {terminateSession !== null && (
+        <TerminateSessionDialog
+          onCancel={() => setTerminateSessionId(null)}
+          onConfirm={() => {
+            transportRef.current?.closeSession(
+              terminateSession.id,
+              terminateSession.processState === "live" ||
+                terminateSession.processState === "closing",
+            );
+            setTerminateSessionId(null);
+          }}
+          session={terminateSession}
+        />
+      )}
+      {renameSession !== null && (
+        <RenameSessionDialog
+          onCancel={() => setRenameSessionId(null)}
+          onRename={(displayName) => {
+            transportRef.current?.renameSession(renameSession.id, displayName);
+            setRenameSessionId(null);
+          }}
+          session={renameSession}
         />
       )}
       {relaunchManifest !== null && (
         <RelaunchSessionDialog
           connected={connection === "connected"}
           manifest={relaunchManifest}
-          onCancel={closeRelaunchDialog}
-          onConfirm={() => confirmRelaunch(relaunchManifest)}
-        />
-      )}
-      {renameSession !== null && (
-        <RenameSessionDialog
-          onCancel={closeRenameDialog}
-          onRename={(displayName) => {
-            transportRef.current?.renameSession(renameSession.id, displayName);
-            setNotice(`Renaming ${renameSession.displayName}…`);
-            closeRenameDialog();
+          onCancel={() => setRelaunchManifestId(null)}
+          onConfirm={() => {
+            transportRef.current?.relaunch(relaunchManifest.id, 120, 32);
+            setRelaunchManifestId(null);
           }}
-          session={renameSession}
         />
       )}
     </div>
   );
+}
+
+function RepoGroup({
+  assignment,
+  attentionBySession,
+  group,
+  onOpenActions,
+  onSelect,
+  queueAttention,
+  selectedId,
+}: {
+  assignment: RepoRoleAssignment | null;
+  attentionBySession: Map<string, AttentionResult>;
+  group: SessionGroup;
+  onOpenActions: (sessionId: string) => void;
+  onSelect: (sessionId: string) => void;
+  queueAttention: boolean;
+  selectedId: string | null;
+}) {
+  const needsInput = group.sessions.some(
+    (session) => attentionBySession.get(session.id)?.state === "needs_input",
+  );
+  return (
+    <section className="rail-repo">
+      <header className="rail-repo-header">
+        <span className="rail-repo-name">{group.label}</span>
+        {(needsInput || queueAttention) && (
+          <span className="rail-repo-flag" title="Needs your attention">
+            needs you
+          </span>
+        )}
+      </header>
+      {assignment !== null ? (
+        <>
+          <RoleRow
+            attention={
+              assignment.meta === null
+                ? null
+                : (attentionBySession.get(assignment.meta.id) ?? null)
+            }
+            label="Meta"
+            glyph="◆"
+            onOpenActions={onOpenActions}
+            onSelect={onSelect}
+            selected={
+              assignment.meta !== null && assignment.meta.id === selectedId
+            }
+            session={assignment.meta}
+            source={assignment.metaSource}
+          />
+          <RoleRow
+            attention={
+              assignment.orchestrator === null
+                ? null
+                : (attentionBySession.get(assignment.orchestrator.id) ?? null)
+            }
+            label="Orchestrator"
+            glyph="●"
+            onOpenActions={onOpenActions}
+            onSelect={onSelect}
+            selected={
+              assignment.orchestrator !== null &&
+              assignment.orchestrator.id === selectedId
+            }
+            session={assignment.orchestrator}
+            source={assignment.orchestratorSource}
+          />
+          {assignment.others.map((session) => (
+            <SessionRow
+              attention={attentionBySession.get(session.id) ?? null}
+              key={session.id}
+              onOpenActions={onOpenActions}
+              onSelect={onSelect}
+              selected={session.id === selectedId}
+              session={session}
+            />
+          ))}
+        </>
+      ) : (
+        group.sessions.map((session) => (
+          <SessionRow
+            attention={attentionBySession.get(session.id) ?? null}
+            key={session.id}
+            onOpenActions={onOpenActions}
+            onSelect={onSelect}
+            selected={session.id === selectedId}
+            session={session}
+          />
+        ))
+      )}
+    </section>
+  );
+}
+
+function RoleRow({
+  attention,
+  glyph,
+  label,
+  onOpenActions,
+  onSelect,
+  selected,
+  session,
+  source,
+}: {
+  attention: AttentionResult | null;
+  glyph: string;
+  label: string;
+  onOpenActions: (sessionId: string) => void;
+  onSelect: (sessionId: string) => void;
+  selected: boolean;
+  session: SessionSummary | null;
+  source: "config" | "name" | null;
+}) {
+  if (session === null) {
+    return (
+      <div className="role-row is-absent">
+        <span aria-hidden="true" className="role-glyph">
+          {glyph}
+        </span>
+        <span className="role-label">{label}</span>
+        <span className="role-absent">not running</span>
+      </div>
+    );
+  }
+  const needsInput = attention?.state === "needs_input";
+  return (
+    <div
+      className={`role-row ${selected ? "is-selected" : ""} ${
+        needsInput ? "is-needs-input" : ""
+      }`}
+    >
+      <button
+        className="role-select"
+        onClick={() => onSelect(session.id)}
+        title={
+          source === "name"
+            ? `${label} (matched by session name)`
+            : source === "config"
+              ? `${label} (bound in Pacium configuration)`
+              : label
+        }
+        type="button"
+      >
+        <span aria-hidden="true" className="role-glyph">
+          {glyph}
+        </span>
+        <span className="role-label">{label}</span>
+        <span className="role-session-name">{session.displayName}</span>
+        <span
+          aria-hidden="true"
+          className={`status-dot state-${statusDotState(session, attention)}`}
+        />
+        <span className="visually-hidden">
+          {attention === null
+            ? session.processState
+            : attentionStateLabel(attention.state)}
+        </span>
+      </button>
+      <button
+        aria-label={`Actions for ${session.displayName}`}
+        className="row-actions"
+        onClick={() => onOpenActions(session.id)}
+        type="button"
+      >
+        ⋯
+      </button>
+    </div>
+  );
+}
+
+function SessionRow({
+  attention,
+  onOpenActions,
+  onSelect,
+  selected,
+  session,
+}: {
+  attention: AttentionResult | null;
+  onOpenActions: (sessionId: string) => void;
+  onSelect: (sessionId: string) => void;
+  selected: boolean;
+  session: SessionSummary;
+}) {
+  return (
+    <div
+      className={`session-row ${selected ? "is-selected" : ""} ${
+        attention?.state === "needs_input" ? "is-needs-input" : ""
+      }`}
+    >
+      <button
+        className="session-select"
+        onClick={() => onSelect(session.id)}
+        type="button"
+      >
+        <span
+          aria-hidden="true"
+          className={`status-dot state-${statusDotState(session, attention)}`}
+        />
+        <span className="session-name">{session.displayName}</span>
+        <span className="session-kind">
+          {session.launchPreset === "shell" ? "" : session.commandLabel}
+        </span>
+      </button>
+      <button
+        aria-label={`Actions for ${session.displayName}`}
+        className="row-actions"
+        onClick={() => onOpenActions(session.id)}
+        type="button"
+      >
+        ⋯
+      </button>
+    </div>
+  );
+}
+
+function sessionTitle(
+  session: SessionSummary,
+  role: "meta" | "orchestrator" | null,
+): string {
+  const repoName =
+    session.repository.status === "ready" ? session.repository.name : null;
+  const roleLabel =
+    role === "meta" ? "Meta" : role === "orchestrator" ? "Orchestrator" : null;
+  if (repoName !== null && roleLabel !== null) {
+    return `${repoName} · ${roleLabel}`;
+  }
+  return session.displayName;
+}
+
+function statusDotState(
+  session: SessionSummary,
+  attention: AttentionResult | null,
+): string {
+  if (session.processState !== "live") {
+    return session.processState;
+  }
+  if (attention === null || attention.source === "none") {
+    return "live";
+  }
+  return attention.state;
+}
+
+function statusLine(
+  session: SessionSummary,
+  attention: AttentionResult,
+): string {
+  if (session.processState !== "live") {
+    return session.processState === "exited"
+      ? `Exited${session.exitCode !== null ? ` (${session.exitCode})` : ""}`
+      : session.processState;
+  }
+  if (attention.source === "none") {
+    return "Running · no provider signal";
+  }
+  return `${attentionStateLabel(attention.state)} · ${attentionSourceLabel(
+    attention.source,
+  )} · ${timeAgo(attention.observedAt)}`;
+}
+
+function TerminateSessionDialog({
+  onCancel,
+  onConfirm,
+  session,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+  session: SessionSummary;
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const isLive =
+    session.processState === "live" || session.processState === "closing";
+  return (
+    <div
+      aria-labelledby="terminate-session-title"
+      aria-modal="true"
+      className="dialog-backdrop"
+      onKeyDown={(event) =>
+        handleModalKeyDown(event, dialogRef.current, onCancel)
+      }
+      ref={dialogRef}
+      role="dialog"
+    >
+      <div className="dialog-card">
+        <div className="dialog-heading">
+          <div>
+            <span className="eyebrow">
+              {isLive ? "Terminate session" : "Remove session"}
+            </span>
+            <h2 id="terminate-session-title">{session.displayName}</h2>
+          </div>
+          <button aria-label="Cancel" onClick={onCancel} type="button">
+            ×
+          </button>
+        </div>
+        <p className="dialog-note">{terminateConsequence(session)}</p>
+        <div className="dialog-actions">
+          <button autoFocus onClick={onCancel} type="button">
+            Cancel
+          </button>
+          <button className="primary-button" onClick={onConfirm} type="button">
+            {isLive
+              ? session.runtime === "tmux"
+                ? "Disconnect and close"
+                : "Terminate process"
+              : "Remove session"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function terminateConsequence(session: SessionSummary): string {
+  const isLive =
+    session.processState === "live" || session.processState === "closing";
+  if (!isLive) {
+    return `Remove the ended session “${session.displayName}” from Pacium?`;
+  }
+  if (session.runtime === "tmux") {
+    return session.tmuxMode === "keep_alive"
+      ? `Disconnect the keep-alive client for “${session.displayName}”? The managed tmux target will continue and remains eligible for automatic reattachment on the next Pacium server start.`
+      : `Disconnect the tmux client for “${session.displayName}”? Pacium will close only its attachment; the tmux server session may continue.`;
+  }
+  return `Terminate “${session.displayName}”? Pacium will send SIGTERM and force termination if it does not exit.`;
+}
+
+function timeAgo(iso: string): string {
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) {
+    return "unknown time";
+  }
+  const seconds = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (seconds < 60) {
+    return `${seconds}s ago`;
+  }
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
+  return `${Math.round(hours / 24)}d ago`;
+}
+
+// Multi-line composer messages are wrapped in bracketed paste so TUIs treat
+// them as one message instead of submitting at the first newline. Enter is
+// sent separately afterwards (see handleComposerSend).
+function composerTextPayload(text: string): string {
+  if (text.includes("\n")) {
+    return `\u001b[200~${text}\u001b[201~`;
+  }
+  return text;
 }
 
 function applyServerMessage(
@@ -4141,11 +2189,7 @@ function applyServerMessage(
   setRelaunchManifests: React.Dispatch<
     React.SetStateAction<RelaunchManifest[]>
   >,
-  setRelaunchManifestListReady: React.Dispatch<React.SetStateAction<boolean>>,
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>,
-  tabsRef: React.MutableRefObject<TerminalTab[]>,
-  setTabs: React.Dispatch<React.SetStateAction<TerminalTab[]>>,
-  setLayout: React.Dispatch<React.SetStateAction<SplitLayoutState>>,
   setDefaultCwd: React.Dispatch<React.SetStateAction<string>>,
   setLaunchPresets: React.Dispatch<
     React.SetStateAction<LaunchPresetCapability[]>
@@ -4167,15 +2211,11 @@ function applyServerMessage(
         ) {
           return current;
         }
-        const restoredTab = tabsRef.current.find((tab) =>
-          message.sessions.some(({ id }) => id === tab.sessionId),
-        );
-        return restoredTab?.sessionId ?? message.sessions[0]?.id ?? null;
+        return message.sessions[0]?.id ?? null;
       });
       return;
     case "relaunch.manifest.list":
       setRelaunchManifests(message.manifests);
-      setRelaunchManifestListReady(true);
       return;
     case "relaunch.manifest.updated":
       setRelaunchManifests((current) =>
@@ -4189,7 +2229,6 @@ function applyServerMessage(
           upsertRelaunchManifest(current, message.session.relaunchManifest!),
         );
       }
-      setTabs((current) => openTerminalTab(current, message.session.id));
       setSelectedId(message.session.id);
       return;
     case "session.updated":
@@ -4204,21 +2243,13 @@ function applyServerMessage(
     case "session.closed":
       syncRefs.current.delete(message.sessionId);
       terminalRefs.current.delete(message.sessionId);
-      setSessions((current) =>
-        current.filter(({ id }) => id !== message.sessionId),
-      );
-      setLayout((current) =>
-        clearSessionFromLayout(current, message.sessionId),
-      );
-      {
-        const next = closeTerminalTab(
-          tabsRef.current,
-          message.sessionId,
-          selectedIdRef.current,
-        );
-        setTabs(next.tabs);
-        setSelectedId(next.selectedId);
-      }
+      setSessions((current) => {
+        const remaining = current.filter(({ id }) => id !== message.sessionId);
+        if (selectedIdRef.current === message.sessionId) {
+          setSelectedId(remaining[0]?.id ?? null);
+        }
+        return remaining;
+      });
       return;
     case "terminal.snapshot": {
       const sync = syncRefs.current.get(message.sessionId);
@@ -4247,7 +2278,7 @@ function applyServerMessage(
     case "error":
       setNotice(message.message);
       return;
-    case "command.result":
+    default:
       return;
   }
 }
@@ -4493,175 +2524,4 @@ export function CreateTerminalDialog({
       </form>
     </div>
   );
-}
-
-export function WorkspaceStatus({
-  connection,
-  selectedSessionName,
-  terminalCaptured,
-}: {
-  connection: ConnectionState;
-  selectedSessionName: string | null;
-  terminalCaptured: boolean;
-}) {
-  return (
-    <footer
-      aria-atomic="true"
-      aria-live="polite"
-      className="workspace-status"
-      role="status"
-    >
-      <span>
-        {workspaceStatusText({
-          connection,
-          selectedSessionName,
-          terminalCaptured,
-        })}
-      </span>
-      <span>
-        {terminalCaptured
-          ? "Ctrl+Shift+. returns to application controls"
-          : "Click a terminal to enter capture"}
-      </span>
-    </footer>
-  );
-}
-
-function EmptyWorkspace({
-  onCreate,
-  onOpenRunning,
-  runningSessionCount,
-}: {
-  onCreate: () => void;
-  onOpenRunning: (() => void) | undefined;
-  runningSessionCount: number;
-}) {
-  const hasRunningSessions = runningSessionCount > 0;
-  return (
-    <div className="empty-workspace">
-      <div className="empty-glyph" aria-hidden="true">
-        &gt;_
-      </div>
-      <h2>
-        {hasRunningSessions
-          ? "No terminal tabs are open"
-          : "Your terminal workspace is ready"}
-      </h2>
-      <p>
-        {hasRunningSessions
-          ? `${runningSessionCount} ${
-              runningSessionCount === 1 ? "terminal is" : "terminals are"
-            } still running safely in the sidebar.`
-          : "Open a shell for a project. Refreshing the browser reconnects to the same process while the local server stays running."}
-      </p>
-      {hasRunningSessions && onOpenRunning !== undefined ? (
-        <button
-          className="primary-button"
-          onClick={onOpenRunning}
-          type="button"
-        >
-          Reopen running terminal
-        </button>
-      ) : (
-        <button className="primary-button" onClick={onCreate} type="button">
-          Open first terminal
-        </button>
-      )}
-      <span className="shortcut-hint">
-        {hasRunningSessions
-          ? "Closing a tab never stops its terminal process."
-          : "Cmd/Ctrl Shift T opens this launcher from anywhere in the workspace."}
-      </span>
-    </div>
-  );
-}
-
-function StatusDot({ state }: { state: string }) {
-  return <span aria-hidden="true" className={`status-dot state-${state}`} />;
-}
-
-function Metadata({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <dt>{label}</dt>
-      <dd>{children}</dd>
-    </div>
-  );
-}
-
-function compactPath(path: string): string {
-  const parts = path.split("/").filter(Boolean);
-  if (parts.length <= 2) {
-    return path;
-  }
-  return `…/${parts.slice(-2).join("/")}`;
-}
-
-function queueDeliveryNotice(result: QueueDeliveryResult): string {
-  if (result.status === "delivered") {
-    return result.state.target?.type === "role_prompt"
-      ? "Terminal input accepted for the configured role. Agent handling is not confirmed."
-      : "The private answer file was created at the configured target.";
-  }
-  if (result.status === "existing") {
-    return "The existing immutable delivery attempt was recovered. Pacium did not invoke the transport again.";
-  }
-  if (result.status === "unknown") {
-    return "Delivery outcome is unknown. The side effect may have occurred, and Pacium will not retry it.";
-  }
-  return `${result.state.error?.message ?? "Delivery did not complete."} Pacium did not retry or choose another target.`;
-}
-
-function formatTime(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(iso));
-}
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement ||
-    (target instanceof HTMLElement && target.isContentEditable)
-  );
-}
-
-function sameTerminalTabs(left: TerminalTab[], right: TerminalTab[]): boolean {
-  return (
-    left.length === right.length &&
-    left.every(
-      (tab, index) =>
-        tab.sessionId === right[index]?.sessionId &&
-        tab.pinned === right[index]?.pinned,
-    )
-  );
-}
-
-function activeControl(fallbackId: string): HTMLElement | null {
-  const activeElement = document.activeElement;
-  return activeElement instanceof HTMLElement && activeElement !== document.body
-    ? activeElement
-    : document.getElementById(fallbackId);
-}
-
-function restoreControlFocus(
-  invokerRef: React.MutableRefObject<HTMLElement | null>,
-  fallbackId: string,
-): void {
-  const target = invokerRef.current;
-  window.requestAnimationFrame(() => {
-    if (target?.isConnected) {
-      target.focus();
-      return;
-    }
-    document.getElementById(fallbackId)?.focus();
-  });
 }

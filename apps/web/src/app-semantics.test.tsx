@@ -2,7 +2,7 @@ import type { LaunchPresetCapability } from "@pacium/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { CreateTerminalDialog, WorkspaceStatus } from "./app.js";
+import { CreateTerminalDialog } from "./app.js";
 
 const launchPresets: LaunchPresetCapability[] = [
   {
@@ -59,21 +59,24 @@ describe("application shell semantics", () => {
     );
     expect(ready).toContain("Keep alive with tmux");
     expect(ready).toContain('<input type="checkbox"/>');
-  });
 
-  it("announces connection, selection, and terminal keyboard ownership", () => {
-    const markup = renderToStaticMarkup(
-      <WorkspaceStatus
-        connection="connected"
-        selectedSessionName="Meta"
-        terminalCaptured
+    const unconfigured = renderToStaticMarkup(
+      <CreateTerminalDialog
+        defaultCwd="/work/pacium"
+        defaultLaunchPreset="shell"
+        launchPresets={launchPresets}
+        loadDirectories={() => Promise.reject(new Error("not used"))}
+        onCancel={() => {}}
+        onCreate={() => {}}
+        tmuxCapability={{
+          state: "unconfigured",
+          serverId: null,
+          executable: null,
+          version: null,
+          detail: "Not configured.",
+        }}
       />,
     );
-
-    expect(markup).toContain('role="status"');
-    expect(markup).toContain('aria-live="polite"');
-    expect(markup).toContain("Connected · Meta · Terminal capture");
-    expect(markup).toContain("Ctrl+Shift+. returns to application controls");
-    expect(markup).not.toContain("/work/pacium");
+    expect(unconfigured).not.toContain("Keep alive with tmux");
   });
 });
